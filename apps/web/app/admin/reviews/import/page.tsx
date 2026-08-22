@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { adminHeaders } from '@/services/admin/adminFetch';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminReviewService } from '@/services/admin/adminReviewService';
@@ -88,7 +89,7 @@ export default function ImportReviewsPage() {
     setSearching(true);
     try {
       const res = await fetch(`/api/admin/providers/search?q=${encodeURIComponent(query.trim())}`, {
-        headers: { 'x-admin-uid': user.id },
+        headers: await adminHeaders(),
       });
       const data = await res.json();
       setResults(data.results || []);

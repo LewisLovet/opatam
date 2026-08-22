@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { resend, emailConfig, appConfig, getEmailWrapperHtml, isValidEmail } from '@/lib/resend';
@@ -17,12 +18,6 @@ import { resend, emailConfig, appConfig, getEmailWrapperHtml, isValidEmail } fro
 
 // App Store numeric id (apps.apple.com/app/id6759246218). No Play Store app yet.
 const APP_STORE_ID = '6759246218';
-
-async function verifyAdmin(uid: string): Promise<boolean> {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 async function verifyAdminActionCode(
   uid: string,
@@ -98,10 +93,9 @@ async function sendTo(
 
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json().catch(() => ({}));
     const mode = body?.mode === 'all' ? 'all' : 'selected';
@@ -173,10 +167,9 @@ export async function POST(request: NextRequest) {
 // GET — recent send history (admin history view).
 export async function GET(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
     const db = getAdminFirestore();
     const snap = await db
       .collection('appReviewRequests')

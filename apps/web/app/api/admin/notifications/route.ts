@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
@@ -9,14 +10,8 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
  *
  * GET  — list all notifications (admin UI) + published tutorials for
  *        the CTA picker.
- * POST — create a notification (admin-gated via x-admin-uid).
+ * POST — create a notification (admin : jeton Firebase vérifié).
  */
-
-async function verifyAdmin(uid: string): Promise<boolean> {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 /** Broadcasting a published notification to a wide audience requires the
  *  confirmation code. Targeted (specific / admins) sends do not. */
@@ -130,10 +125,9 @@ export async function GET() {
 // POST — create a notification.
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json();
     const data = buildDoc(body);

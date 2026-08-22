@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { adminHeaders } from '@/services/admin/adminFetch';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, useToast } from '@/components/ui';
 import { Search, Star, X, Send, Users, Megaphone, History } from 'lucide-react';
@@ -60,7 +61,7 @@ export default function MarketingPage() {
   const loadHistory = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch('/api/admin/app-review-email', { headers: { 'x-admin-uid': user.id } });
+      const res = await fetch('/api/admin/app-review-email', { headers: await adminHeaders() });
       const data = await res.json();
       if (res.ok) setHistory(data.logs || []);
     } catch {
@@ -77,7 +78,7 @@ export default function MarketingPage() {
     setSearching(true);
     try {
       const res = await fetch(`/api/admin/providers/search?q=${encodeURIComponent(query.trim())}`, {
-        headers: { 'x-admin-uid': user.id },
+        headers: await adminHeaders(),
       });
       const data = await res.json();
       setResults(data.results || []);
@@ -114,7 +115,7 @@ export default function MarketingPage() {
               };
         const res = await fetch('/api/admin/app-review-email', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-uid': user.id },
+          headers: await adminHeaders(),
           body: JSON.stringify(payload),
         });
         const data = await res.json();

@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { updateArticleSchema } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
-
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 // Locked author identity — kept in sync with the POST handler.
 const DEFAULT_AUTHOR_NAME = 'Équipe Opatam';
@@ -36,10 +31,9 @@ interface Params {
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    if (!(await verifyAdmin(adminUid)))
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { articleId } = await params;
     const db = getAdminFirestore();
@@ -85,10 +79,9 @@ export async function GET(request: NextRequest, { params }: Params) {
  */
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    if (!(await verifyAdmin(adminUid)))
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { articleId } = await params;
     const body = await request.json();
@@ -167,10 +160,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
  */
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    if (!(await verifyAdmin(adminUid)))
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { articleId } = await params;
     const db = getAdminFirestore();

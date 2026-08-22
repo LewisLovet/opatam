@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { requireAdmin } from '@/lib/admin-auth';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { sendCompAccessGrantedEmail } from '@/lib/emails/compAccessGranted';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
@@ -37,10 +38,12 @@ async function verifyAdminWithCode(
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    // Identité par jeton vérifié — l'en-tête x-admin-uid n'existe plus.
+    // Le CODE personnel reste exigé en plus : deux facteurs pour une action
+    // critique (offrir un accès), comme avant.
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json();
     const { providerId, action, plan, until, reason, code, serenity } = body;
@@ -49,9 +52,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Critical action → require the admin's personal code.
-    const auth = await verifyAdminWithCode(adminUid, code);
-    if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: 403 });
+    const codeCheck = await verifyAdminWithCode(adminUid, code);
+    if (!codeCheck.ok) {
+      return NextResponse.json({ error: codeCheck.error }, { status: 403 });
     }
 
     const db = getAdminFirestore();

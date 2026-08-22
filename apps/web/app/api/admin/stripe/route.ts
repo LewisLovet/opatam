@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
@@ -15,12 +16,6 @@ import type { StripeEconomics, StripeTx } from '@/services/admin/types';
  *
  * TOUT EST EN LECTURE. Aucune écriture, aucun remboursement, aucun virement.
  */
-
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const doc = await db.collection('users').doc(uid).get();
-  return doc.exists && doc.data()?.isAdmin === true;
-}
 
 /** Montant mensuel BRUT d'une ligne d'abonnement, en centimes. */
 function itemMonthlyCents(item: Stripe.SubscriptionItem): number {
@@ -167,10 +162,9 @@ function classify(tx: Stripe.BalanceTransaction): StripeTx['category'] {
 
 export async function GET(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    if (!(await verifyAdmin(adminUid)))
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const stripe = getStripe();
     const db = getAdminFirestore();

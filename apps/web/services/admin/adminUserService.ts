@@ -1,13 +1,7 @@
 import type { PaginatedResult, UserFilters, UserDetail } from './types';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/users';
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
 
 export const adminUserService = {
   async getUsers(
@@ -26,13 +20,13 @@ export const adminUserService = {
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.city) params.set('city', filters.city);
 
-    const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}?${params}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des utilisateurs');
     return res.json();
   },
 
   async getUserDetail(adminUid: string, userId: string): Promise<UserDetail> {
-    const res = await fetch(`${BASE_URL}/${userId}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}/${userId}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement de l\'utilisateur');
     return res.json();
   },
@@ -44,7 +38,7 @@ export const adminUserService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${userId}`, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ disabled }),
     });
     if (!res.ok) throw new Error('Erreur lors de la modification');

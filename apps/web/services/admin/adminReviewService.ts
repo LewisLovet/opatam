@@ -1,13 +1,7 @@
 import type { PaginatedResult, ReviewFilters } from './types';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/reviews';
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
 
 export const adminReviewService = {
   async getReviews(
@@ -29,7 +23,7 @@ export const adminReviewService = {
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
 
-    const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}?${params}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des avis');
     return res.json();
   },
@@ -41,7 +35,7 @@ export const adminReviewService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${reviewId}`, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ isPublic }),
     });
     if (!res.ok) throw new Error('Erreur lors de la modification');
@@ -50,7 +44,7 @@ export const adminReviewService = {
   async deleteReview(adminUid: string, reviewId: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/${reviewId}`, {
       method: 'DELETE',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression');
   },
@@ -62,7 +56,7 @@ export const adminReviewService = {
   ): Promise<{ deleted: number }> {
     const res = await fetch(`${BASE_URL}/bulk-delete-imported`, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ providerId, ...(source ? { source } : {}) }),
     });
     const data = await res.json().catch(() => ({}));
@@ -87,7 +81,7 @@ export const adminReviewService = {
   ): Promise<{ created: number; skipped: number; reportSent?: boolean; errors?: string[] }> {
     const res = await fetch(`${BASE_URL}/import`, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));

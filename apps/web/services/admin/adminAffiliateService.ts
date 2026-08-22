@@ -1,15 +1,10 @@
-const BASE_URL = '/api/admin/affiliates';
+import { adminHeaders } from './adminFetch';
 
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
+const BASE_URL = '/api/admin/affiliates';
 
 export const adminAffiliateService = {
   async getAffiliates(adminUid: string) {
-    const res = await fetch(BASE_URL, { headers: headers(adminUid) });
+    const res = await fetch(BASE_URL, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des affiliés');
     return res.json();
   },
@@ -27,7 +22,7 @@ export const adminAffiliateService = {
   ) {
     const res = await fetch(BASE_URL, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) {
@@ -44,7 +39,7 @@ export const adminAffiliateService = {
   ) {
     const res = await fetch(BASE_URL, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ affiliateId, ...data }),
     });
     if (!res.ok) {
@@ -57,7 +52,7 @@ export const adminAffiliateService = {
   async deleteAffiliate(adminUid: string, affiliateId: string) {
     const res = await fetch(BASE_URL, {
       method: 'DELETE',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ affiliateId }),
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression');

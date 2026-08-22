@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import Stripe from 'stripe';
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
@@ -6,21 +7,14 @@ import { generateAffiliateWelcomeEmail } from '@/lib/emails/affiliateWelcome';
 
 const stripe = getStripe();
 
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
-
 /**
  * GET /api/admin/affiliates — List all affiliates
  */
 export async function GET(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const staff = await requireAdmin(request);
+    if (!staff.ok) return staff.response;
+    const adminUid = staff.identity.uid;
 
     const db = getAdminFirestore();
     const snapshot = await db.collection('affiliates').orderBy('createdAt', 'desc').get();
@@ -47,10 +41,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const staff = await requireAdmin(request);
+    if (!staff.ok) return staff.response;
+    const adminUid = staff.identity.uid;
 
     const body = await request.json();
     const { name, email, code, commission = 20, discount = null, discountDuration = null } = body;
@@ -282,10 +275,9 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const staff = await requireAdmin(request);
+    if (!staff.ok) return staff.response;
+    const adminUid = staff.identity.uid;
 
     const body = await request.json();
     const { affiliateId, commission, discount, discountDuration, isActive } = body;
@@ -406,10 +398,9 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const staff = await requireAdmin(request);
+    if (!staff.ok) return staff.response;
+    const adminUid = staff.identity.uid;
 
     const body = await request.json();
     const { affiliateId } = body;

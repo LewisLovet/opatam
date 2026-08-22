@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 /**
  * PATCH /api/admin/reviews/[reviewId] — toggle review visibility.
@@ -19,14 +14,9 @@ export async function PATCH(
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autoris\u00e9' }, { status: 401 });
-    }
-
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Acc\u00e8s non autoris\u00e9' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { reviewId } = await params;
     const body = await request.json();
@@ -69,14 +59,9 @@ export async function DELETE(
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autoris\u00e9' }, { status: 401 });
-    }
-
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Acc\u00e8s non autoris\u00e9' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { reviewId } = await params;
     const db = getAdminFirestore();

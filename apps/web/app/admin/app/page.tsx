@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { adminHeaders } from '@/services/admin/adminFetch';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Select, Textarea, Switch, Loader, useToast } from '@/components/ui';
 import {
@@ -168,7 +169,7 @@ export default function AdminAppConfigPage() {
       };
       const res = await fetch('/api/admin/app-config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-uid': user.id },
+        headers: await adminHeaders(),
         body: JSON.stringify(payload),
       });
       if (!res.ok) {

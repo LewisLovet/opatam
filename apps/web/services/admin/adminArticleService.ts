@@ -1,13 +1,7 @@
 import type { ArticleCategory, ArticleStatus, CreateArticleInput, UpdateArticleInput } from '@booking-app/shared';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/articles';
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
 
 export interface ArticleListItem {
   id: string;
@@ -48,7 +42,7 @@ export const adminArticleService = {
     if (filters.category) params.set('category', filters.category);
 
     const res = await fetch(`${BASE_URL}${params.toString() ? `?${params}` : ''}`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -59,7 +53,7 @@ export const adminArticleService = {
   },
 
   async get(adminUid: string, articleId: string): Promise<ArticleDetail> {
-    const res = await fetch(`${BASE_URL}/${articleId}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}/${articleId}`, { headers: await adminHeaders() });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || 'Erreur lors du chargement');
@@ -70,7 +64,7 @@ export const adminArticleService = {
   async create(adminUid: string, input: CreateArticleInput): Promise<{ id: string }> {
     const res = await fetch(BASE_URL, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify(input),
     });
     const data = await res.json().catch(() => ({}));
@@ -87,7 +81,7 @@ export const adminArticleService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${articleId}`, {
       method: 'PUT',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) {
@@ -99,7 +93,7 @@ export const adminArticleService = {
   async delete(adminUid: string, articleId: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/${articleId}`, {
       method: 'DELETE',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

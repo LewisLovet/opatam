@@ -1,4 +1,5 @@
 import type { PaginatedResult, ProviderFilters, ProviderDetail } from './types';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/providers';
 
@@ -10,13 +11,6 @@ export interface ProviderSearchResult {
   displayName: string | null;
   photoURL: string | null;
   alreadyAffiliate: boolean;
-}
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
 }
 
 export const adminProviderService = {
@@ -36,7 +30,7 @@ export const adminProviderService = {
     if (filters.isVerified && filters.isVerified !== 'all') params.set('isVerified', filters.isVerified);
     if (filters.category) params.set('category', filters.category);
 
-    const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}?${params}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des prestataires');
     return res.json();
   },
@@ -53,7 +47,7 @@ export const adminProviderService = {
     if (query.trim().length < 2) return [];
     const params = new URLSearchParams({ q: query });
     const res = await fetch(`${BASE_URL}/search?${params}`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors de la recherche');
     const data = await res.json();
@@ -61,7 +55,7 @@ export const adminProviderService = {
   },
 
   async getProviderDetail(adminUid: string, providerId: string): Promise<ProviderDetail> {
-    const res = await fetch(`${BASE_URL}/${providerId}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}/${providerId}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement du prestataire');
     return res.json();
   },
@@ -73,7 +67,7 @@ export const adminProviderService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${providerId}`, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ isVerified }),
     });
     if (!res.ok) throw new Error('Erreur lors de la modification');
@@ -86,7 +80,7 @@ export const adminProviderService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${providerId}`, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ isPublished }),
     });
     if (!res.ok) throw new Error('Erreur lors de la modification');
@@ -98,7 +92,7 @@ export const adminProviderService = {
   ): Promise<{ providerId: string; fixed: boolean; region?: string; error?: string }> {
     const res = await fetch(`${BASE_URL}/fix-regions`, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ providerId }),
     });
     if (!res.ok) throw new Error('Erreur lors de la correction de la région');
@@ -111,7 +105,7 @@ export const adminProviderService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${providerId}`, {
       method: 'DELETE',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors de la suppression du compte');
   },
@@ -121,7 +115,7 @@ export const adminProviderService = {
   ): Promise<{ total: number; fixed: number; skipped: number; errors?: string[] }> {
     const res = await fetch(`${BASE_URL}/fix-regions`, {
       method: 'POST',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({}),
     });
     if (!res.ok) throw new Error('Erreur lors de la correction des régions');

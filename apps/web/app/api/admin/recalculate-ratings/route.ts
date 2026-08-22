@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-
-async function verifyAdmin(uid: string): Promise<boolean> {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 type Distribution = { 1: number; 2: number; 3: number; 4: number; 5: number };
 
@@ -29,14 +24,9 @@ type Distribution = { 1: number; 2: number; 3: number; 4: number; 5: number };
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json().catch(() => ({}));
     const singleProviderId: string | undefined = body?.providerId;

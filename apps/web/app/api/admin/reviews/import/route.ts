@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { importReviewsSchema } from '@booking-app/shared';
 import { resend, emailConfig, appConfig, getEmailWrapperHtml, isValidEmail } from '@/lib/resend';
-
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 function clampRating(n: number): number {
   return Math.min(5, Math.max(1, Math.round(n)));
@@ -33,13 +28,9 @@ function clampRating(n: number): number {
  */
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json();
     const parsed = importReviewsSchema.safeParse(body);

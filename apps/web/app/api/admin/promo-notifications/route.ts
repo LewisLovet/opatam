@@ -9,10 +9,9 @@
  * échec ou un envoi partiel.
  *
  * AUTH : Bearer Firebase ID token, VÉRIFIÉ, puis contrôle de
- * `users/{uid}.isAdmin`. Les autres routes admin de ce projet se
- * contentent d'un en-tête `x-admin-uid` — un simple identifiant, que
- * n'importe qui connaissant l'UID d'un admin peut forger. Cette route ne
- * reprend pas ce motif (les anciennes restent à migrer séparément).
+ * `users/{uid}.isAdmin`. C'était la première route à le faire ; toutes les
+ * routes admin passent désormais par `requireAdmin` (@/lib/admin-auth), qui
+ * applique exactement ce motif.
  *
  * Source : `providers/{providerId}/promoNotifications/{serviceId}`, écrit
  * par `functions/src/lib/promoEmailRunner`.

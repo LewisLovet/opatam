@@ -1,13 +1,7 @@
 import type { PaginatedResult, BookingFilters, BookingDetail } from './types';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/bookings';
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
 
 export const adminBookingService = {
   async getBookings(
@@ -27,13 +21,13 @@ export const adminBookingService = {
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.dateField) params.set('dateField', filters.dateField);
 
-    const res = await fetch(`${BASE_URL}?${params}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}?${params}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des r\u00e9servations');
     return res.json();
   },
 
   async getBookingDetail(adminUid: string, bookingId: string): Promise<BookingDetail> {
-    const res = await fetch(`${BASE_URL}/${bookingId}`, { headers: headers(adminUid) });
+    const res = await fetch(`${BASE_URL}/${bookingId}`, { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement de la r\u00e9servation');
     return res.json();
   },
@@ -45,7 +39,7 @@ export const adminBookingService = {
   ): Promise<void> {
     const res = await fetch(`${BASE_URL}/${bookingId}`, {
       method: 'PATCH',
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       body: JSON.stringify({ status }),
     });
     if (!res.ok) throw new Error('Erreur lors de la mise \u00e0 jour');

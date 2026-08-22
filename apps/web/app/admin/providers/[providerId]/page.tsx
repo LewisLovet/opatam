@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { adminHeaders } from '@/services/admin/adminFetch';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -85,7 +86,7 @@ export default function AdminProviderDetailPage() {
     try {
       const res = await fetch('/api/admin/providers/access-override', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-uid': authUser.id },
+        headers: await adminHeaders(),
         body: JSON.stringify({
           providerId,
           action,

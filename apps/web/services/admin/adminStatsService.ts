@@ -1,19 +1,13 @@
 import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups, StripeEconomics } from './types';
+import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/stats';
-
-function headers(adminUid: string) {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-uid': adminUid,
-  };
-}
 
 export const adminStatsService = {
   async getDashboardStats(adminUid: string, fresh = false): Promise<DashboardStats> {
     // `fresh` bypasses the 5-min browser cache (used right after a manual recompute).
     const res = await fetch(fresh ? `${BASE_URL}?t=${Date.now()}` : BASE_URL, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
       ...(fresh ? { cache: 'no-store' as RequestCache } : {}),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
@@ -22,7 +16,7 @@ export const adminStatsService = {
 
   async getSignupsTrend(adminUid: string, days = 30): Promise<TrendData[]> {
     const res = await fetch(`${BASE_URL}?type=signups-trend&days=${days}`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des tendances');
     return res.json();
@@ -30,7 +24,7 @@ export const adminStatsService = {
 
   async getBookingsTrend(adminUid: string, days = 30): Promise<TrendData[]> {
     const res = await fetch(`${BASE_URL}?type=bookings-trend&days=${days}`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des tendances');
     return res.json();
@@ -38,7 +32,7 @@ export const adminStatsService = {
 
   async getPageViewsTrend(adminUid: string, days = 30): Promise<TrendData[]> {
     const res = await fetch(`${BASE_URL}?type=pageviews-trend&days=${days}`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des tendances');
     return res.json();
@@ -46,7 +40,7 @@ export const adminStatsService = {
 
   async getBookingsByCategory(adminUid: string): Promise<CategoryData[]> {
     const res = await fetch(`${BASE_URL}?type=by-category`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des catégories');
     return res.json();
@@ -54,7 +48,7 @@ export const adminStatsService = {
 
   async getRevenueStats(adminUid: string): Promise<RevenueStats> {
     const res = await fetch(`${BASE_URL}?type=revenue`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des revenus');
     return res.json();
@@ -64,14 +58,14 @@ export const adminStatsService = {
    *  `?type=revenue` : elle lit les transactions de solde, seul endroit où
    *  apparaissent les frais Connect. */
   async getStripeEconomics(adminUid: string): Promise<StripeEconomics> {
-    const res = await fetch('/api/admin/stripe', { headers: headers(adminUid) });
+    const res = await fetch('/api/admin/stripe', { headers: await adminHeaders() });
     if (!res.ok) throw new Error('Erreur lors du chargement des données Stripe');
     return res.json();
   },
 
   async getAnalytics(adminUid: string): Promise<AnalyticsData> {
     const res = await fetch(`${BASE_URL}?type=analytics`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des analytics');
     return res.json();
@@ -79,7 +73,7 @@ export const adminStatsService = {
 
   async getRecentSignups(adminUid: string): Promise<RecentSignups> {
     const res = await fetch(`${BASE_URL}?type=recent-signups`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des inscriptions récentes');
     return res.json();
@@ -87,7 +81,7 @@ export const adminStatsService = {
 
   async getActivityFeed(adminUid: string): Promise<ActivityEvent[]> {
     const res = await fetch(`${BASE_URL}?type=activity`, {
-      headers: headers(adminUid),
+      headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement de l\'activité');
     return res.json();

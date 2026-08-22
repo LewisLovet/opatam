@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-
-async function verifyAdmin(uid: string) {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { userId } = await params;
     const db = getAdminFirestore();
@@ -108,14 +98,9 @@ export async function PATCH(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-
-    if (!(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const { userId } = await params;
     const body = await request.json();

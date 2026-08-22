@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-auth';
 import { readFileSync } from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -11,12 +12,6 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
  */
 
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
-
-async function verifyAdmin(uid: string): Promise<boolean> {
-  const db = getAdminFirestore();
-  const userDoc = await db.collection('users').doc(uid).get();
-  return userDoc.exists && userDoc.data()?.isAdmin === true;
-}
 
 /** Confirmation gate for sensitive actions — verifies the admin's own
  *  personal code (the bcrypt `adminCodeHash`, set via "Modifier le code"). */
@@ -83,10 +78,9 @@ export async function GET() {
 // POST — upsert config.
 export async function POST(request: NextRequest) {
   try {
-    const adminUid = request.headers.get('x-admin-uid');
-    if (!adminUid || !(await verifyAdmin(adminUid))) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
-    }
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+    const adminUid = auth.identity.uid;
 
     const body = await request.json();
     const str = (v: unknown): string | null =>

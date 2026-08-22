@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { adminHeaders } from '@/services/admin/adminFetch';
 import { storage } from '@booking-app/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/contexts/AuthContext';
@@ -243,7 +244,7 @@ export default function AdminNotificationsPage() {
       try {
         const res = await fetch(
           `/api/admin/providers/search?q=${encodeURIComponent(q.trim())}`,
-          { headers: { 'x-admin-uid': user.id } },
+          { headers: await adminHeaders() },
         );
         const json = await res.json();
         // Map to { id: userId, businessName } — userId owns the push tokens.
@@ -358,7 +359,7 @@ export default function AdminNotificationsPage() {
         editingId ? `/api/admin/notifications/${editingId}` : '/api/admin/notifications',
         {
           method: editingId ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-uid': user.id },
+          headers: await adminHeaders(),
           body: JSON.stringify({ ...form, actionCode }),
         },
       );
@@ -403,7 +404,7 @@ export default function AdminNotificationsPage() {
     try {
       const res = await fetch(`/api/admin/notifications/${id}`, {
         method: 'DELETE',
-        headers: { 'x-admin-uid': user.id },
+        headers: await adminHeaders(),
       });
       if (!res.ok) throw new Error('Échec');
       toast.success('Supprimée');
