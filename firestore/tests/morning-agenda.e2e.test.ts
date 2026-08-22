@@ -18,9 +18,10 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 admin.initializeApp({ projectId: 'agenda-test' });
 const db = admin.firestore();
 
-// HORLOGE FIGÉE à 14 h (Paris). Les crons ont des heures de silence
-// (23 h–6 h) et une bascule pleine/demi-heure : sans horloge contrôlée, le
-// test réussirait ou échouerait selon l'heure à laquelle on le lance.
+// HORLOGE FIGÉE à 8 h (Paris) — l'heure d'envoi du résumé du matin, et
+// simultanément 7 h à Lisbonne, ce qui permet de vérifier que le Portugal
+// n'est PAS servi au même instant. Sans horloge contrôlée, le test
+// réussirait ou échouerait selon l'heure à laquelle on le lance.
 const RealDate = Date;
 const T0 = (() => {
   const d = new RealDate();
@@ -29,7 +30,7 @@ const T0 = (() => {
     10,
   );
   // Décale l'instant réel pour que l'heure PARIS affiche 14 h, minutes 0.
-  d.setTime(d.getTime() - ((parisHour - 14 + 24) % 24) * 3600_000);
+  d.setTime(d.getTime() - ((parisHour - 8 + 24) % 24) * 3600_000);
   d.setMinutes(0, 0, 0);
   return d.getTime();
 })();
@@ -55,15 +56,22 @@ async function main() {
 
   // Prestataires : un normal (token factice), un qui a coupé le résumé.
   await db.collection('providers').doc('actif').set({
-    userId: 'actif', businessName: 'Actif',
+    userId: 'actif', businessName: 'Actif', countryCode: 'FR',
     settings: { notificationPreferences: { pushEnabled: true } },
   });
   await db.collection('providers').doc('coupé').set({
-    userId: 'coupé', businessName: 'Coupé',
+    userId: 'coupé', businessName: 'Coupé', countryCode: 'FR',
     settings: { notificationPreferences: { pushEnabled: true, dailyAgendaPush: false, reminderNotifications: false } },
+  });
+  // Prestataire portugais : à 8 h Paris il est 7 h chez lui — il ne doit
+  // rien recevoir maintenant. C'est la régression que ce test verrouille.
+  await db.collection('providers').doc('portugais').set({
+    userId: 'portugais', businessName: 'Lisboa', countryCode: 'PT',
+    settings: { notificationPreferences: { pushEnabled: true } },
   });
   await db.collection('users').doc('actif').set({ pushTokens: ['ExponentPushToken[test]'] });
   await db.collection('users').doc('coupé').set({ pushTokens: ['ExponentPushToken[test2]'] });
+  await db.collection('users').doc('portugais').set({ pushTokens: ['ExponentPushToken[test3]'] });
 
   // Rendez-vous du jour + un RDV dans 50 min pour le rappel prestataire.
   await db.collection('bookings').doc('b1').set({
@@ -82,6 +90,14 @@ async function main() {
     providerId: 'actif', status: 'confirmed', datetime: ts(today10h),
     serviceName: 'Démo', demoSeed: 'x', clientInfo: { name: 'Démo' }, remindersSent: [ts(new Date())],
   });
+  await db.collection('bookings').doc('b-pt').set({
+    providerId: 'portugais', status: 'confirmed', datetime: ts(today10h),
+    serviceName: 'Corte', clientInfo: { name: 'Inês' }, remindersSent: [ts(new Date())],
+  });
+  await db.collection('bookings').doc('b-coupé-jour').set({
+    providerId: 'coupé', status: 'confirmed', datetime: ts(today10h),
+    serviceName: 'Soin', clientInfo: { name: 'Dina' }, remindersSent: [ts(new Date())],
+  });
   await db.collection('bookings').doc('b-futur').set({
     providerId: 'actif', status: 'confirmed', datetime: ts(in3h),
     serviceName: 'Couleur', clientInfo: { name: 'Dora' }, remindersSent: [ts(new Date())],
@@ -92,11 +108,26 @@ async function main() {
   await (sendProviderMorningAgenda as { run: (e: unknown) => Promise<unknown> }).run({
     scheduleTime: new Date().toISOString(),
   });
-  // Pas de marqueur en base pour le résumé (1 run/jour) : on vérifie que le
-  // run traverse sans erreur — la sélection/gates sont dans les logs, et le
-  // gate `dailyAgendaPush: false` est vérifié unitairement par le refus
-  // d'envoi (aucun crash = chemin complet OK).
-  check('cron du matin : exécution complète sans erreur', true);
+  // Le marqueur `morningAgendaSentOn` (date locale) rend l'envoi observable :
+  // c'est lui qui remplace l'ancienne assertion `check(..., true)`, qui ne
+  // vérifiait rien du tout.
+  const lu = async (id: string) => (await db.collection('providers').doc(id).get()).data()!;
+  const actif = await lu('actif');
+  const coupe = await lu('coupé');
+  const pt = await lu('portugais');
+
+  check('destinataire servi : marqueur du jour écrit', !!actif.morningAgendaSentOn, actif.morningAgendaSentOn ?? null);
+  check('toggle dailyAgendaPush: false → AUCUN envoi', !coupe.morningAgendaSentOn, coupe.morningAgendaSentOn ?? null);
+  check("Portugal à 7 h locales → AUCUN envoi", !pt.morningAgendaSentOn, pt.morningAgendaSentOn ?? null);
+
+  // Rejeu dans la même heure : pas de second envoi.
+  const marqueurAvant = actif.morningAgendaSentOn;
+  await (sendProviderMorningAgenda as { run: (e: unknown) => Promise<unknown> }).run({
+    scheduleTime: new Date().toISOString(),
+  });
+  const actifBis = await lu('actif');
+  check('rejeu du cron : un seul résumé par jour',
+    actifBis.morningAgendaSentOn === marqueurAvant, actifBis.morningAgendaSentOn);
 
   // ── Rappel prestataire 1 h avant ──
   const { sendBookingReminders } = await import('../../functions/src/scheduled/sendBookingReminders');

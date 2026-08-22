@@ -39,7 +39,15 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
   useEffect(() => {
     if (provider?.settings) {
       setReminderTimes(provider.settings.reminderTimes || [24]);
-      setPrefs(provider.settings.notificationPreferences ?? DEFAULT_PREFS);
+      // FUSION, et non remplacement : une clé absente vaut « activé » côté
+      // serveur (gate `dailyAgendaPush`). Remplacer l'objet entier affichait
+      // le résumé du matin comme désactivé à tous les comptes existants —
+      // leurs préférences ayant été enregistrées avant que la clé existe —
+      // alors qu'ils le recevaient bel et bien. Le mobile fusionne déjà.
+      setPrefs({
+        ...DEFAULT_PREFS,
+        ...(provider.settings.notificationPreferences ?? {}),
+      });
     }
   }, [provider]);
 
