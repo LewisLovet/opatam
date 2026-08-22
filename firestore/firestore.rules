@@ -25,10 +25,49 @@ service cloud.firestore {
     // === USERS ===
 
     match /users/{userId} {
-      // Chaque utilisateur ne peut lire/écrire que son propre document
+      // Chaque utilisateur ne lit que son propre document
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+
+      // ESCALADE DE PRIVILÈGE FERMÉE ICI.
+      //
+      // `allow update: if isOwner(userId)` sans restriction laissait
+      // n'importe quel inscrit s'écrire `isAdmin: true` — champ que 35
+      // fichiers serveur lisent pour accorder l'accès administrateur
+      // (utilisateurs, revenus Stripe, octroi d'accès offerts, suppression
+      // de comptes). Prouvé sur émulateur avec les règles alors déployées.
+      //
+      // `isAdmin` et `adminCodeHash` ne s'écrivent plus QUE par l'Admin SDK
+      // (console, route /api/admin/change-code). Aucun chemin client
+      // légitime ne les touchait.
+      allow create: if isOwner(userId)
+        && !('isAdmin' in request.resource.data)
+        && !('adminCodeHash' in request.resource.data)
+        && request.resource.data.get('role', 'client') in ['client', 'provider', 'affiliate']
+        && request.resource.data.get('providerId', null) == null;
+
+      // Allowlist d'update. `role` et `providerId` restent écrits par le
+      // client — l'inscription pro les pose, la suppression de compte les
+      // remet à zéro — mais leurs VALEURS sont contraintes : jamais un rôle
+      // inventé, jamais le rattachement au prestataire d'un tiers
+      // (Provider.id === User.id par construction).
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          // Profil
+          'displayName', 'phone', 'photoURL', 'city', 'gender', 'birthYear',
+          // Préférences et appareils
+          'notificationSettings', 'pushTokens',
+          // Rattachement (valeurs contraintes ci-dessous)
+          'role', 'providerId',
+          // Compteur d'annulations, incrémenté par le SDK à l'annulation
+          'cancellationCount',
+          'updatedAt'
+        ])
+        && request.resource.data.get('role', 'client') in ['client', 'provider', 'affiliate']
+        && (
+          request.resource.data.get('providerId', null) == null ||
+          request.resource.data.get('providerId', null) == userId
+        );
+
       allow delete: if isOwner(userId);
 
       // Accusés de lecture des notifications in-app (centre de notifs).
