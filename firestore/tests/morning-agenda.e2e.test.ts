@@ -18,6 +18,29 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 admin.initializeApp({ projectId: 'agenda-test' });
 const db = admin.firestore();
 
+// HORLOGE FIGÉE à 14 h (Paris). Les crons ont des heures de silence
+// (23 h–6 h) et une bascule pleine/demi-heure : sans horloge contrôlée, le
+// test réussirait ou échouerait selon l'heure à laquelle on le lance.
+const RealDate = Date;
+const T0 = (() => {
+  const d = new RealDate();
+  const parisHour = parseInt(
+    d.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }),
+    10,
+  );
+  // Décale l'instant réel pour que l'heure PARIS affiche 14 h, minutes 0.
+  d.setTime(d.getTime() - ((parisHour - 14 + 24) % 24) * 3600_000);
+  d.setMinutes(0, 0, 0);
+  return d.getTime();
+})();
+// @ts-expect-error — remplacement assumé pour le test
+globalThis.Date = class extends RealDate {
+  constructor(...args: unknown[]) {
+    if (args.length) super(...(args as [number])); else super(T0);
+  }
+  static now() { return T0; }
+} as DateConstructor;
+
 let passed = 0, failed = 0;
 function check(name: string, cond: boolean, detail?: unknown) {
   if (cond) { passed++; console.log('  ✓', name); }

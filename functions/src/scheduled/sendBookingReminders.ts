@@ -27,7 +27,7 @@ const BATCH_SIZE = 10;
 
 export const sendBookingReminders = onSchedule(
   {
-    schedule: 'every 1 hours',
+    schedule: 'every 30 minutes',
     timeZone: 'Europe/Paris',
     region: 'europe-west1',
     timeoutSeconds: 300,
@@ -48,7 +48,17 @@ export const sendBookingReminders = onSchedule(
 
     const db = admin.firestore();
     const now = new Date();
-    const windowEnd = new Date(now.getTime() + 49 * 60 * 60 * 1000); // now + 49h (couvre le rappel 48h de révélation d'adresse)
+
+    // Cadence 30 min SANS doubler les lectures : la grande fenêtre de 49 h
+    // (rappels clients 24 h + révélation d'adresse 48 h) n'est lue qu'aux
+    // passages de l'heure pleine — ces rappels-là n'ont pas besoin d'une
+    // précision meilleure que l'heure. Les passages de la demi-heure ne
+    // lisent que 3 h : le rappel prestataire ~1 h et le rappel client
+    // imminent, seuls à profiter de la cadence resserrée.
+    const fullPass = now.getMinutes() < 15;
+    const windowEnd = new Date(
+      now.getTime() + (fullPass ? 49 : 3) * 60 * 60 * 1000,
+    );
 
     try {
       // 1. Query confirmed bookings in the reminder window
@@ -76,8 +86,8 @@ export const sendBookingReminders = onSchedule(
 
       // Rappel PRESTATAIRE ~1 h avant — dédupliqué à part
       // (`providerReminderSentAt`), indépendant des rappels clientes. Le cron
-      // est horaire : la fenêtre (0, 75] garantit UN envoi entre ~15 et
-      // 75 minutes avant chaque rendez-vous.
+      // passe toutes les 30 min : la fenêtre (0, 60] garantit UN envoi entre
+      // ~30 et 60 minutes avant chaque rendez-vous.
       const providerReminders: Array<{
         id: string;
         data: FirebaseFirestore.DocumentData;
@@ -116,7 +126,7 @@ export const sendBookingReminders = onSchedule(
 
         if (
           minutesUntil > 0 &&
-          minutesUntil <= 75 &&
+          minutesUntil <= 60 &&
           !data.providerReminderSentAt
         ) {
           providerReminders.push({ id: doc.id, data, minutesUntil });
