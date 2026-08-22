@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getAuth } from 'firebase/auth';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -473,13 +474,27 @@ export default function RegisterPage() {
     // If referral code, link affiliate to provider + increment stats
     if (data.referralInfo?.valid && data.referralInfo.affiliateId) {
       // Le serveur valide le code et écrit affiliateCode/affiliateId sur le
-      // provider (Admin SDK) — l'allowlist Firestore interdit désormais ces
-      // champs au SDK client. Best-effort : ne bloque jamais l'inscription.
-      fetch('/api/affiliates/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: data.referralCode, providerId: provider.id }),
-      }).catch(() => {});
+      // provider (Admin SDK) — l'allowlist Firestore interdit ces champs au
+      // SDK client, et la route exige le jeton du propriétaire. Best-effort :
+      // un échec n'interrompt pas l'inscription, mais il est TRACÉ — pas de
+      // faux succès silencieux.
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        const res = await fetch('/api/affiliates/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ code: data.referralCode, providerId: provider.id }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.warn('[register] rattachement affilié refusé:', res.status, body.error);
+        }
+      } catch (affErr) {
+        console.warn('[register] rattachement affilié échoué:', affErr);
+      }
     }
 
     // Create Location (via service for validation + provider cities update)

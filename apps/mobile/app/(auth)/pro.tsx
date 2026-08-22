@@ -993,16 +993,25 @@ export default function ProRegisterScreen() {
       if (data.referralAffiliateId) {
         try {
           // Même route serveur que l'inscription web : elle valide le code et
-          // écrit affiliateCode/affiliateId côté Admin SDK. Le SDK client n'a
-          // plus le droit d'écrire ces champs (allowlist Firestore).
-          await fetch(`${API_URL}/api/affiliates/verify`, {
+          // écrit affiliateCode/affiliateId côté Admin SDK, avec le jeton du
+          // compte fraîchement créé — la route refuse tout appel anonyme.
+          // Best-effort : l'échec est tracé, jamais présenté comme un succès.
+          const token = await credential.user.getIdToken();
+          const res = await fetch(`${API_URL}/api/affiliates/verify`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               code: data.referralCode.trim().toUpperCase(),
               providerId: provider.id,
             }),
           });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            console.warn('[register] rattachement affilié refusé:', res.status, body?.error);
+          }
         } catch (affErr) {
           console.warn('[register] affiliate link failed', affErr);
         }

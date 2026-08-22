@@ -250,3 +250,13 @@ export function isPubliclyVisible(
   if (!provider?.isPublished) return false;
   return computeEntitlements(provider).canPublish;
 }
+
+/**
+ * Filtre de liste publique : ne garde que les fiches dont les droits calculés
+ * autorisent encore la publication. Les requêtes Firestore garantissent déjà
+ * `isPublished == true` ; les droits, eux, ne sont pas requêtables — d'où ce
+ * post-filtrage, partagé par toutes les méthodes de liste du repository.
+ */
+export function filterPubliclyEntitled<T extends EntitlementsInput>(rows: T[]): T[] {
+  return rows.filter((p) => computeEntitlements(p).canPublish);
+}

@@ -1,6 +1,6 @@
 import { where, limit, orderBy, type QueryConstraint, type DocumentSnapshot } from 'firebase/firestore';
 import type { Provider } from '@booking-app/shared';
-import { normalizeCity, computeEntitlements } from '@booking-app/shared';
+import { normalizeCity, filterPubliclyEntitled } from '@booking-app/shared';
 import { BaseRepository, type WithId } from './base.repository';
 
 export interface PaginatedResult<T> {
@@ -29,7 +29,7 @@ export class ProviderRepository extends BaseRepository<Provider> {
    * Filtre en post-lecture : les droits ne sont pas requêtables Firestore.
    */
   private keepEntitled(rows: WithId<Provider>[]): WithId<Provider>[] {
-    return rows.filter((p) => computeEntitlements(p).canPublish);
+    return filterPubliclyEntitled(rows);
   }
 
   protected collectionName = 'providers';
@@ -234,10 +234,15 @@ export class ProviderRepository extends BaseRepository<Provider> {
         console.log(`[Search] Filtering by city "${normalizedCity}"...`);
       }
 
-      const filtered = results.filter((provider) => provider.cities.includes(normalizedCity));
+      // Droits d'abord, ville ensuite : cette branche retournait sans passer
+      // par keepEntitled — un expiré publié restait visible dans la recherche
+      // ville + texte alors que toutes les autres branches l'écartaient.
+      const filtered = this.keepEntitled(results).filter((provider) =>
+        provider.cities.includes(normalizedCity)
+      );
 
       if (isDev) {
-        console.log(`[Search] After city filter: ${filtered.length} results`);
+        console.log(`[Search] After entitlement+city filter: ${filtered.length} results`);
       }
 
       return filtered;
@@ -329,7 +334,11 @@ export class ProviderRepository extends BaseRepository<Provider> {
       const fetchSize = pageSize * 3;
       const result = await this.queryPaginated(constraints, fetchSize, cursor);
       const normalizedCity = normalizeCity(filters.city);
-      const filteredItems = result.items.filter((provider) =>
+      // Droits AVANT le slice : filtrer après aurait tronqué la page puis
+      // écarté des fiches, produisant des pages trop courtes et un hasMore
+      // faux. Le curseur reste celui de la requête brute — la pagination ne
+      // saute rien.
+      const filteredItems = this.keepEntitled(result.items).filter((provider) =>
         provider.cities.includes(normalizedCity)
       );
 

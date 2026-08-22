@@ -111,7 +111,7 @@ describe('isAccessOverrideActive (régression après refactor toDate)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // computeEntitlements — la matrice des accès offerts
 // ─────────────────────────────────────────────────────────────────────────────
-import { computeEntitlements, isTeamTier, canSystemUnpublish, isPubliclyVisible } from './access';
+import { computeEntitlements, isTeamTier, canSystemUnpublish, isPubliclyVisible, filterPubliclyEntitled } from './access';
 
 const paidSolo = { status: 'active', plan: 'solo', stripeSubscriptionId: 'sub_x' };
 const rcTeam = { status: 'active', plan: 'team', revenuecatAppUserId: 'rc_x' };
@@ -244,5 +244,49 @@ describe('isPubliclyVisible — la vitrine exige intention ET droits', () => {
   });
   it('droits valides mais isPublished: false → invisible (le choix du pro prime)', () => {
     expect(isPubliclyVisible({ isPublished: false, subscription: paidSolo })).toBe(false);
+  });
+});
+
+describe('filterPubliclyEntitled — les branches ville + texte de la recherche', () => {
+  const expiredPublished = {
+    businessName: 'Expiré', isPublished: true,
+    cities: ['paris'], subscription: expiredLocalTrial,
+  };
+  const paidProvider = {
+    businessName: 'Payant', isPublished: true,
+    cities: ['paris'], subscription: paidSolo,
+  };
+  const trialProvider = {
+    businessName: 'Essai', isPublished: true,
+    cities: ['paris'], subscription: { status: 'trialing', plan: 'trial', validUntil: future },
+  };
+  const compProvider = {
+    businessName: 'Comp', isPublished: true, cities: ['paris'],
+    accessOverride: { active: true, plan: 'solo', until: null } as never,
+    subscription: expiredLocalTrial,
+  };
+
+  it('recherche ville + texte : un expiré publié est exclu, les trois droits valides restent', () => {
+    // Reproduit la branche searchProviders : droits d'abord, ville ensuite.
+    const rows = [expiredPublished, paidProvider, trialProvider, compProvider];
+    const out = filterPubliclyEntitled(rows).filter((p) => p.cities.includes('paris'));
+    expect(out.length).toBe(3);
+    expect(out.some((p) => p.businessName === 'Expiré')).toBe(false);
+    expect(out.some((p) => p.businessName === 'Payant')).toBe(true);
+    expect(out.some((p) => p.businessName === 'Essai')).toBe(true);
+    expect(out.some((p) => p.businessName === 'Comp')).toBe(true);
+  });
+
+  it('recherche paginée ville + texte : même exclusion, pageSize et hasMore restent justes', () => {
+    // Reproduit la branche searchProvidersPaginated : le filtre de droits
+    // précède le slice — sinon la page se tronque avant l'exclusion.
+    const pageSize = 2;
+    const fetched = [expiredPublished, paidProvider, trialProvider, compProvider]; // page brute
+    const filteredItems = filterPubliclyEntitled(fetched).filter((p) => p.cities.includes('paris'));
+    const items = filteredItems.slice(0, pageSize);
+    const hasMore = filteredItems.length > pageSize || false;
+    expect(items.length).toBe(2);
+    expect(items.some((p) => p.businessName === 'Expiré')).toBe(false);
+    expect(hasMore).toBe(true); // 3 éligibles pour une page de 2
   });
 });
