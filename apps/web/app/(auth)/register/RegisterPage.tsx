@@ -201,6 +201,16 @@ export default function RegisterPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Lien COMMERCIAL (?s=<jeton signé>) : mémorisé pour la durée de
+  // l'inscription — le parcours a plusieurs étapes et le paramètre d'URL ne
+  // survit pas à la navigation. La signature n'est PAS vérifiée ici : le
+  // client n'a pas le secret, c'est la route de revendication qui tranche.
+  useEffect(() => {
+    const s = searchParams.get('s');
+    if (s) sessionStorage.setItem('sales-link-token', s);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -494,6 +504,31 @@ export default function RegisterPage() {
         }
       } catch (affErr) {
         console.warn('[register] rattachement affilié échoué:', affErr);
+      }
+    }
+
+    // Attribution commerciale : si l'inscription vient d'un lien signé, la
+    // revendiquer maintenant — le serveur vérifie la signature et n'attribue
+    // qu'une fois, au commercial porté par le jeton. Best-effort tracé.
+    const salesToken = sessionStorage.getItem('sales-link-token');
+    if (salesToken) {
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        const res = await fetch('/api/attribution/claim', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ token: salesToken }),
+        });
+        if (res.ok) sessionStorage.removeItem('sales-link-token');
+        else {
+          const body = await res.json().catch(() => ({}));
+          console.warn('[register] attribution commerciale refusée:', res.status, body.error);
+        }
+      } catch (attrErr) {
+        console.warn('[register] attribution commerciale échouée:', attrErr);
       }
     }
 
