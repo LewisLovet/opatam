@@ -163,6 +163,7 @@ interface ProviderPageClientProps {
   nextAvailableDate: string | null;
   memberAvailabilities?: MemberNextAvailability[];
   isDemo?: boolean;
+  demoSignupUrl?: string;
 }
 
 type TabId = 'prestations' | 'avis' | 'horaires';
@@ -179,6 +180,7 @@ export function ProviderPageClient({
   nextAvailableDate,
   memberAvailabilities = [],
   isDemo = false,
+  demoSignupUrl,
 }: ProviderPageClientProps) {
   const t = useTranslations('provider');
   const locale = useLocale();
@@ -246,7 +248,7 @@ export function ProviderPageClient({
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
       {/* Demo welcome modal */}
-      {isDemo && <DemoBanner />}
+      {isDemo && <DemoBanner signupUrl={demoSignupUrl} />}
 
       {/* Hero Section */}
       <ProviderHero

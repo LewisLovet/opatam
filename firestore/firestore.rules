@@ -113,6 +113,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Démos personnalisées : créées/listées par les routes requireStaff,
+    // rendues par la page /p/demo-<id> via l'Admin SDK. Aucun accès SDK.
+    match /salesDemoLinks/{demoId} {
+      allow read, write: if false;
+    }
+
     // Attribution commercial → compte : écrite par la route de revendication
     // (Admin SDK, jeton signé vérifié), jamais par le SDK — la rémunération
     // des commerciaux en dépend.

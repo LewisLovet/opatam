@@ -13,6 +13,8 @@ import {
 import { isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
+import { loadDemo, demoIdFromSlug } from '@/lib/sales-demo-load';
+import { buildDemoData } from '@/lib/sales-demo-build';
 import {
   demoBookingProvider,
   demoBookingServices,
@@ -39,6 +41,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const locale = await getLocale();
   const t = await getTranslations('seo.booking');
   const tProvider = await getTranslations('seo.provider');
+
+  if (demoIdFromSlug(slug)) {
+    return { title: 'Démonstration Opatam', robots: { index: false, follow: false } };
+  }
 
   if (slug === 'demo') {
     const demo = (l: string) => localeUrl('https://opatam.com', l, '/p/demo/reserver');
@@ -92,6 +98,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function BookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { service: preselectedServiceId } = await searchParams;
+
+  // Tunnel de la démo PERSONNALISÉE : les prestations du prospect, le mode
+  // isDemo de BookingFlow — le prospect déroule une réservation complète sur
+  // SA carte, rien n'est écrit.
+  const demoId = demoIdFromSlug(slug);
+  if (demoId) {
+    const demo = await loadDemo(demoId);
+    if (!demo) notFound();
+    const d = buildDemoData(demo.config, demoId).booking;
+    return (
+      <BookingFlow
+        provider={d.provider as never}
+        services={d.services as never}
+        serviceCategories={d.categories as never}
+        locations={d.locations as never}
+        members={d.members as never}
+        availabilities={d.availabilities as never}
+        isTeam={false}
+        preselectedServiceId={preselectedServiceId}
+        isDemo
+      />
+    );
+  }
 
   // Demo booking page — serve mock data, no Firestore
   if (slug === 'demo') {

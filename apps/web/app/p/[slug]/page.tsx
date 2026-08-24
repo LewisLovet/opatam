@@ -15,6 +15,9 @@ import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 import { getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
+import { loadDemo, demoIdFromSlug } from '@/lib/sales-demo-load';
+import { signSalesLink } from '@/lib/sales-attribution';
+import { buildDemoData } from '@/lib/sales-demo-build';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { PageRevealGate } from '@/components/loading/PageRevealGate';
 import {
@@ -116,6 +119,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // middleware.ts via the x-app-locale header).
   const locale = await getLocale();
   const t = await getTranslations('seo.provider');
+
+  // Démo PERSONNALISÉE (/p/demo-<id>) : jamais indexée — c'est la page d'un
+  // prospect qui n'a pas de compte, partagée par lien privé.
+  if (demoIdFromSlug(slug)) {
+    return { title: 'Démonstration Opatam', robots: { index: false, follow: false } };
+  }
 
   // Demo page metadata
   if (slug === 'demo') {
@@ -246,6 +255,49 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProviderPage({ params }: PageProps) {
   const { slug } = await params;
+
+  // Démo PERSONNALISÉE — la page du prospect, construite depuis la config
+  // enregistrée par le commercial. Même moteur que la démo générique :
+  // aucune écriture, mode isDemo de bout en bout.
+  const demoId = demoIdFromSlug(slug);
+  if (demoId) {
+    const demo = await loadDemo(demoId);
+    if (!demo) notFound(); // inexistante ou expirée (30 j)
+    const d = buildDemoData(demo.config, demoId).page;
+    // Le CTA d'inscription porte l'attribution du commercial : un prospect
+    // qui s'inscrit depuis SA démo lui est crédité — la boucle démo →
+    // inscription → attribution se referme ici.
+    let signupUrl = '/register';
+    if (demo.staffUid) {
+      try {
+        signupUrl = `/register?s=${encodeURIComponent(signSalesLink({ staffUid: demo.staffUid, campaign: `demo-${demoId}`, sector: demo.config.sector ?? null }))}`;
+      } catch (e) {
+        // Secret absent ou invalide : la démo s'affiche quand même, le CTA
+        // retombe sur l'inscription non attribuée — jamais une page morte
+        // devant un prospect pour un problème de configuration.
+        console.error('[demo] signature du CTA impossible:', e);
+      }
+    }
+    return (
+      <>
+        <ProviderThemeStyle themeId={d.provider.themeId} />
+        <ProviderPageClient
+          provider={d.provider as never}
+          services={d.services as never}
+          serviceCategories={d.categories as never}
+          locations={d.locations as never}
+          members={d.members as never}
+          reviews={d.reviews as never}
+          availabilities={d.availabilities as never}
+          minPrice={d.minPrice}
+          nextAvailableDate={getDemoNextAvailableDate()}
+          memberAvailabilities={[]}
+          isDemo
+          demoSignupUrl={signupUrl}
+        />
+      </>
+    );
+  }
 
   // Demo page — serve mock data without any Firestore call
   if (slug === 'demo') {

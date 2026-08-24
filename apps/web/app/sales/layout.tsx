@@ -29,7 +29,7 @@ const NAV = [
   { label: 'Tableau de bord', href: '/sales', icon: LayoutDashboard, ready: true },
   { label: 'Pipeline', href: '/sales/pipeline', icon: Kanban, ready: false },
   { label: 'Prospects', href: '/sales/prospects', icon: Users, ready: false },
-  { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: false },
+  { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
   { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: false },
   { label: 'Offres', href: '/sales/offres', icon: Tag, ready: false },
 ];

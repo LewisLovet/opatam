@@ -10,7 +10,9 @@ import { APP_CONFIG } from '@booking-app/shared/constants';
  * Welcome modal shown when visiting the demo provider page.
  * Marketing-focused: helps the visitor project themselves as a provider.
  */
-export function DemoBanner() {
+/** `signupUrl` : sur une démo PERSONNALISÉE, le lien d'inscription porte le
+ *  jeton d'attribution du commercial — l'inscrit lui est crédité. */
+export function DemoBanner({ signupUrl = '/register' }: { signupUrl?: string }) {
   const t = useTranslations('provider');
   const [showModal, setShowModal] = useState(false);
 
@@ -87,7 +89,7 @@ export function DemoBanner() {
                 <ArrowRight className="w-4 h-4" />
               </button>
               <Link
-                href="/register"
+                href={signupUrl}
                 className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
               >
                 {t('demo.createPage', { days: APP_CONFIG.trialDays })}
