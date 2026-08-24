@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
   const acces = await leadAccessible(leadId, auth.identity);
   if (!acces.ok) return NextResponse.json({ error: acces.error }, { status: acces.status });
 
+  // Égalité seule + tri en mémoire — pas d'index composite à déployer.
   const snap = await getAdminFirestore()
     .collection('salesActivities')
     .where('leadId', '==', leadId)
-    .orderBy('createdAt', 'desc')
-    .limit(100)
+    .limit(300)
     .get();
-  return NextResponse.json({
-    activities: snap.docs.map((d) => {
+  const activities = snap.docs
+    .map((d) => {
       const x = d.data();
       return {
         id: d.id,
@@ -48,8 +48,9 @@ export async function GET(request: NextRequest) {
         authorUid: x.authorUid,
         createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
       };
-    }),
-  });
+    })
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  return NextResponse.json({ activities });
 }
 
 export async function POST(request: NextRequest) {

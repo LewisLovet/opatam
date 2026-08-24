@@ -119,19 +119,21 @@ export async function GET(request: NextRequest) {
       expired: (x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now(),
     });
   }
-  // Cloisonnement : un commercial ne voit que SES démos.
-  let query = db.collection('salesDemoLinks').orderBy('createdAt', 'desc').limit(50);
-  if (auth.identity.role === 'sales') {
-    query = db.collection('salesDemoLinks')
-      .where('staffUid', '==', auth.identity.uid)
-      .orderBy('createdAt', 'desc')
-      .limit(50);
-  }
+  // Cloisonnement : un commercial ne voit que SES démos. Égalité seule +
+  // tri en mémoire — pas d'index composite à déployer.
+  const query =
+    auth.identity.role === 'sales'
+      ? db.collection('salesDemoLinks').where('staffUid', '==', auth.identity.uid).limit(300)
+      : db.collection('salesDemoLinks').limit(300);
   const snap = await query.get();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
 
   return NextResponse.json({
-    demos: snap.docs.map((d) => {
+    demos: snap.docs.sort((a, b) => {
+      const ta = a.data().createdAt?.toDate?.()?.getTime() ?? 0;
+      const tb = b.data().createdAt?.toDate?.()?.getTime() ?? 0;
+      return tb - ta;
+    }).map((d) => {
       const x = d.data();
       return {
         id: d.id,

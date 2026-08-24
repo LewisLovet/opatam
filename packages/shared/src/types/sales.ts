@@ -69,14 +69,42 @@ export const SALES_LOSS_REASONS = [
 export type SalesLossReason = (typeof SALES_LOSS_REASONS)[number];
 
 export const SALES_SECTORS = [
-  'beaute',
   'coiffure',
+  'barbier',
   'onglerie',
+  'esthetique',
+  'cils_sourcils',
+  'maquillage',
+  'massage',
+  'spa',
+  'tatouage',
+  'beaute',
   'bien_etre',
+  'sport',
+  'formation',
   'studio',
   'autre',
 ] as const;
 export type SalesSector = (typeof SALES_SECTORS)[number];
+
+/**
+ * L'outil que le prospect utilise AUJOURD'HUI — l'argumentaire de vente en
+ * découle (contre Planity on parle commission et indépendance, contre le
+ * papier on parle no-shows). `null` = pas encore demandé ; texte libre
+ * accepté pour les outils hors liste.
+ */
+export const SALES_PLATFORMS = [
+  'planity',
+  'treatwell',
+  'fresha',
+  'kiute',
+  'wavy',
+  'iara_beauty',
+  'instagram_dm',
+  'papier_telephone',
+  'aucun',
+] as const;
+export type SalesPlatform = (typeof SALES_PLATFORMS)[number];
 
 /** Document `salesLeads/{id}`. */
 export interface SalesLead {
@@ -97,6 +125,9 @@ export interface SalesLead {
   source: string | null;
   /** Problème principal exprimé (temps, no-shows, visibilité, coordination). */
   mainPain: string | null;
+  /** Outil actuel de prise de rendez-vous — valeur de SALES_PLATFORMS ou
+   *  texte libre (« Autre » dans l'interface). */
+  currentPlatform: string | null;
   notes: string | null;
 
   /** Compte Opatam une fois l'inscription faite (Provider.id). */

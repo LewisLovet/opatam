@@ -1121,62 +1121,6 @@
           "order": "ASCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "salesLeads",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "ownerUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "updatedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "salesActivities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "leadId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "salesDemoLinks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "staffUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "salesConversions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "staffUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "firstPaidAt",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": [

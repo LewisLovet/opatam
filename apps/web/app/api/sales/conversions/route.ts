@@ -12,17 +12,18 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const db = getAdminFirestore();
-  let query = db.collection('salesConversions').orderBy('firstPaidAt', 'desc').limit(200);
-  if (auth.identity.role === 'sales') {
-    query = db
-      .collection('salesConversions')
-      .where('staffUid', '==', auth.identity.uid)
-      .orderBy('firstPaidAt', 'desc')
-      .limit(200);
-  }
+  // Égalité seule + tri en mémoire — pas d'index composite à déployer.
+  const query =
+    auth.identity.role === 'sales'
+      ? db.collection('salesConversions').where('staffUid', '==', auth.identity.uid).limit(500)
+      : db.collection('salesConversions').limit(500);
   const snap = await query.get();
   return NextResponse.json({
-    conversions: snap.docs.map((d) => {
+    conversions: snap.docs.sort((a, b) => {
+      const ta = a.data().firstPaidAt?.toDate?.()?.getTime() ?? 0;
+      const tb = b.data().firstPaidAt?.toDate?.()?.getTime() ?? 0;
+      return tb - ta;
+    }).map((d) => {
       const x = d.data();
       return {
         providerId: d.id,

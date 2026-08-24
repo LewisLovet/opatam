@@ -34,6 +34,7 @@ function serialise(id: string, x: FirebaseFirestore.DocumentData) {
     isTeam: !!x.isTeam,
     source: x.source ?? null,
     mainPain: x.mainPain ?? null,
+    currentPlatform: x.currentPlatform ?? null,
     notes: x.notes ?? null,
     linkedProviderId: x.linkedProviderId ?? null,
     optOut: !!x.optOut,
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
     isTeam: d.isTeam,
     source: d.source ?? null,
     mainPain: d.mainPain ?? null,
+    currentPlatform: d.currentPlatform ?? null,
     notes: d.notes ?? null,
     linkedProviderId: null,
     optOut: false,
@@ -97,16 +99,18 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const db = getAdminFirestore();
-  let query = db.collection('salesLeads').orderBy('updatedAt', 'desc').limit(300);
-  if (auth.identity.role === 'sales') {
-    query = db
-      .collection('salesLeads')
-      .where('ownerUid', '==', auth.identity.uid)
-      .orderBy('updatedAt', 'desc')
-      .limit(300);
-  }
+  // Égalité seule (pas d'orderBy) : aucune dépendance à un index composite —
+  // un index oublié au déploiement a déjà produit des 500. Le tri se fait en
+  // mémoire, un pipeline tient largement dans 500 documents.
+  const query =
+    auth.identity.role === 'sales'
+      ? db.collection('salesLeads').where('ownerUid', '==', auth.identity.uid).limit(500)
+      : db.collection('salesLeads').limit(500);
   const snap = await query.get();
-  return NextResponse.json({ leads: snap.docs.map((d) => serialise(d.id, d.data())) });
+  const leads = snap.docs
+    .map((d) => serialise(d.id, d.data()))
+    .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+  return NextResponse.json({ leads });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -140,6 +144,7 @@ export async function PATCH(request: NextRequest) {
     'isTeam',
     'source',
     'mainPain',
+    'currentPlatform',
     'notes',
     'stage',
     'lostReason',

@@ -35,6 +35,7 @@ export const leadCreateSchema = z.object({
   isTeam: z.boolean().optional().default(false),
   source: texteCourt(120),
   mainPain: texteCourt(200),
+  currentPlatform: texteCourt(60),
   notes: texteCourt(2000),
   stage: z.enum(SALES_STAGES).optional().default('prospect'),
   /** ISO — date du prochain contact prévu. */
@@ -80,10 +81,43 @@ export const LOSS_LABELS: Record<(typeof SALES_LOSS_REASONS)[number], string> = 
 };
 
 export const SECTOR_LABELS: Record<(typeof SALES_SECTORS)[number], string> = {
-  beaute: 'Beauté',
   coiffure: 'Coiffure',
+  barbier: 'Barbier',
   onglerie: 'Onglerie',
+  esthetique: 'Esthétique',
+  cils_sourcils: 'Cils & sourcils',
+  maquillage: 'Maquillage',
+  massage: 'Massage',
+  spa: 'Spa & bien-être',
+  tatouage: 'Tatouage',
+  beaute: 'Beauté (général)',
   bien_etre: 'Bien-être',
+  sport: 'Sport & coaching',
+  formation: 'Formation & cours',
   studio: 'Studio / créatif',
   autre: 'Autre',
+};
+
+/** Sources de prospection proposées — « Autre… » ouvre un champ libre. */
+export const SOURCES_PROSPECTION = [
+  'Prospection terrain',
+  'Salon / événement',
+  'Instagram',
+  'TikTok',
+  'Recommandation client',
+  'Appel entrant',
+  'Site web',
+] as const;
+
+/** Outils concurrents proposés — « Autre… » ouvre un champ libre. */
+export const PLATFORM_LABELS: Record<string, string> = {
+  planity: 'Planity',
+  treatwell: 'Treatwell',
+  fresha: 'Fresha',
+  kiute: 'Kiute',
+  wavy: 'Wavy',
+  iara_beauty: 'Iara Beauty',
+  instagram_dm: 'Instagram / DM uniquement',
+  papier_telephone: 'Papier / téléphone',
+  aucun: 'Aucun outil',
 };

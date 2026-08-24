@@ -18,8 +18,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS } from '@booking-app/shared';
-import { STAGE_LABELS, LOSS_LABELS, SECTOR_LABELS } from '@/lib/sales-leads';
+import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS, SALES_PLATFORMS } from '@booking-app/shared';
+import { STAGE_LABELS, LOSS_LABELS, SECTOR_LABELS, SOURCES_PROSPECTION, PLATFORM_LABELS } from '@/lib/sales-leads';
+import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
 
 /**
  * Pipeline — le tunnel du commercial en colonnes, et la fiche de chaque
@@ -47,6 +48,7 @@ interface Lead {
   isTeam: boolean;
   source: string | null;
   mainPain: string | null;
+  currentPlatform: string | null;
   notes: string | null;
   linkedProviderId: string | null;
   optOut: boolean;
@@ -108,6 +110,60 @@ function echeance(iso: string): { texte: string; enRetard: boolean } {
   aujourdHui.setHours(23, 59, 59, 999);
   const enRetard = cible.getTime() <= aujourdHui.getTime();
   return { texte: cible.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), enRetard };
+}
+
+const CHAMP = 'w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white';
+
+/**
+ * Une liste de valeurs connues + « Autre… » qui ouvre la saisie libre — le
+ * schéma du client : choisir vite dans les cas courants, écrire quand il le
+ * faut. `options` = [valeur stockée, libellé].
+ */
+function ChampAvecListe({
+  valeur,
+  options,
+  onChange,
+  placeholderAutre,
+}: {
+  valeur: string | null;
+  options: Array<[string, string]>;
+  onChange: (v: string | null) => void;
+  placeholderAutre: string;
+}) {
+  const connue = valeur === null || options.some(([v]) => v === valeur);
+  const [autre, setAutre] = useState(!connue);
+  return (
+    <div className="space-y-1.5">
+      <select
+        value={autre ? '_autre' : (valeur ?? '')}
+        onChange={(e) => {
+          if (e.target.value === '_autre') {
+            setAutre(true);
+            onChange(null);
+          } else {
+            setAutre(false);
+            onChange(e.target.value || null);
+          }
+        }}
+        className={CHAMP}
+      >
+        <option value="">—</option>
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
+        <option value="_autre">Autre…</option>
+      </select>
+      {autre && (
+        <input
+          autoFocus
+          value={valeur ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          placeholder={placeholderAutre}
+          className={CHAMP}
+        />
+      )}
+    </div>
+  );
 }
 
 const ICONES_ACTIVITE: Record<Activity['type'], React.ComponentType<{ className?: string }>> = {
@@ -352,8 +408,9 @@ function NouveauProspect({
     email: '',
     phone: '',
     city: '',
-    sector: 'beaute' as Lead['sector'],
-    source: '',
+    sector: 'coiffure' as Lead['sector'],
+    source: null as string | null,
+    currentPlatform: null as string | null,
   });
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -404,19 +461,40 @@ function NouveauProspect({
           </div>
           <input type="email" placeholder="E-mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={champ} />
           <div className="grid grid-cols-2 gap-3">
-            <input placeholder="Ville" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={champ} />
+            <GoogleAddressAutocomplete
+              value={form.city}
+              onChange={(v) => setForm({ ...form, city: v })}
+              onSelect={(sug: GoogleAddressSuggestion) =>
+                setForm({ ...form, city: sug.locality ?? sug.formattedAddress ?? '' })
+              }
+              placeholder="Ville"
+            />
             <select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value as Lead['sector'] })} className={champ}>
               {SALES_SECTORS.map((s) => (
                 <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
               ))}
             </select>
           </div>
-          <input
-            placeholder="Source (salon rencontré, Instagram, recommandation…)"
-            value={form.source}
-            onChange={(e) => setForm({ ...form, source: e.target.value })}
-            className={champ}
-          />
+          <div>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Source du contact</p>
+            <ChampAvecListe
+              valeur={form.source}
+              options={SOURCES_PROSPECTION.map((v) => [v, v] as [string, string])}
+              onChange={(v) => setForm({ ...form, source: v })}
+              placeholderAutre="D'où vient ce contact ?"
+            />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Plateforme actuelle <span className="font-normal text-gray-400">— son outil de RDV aujourd'hui</span>
+            </p>
+            <ChampAvecListe
+              valeur={form.currentPlatform}
+              options={SALES_PLATFORMS.map((v) => [v, PLATFORM_LABELS[v] ?? v] as [string, string])}
+              onChange={(v) => setForm({ ...form, currentPlatform: v })}
+              placeholderAutre="Nom de l'outil"
+            />
+          </div>
           {erreur && <p className="text-sm text-red-600">{erreur}</p>}
           <button
             onClick={creer}
@@ -460,8 +538,13 @@ function FicheProspect({
     chargeRef.current = JSON.stringify(lead);
     setActivites(null);
     void (async () => {
-      const res = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await jeton() });
-      if (res.ok) setActivites((await res.json()).activities);
+      try {
+        const res = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await jeton() });
+        // Un échec s'affiche comme un état, jamais comme un chargement infini.
+        setActivites(res.ok ? (await res.json()).activities : []);
+      } catch {
+        setActivites([]);
+      }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
@@ -486,6 +569,7 @@ function FicheProspect({
         isTeam: form.isTeam,
         source: form.source,
         mainPain: form.mainPain,
+        currentPlatform: form.currentPlatform,
         notes: form.notes,
         stage: form.stage,
         nextActionAt: form.nextActionAt,
@@ -605,7 +689,14 @@ function FicheProspect({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={etiquette}>Ville</label>
-                <input value={form.city ?? ''} onChange={(e) => setForm({ ...form, city: e.target.value || null })} className={champ} />
+                <GoogleAddressAutocomplete
+                  value={form.city ?? ''}
+                  onChange={(v) => setForm({ ...form, city: v || null })}
+                  onSelect={(sug: GoogleAddressSuggestion) =>
+                    setForm({ ...form, city: sug.locality ?? sug.formattedAddress ?? null })
+                  }
+                  placeholder="Rechercher une ville..."
+                />
               </div>
               <div>
                 <label className={etiquette}>Secteur</label>
@@ -618,7 +709,23 @@ function FicheProspect({
             </div>
             <div>
               <label className={etiquette}>Source du contact</label>
-              <input value={form.source ?? ''} onChange={(e) => setForm({ ...form, source: e.target.value || null })} className={champ} />
+              <ChampAvecListe
+                valeur={form.source}
+                options={SOURCES_PROSPECTION.map((v) => [v, v] as [string, string])}
+                onChange={(v) => setForm({ ...form, source: v })}
+                placeholderAutre="D'où vient ce contact ?"
+              />
+            </div>
+            <div>
+              <label className={etiquette}>
+                Plateforme actuelle <span className="font-normal text-gray-400">— son outil de RDV aujourd&apos;hui, pour cibler l&apos;argumentaire</span>
+              </label>
+              <ChampAvecListe
+                valeur={form.currentPlatform}
+                options={SALES_PLATFORMS.map((v) => [v, PLATFORM_LABELS[v] ?? v] as [string, string])}
+                onChange={(v) => setForm({ ...form, currentPlatform: v })}
+                placeholderAutre="Nom de l'outil"
+              />
             </div>
             <div>
               <label className={etiquette}>Problème principal exprimé</label>
@@ -733,36 +840,44 @@ function FicheProspect({
             </div>
           </div>
 
-          {/* Perte / réactivation / suppression */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2">
+          {/* Issue du prospect — un geste VISIBLE, pas un lien gris à chercher */}
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
             {lead.lostReason ? (
               <button
                 onClick={() => onPatch(lead.id, { lostReason: null })}
-                className="text-xs font-medium text-emerald-600 hover:underline"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
               >
                 Réactiver ce prospect
               </button>
             ) : perte ? (
-              <div className="flex flex-wrap gap-1.5">
-                {SALES_LOSS_REASONS.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => marquerPerdu(m)}
-                    className="px-2.5 py-1 rounded-full text-[11px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600"
-                  >
-                    {LOSS_LABELS[m]}
+              <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-2">
+                  Pourquoi ce prospect est-il perdu ?
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SALES_LOSS_REASONS.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => marquerPerdu(m)}
+                      className="px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-white dark:bg-gray-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-600 hover:text-white hover:border-red-600"
+                    >
+                      {LOSS_LABELS[m]}
+                    </button>
+                  ))}
+                  <button onClick={() => setPerte(false)} className="px-2.5 py-1.5 text-[11px] text-gray-500 hover:underline">
+                    Annuler
                   </button>
-                ))}
-                <button onClick={() => setPerte(false)} className="px-2.5 py-1 text-[11px] text-gray-400 hover:underline">
-                  Annuler
-                </button>
+                </div>
               </div>
             ) : (
-              <button onClick={() => setPerte(true)} className="text-xs font-medium text-gray-400 hover:text-red-600">
-                Marquer comme perdu…
+              <button
+                onClick={() => setPerte(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:border-red-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <X className="w-4 h-4" /> Marquer comme perdu
               </button>
             )}
-            <div>
+            <div className="text-center">
               <button onClick={supprimer} className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600">
                 <Trash2 className="w-3.5 h-3.5" /> Supprimer (efface aussi l&apos;historique)
               </button>
