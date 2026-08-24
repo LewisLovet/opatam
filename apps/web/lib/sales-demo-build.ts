@@ -113,6 +113,14 @@ const IMAGES_PAR_SECTEUR: Record<string, JeuImages> = {
   },
 };
 
+/** Couverture représentative d'une démo — la photo téléversée, sinon celle du
+ *  secteur, sinon celle de la démo générique. Sert au visuel de l'e-mail et
+ *  aux vignettes de l'interface commerciale. */
+export function couvertureDemo(sector: string | undefined, coverPerso?: string | null): string {
+  if (coverPerso) return coverPerso;
+  return imagesDuSecteur(sector)?.cover ?? (demoProvider.coverPhotoURL as string);
+}
+
 /** « Barbier », « barber shop » → barbier. Secteur inconnu → photos génériques. */
 function imagesDuSecteur(sector: string | undefined): JeuImages | null {
   if (!sector) return null;

@@ -1,11 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getAuth } from 'firebase/auth';
-import { Check, Clipboard, ExternalLink, Eye, ImagePlus, Loader2, Mail, PartyPopper, Pencil, Trash2, Wand2 } from 'lucide-react';
-import { PROVIDER_THEMES } from '@booking-app/shared';
-import { DEMO_PROMPT, parseDemoConfig, prixEffectif, type DemoConfig } from '@/lib/sales-demo';
-import { themeDepuisCouleur, nomDuTheme } from '@/lib/sales-demo-theme';
+import {
+  Check,
+  Clipboard,
+  ExternalLink,
+  Eye,
+  Loader2,
+  Mail,
+  PartyPopper,
+  Pencil,
+  Wand2,
+} from 'lucide-react';
+import { DEMO_PROMPT, parseDemoConfig, configEnEuros, type DemoConfig } from '@/lib/sales-demo';
+import { ApercuPrestations, type ConfigEurosDemo } from './components/ApercuPrestations';
+import { ChoixTheme } from './components/ChoixTheme';
+
+/**
+ * Centre de démonstration — créer la page d'un prospect à partir de sa carte.
+ *
+ * Parcours : copier le prompt → le coller dans SON IA avec la photo/PDF de la
+ * carte → coller ici le JSON obtenu → relire l'aperçu (c'est la vraie
+ * garantie contre les erreurs de tri de l'IA) → créer. Tout le reste — photos,
+ * couleur, identité, envoi — se retouche sur la fiche de la démo.
+ */
 
 interface DemoRow {
   id: string;
@@ -21,7 +41,11 @@ interface DemoRow {
   photos: { logo: string | null; cover: string | null };
 }
 
-/** « il y a 2 h », « hier », « il y a 5 j » — le langage de la relance. */
+async function jeton(): Promise<Record<string, string>> {
+  const t = await getAuth().currentUser?.getIdToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 function depuis(iso: string): string {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
   if (min < 60) return `il y a ${Math.max(1, min)} min`;
@@ -31,52 +55,33 @@ function depuis(iso: string): string {
   return j === 1 ? 'hier' : `il y a ${j} j`;
 }
 
-async function jeton(): Promise<Record<string, string>> {
-  const t = await getAuth().currentUser?.getIdToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
-/**
- * Centre de démonstration — créer la page d'un prospect à partir de sa carte.
- *
- * Parcours : copier le prompt → le coller dans SON IA avec la photo/PDF de la
- * carte → coller ici le JSON obtenu → validation en français → la démo est
- * créée, lien partageable 30 jours, vitrine + réservation testable.
- */
 export default function SalesDemoPage() {
   const [colle, setColle] = useState('');
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [apercu, setApercu] = useState<DemoConfig | null>(null);
+  const [themeChoisi, setThemeChoisi] = useState('');
   const [creation, setCreation] = useState(false);
-  const [creee, setCreee] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [creee, setCreee] = useState<{ id: string; url: string; expiresAt: string } | null>(null);
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [promptCopie, setPromptCopie] = useState(false);
   const [lienCopie, setLienCopie] = useState<string | null>(null);
-  // Édition : id de la démo dont le JSON est chargé dans le textarea —
-  // « Créer » devient « Mettre à jour », même lien, expiration repoussée.
-  const [editionId, setEditionId] = useState<string | null>(null);
-  // Envoi : id de la démo dont le champ e-mail est déplié.
-  const [envoiId, setEnvoiId] = useState<string | null>(null);
-  const [envoiEmail, setEnvoiEmail] = useState('');
-  const [envoiEnCours, setEnvoiEnCours] = useState(false);
-  const [envoiFait, setEnvoiFait] = useState<string | null>(null);
-  const [envoiMessage, setEnvoiMessage] = useState('');
-  // Thème : '' = automatique (couleur relevée sur le document).
-  const [themeChoisi, setThemeChoisi] = useState('');
-  // Photos : id de la démo dont le panneau logo/couverture est déplié.
-  const [photosId, setPhotosId] = useState<string | null>(null);
-  const [uploadEnCours, setUploadEnCours] = useState<string | null>(null);
 
   const charger = async () => {
     const res = await fetch('/api/sales/demos', { headers: await jeton() });
     if (res.ok) setDemos((await res.json()).demos);
   };
-  useEffect(() => { void charger(); }, []);
+  useEffect(() => {
+    void charger();
+  }, []);
 
   // Validation LOCALE à la frappe — le serveur revalide, mais le commercial
   // voit ses erreurs sans aller-retour.
   useEffect(() => {
-    if (!colle.trim()) { setErreurs([]); setApercu(null); return; }
+    if (!colle.trim()) {
+      setErreurs([]);
+      setApercu(null);
+      return;
+    }
     const r = parseDemoConfig(colle);
     if (r.ok) {
       setErreurs([]);
@@ -98,13 +103,9 @@ export default function SalesDemoPage() {
     setCreee(null);
     try {
       const res = await fetch('/api/sales/demos', {
-        method: editionId ? 'PATCH' : 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await jeton()) },
-        body: JSON.stringify({
-          ...(editionId ? { id: editionId } : {}),
-          pasted: colle,
-          themeId: themeChoisi || null,
-        }),
+        body: JSON.stringify({ pasted: colle, themeId: themeChoisi || null }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -113,79 +114,10 @@ export default function SalesDemoPage() {
       }
       setCreee(data);
       setColle('');
-      setEditionId(null);
       setThemeChoisi('');
       void charger();
     } finally {
       setCreation(false);
-    }
-  };
-
-  // Recharge le JSON (reconverti en euros par le serveur) dans le textarea.
-  const modifier = async (id: string) => {
-    const res = await fetch(`/api/sales/demos?id=${id}`, { headers: await jeton() });
-    if (!res.ok) return;
-    const detail = await res.json();
-    const { themeId: themeStocke, ...sansTheme } = detail.configEuros ?? {};
-    // Le thème vit dans le sélecteur, pas dans le JSON : plus lisible à
-    // retoucher, et le sélecteur reflète l'état réel de la démo.
-    setColle(JSON.stringify(sansTheme, null, 2));
-    setThemeChoisi(typeof themeStocke === 'string' ? themeStocke : '');
-    setEditionId(id);
-    setCreee(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const envoyer = async (id: string) => {
-    if (!envoiEmail.trim()) return;
-    setEnvoiEnCours(true);
-    try {
-      const res = await fetch('/api/sales/demos/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
-        body: JSON.stringify({ id, email: envoiEmail, message: envoiMessage.trim() || null }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setEnvoiFait(id);
-        setEnvoiId(null);
-        setEnvoiEmail('');
-        setEnvoiMessage('');
-        void charger();
-        setTimeout(() => setEnvoiFait(null), 3500);
-      } else {
-        alert(data.error ?? 'Envoi impossible');
-      }
-    } finally {
-      setEnvoiEnCours(false);
-    }
-  };
-
-  const supprimer = async (id: string) => {
-    await fetch(`/api/sales/demos?id=${id}`, { method: 'DELETE', headers: await jeton() });
-    void charger();
-  };
-
-  const televerser = async (id: string, kind: 'logo' | 'cover', file: File) => {
-    setUploadEnCours(`${id}:${kind}`);
-    try {
-      const form = new FormData();
-      form.set('id', id);
-      form.set('kind', kind);
-      form.set('file', file);
-      const res = await fetch('/api/sales/demos/upload', {
-        method: 'POST',
-        headers: await jeton(),
-        body: form,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? 'Téléversement impossible');
-        return;
-      }
-      void charger();
-    } finally {
-      setUploadEnCours(null);
     }
   };
 
@@ -195,179 +127,116 @@ export default function SalesDemoPage() {
     setTimeout(() => setLienCopie(null), 2000);
   };
 
+  const apercuEuros = apercu ? (configEnEuros(apercu) as unknown as ConfigEurosDemo) : null;
+  const nbPrestations = apercu
+    ? apercu.categories.reduce((n, c) => n + c.services.length, 0)
+    : 0;
+
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Centre de démonstration</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Montrez au prospect SA page Opatam, avec ses prestations et ses prix — avant même qu&apos;il ait un compte.
+          Montrez au prospect SA page Opatam, avec ses prestations et ses prix — avant même
+          qu&apos;il ait un compte.
         </p>
       </div>
 
-      {/* Étape 1 */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-          1. Copiez le prompt, donnez-le à votre IA avec la carte du prospect
-        </h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-          Photo, PDF ou visuel Canva de sa carte de prestations. ChatGPT, Claude ou Gemini — le prompt
-          fonctionne partout et demande une réponse au format exact attendu ici.
-        </p>
-        <button
-          onClick={copierPrompt}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium hover:opacity-90"
-        >
-          {promptCopie ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
-          {promptCopie ? 'Copié !' : 'Copier le prompt'}
-        </button>
-      </section>
-
-      {/* Étape 2 */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-          2. Collez la réponse de l&apos;IA
-        </h2>
-        {editionId && (
-          <div className="mt-3 flex items-center justify-between rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-2 text-xs text-blue-800 dark:text-blue-300">
-            <span>
-              Modification d&apos;une démo existante — même lien, l&apos;expiration repart pour 30 jours.
-            </span>
-            <button
-              onClick={() => { setEditionId(null); setColle(''); }}
-              className="font-medium hover:underline"
-            >
-              Annuler
-            </button>
-          </div>
-        )}
-        <textarea
-          value={colle}
-          onChange={(e) => setColle(e.target.value)}
-          placeholder='{ "businessName": "…", "categories": [ … ] }'
-          rows={8}
-          className="mt-3 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-3 font-mono text-xs text-gray-900 dark:text-gray-100"
-        />
-        {erreurs.length > 0 && (
-          <ul className="mt-3 space-y-1 text-sm text-red-600 dark:text-red-400">
-            {erreurs.map((e) => <li key={e}>• {e}</li>)}
-          </ul>
-        )}
-        {apercu && (
-          <div className="mt-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-emerald-800 dark:text-emerald-300">
-                <Check className="w-4 h-4 inline mr-1" />
-                <strong>{apercu.businessName}</strong>
-                {apercu.city ? ` · ${apercu.city}` : ''}
-                {apercu.sector ? ` · ${apercu.sector}` : ''}
-                {' — '}
-                {apercu.categories.reduce((n, c) => n + c.services.length, 0)} prestations
-              </p>
-              <button
-                onClick={creer}
-                disabled={creation}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
-              >
-                {creation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                {editionId ? 'Mettre à jour la démo' : 'Créer la démo'}
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
-              {apercu.brandColor && (
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className="inline-block w-3 h-3 rounded-full border border-black/10"
-                    style={{ backgroundColor: apercu.brandColor }}
-                  />
-                  Couleur relevée {apercu.brandColor}
-                </span>
-              )}
-              <label className="inline-flex items-center gap-1.5">
-                Thème de la page :
-                <select
-                  value={themeChoisi}
-                  onChange={(e) => setThemeChoisi(e.target.value)}
-                  className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">
-                    {apercu.brandColor
-                      ? `Automatique — ${nomDuTheme(themeDepuisCouleur(apercu.brandColor))}`
-                      : 'Automatique (défaut)'}
-                  </option>
-                  {PROVIDER_THEMES.map((t) => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {/* Relisez AVANT de créer : cet arbre est exactement ce que
-                l'IA a trié — une variation prise pour une prestation ou un
-                supplément mal rangé se voit ici d'un coup d'œil. */}
-            <div className="mt-3 space-y-3 border-t border-emerald-200 dark:border-emerald-800 pt-3">
-              {apercu.categories.map((cat, ci) => (
-                <div key={ci}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
-                    {cat.name}
-                  </p>
-                  <ul className="mt-1 space-y-1">
-                    {cat.services.map((svc, si) => (
-                      <li key={si} className="text-sm text-gray-800 dark:text-gray-200">
-                        <span className="font-medium">{svc.name}</span>
-                        {prixEffectif(svc) !== null ? (
-                          <span className="text-gray-500 dark:text-gray-400">
-                            {' '}— {((prixEffectif(svc) as number) / 100).toLocaleString('fr-FR')} € · {svc.duration} min
-                          </span>
-                        ) : (
-                          <span className="text-amber-700 dark:text-amber-400">
-                            {' '}— sur devis : n&apos;apparaîtra pas sur la démo
-                          </span>
-                        )}
-                        {svc.variations?.map((v, vi) => (
-                          <span key={vi} className="block pl-4 text-xs text-gray-600 dark:text-gray-400">
-                            {v.name} :{' '}
-                            {v.options
-                              .map((o) => `${o.name} ${(o.price / 100).toLocaleString('fr-FR')} €`)
-                              .join(' · ')}
-                          </span>
-                        ))}
-                        {svc.options?.map((o, oi) => (
-                          <span key={oi} className="block pl-4 text-xs text-gray-600 dark:text-gray-400">
-                            + {o.name} : +{(o.price / 100).toLocaleString('fr-FR')} €
-                            {o.duration ? ` (+${o.duration} min)` : ''}
-                          </span>
-                        ))}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
-              Relisez cet aperçu avant de créer : c&apos;est exactement ce que verra le prospect.
-              Un supplément mal rangé ou une variation transformée en prestation se corrige en
-              refaisant la demande à l&apos;IA.
+      {/* ── Création ── */}
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Nouvelle démo</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              Le prompt + la photo de la carte dans votre IA, puis collez sa réponse ici.
             </p>
           </div>
-        )}
-        {creee && (
-          <div className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm">
-            <p className="font-semibold text-gray-900 dark:text-white mb-1">Démo créée ✓</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <a href={creee.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 hover:underline">
-                Ouvrir la page <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <button onClick={() => copierLien(creee.url)} className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:underline">
-                <Clipboard className="w-3.5 h-3.5" /> {lienCopie === creee.url ? 'Lien copié !' : 'Copier le lien'}
-              </button>
-              <span className="text-xs text-gray-400">
-                valable jusqu&apos;au {new Date(creee.expiresAt).toLocaleDateString('fr-FR')}
-              </span>
+          <button
+            onClick={copierPrompt}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            {promptCopie ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Clipboard className="w-3.5 h-3.5" />}
+            {promptCopie ? 'Prompt copié' : 'Copier le prompt'}
+          </button>
+        </div>
+
+        <div className="px-5 py-4">
+          <textarea
+            value={colle}
+            onChange={(e) => setColle(e.target.value)}
+            placeholder='Collez la réponse de l&apos;IA — { "businessName": "…", "categories": [ … ] }'
+            rows={colle.trim() ? 5 : 3}
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-3 font-mono text-xs text-gray-900 dark:text-gray-100"
+          />
+
+          {erreurs.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm text-red-600 dark:text-red-400">
+              {erreurs.map((e) => (
+                <li key={e}>• {e}</li>
+              ))}
+            </ul>
+          )}
+
+          {apercuEuros && (
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {apercuEuros.businessName}
+                    {apercuEuros.city ? (
+                      <span className="font-normal text-gray-400"> · {apercuEuros.city}</span>
+                    ) : null}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    {nbPrestations} prestations reconnues — relisez avant de créer : c&apos;est
+                    exactement ce que verra le prospect.
+                  </p>
+                </div>
+                <button
+                  onClick={creer}
+                  disabled={creation}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+                >
+                  {creation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                  Créer la démo
+                </button>
+              </div>
+
+              <ChoixTheme valeur={themeChoisi} brandColor={apercuEuros.brandColor} onChange={setThemeChoisi} />
+
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-950/60 border border-gray-100 dark:border-gray-800 p-4">
+                <ApercuPrestations config={apercuEuros} />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {creee && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                <Check className="w-4 h-4 inline mr-1" />
+                Démo créée — valable jusqu&apos;au{' '}
+                {new Date(creee.expiresAt).toLocaleDateString('fr-FR')}.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => copierLien(creee.url)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-xs font-medium text-emerald-800 dark:text-emerald-300"
+                >
+                  {lienCopie === creee.url ? 'Copié !' : 'Copier le lien'}
+                </button>
+                <Link
+                  href={`/sales/demo/${creee.id}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                >
+                  <Pencil className="w-3 h-3" /> Personnaliser
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
-      {/* Mes démos */}
+      {/* ── Mes démos ── */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
           Vos démos
@@ -375,155 +244,95 @@ export default function SalesDemoPage() {
         {demos === null ? (
           <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
         ) : demos.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
-            Aucune démo pour l&apos;instant.
+          <p className="text-sm text-gray-500 dark:text-gray-400 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
+            Aucune démo pour l&apos;instant — collez votre première carte ci-dessus.
           </p>
         ) : (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="grid sm:grid-cols-2 gap-3">
             {demos.map((d) => (
-              <div key={d.id} className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {d.businessName}
-                    {d.claimedProviderName && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
-                        <PartyPopper className="w-3 h-3" /> Compte créé
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-3">
-                    <span>
-                      {d.expired
-                        ? 'expirée'
-                        : d.expiresAt
-                          ? `valable jusqu'au ${new Date(d.expiresAt).toLocaleDateString('fr-FR')}`
-                          : ''}
+              <div
+                key={d.id}
+                className={`group rounded-2xl border bg-white dark:bg-gray-900 overflow-hidden transition-shadow hover:shadow-md ${
+                  d.expired
+                    ? 'border-gray-200 dark:border-gray-800 opacity-70'
+                    : 'border-gray-200 dark:border-gray-800'
+                }`}
+              >
+                {/* Vignette : photo téléversée sinon un bandeau neutre */}
+                <Link href={`/sales/demo/${d.id}`} className="block relative h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+                  {d.photos.cover && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={d.photos.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  )}
+                  {d.photos.logo && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={d.photos.logo}
+                      alt=""
+                      className="absolute left-4 -bottom-4 w-10 h-10 rounded-full border-2 border-white dark:border-gray-900 object-cover"
+                    />
+                  )}
+                  {d.claimedProviderName && (
+                    <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold text-white bg-emerald-600 px-2 py-0.5 rounded-full">
+                      <PartyPopper className="w-3 h-3" /> Compte créé
                     </span>
-                    {/* Le signal de relance : le prospect a-t-il ouvert sa page ? */}
-                    <span className={`inline-flex items-center gap-1 ${d.views > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                  )}
+                  {d.expired && (
+                    <span className="absolute top-2 left-2 text-[10px] font-semibold text-white bg-gray-500 px-2 py-0.5 rounded-full">
+                      Expirée
+                    </span>
+                  )}
+                </Link>
+
+                <div className={`px-4 pb-3 ${d.photos.logo ? 'pt-6' : 'pt-3'}`}>
+                  <Link
+                    href={`/sales/demo/${d.id}`}
+                    className="block text-sm font-semibold text-gray-900 dark:text-white truncate hover:underline"
+                  >
+                    {d.businessName}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-gray-400">
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        d.views > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''
+                      }`}
+                    >
                       <Eye className="w-3 h-3" />
                       {d.views === 0
                         ? 'jamais ouverte'
                         : `${d.views} vue${d.views > 1 ? 's' : ''}${d.lastViewedAt ? ` · ${depuis(d.lastViewedAt)}` : ''}`}
                     </span>
                     {d.sentTo.length > 0 && (
-                      <span className="inline-flex items-center gap-1">
+                      <span className="inline-flex items-center gap-1 truncate">
                         <Mail className="w-3 h-3" /> {d.sentTo[d.sentTo.length - 1]}
                       </span>
                     )}
-                  </p>
-                </div>
-                {!d.expired && (
-                  <>
-                    <a href={d.url} target="_blank" rel="noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1">
-                      Ouvrir <ExternalLink className="w-3 h-3" />
-                    </a>
-                    <button onClick={() => copierLien(d.url)} className="text-xs text-gray-500 hover:underline">
-                      {lienCopie === d.url ? 'Copié !' : 'Copier'}
-                    </button>
-                    <button
-                      onClick={() => modifier(d.id)}
-                      title="Recharger le JSON pour le modifier"
-                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                  </div>
+
+                  <div className="flex items-center gap-1.5 mt-3">
+                    <Link
+                      href={`/sales/demo/${d.id}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-semibold hover:opacity-90"
                     >
                       <Pencil className="w-3 h-3" /> Modifier
-                    </button>
-                    <button
-                      onClick={() => { setEnvoiId(envoiId === d.id ? null : d.id); setEnvoiEmail(''); setEnvoiMessage(''); }}
-                      title="Envoyer la démo au prospect par e-mail"
-                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                    </Link>
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[11px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
-                      <Mail className="w-3 h-3" /> {envoiFait === d.id ? 'Envoyé ✓' : 'Envoyer'}
-                    </button>
+                      <ExternalLink className="w-3 h-3" /> Ouvrir
+                    </a>
                     <button
-                      onClick={() => setPhotosId(photosId === d.id ? null : d.id)}
-                      title="Logo et photo de couverture personnalisés"
-                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                      onClick={() => copierLien(d.url)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[11px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
-                      <ImagePlus className="w-3 h-3" /> Photos
-                    </button>
-                  </>
-                )}
-                {/* Une démo expirée se réactive en la modifiant (30 jours repartent) */}
-                {d.expired && (
-                  <button
-                    onClick={() => modifier(d.id)}
-                    className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
-                  >
-                    <Pencil className="w-3 h-3" /> Réactiver
-                  </button>
-                )}
-                <button onClick={() => supprimer(d.id)} title="Supprimer" className="text-gray-300 hover:text-red-500">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              {envoiId === d.id && (
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="email"
-                      value={envoiEmail}
-                      onChange={(e) => setEnvoiEmail(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') void envoyer(d.id); }}
-                      placeholder="email-du-prospect@exemple.fr"
-                      autoFocus
-                      className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100"
-                    />
-                    <button
-                      onClick={() => envoyer(d.id)}
-                      disabled={envoiEnCours || !envoiEmail.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-medium disabled:opacity-50"
-                    >
-                      {envoiEnCours ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-                      Envoyer l&apos;e-mail
+                      {lienCopie === d.url ? <Check className="w-3 h-3 text-emerald-600" /> : <Clipboard className="w-3 h-3" />}
+                      {lienCopie === d.url ? 'Copié' : 'Lien'}
                     </button>
                   </div>
-                  <textarea
-                    value={envoiMessage}
-                    onChange={(e) => setEnvoiMessage(e.target.value.slice(0, 600))}
-                    placeholder="Un mot personnel en tête d'e-mail (optionnel) — « Ravi de notre échange de ce matin… »"
-                    rows={2}
-                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100"
-                  />
                 </div>
-              )}
-              {photosId === d.id && (
-                <div className="mt-2 flex flex-wrap items-center gap-4 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
-                  {([['logo', 'Logo / portrait'], ['cover', 'Photo de couverture']] as const).map(([kind, label]) => (
-                    <label key={kind} className="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                      {d.photos[kind] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={d.photos[kind] as string} alt="" className="w-8 h-8 rounded object-cover border border-gray-200 dark:border-gray-700" />
-                      ) : (
-                        <span className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 inline-flex items-center justify-center">
-                          <ImagePlus className="w-4 h-4 text-gray-400" />
-                        </span>
-                      )}
-                      <span>
-                        {label}
-                        <span className="block text-[10px] text-gray-400">
-                          {uploadEnCours === `${d.id}:${kind}` ? 'envoi en cours…' : d.photos[kind] ? 'remplacer' : 'JPEG, PNG, WebP — 5 Mo max'}
-                        </span>
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        disabled={uploadEnCours !== null}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) void televerser(d.id, kind, f);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  ))}
-                  <span className="text-[10px] text-gray-400 basis-full">
-                    Le logo remplace le portrait rond de la page, la couverture remplace l&apos;image du secteur — visibles immédiatement sur la démo.
-                  </span>
-                </div>
-              )}
               </div>
             ))}
           </div>

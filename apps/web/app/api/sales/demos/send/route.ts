@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateSalesDemoEmail } from '@/lib/emails/salesDemo';
+import { couvertureDemo } from '@/lib/sales-demo-build';
 
 /**
  * POST { id, email } — envoie la démo au prospect, e-mail préfait.
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
   const { subject, html } = generateSalesDemoEmail({
     businessName: data.businessName ?? 'Votre établissement',
     demoUrl: `${baseUrl}/p/demo-${id}`,
+    coverUrl: couvertureDemo(data.config?.sector, data.photos?.cover ?? null),
     expiresLe: expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
     fromName,
     message: messagePerso,

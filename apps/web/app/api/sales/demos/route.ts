@@ -99,10 +99,19 @@ export async function GET(request: NextRequest) {
     if (!stored.success) {
       return NextResponse.json({ error: 'Configuration illisible' }, { status: 500 });
     }
+    const x = acces.snap.data()!;
     return NextResponse.json({
       id,
       url: `${baseUrlDetail}/p/demo-${id}`,
+      businessName: x.businessName ?? stored.data.businessName,
       configEuros: configEnEuros(stored.data as never),
+      photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
+      views: typeof x.views === 'number' ? x.views : 0,
+      lastViewedAt: x.lastViewedAt?.toDate?.()?.toISOString() ?? null,
+      sentTo: Array.isArray(x.sentTo) ? x.sentTo : [],
+      claimedProviderName: x.claimedProviderName ?? null,
+      expiresAt: x.expiresAt?.toDate?.()?.toISOString() ?? null,
+      expired: (x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now(),
     });
   }
   // Cloisonnement : un commercial ne voit que SES démos.
