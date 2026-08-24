@@ -2,9 +2,14 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Building2,
   CalendarClock,
+  ExternalLink,
+  Eye,
+  Link2,
+  Presentation,
   Check,
   ChevronRight,
   Loader2,
@@ -56,6 +61,16 @@ interface Lead {
   lastInteractionAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+interface DemoLiee {
+  id: string;
+  businessName: string;
+  url: string;
+  views: number;
+  expired: boolean;
+  leadId: string | null;
+  claimedProviderName: string | null;
 }
 
 interface Activity {
@@ -186,6 +201,7 @@ function PipelinePage() {
   const [voirPerdus, setVoirPerdus] = useState(false);
   const [ouvertId, setOuvertId] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
+  const [demos, setDemos] = useState<DemoLiee[]>([]);
 
   const searchParams = useSearchParams();
 
@@ -193,6 +209,13 @@ function PipelinePage() {
     const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
     if (res.ok) setLeads((await res.json()).leads);
   };
+  const chargerDemos = async () => {
+    const res = await fetch('/api/sales/demos', { headers: await enTetesStaff() });
+    if (res.ok) setDemos((await res.json()).demos);
+  };
+  useEffect(() => {
+    void chargerDemos();
+  }, []);
   useEffect(() => {
     void charger();
   }, []);
@@ -378,6 +401,8 @@ function PipelinePage() {
       {ouvert && (
         <FicheProspect
           lead={ouvert}
+          demos={demos}
+          onDemosChange={chargerDemos}
           onFerme={() => setOuvertId(null)}
           onPatch={patch}
           onSupprime={(id) => {
@@ -511,17 +536,22 @@ function NouveauProspect({
 
 function FicheProspect({
   lead,
+  demos,
+  onDemosChange,
   onFerme,
   onPatch,
   onSupprime,
 }: {
   lead: Lead;
+  demos: DemoLiee[];
+  onDemosChange: () => void;
   onFerme: () => void;
   onPatch: (id: string, champs: Record<string, unknown>) => Promise<Lead | null>;
   onSupprime: (id: string) => void;
 }) {
   const [form, setForm] = useState(lead);
   const [enregistrement, setEnregistrement] = useState(false);
+  const [enregistre, setEnregistre] = useState(false);
   const [activites, setActivites] = useState<Activity[] | null>(null);
   const [noteType, setNoteType] = useState<'note' | 'appel' | 'email'>('note');
   const [noteTexte, setNoteTexte] = useState('');
@@ -572,7 +602,14 @@ function FicheProspect({
         nextActionAt: form.nextActionAt,
         optOut: form.optOut,
       });
-      if (maj) chargeRef.current = JSON.stringify({ ...form, ...maj });
+      if (maj) {
+        // La référence devient l'état COURANT du formulaire : le bouton
+        // disparaît immédiatement (plus rien à enregistrer), remplacé par
+        // une confirmation brève.
+        chargeRef.current = JSON.stringify(form);
+        setEnregistre(true);
+        setTimeout(() => setEnregistre(false), 2500);
+      }
     } finally {
       setEnregistrement(false);
     }
@@ -753,7 +790,7 @@ function FicheProspect({
             </label>
           </div>
 
-          {modifie && (
+          {modifie ? (
             <button
               onClick={enregistrer}
               disabled={enregistrement}
@@ -762,7 +799,94 @@ function FicheProspect({
               {enregistrement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Enregistrer les modifications
             </button>
-          )}
+          ) : enregistre ? (
+            <p className="w-full text-center text-sm font-medium text-emerald-600 dark:text-emerald-400 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+              <Check className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+              Modifications enregistrées
+            </p>
+          ) : null}
+
+          {/* Démos du prospect — liées, à relier, ou à créer */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+              Démonstrations
+            </p>
+            {(() => {
+              const liees = demos.filter((d) => d.leadId === lead.id);
+              const orphelines = demos.filter((d) => !d.leadId && !d.expired);
+              return (
+                <div className="space-y-2">
+                  {liees.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2"
+                    >
+                      <Presentation className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/sales/demo/${d.id}`}
+                          className="text-xs font-semibold text-gray-900 dark:text-white truncate hover:underline block"
+                        >
+                          {d.businessName}
+                        </Link>
+                        <p className={`text-[10px] ${d.views > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                          <Eye className="w-2.5 h-2.5 inline mr-0.5 -mt-0.5" />
+                          {d.expired ? 'expirée' : d.views === 0 ? 'jamais ouverte' : `${d.views} vue${d.views > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <a href={d.url} target="_blank" rel="noreferrer" className="p-1 text-gray-400 hover:text-gray-600" title="Ouvrir la démo">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        onClick={async () => {
+                          await fetch('/api/sales/demos', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                            body: JSON.stringify({ id: d.id, leadId: null }),
+                          });
+                          onDemosChange();
+                        }}
+                        className="p-1 text-gray-300 hover:text-red-500"
+                        title="Délier cette démo"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/sales/demo?lead=${lead.id}`}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+                    >
+                      <Presentation className="w-3.5 h-3.5" /> Créer une démo
+                    </Link>
+                    {orphelines.length > 0 && (
+                      <select
+                        value=""
+                        onChange={async (e) => {
+                          const demoId = e.target.value;
+                          if (!demoId) return;
+                          await fetch('/api/sales/demos', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                            body: JSON.stringify({ id: demoId, leadId: lead.id }),
+                          });
+                          onDemosChange();
+                        }}
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-2 text-xs text-gray-600 dark:text-gray-300"
+                        title="Relier une démo existante non rattachée"
+                      >
+                        <option value="">Relier une démo…</option>
+                        {orphelines.map((d) => (
+                          <option key={d.id} value={d.id}>{d.businessName}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
 
           {/* Journal */}
           <div>

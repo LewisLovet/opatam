@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Bot,
@@ -57,7 +58,16 @@ function depuis(iso: string): string {
   return j === 1 ? 'hier' : `il y a ${j} j`;
 }
 
-export default function SalesDemoPage() {
+export default function SalesDemoPageWrapper() {
+  // useSearchParams exige une frontière Suspense au prérendu.
+  return (
+    <Suspense fallback={<Loader2 className="w-5 h-5 animate-spin text-gray-400" />}>
+      <SalesDemoPage />
+    </Suspense>
+  );
+}
+
+function SalesDemoPage() {
   const [colle, setColle] = useState('');
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [apercu, setApercu] = useState<DemoConfig | null>(null);
@@ -69,6 +79,20 @@ export default function SalesDemoPage() {
   const [lienCopie, setLienCopie] = useState<string | null>(null);
   const [recherche, setRecherche] = useState('');
   const [filtre, setFiltre] = useState<'toutes' | 'jamais' | 'vues' | 'converties' | 'expirees'>('toutes');
+  // Arrivée depuis une fiche prospect (?lead=) : la démo créée lui sera reliée.
+  const searchParams = useSearchParams();
+  const leadCibleId = searchParams.get('lead');
+  const [leadCibleNom, setLeadCibleNom] = useState<string | null>(null);
+  useEffect(() => {
+    if (!leadCibleId) return;
+    void (async () => {
+      const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
+      if (res.ok) {
+        const { leads } = await res.json();
+        setLeadCibleNom(leads.find((l: { id: string }) => l.id === leadCibleId)?.businessName ?? null);
+      }
+    })();
+  }, [leadCibleId]);
 
   const charger = async () => {
     const res = await fetch('/api/sales/demos', { headers: await enTetesStaff() });
@@ -109,7 +133,11 @@ export default function SalesDemoPage() {
       const res = await fetch('/api/sales/demos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-        body: JSON.stringify({ pasted: colle, themeId: themeChoisi || null }),
+        body: JSON.stringify({
+          pasted: colle,
+          themeId: themeChoisi || null,
+          ...(leadCibleId ? { leadId: leadCibleId } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -206,6 +234,11 @@ export default function SalesDemoPage() {
             <p className="text-[11px] text-gray-400 mt-0.5">
               Le prompt + la photo de la carte dans votre IA, puis collez sa réponse ici.
             </p>
+            {leadCibleId && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-full px-2.5 py-1">
+                Sera reliée au prospect {leadCibleNom ? `« ${leadCibleNom} »` : ''}
+              </p>
+            )}
           </div>
           <button
             onClick={copierPrompt}

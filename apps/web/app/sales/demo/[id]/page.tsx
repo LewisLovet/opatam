@@ -54,6 +54,7 @@ interface Detail {
   lastViewedAt: string | null;
   sentTo: string[];
   claimedProviderName: string | null;
+  leadId: string | null;
   expiresAt: string | null;
   expired: boolean;
 }
@@ -132,6 +133,23 @@ export default function DemoEditPage() {
   const [collage, setCollage] = useState('');
   const [collageOuvert, setCollageOuvert] = useState(false);
   const [lienCopie, setLienCopie] = useState(false);
+  // Prospects du commercial, pour relier la démo à une fiche.
+  const [prospects, setProspects] = useState<Array<{ id: string; businessName: string }> | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
+      if (res.ok) setProspects((await res.json()).leads);
+    })();
+  }, []);
+
+  const relier = async (leadId: string | null) => {
+    await fetch('/api/sales/demos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+      body: JSON.stringify({ id, leadId }),
+    });
+    void charger();
+  };
   const [apercuPage, setApercuPage] = useState(false);
   const [apercuMail, setApercuMail] = useState(false);
   // Incrémenté à chaque enregistrement : l'iframe d'aperçu se recharge.
@@ -564,6 +582,30 @@ export default function DemoEditPage() {
         }
       >
         <div className="space-y-2.5">
+          {/* Liaison pipeline : la démo appartient à une fiche prospect. */}
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              Prospect lié
+            </label>
+            <select
+              value={detail.leadId ?? ''}
+              onChange={(e) => void relier(e.target.value || null)}
+              className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-1.5 text-xs text-gray-900 dark:text-white"
+            >
+              <option value="">— aucun —</option>
+              {(prospects ?? []).map((l) => (
+                <option key={l.id} value={l.id}>{l.businessName}</option>
+              ))}
+            </select>
+            {detail.leadId && (
+              <Link
+                href={`/sales/pipeline?lead=${detail.leadId}`}
+                className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap hover:underline"
+              >
+                Ouvrir la fiche
+              </Link>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"

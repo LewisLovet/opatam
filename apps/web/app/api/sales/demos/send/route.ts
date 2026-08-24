@@ -80,14 +80,30 @@ export async function POST(request: NextRequest) {
   // ne doit faire échouer la réponse.
   try {
     const proprietaire = data.staffUid ?? auth.identity.uid;
-    const existants = await db
-      .collection('salesLeads')
-      .where('ownerUid', '==', proprietaire)
-      .where('email', '==', cleanEmail)
-      .limit(1)
-      .get();
+    // Une démo déjà reliée à un prospect journalise sur LUI — l'upsert par
+    // e-mail ne sert qu'aux démos orphelines (sinon on créerait un doublon
+    // dès que l'e-mail saisi diffère de celui de la fiche).
+    let dejaRelie: FirebaseFirestore.DocumentReference | null = null;
+    if (typeof data.leadId === 'string' && data.leadId) {
+      const l = await db.collection('salesLeads').doc(data.leadId).get();
+      if (l.exists) dejaRelie = l.ref;
+    }
+    const existants = dejaRelie
+      ? null
+      : await db
+          .collection('salesLeads')
+          .where('ownerUid', '==', proprietaire)
+          .where('email', '==', cleanEmail)
+          .limit(1)
+          .get();
     let leadRef;
-    if (existants.empty) {
+    if (dejaRelie) {
+      leadRef = dejaRelie;
+      await leadRef.update({
+        lastInteractionAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else if (existants!.empty) {
       leadRef = await db.collection('salesLeads').add({
         ownerUid: proprietaire,
         stage: 'demo_realisee',
@@ -110,12 +126,14 @@ export async function POST(request: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
-      leadRef = existants.docs[0].ref;
+      leadRef = existants!.docs[0].ref;
       await leadRef.update({
         lastInteractionAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
     }
+    // L'envoi scelle la liaison si la démo était orpheline.
+    if (!data.leadId) await ref.update({ leadId: leadRef.id });
     await db.collection('salesActivities').add({
       leadId: leadRef.id,
       authorUid: auth.identity.uid,

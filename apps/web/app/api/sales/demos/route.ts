@@ -3,7 +3,7 @@ import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { parseDemoConfig, configEnEuros, demoConfigStoredSchema } from '@/lib/sales-demo';
-import { PROVIDER_THEMES } from '@booking-app/shared';
+import { PROVIDER_THEMES, SALES_STAGES } from '@booking-app/shared';
 import { couvertureDemo } from '@/lib/sales-demo-build';
 
 /**
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { pasted, themeId } = await request.json().catch(() => ({}));
+  const { pasted, themeId, leadId } = await request.json().catch(() => ({}));
   if (typeof pasted !== 'string' || !pasted.trim()) {
     return NextResponse.json({ error: 'Collez la réponse JSON de l’IA.' }, { status: 400 });
   }
@@ -65,12 +65,62 @@ export async function POST(request: NextRequest) {
     expiresAt,
   });
 
+  // Démo créée DEPUIS une fiche prospect : la liaison se fait à la naissance.
+  if (typeof leadId === 'string' && leadId) {
+    const snapCree = await ref.get();
+    await relierProspect(db, ref, snapCree.data()!, leadId, auth.identity);
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
   return NextResponse.json({
     id: ref.id,
     url: `${baseUrl}/p/demo-${ref.id}`,
     expiresAt: expiresAt.toDate().toISOString(),
   });
+}
+
+/**
+ * Relie une démo à un prospect : vérifie que le prospect appartient au même
+ * commercial, écrit leadId sur la démo, avance l'étape du prospect jusqu'à
+ * « Démo faite » si elle est en amont, et journalise. `leadId: null` délie.
+ */
+async function relierProspect(
+  db: FirebaseFirestore.Firestore,
+  demoRef: FirebaseFirestore.DocumentReference,
+  demoData: FirebaseFirestore.DocumentData,
+  leadId: string | null,
+  identity: { uid: string; role: string },
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  if (leadId === null) {
+    await demoRef.update({ leadId: FieldValue.delete() });
+    return { ok: true };
+  }
+  const leadSnap = await db.collection('salesLeads').doc(leadId).get();
+  if (!leadSnap.exists) return { ok: false, error: 'Prospect introuvable', status: 404 };
+  const lead = leadSnap.data()!;
+  // Le prospect doit appartenir au propriétaire de la démo — un manager qui
+  // relie le fait AU NOM du commercial, pas au sien.
+  if (lead.ownerUid !== (demoData.staffUid ?? identity.uid)) {
+    return { ok: false, error: 'Ce prospect n’appartient pas au commercial de la démo', status: 403 };
+  }
+  await demoRef.update({ leadId });
+  const idxActuel = SALES_STAGES.indexOf(lead.stage);
+  const idxDemo = SALES_STAGES.indexOf('demo_realisee');
+  const maj: Record<string, unknown> = {
+    lastInteractionAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (idxActuel >= 0 && idxActuel < idxDemo) maj.stage = 'demo_realisee';
+  await leadSnap.ref.update(maj);
+  await db.collection('salesActivities').add({
+    leadId,
+    authorUid: identity.uid,
+    type: 'demo',
+    stage: null,
+    body: `Démo reliée : « ${demoData.businessName ?? demoRef.id} »`,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
 }
 
 /** Charge une démo en vérifiant qu'elle appartient à l'appelant (sauf manager/admin). */
@@ -115,6 +165,7 @@ export async function GET(request: NextRequest) {
       lastViewedAt: x.lastViewedAt?.toDate?.()?.toISOString() ?? null,
       sentTo: Array.isArray(x.sentTo) ? x.sentTo : [],
       claimedProviderName: x.claimedProviderName ?? null,
+      leadId: x.leadId ?? null,
       expiresAt: x.expiresAt?.toDate?.()?.toISOString() ?? null,
       expired: (x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now(),
     });
@@ -150,6 +201,7 @@ export async function GET(request: NextRequest) {
         claimedProviderName: x.claimedProviderName ?? null,
         photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
         coverUrl: couvertureDemo(x.config?.sector, x.photos?.cover ?? null),
+        leadId: x.leadId ?? null,
       };
     }),
   });
@@ -159,8 +211,26 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { id, pasted, themeId } = await request.json().catch(() => ({}));
+  const body = await request.json().catch(() => ({}));
+  const { id, pasted, themeId, leadId } = body;
   if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'id requis' }, { status: 400 });
+
+  // Liaison (ou déliaison) SEULE : pas de pasted → on ne touche pas à la
+  // configuration, on relie la démo à un prospect.
+  if ((typeof pasted !== 'string' || !pasted.trim()) && 'leadId' in body) {
+    const accesLien = await demoAccessible(id, auth.identity);
+    if (!accesLien.ok) return NextResponse.json({ error: accesLien.error }, { status: accesLien.status });
+    const res = await relierProspect(
+      getAdminFirestore(),
+      accesLien.ref,
+      accesLien.snap.data()!,
+      typeof leadId === 'string' ? leadId : null,
+      auth.identity,
+    );
+    if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });
+    return NextResponse.json({ success: true, leadId: typeof leadId === 'string' ? leadId : null });
+  }
+
   if (typeof pasted !== 'string' || !pasted.trim()) {
     return NextResponse.json({ error: 'Collez la réponse JSON de l’IA.' }, { status: 400 });
   }

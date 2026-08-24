@@ -32,7 +32,7 @@ const NAV = [
   { label: 'Pipeline', href: '/sales/pipeline', icon: Kanban, ready: true },
   { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
   { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: false },
-  { label: 'Offres', href: '/sales/offres', icon: Tag, ready: false },
+  { label: 'Offres', href: '/sales/offres', icon: Tag, ready: true },
 ];
 
 /**
