@@ -51,12 +51,18 @@ export async function GET(request: NextRequest) {
         const b = d.data();
         return !b.demoSeed && b.status !== 'cancelled';
       }).length;
-      return computeActivation({
-        isPublished,
-        activeServicesCount: servicesCount.data().count,
-        hasAvailability: !availSnap.empty,
-        realBookingsCount: realBookings,
-      });
+      // Les COMPTES exacts accompagnent la décision : « 1 prestation sur 3 »
+      // parle, une jauge muette non — retour d'usage du premier écran.
+      const activeServicesCount = servicesCount.data().count;
+      return {
+        ...computeActivation({
+          isPublished,
+          activeServicesCount,
+          hasAvailability: !availSnap.empty,
+          realBookingsCount: realBookings,
+        }),
+        activeServicesCount,
+      };
     }
 
     // ── Essais qui expirent (hors comptes de test, comps et cartes réelles) ──
