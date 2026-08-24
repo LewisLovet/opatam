@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDemoConfig, extraireJson } from './sales-demo';
+import { parseDemoConfig, extraireJson, prixEffectif } from './sales-demo';
 
 const valide = JSON.stringify({
   businessName: 'Chez Awa',
@@ -76,6 +76,26 @@ describe('parseDemoConfig — la frontière entre l’IA et la page', () => {
       expect(sup[1].price).toBe(500);
       expect(sup[1].duration).toBe(undefined);
     }
+  });
+
+  it('une prestation sans prix (« sur devis ») passe la validation', () => {
+    const r = parseDemoConfig(JSON.stringify({
+      businessName: 'X',
+      categories: [{ name: 'A', services: [
+        { name: 'Nail art', description: 'Sur devis', duration: 30 },
+        { name: 'Pose gel', price: 45, duration: 90 },
+      ] }],
+    }));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(prixEffectif(r.config.categories[0].services[0])).toBe(null);
+      expect(prixEffectif(r.config.categories[0].services[1])).toBe(4500);
+    }
+  });
+
+  it('prixEffectif retombe sur le choix le moins cher des variations', () => {
+    expect(prixEffectif({ variations: [{ options: [{ price: 6000 }, { price: 4500 }] }] })).toBe(4500);
+    expect(prixEffectif({})).toBe(null);
   });
 
   it('brandColor accepte le hex avec ou sans #, refuse le reste', () => {

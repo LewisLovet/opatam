@@ -54,7 +54,10 @@ const supplementSchema = z.object({
 const serviceSchema = z.object({
   name: z.string().min(1, 'nom de prestation manquant').max(100),
   description: z.string().max(300).optional().default(''),
-  price: prixEuros,
+  /** Absent = « sur devis » (fréquent : nail art, prestations personnalisées).
+   *  Accepté à la validation ; la construction de page décide quoi en faire
+   *  — voir prixEffectif(). */
+  price: prixEuros.optional(),
   duration: dureeMinutes.optional().default(60),
   variations: z.array(variationSchema).max(3).optional(),
   options: z.array(supplementSchema).max(6).optional(),
@@ -105,6 +108,21 @@ export function extraireJson(colle: string): string {
   return s;
 }
 
+/**
+ * Prix effectif d'une prestation : le sien, sinon le choix le moins cher de
+ * ses variations, sinon null — c'est une prestation « sur devis ». La page de
+ * démo ne sait pas afficher « sur devis » (0 € s'y lirait « Gratuit ») : ces
+ * prestations sont écartées de la démo, et l'aperçu du commercial le dit.
+ */
+export function prixEffectif(s: {
+  price?: number;
+  variations?: { options: { price: number }[] }[];
+}): number | null {
+  if (typeof s.price === 'number') return s.price;
+  const choix = s.variations?.flatMap((v) => v.options.map((o) => o.price)) ?? [];
+  return choix.length ? Math.min(...choix) : null;
+}
+
 export type DemoParseResult =
   | { ok: true; config: DemoConfig }
   | { ok: false; erreurs: string[] };
@@ -132,7 +150,10 @@ export function parseDemoConfig(colle: string): DemoParseResult {
         .replace('categories', 'catégorie')
         .replace('services', 'prestation')
         .replace('variations', 'variation')
-        .replace('options', 'choix');
+        .replace('options', 'choix')
+        .replace('price', 'prix')
+        .replace('duration', 'durée')
+        .replace('name', 'nom');
       return chemin ? `${chemin} : ${i.message}` : i.message;
     }),
   };
@@ -198,6 +219,7 @@ Comment trier — prestation, variation ou supplément :
 
 Règles impératives :
 - N'INVENTE AUCUNE prestation ni aucun prix : ne reprends que ce qui figure sur le document. Une mention illisible s'omet.
+- Une prestation « sur devis » ou sans prix affiché : garde-la, mais OMETS son champ "price" (n'invente jamais de montant). Mentionne « Sur devis » dans sa description si le document le dit.
 - Si le document liste des prestations sans catégories, crée une seule catégorie "Prestations".
 - Réponds en conservant la langue du document pour les noms.`;
 
@@ -226,7 +248,7 @@ export const demoConfigStoredSchema = z.object({
         z.object({
           name: z.string(),
           description: z.string().optional().default(''),
-          price: centimes,
+          price: centimes.optional(),
           duration: dureeLecture.optional().default(60),
           variations: z
             .array(

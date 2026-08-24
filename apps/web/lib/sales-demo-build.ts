@@ -10,7 +10,7 @@ import {
 } from '@/app/p/[slug]/demoData';
 import { PROVIDER_THEMES, DEFAULT_THEME_ID } from '@booking-app/shared';
 import { themeDepuisCouleur } from './sales-demo-theme';
-import type { DemoConfig } from './sales-demo';
+import { prixEffectif, type DemoConfig } from './sales-demo';
 
 /**
  * Transforme une config de démo (le JSON validé) en jeux de données pour la
@@ -132,19 +132,26 @@ function imagesDuSecteur(sector: string | undefined): JeuImages | null {
 export function buildDemoData(config: DemoConfig, demoId: string) {
   const slug = `demo-${demoId}`;
 
-  const categories = config.categories.map((c, i) => ({
+  // Les prestations « sur devis » (sans prix exploitable) sont écartées : la
+  // page les afficherait « Gratuit ». L'aperçu du commercial les signale
+  // avant création. Une catégorie vidée disparaît avec ses prestations.
+  const categoriesUtiles = config.categories
+    .map((c) => ({ ...c, services: c.services.filter((s) => prixEffectif(s) !== null) }))
+    .filter((c) => c.services.length > 0);
+
+  const categories = categoriesUtiles.map((c, i) => ({
     id: `democat-${i}`,
     name: c.name,
     sortOrder: i,
   }));
 
-  const services = config.categories.flatMap((c, ci) =>
+  const services = categoriesUtiles.flatMap((c, ci) =>
     c.services.map((s, si) => ({
       id: `demosvc-${ci}-${si}`,
       name: s.name,
       description: s.description ?? '',
       duration: s.duration,
-      price: s.price,
+      price: prixEffectif(s) as number,
       bufferTime: 10,
       categoryId: `democat-${ci}`,
       locationIds: [lieuUnique.id],
@@ -174,7 +181,7 @@ export function buildDemoData(config: DemoConfig, demoId: string) {
     })),
   );
 
-  const minPrice = Math.min(...services.map((s) => s.price));
+  const minPrice = services.length ? Math.min(...services.map((s) => s.price)) : 0;
 
   // Avis d'EXEMPLE, clairement étiquetés — décision produit : montrer le
   // module avis sans jamais laisser croire à de vrais avis du prospect.

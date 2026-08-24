@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
 import { Check, Clipboard, ExternalLink, Loader2, Trash2, Wand2 } from 'lucide-react';
-import { DEMO_PROMPT, parseDemoConfig, type DemoConfig } from '@/lib/sales-demo';
+import { DEMO_PROMPT, parseDemoConfig, prixEffectif, type DemoConfig } from '@/lib/sales-demo';
 import { themeDepuisCouleur, nomDuTheme } from '@/lib/sales-demo-theme';
 
 interface DemoRow {
@@ -183,9 +183,15 @@ export default function SalesDemoPage() {
                     {cat.services.map((svc, si) => (
                       <li key={si} className="text-sm text-gray-800 dark:text-gray-200">
                         <span className="font-medium">{svc.name}</span>
-                        <span className="text-gray-500 dark:text-gray-400">
-                          {' '}— {(svc.price / 100).toLocaleString('fr-FR')} € · {svc.duration} min
-                        </span>
+                        {prixEffectif(svc) !== null ? (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            {' '}— {((prixEffectif(svc) as number) / 100).toLocaleString('fr-FR')} € · {svc.duration} min
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {' '}— sur devis : n&apos;apparaîtra pas sur la démo
+                          </span>
+                        )}
                         {svc.variations?.map((v, vi) => (
                           <span key={vi} className="block pl-4 text-xs text-gray-600 dark:text-gray-400">
                             {v.name} :{' '}
