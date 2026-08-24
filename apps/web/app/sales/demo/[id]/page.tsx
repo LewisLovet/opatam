@@ -297,7 +297,7 @@ export default function DemoEditPage() {
     setConfig((prev) => (prev ? { ...prev, [champ]: valeur } : prev));
 
   return (
-    <div className="max-w-3xl space-y-5 pb-24">
+    <div className="space-y-5 pb-24">
       {/* ── En-tête ── */}
       <div>
         <Link
@@ -373,6 +373,8 @@ export default function DemoEditPage() {
         </div>
       )}
 
+      <div className="grid xl:grid-cols-2 gap-5 items-start">
+      <div className="space-y-5">
       {/* ── Photos ── */}
       <Section
         icone={Camera}
@@ -512,6 +514,8 @@ export default function DemoEditPage() {
         <ChoixTheme valeur={themeChoisi} brandColor={config.brandColor} onChange={setThemeChoisi} />
       </Section>
 
+      </div>
+      <div className="space-y-5">
       {/* ── Prestations ── */}
       <Section
         icone={Scissors}
@@ -610,6 +614,8 @@ export default function DemoEditPage() {
         >
           <Trash2 className="w-3.5 h-3.5" /> Supprimer cette démo
         </button>
+      </div>
+      </div>
       </div>
 
       {/* ── Aperçu de la page — l'iframe montre la VRAIE démo ── */}

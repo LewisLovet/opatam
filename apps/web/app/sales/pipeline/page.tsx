@@ -66,6 +66,28 @@ interface Activity {
 
 const COLONNES = SALES_STAGES.filter((s) => s !== 'conserve_j90');
 
+/**
+ * Le tableau regroupe les 9 étapes en 6 COLONNES qui remplissent l'écran —
+ * mêmes regroupements que le tunnel du tableau de bord. Neuf colonnes en
+ * défilement horizontal, presque toutes vides, ne ressemblaient à rien
+ * (retour client). La sous-étape précise s'affiche en badge sur la carte et
+ * se règle dans la fiche ; déposer une carte sur un groupe la place sur son
+ * étape d'entrée.
+ */
+const GROUPES: Array<{
+  label: string;
+  stages: Array<(typeof SALES_STAGES)[number]>;
+  entree: (typeof SALES_STAGES)[number];
+  accent: string;
+}> = [
+  { label: 'À contacter', stages: ['prospect'], entree: 'prospect', accent: 'bg-gray-400' },
+  { label: 'En discussion', stages: ['contacte', 'reponse', 'qualifie'], entree: 'contacte', accent: 'bg-blue-500' },
+  { label: 'Démo', stages: ['demo_planifiee', 'demo_realisee'], entree: 'demo_realisee', accent: 'bg-violet-500' },
+  { label: 'Compte créé', stages: ['essai_cree'], entree: 'essai_cree', accent: 'bg-amber-500' },
+  { label: 'Activé', stages: ['essai_active'], entree: 'essai_active', accent: 'bg-emerald-500' },
+  { label: 'Payant', stages: ['payant', 'conserve_j90'], entree: 'payant', accent: 'bg-emerald-600' },
+];
+
 async function jeton(): Promise<Record<string, string>> {
   const t = await getAuth().currentUser?.getIdToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
@@ -206,75 +228,86 @@ function PipelinePage() {
       {leads === null ? (
         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
       ) : (
-        <div className="overflow-x-auto pb-4 -mx-1 px-1">
-          <div className="flex gap-3 min-w-max">
-            {COLONNES.map((stage) => {
-              const cartes = visibles.filter((l) => l.stage === stage);
-              return (
-                <div
-                  key={stage}
-                  className="w-60 flex-shrink-0"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    const id = e.dataTransfer.getData('text/lead');
-                    if (id) void deplacer(id, stage);
-                  }}
-                >
-                  <div className="flex items-center justify-between px-1 mb-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      {STAGE_LABELS[stage]}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-start">
+          {GROUPES.map((groupe) => {
+            const cartes = visibles.filter((l) => groupe.stages.includes(l.stage));
+            return (
+              <div
+                key={groupe.label}
+                className="rounded-2xl bg-gray-100/70 dark:bg-gray-900/60 border border-gray-200/60 dark:border-gray-800 flex flex-col min-h-[280px]"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  const id = e.dataTransfer.getData('text/lead');
+                  if (id) void deplacer(id, groupe.entree);
+                }}
+              >
+                <div className="px-3 pt-3 pb-2">
+                  <div className="flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                      <span className={`w-2 h-2 rounded-full ${groupe.accent}`} />
+                      {groupe.label}
                     </p>
-                    <span className="text-[11px] text-gray-400 tabular-nums">{cartes.length}</span>
-                  </div>
-                  <div className="space-y-2 min-h-[60px] rounded-xl">
-                    {cartes.map((l) => {
-                      const ech = l.nextActionAt ? echeance(l.nextActionAt) : null;
-                      return (
-                        <button
-                          key={l.id}
-                          draggable
-                          onDragStart={(e) => e.dataTransfer.setData('text/lead', l.id)}
-                          onClick={() => setOuvertId(l.id)}
-                          className="w-full text-left rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3.5 py-3 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
-                        >
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {l.businessName}
-                          </p>
-                          <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                            {[SECTOR_LABELS[l.sector], l.city].filter(Boolean).join(' · ')}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2">
-                            {ech && (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-medium ${
-                                  ech.enRetard
-                                    ? 'text-red-600 dark:text-red-400'
-                                    : 'text-gray-500 dark:text-gray-400'
-                                }`}
-                              >
-                                <CalendarClock className="w-3 h-3" />
-                                {ech.enRetard ? `à relancer (${ech.texte})` : ech.texte}
-                              </span>
-                            )}
-                            {l.lastInteractionAt && (
-                              <span className="text-[10px] text-gray-400">
-                                {depuis(l.lastInteractionAt)}
-                              </span>
-                            )}
-                            {l.linkedProviderId && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                                <Check className="w-3 h-3" /> compte
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
+                    <span className="min-w-[20px] text-center text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-full px-1.5 py-0.5">
+                      {cartes.length}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex-1 px-2 pb-2 space-y-2">
+                  {cartes.length === 0 && (
+                    <div className="h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                      <p className="text-[11px] text-gray-300 dark:text-gray-600 text-center px-3">
+                        Déposez une carte ici
+                      </p>
+                    </div>
+                  )}
+                  {cartes.map((l) => {
+                    const ech = l.nextActionAt ? echeance(l.nextActionAt) : null;
+                    return (
+                      <button
+                        key={l.id}
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData('text/lead', l.id)}
+                        onClick={() => setOuvertId(l.id)}
+                        className="w-full text-left rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2.5 shadow-sm hover:shadow-md hover:-translate-y-px transition-all cursor-grab active:cursor-grabbing"
+                      >
+                        <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                          {l.businessName}
+                        </p>
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                          {[SECTOR_LABELS[l.sector], l.city].filter(Boolean).join(' · ')}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                          {/* Sous-étape précise quand la colonne en regroupe plusieurs */}
+                          {groupe.stages.length > 1 && (
+                            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-1.5 py-0.5">
+                              {STAGE_LABELS[l.stage]}
+                            </span>
+                          )}
+                          {ech && (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-medium ${
+                                ech.enRetard
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              <CalendarClock className="w-3 h-3" />
+                              {ech.enRetard ? 'à relancer' : ech.texte}
+                            </span>
+                          )}
+                          {l.linkedProviderId && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                              <Check className="w-3 h-3" /> compte
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

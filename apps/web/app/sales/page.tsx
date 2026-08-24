@@ -17,7 +17,6 @@ import {
   Rocket,
   Megaphone,
   Wand2,
-  X,
 } from 'lucide-react';
 import { STAGE_LABELS } from '@/lib/sales-leads';
 
@@ -117,37 +116,36 @@ function depuis(iso: string): string {
   return j === 1 ? 'hier' : `il y a ${j} j`;
 }
 
-/** Les 4 étapes : une barre segmentée + leurs noms, jamais l'un sans l'autre. */
+/**
+ * L'état de configuration en UNE ligne discrète : quatre points, le score,
+ * et seulement CE QUI MANQUE — lister les étapes déjà faites n'apprend rien
+ * et fatigue l'œil (retour client sur les barres vertes).
+ */
 function Progression({ a }: { a: ActivationDetail }) {
   const items = [
-    { ok: a.enoughServices, label: `Prestations (${Math.min(a.activeServicesCount, 3)}/3)` },
-    { ok: a.hasAvailability, label: 'Horaires' },
-    { ok: a.published, label: 'Page publiée' },
-    { ok: a.hasFirstBooking, label: '1ʳᵉ réservation' },
+    { ok: a.enoughServices, label: a.activeServicesCount === 0 ? 'les prestations' : `les prestations (${Math.min(a.activeServicesCount, 3)}/3)` },
+    { ok: a.hasAvailability, label: 'les horaires' },
+    { ok: a.published, label: 'la publication' },
+    { ok: a.hasFirstBooking, label: 'la 1ʳᵉ réservation' },
   ];
+  const faits = items.filter((i) => i.ok).length;
+  const manquants = items.filter((i) => !i.ok).map((i) => i.label);
   return (
-    <div className="space-y-1.5">
-      <div className="flex gap-1">
+    <div className="flex items-center gap-2.5 text-[11px] text-gray-400 dark:text-gray-500">
+      <span className="flex items-center gap-1" aria-label={`${faits} étapes sur 4`}>
         {items.map(({ ok, label }) => (
           <span
             key={label}
-            className={`h-1.5 flex-1 rounded-full ${ok ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+            className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}
           />
         ))}
-      </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {items.map(({ ok, label }) => (
-          <span
-            key={label}
-            className={`inline-flex items-center gap-1 text-[11px] ${
-              ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'
-            }`}
-          >
-            {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-            {label}
-          </span>
-        ))}
-      </div>
+      </span>
+      <span className="tabular-nums font-medium text-gray-500 dark:text-gray-400">{faits}/4</span>
+      {manquants.length > 0 && (
+        <span className="truncate">
+          il manque {manquants.length > 2 ? `${manquants.slice(0, 2).join(', ')}…` : manquants.join(' et ')}
+        </span>
+      )}
     </div>
   );
 }

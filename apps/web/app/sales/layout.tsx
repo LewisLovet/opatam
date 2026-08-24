@@ -155,7 +155,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </div>
-        <main className="p-6 lg:p-8 max-w-6xl">{children}</main>
+        <main className="p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

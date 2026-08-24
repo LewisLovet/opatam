@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAuth } from 'firebase/auth';
 import {
+  Bot,
+  Camera,
   Check,
+  ClipboardPaste,
   Clipboard,
   ExternalLink,
   Eye,
@@ -137,7 +140,7 @@ export default function SalesDemoPage() {
     : 0;
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Centre de démonstration</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -146,6 +149,58 @@ export default function SalesDemoPage() {
         </p>
       </div>
 
+      <div className="grid xl:grid-cols-3 gap-5 items-start">
+      {/* ── Mode d'emploi — l'onboarding tient sur la page, pas dans une formation ── */}
+      <aside className="xl:order-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Comment ça marche</h2>
+        {[
+          {
+            icone: Camera,
+            titre: 'Photographiez sa carte de prestations',
+            texte:
+              'Menu papier, PDF, visuel Canva, story Instagram — tout ce qui montre ses prestations ET ses prix. Une photo nette où les prix se lisent.',
+          },
+          {
+            icone: Bot,
+            titre: 'Donnez la photo + le prompt à votre IA',
+            texte:
+              'Ouvrez ChatGPT, Claude ou Gemini. Copiez le prompt (bouton ci-contre), collez-le dans la conversation, JOIGNEZ la photo (le trombone), envoyez. L’IA répond par un bloc de texte qui commence par { et finit par }.',
+          },
+          {
+            icone: ClipboardPaste,
+            titre: 'Collez sa réponse complète ici',
+            texte:
+              'L’aperçu montre exactement ce que verra le prospect : vérifiez les prix, les variations, les suppléments. Une erreur ? Corrigez le JSON à la main ou redemandez à l’IA, puis recollez.',
+          },
+          {
+            icone: Wand2,
+            titre: 'Créez, puis personnalisez',
+            texte:
+              'La démo reçoit automatiquement les photos de son métier et sa couleur. Sur sa fiche, ajoutez son vrai logo et sa photo, ajustez, puis envoyez-lui le lien par e-mail.',
+          },
+        ].map(({ icone: Icone, titre, texte }, i) => (
+          <div key={titre} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className="w-7 h-7 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 inline-flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+                {i + 1}
+              </span>
+              {i < 3 && <span className="w-px flex-1 bg-gray-200 dark:bg-gray-800 mt-1" />}
+            </div>
+            <div className="pb-1">
+              <p className="text-[13px] font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <Icone className="w-3.5 h-3.5 text-gray-400" /> {titre}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{texte}</p>
+            </div>
+          </div>
+        ))}
+        <p className="text-[11px] text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-3">
+          Le prompt impose à l&apos;IA de n&apos;inventer ni prestation ni prix : tout vient du
+          document. Les mentions « sur devis » sont acceptées et signalées.
+        </p>
+      </aside>
+
+      <div className="xl:order-1 xl:col-span-2 space-y-5">
       {/* ── Création ── */}
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
@@ -239,6 +294,8 @@ export default function SalesDemoPage() {
           )}
         </div>
       </section>
+      </div>
+      </div>
 
       {/* ── Mes démos ── */}
       <section>
@@ -310,7 +367,7 @@ export default function SalesDemoPage() {
             );
           }
           return (
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
             {visibles.map((d) => (
               <div
                 key={d.id}
