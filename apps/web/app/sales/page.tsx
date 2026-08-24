@@ -1,11 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getAuth } from 'firebase/auth';
 import { Loader } from '@/components/ui';
-import { AlertTriangle, Check, Clock, Rocket, TrendingUp, X } from 'lucide-react';
+import {
+  ArrowRight,
+  AlertTriangle,
+  CalendarClock,
+  Check,
+  ChevronRight,
+  Eye,
+  PartyPopper,
+  Rocket,
+  Megaphone,
+  Wand2,
+  X,
+} from 'lucide-react';
 
-/** Ce que renvoie /api/sales/overview. */
+/**
+ * Tableau de bord commercial — la journée en un coup d'œil.
+ *
+ * Deux principes tenus depuis le premier retour d'usage :
+ * - TOUT EN TOUTES LETTRES : chaque ligne nomme les étapes de configuration,
+ *   l'échéance en français et l'action à mener avec les chiffres du compte.
+ * - LES SIGNAUX D'ABORD : essais qui expirent, inscrits pas prêts, démos
+ *   jamais ouvertes — le tableau de bord dit qui appeler, pas des courbes.
+ */
+
 interface ActivationDetail {
   published: boolean;
   enoughServices: boolean;
@@ -21,8 +43,18 @@ interface Overview {
   aActiver: Array<{ providerId: string; businessName: string; joursDepuisInscription: number; activation: ActivationDetail }>;
   pipeline: { total: number };
 }
+interface DemoRow {
+  id: string;
+  businessName: string;
+  url: string;
+  expired: boolean;
+  views: number;
+  lastViewedAt: string | null;
+  sentTo: string[];
+  claimedProviderName: string | null;
+  coverUrl: string | null;
+}
 
-/** L'action à mener, en toutes lettres et avec les chiffres du compte. */
 function prochaineAction(a: ActivationDetail): string {
   switch (a.nextStep) {
     case 'prestations':
@@ -40,15 +72,23 @@ function prochaineAction(a: ActivationDetail): string {
   }
 }
 
-/** Quand l'essai se termine, en français, pas en code. */
 function expireDans(jours: number): { texte: string; urgent: boolean } {
   if (jours <= 0) return { texte: "expire aujourd'hui", urgent: true };
   if (jours === 1) return { texte: 'expire demain', urgent: true };
   return { texte: `expire dans ${jours} jours`, urgent: false };
 }
 
-/** Les 4 étapes de configuration, nommées — plus de jauge muette. */
-function Criteres({ a }: { a: ActivationDetail }) {
+function depuis(iso: string): string {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 60) return `il y a ${Math.max(1, min)} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.round(h / 24);
+  return j === 1 ? 'hier' : `il y a ${j} j`;
+}
+
+/** Les 4 étapes : une barre segmentée + leurs noms, jamais l'un sans l'autre. */
+function Progression({ a }: { a: ActivationDetail }) {
   const items = [
     { ok: a.enoughServices, label: `Prestations (${Math.min(a.activeServicesCount, 3)}/3)` },
     { ok: a.hasAvailability, label: 'Horaires' },
@@ -56,43 +96,122 @@ function Criteres({ a }: { a: ActivationDetail }) {
     { ok: a.hasFirstBooking, label: '1ʳᵉ réservation' },
   ];
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1">
-      {items.map(({ ok, label }) => (
-        <span
-          key={label}
-          className={`inline-flex items-center gap-1 text-xs ${
-            ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'
-          }`}
-        >
-          {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-          {label}
-        </span>
-      ))}
+    <div className="space-y-1.5">
+      <div className="flex gap-1">
+        {items.map(({ ok, label }) => (
+          <span
+            key={label}
+            className={`h-1.5 flex-1 rounded-full ${ok ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {items.map(({ ok, label }) => (
+          <span
+            key={label}
+            className={`inline-flex items-center gap-1 text-[11px] ${
+              ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'
+            }`}
+          >
+            {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-/**
- * Tableau de bord commercial.
- *
- * TOUT EST DIT EN TOUTES LETTRES — retour d'usage du premier écran : les
- * « J-1 », jauges à segments et libellés télégraphiques n'étaient compris
- * que par leur auteur. Chaque ligne nomme les 4 étapes de configuration,
- * l'échéance en français, et l'action à mener avec les chiffres du compte.
- */
+function CompteRow({
+  nom,
+  droite,
+  a,
+  urgent,
+}: {
+  nom: string;
+  droite: React.ReactNode;
+  a: ActivationDetail;
+  urgent?: boolean;
+}) {
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center gap-3 mb-2.5">
+        <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 dark:text-white truncate">{nom}</p>
+        {droite}
+      </div>
+      <Progression a={a} />
+      <p className={`mt-2 text-xs rounded-lg px-3 py-2 ${
+        urgent
+          ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+          : 'bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300'
+      }`}>
+        <ArrowRight className="w-3 h-3 inline mr-1 -mt-0.5" />
+        {prochaineAction(a)}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  icone: Icone,
+  ton,
+  titre,
+  sousTitre,
+  children,
+  action,
+}: {
+  icone: React.ComponentType<{ className?: string }>;
+  ton: string;
+  titre: string;
+  sousTitre?: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className={`w-8 h-8 rounded-lg inline-flex items-center justify-center flex-shrink-0 ${ton}`}>
+            <Icone className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{titre}</h2>
+            {sousTitre && <p className="text-[11px] text-gray-400 leading-tight mt-0.5 truncate">{sousTitre}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Vide({ texte }: { texte: string }) {
+  return (
+    <p className="text-sm text-gray-400 dark:text-gray-500 px-5 py-8 text-center">
+      <Check className="w-4 h-4 inline mr-1.5 -mt-0.5 text-emerald-500" />
+      {texte}
+    </p>
+  );
+}
+
 export default function SalesDashboardPage() {
   const [data, setData] = useState<Overview | null>(null);
+  const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const token = await getAuth().currentUser?.getIdToken();
-        const res = await fetch('/api/sales/overview', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error((await res.json()).error ?? `Erreur ${res.status}`);
-        setData(await res.json());
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const [ovRes, demosRes] = await Promise.all([
+          fetch('/api/sales/overview', { headers }),
+          fetch('/api/sales/demos', { headers }),
+        ]);
+        if (!ovRes.ok) throw new Error((await ovRes.json()).error ?? `Erreur ${ovRes.status}`);
+        setData(await ovRes.json());
+        if (demosRes.ok) setDemos((await demosRes.json()).demos);
       } catch (e) {
         setErreur(e instanceof Error ? e.message : 'Erreur inconnue');
       }
@@ -102,120 +221,156 @@ export default function SalesDashboardPage() {
   if (erreur) return <p className="text-red-600">{erreur}</p>;
   if (!data) return <Loader />;
 
+  const demosActives = (demos ?? []).filter((d) => !d.expired);
+  const vuesTotal = demosActives.reduce((n, d) => n + d.views, 0);
+  const converties = (demos ?? []).filter((d) => d.claimedProviderName).length;
+  const jamaisOuvertes = demosActives.filter((d) => d.views === 0 && d.sentTo.length > 0);
+
+  const aujourdHui = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+
   const kpis = [
     {
-      icone: Clock,
-      label: 'Essais qui se terminent cette semaine',
+      icone: CalendarClock,
+      ton: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
       valeur: data.essaisQuiExpirent.length,
-      aide: 'à contacter en priorité',
-      ton: data.essaisQuiExpirent.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-gray-900 dark:text-white',
+      label: 'Essais qui se terminent',
+      aide: 'dans les 7 prochains jours',
     },
     {
       icone: Rocket,
-      label: 'Nouveaux inscrits à accompagner',
+      ton: 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400',
       valeur: data.aActiver.length,
-      aide: 'comptes créés récemment, pas encore prêts à recevoir des réservations',
-      ton: data.aActiver.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white',
+      label: 'Inscrits à accompagner',
+      aide: 'pas encore prêts à recevoir des réservations',
     },
     {
-      icone: TrendingUp,
-      label: 'Prospects dans votre pipeline',
-      valeur: data.pipeline.total,
-      aide: 'module en construction',
-      ton: 'text-gray-900 dark:text-white',
+      icone: Eye,
+      ton: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+      valeur: demos === null ? '—' : `${demosActives.length}`,
+      label: 'Démos actives',
+      aide: demos === null ? '' : `${vuesTotal} vue${vuesTotal > 1 ? 's' : ''} par les prospects`,
+    },
+    {
+      icone: PartyPopper,
+      ton: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+      valeur: demos === null ? '—' : `${converties}`,
+      label: 'Comptes créés via démo',
+      aide: 'prospects convertis par une démonstration',
     },
   ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tableau de bord</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Les comptes qui ont besoin de vous aujourd&apos;hui, et pourquoi.
-        </p>
+    <div className="space-y-6">
+      {/* ── En-tête ── */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 capitalize">{aujourdHui}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">Tableau de bord</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Les comptes qui ont besoin de vous aujourd&apos;hui, et pourquoi.
+          </p>
+        </div>
+        <Link
+          href="/sales/demo"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20"
+        >
+          <Wand2 className="w-4 h-4" /> Nouvelle démo
+        </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {kpis.map(({ icone: Icone, label, valeur, aide, ton }) => (
-          <div key={label} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Icone className="w-4 h-4 text-gray-400" />
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-            </div>
-            <p className={`text-3xl font-bold tabular-nums ${ton}`}>{valeur}</p>
-            <p className="text-xs text-gray-400 mt-1">{aide}</p>
+      {/* ── Chiffres du jour ── */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {kpis.map(({ icone: Icone, ton, valeur, label, aide }) => (
+          <div
+            key={label}
+            className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4"
+          >
+            <span className={`w-8 h-8 rounded-lg inline-flex items-center justify-center ${ton}`}>
+              <Icone className="w-4 h-4" />
+            </span>
+            <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-white mt-2.5 leading-none">
+              {valeur}
+            </p>
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-1.5">{label}</p>
+            {aide && <p className="text-[11px] text-gray-400 mt-0.5">{aide}</p>}
           </div>
         ))}
       </div>
 
-      {/* Essais qui expirent */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Leur essai gratuit se termine cette semaine
-        </h2>
-        <p className="text-xs text-gray-400 mt-1 mb-3 max-w-2xl">
-          Passé cette date, leur page est dépubliée s&apos;ils ne s&apos;abonnent pas. Un compte bien
-          configuré avant la fin de l&apos;essai a beaucoup plus de chances de s&apos;abonner — chaque
-          ligne montre où en est la configuration et ce qui les aiderait maintenant.
-        </p>
-        {data.essaisQuiExpirent.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
-            Aucun essai ne se termine dans les 7 prochains jours.
+      {/* ── Relance démos : envoyées mais jamais ouvertes ── */}
+      {jamaisOuvertes.length > 0 && (
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-5 py-4">
+          <p className="text-sm text-blue-800 dark:text-blue-300">
+            <Megaphone className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+            <strong>
+              {jamaisOuvertes.length} démo{jamaisOuvertes.length > 1 ? 's' : ''} envoyée
+              {jamaisOuvertes.length > 1 ? 's' : ''} jamais ouverte{jamaisOuvertes.length > 1 ? 's' : ''}
+            </strong>{' '}
+            — {jamaisOuvertes.slice(0, 3).map((d) => d.businessName).join(', ')}
+            {jamaisOuvertes.length > 3 ? '…' : ''}. Un rappel téléphonique vaut mieux qu&apos;un
+            deuxième e-mail.
           </p>
+        </div>
+      )}
+
+      {/* ── Essais qui expirent ── */}
+      <SectionCard
+        icone={AlertTriangle}
+        ton="bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+        titre="Leur essai gratuit se termine cette semaine"
+        sousTitre="Un compte bien configuré avant la fin de l'essai a beaucoup plus de chances de s'abonner"
+      >
+        {data.essaisQuiExpirent.length === 0 ? (
+          <Vide texte="Aucun essai ne se termine dans les 7 prochains jours." />
         ) : (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {data.essaisQuiExpirent.map((e) => {
               const ech = expireDans(e.joursRestants);
               return (
-                <div key={e.providerId} className="px-4 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${ech.urgent ? 'text-red-500' : 'text-amber-500'}`} />
-                    <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {e.businessName}
-                    </p>
-                    <span className={`text-xs font-semibold whitespace-nowrap px-2 py-0.5 rounded-full ${
-                      ech.urgent
-                        ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    }`}>
+                <CompteRow
+                  key={e.providerId}
+                  nom={e.businessName}
+                  urgent={ech.urgent}
+                  a={e.activation}
+                  droite={
+                    <span
+                      className={`text-xs font-semibold whitespace-nowrap px-2.5 py-1 rounded-full ${
+                        ech.urgent
+                          ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}
+                    >
                       {ech.texte}
                     </span>
-                  </div>
-                  <div className="mt-2 ml-7 space-y-1.5">
-                    <Criteres a={e.activation} />
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold">À faire :</span> {prochaineAction(e.activation)}
-                    </p>
-                  </div>
-                </div>
+                  }
+                />
               );
             })}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      {/* Inscrits à accompagner */}
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Nouveaux inscrits pas encore prêts
-        </h2>
-        <p className="text-xs text-gray-400 mt-1 mb-3 max-w-2xl">
-          Comptes créés ces 14 derniers jours à qui il manque au moins une des 4 étapes pour
-          recevoir des réservations : des prestations, des horaires, une page publiée, une
-          première réservation.
-        </p>
+      {/* ── Inscrits à accompagner ── */}
+      <SectionCard
+        icone={Rocket}
+        ton="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+        titre="Nouveaux inscrits pas encore prêts"
+        sousTitre="Comptes créés ces 14 derniers jours à qui il manque une étape pour recevoir des réservations"
+      >
         {data.aActiver.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
-            Tous les inscrits récents sont prêts.
-          </p>
+          <Vide texte="Tous les inscrits récents sont prêts à recevoir des réservations." />
         ) : (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {data.aActiver.map((r) => (
-              <div key={r.providerId} className="px-4 py-3.5">
-                <div className="flex items-center gap-3">
-                  <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {r.businessName}
-                  </p>
+              <CompteRow
+                key={r.providerId}
+                nom={r.businessName}
+                a={r.activation}
+                droite={
                   <span className="text-xs text-gray-400 whitespace-nowrap">
                     {r.joursDepuisInscription === 0
                       ? "inscrit aujourd'hui"
@@ -223,18 +378,83 @@ export default function SalesDashboardPage() {
                         ? 'inscrit hier'
                         : `inscrit il y a ${r.joursDepuisInscription} jours`}
                   </span>
-                </div>
-                <div className="mt-2 space-y-1.5">
-                  <Criteres a={r.activation} />
-                  <p className="text-xs text-gray-600 dark:text-gray-300">
-                    <span className="font-semibold">À faire :</span> {prochaineAction(r.activation)}
-                  </p>
-                </div>
-              </div>
+                }
+              />
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
+
+      {/* ── Vos démonstrations ── */}
+      <SectionCard
+        icone={Wand2}
+        ton="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+        titre="Vos démonstrations"
+        sousTitre="Les plus récentes — le signal vert dit que le prospect a regardé"
+        action={
+          <Link
+            href="/sales/demo"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap"
+          >
+            Tout voir <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        }
+      >
+        {demos === null ? (
+          <p className="px-5 py-6 text-sm text-gray-400">Chargement…</p>
+        ) : demos.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Aucune démo pour l&apos;instant — c&apos;est votre meilleur outil de conversion.
+            </p>
+            <Link
+              href="/sales/demo"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:opacity-90"
+            >
+              <Wand2 className="w-4 h-4" /> Créer la première
+            </Link>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+            {demos.slice(0, 4).map((d) => (
+              <Link
+                key={d.id}
+                href={`/sales/demo/${d.id}`}
+                className="group rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <div className="relative h-16 bg-gray-100 dark:bg-gray-800">
+                  {d.coverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={d.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  )}
+                  {d.claimedProviderName && (
+                    <span className="absolute top-1.5 right-1.5 inline-flex items-center gap-1 text-[9px] font-semibold text-white bg-emerald-600 px-1.5 py-0.5 rounded-full">
+                      <PartyPopper className="w-2.5 h-2.5" /> Converti
+                    </span>
+                  )}
+                </div>
+                <div className="px-3 py-2.5">
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate group-hover:underline">
+                    {d.businessName}
+                  </p>
+                  <p
+                    className={`text-[10px] mt-0.5 inline-flex items-center gap-1 ${
+                      d.views > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-400'
+                    }`}
+                  >
+                    <Eye className="w-2.5 h-2.5" />
+                    {d.views === 0
+                      ? d.sentTo.length > 0
+                        ? 'envoyée, jamais ouverte'
+                        : 'jamais ouverte'
+                      : `${d.views} vue${d.views > 1 ? 's' : ''}${d.lastViewedAt ? ` · ${depuis(d.lastViewedAt)}` : ''}`}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }

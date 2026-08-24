@@ -18,11 +18,15 @@ import {
   PartyPopper,
   Scissors,
   Send,
+  MonitorSmartphone,
   Store,
   Trash2,
   Wand2,
+  X,
 } from 'lucide-react';
 import { parseDemoConfig } from '@/lib/sales-demo';
+import { generateSalesDemoEmail } from '@/lib/emails/salesDemo';
+import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
 import { ApercuPrestations, type ConfigEurosDemo } from '../components/ApercuPrestations';
 import { ChoixTheme } from '../components/ChoixTheme';
 
@@ -42,6 +46,8 @@ interface Detail {
   id: string;
   url: string;
   businessName: string;
+  coverUrl: string | null;
+  fromName: string | null;
   configEuros: ConfigEurosDemo;
   photos: { logo: string | null; cover: string | null };
   views: number;
@@ -129,6 +135,10 @@ export default function DemoEditPage() {
   const [collage, setCollage] = useState('');
   const [collageOuvert, setCollageOuvert] = useState(false);
   const [lienCopie, setLienCopie] = useState(false);
+  const [apercuPage, setApercuPage] = useState(false);
+  const [apercuMail, setApercuMail] = useState(false);
+  // Incrémenté à chaque enregistrement : l'iframe d'aperçu se recharge.
+  const [versionApercu, setVersionApercu] = useState(0);
   // Référence de l'état chargé, pour savoir si quelque chose a changé.
   const chargeRef = useRef<string>('');
 
@@ -173,6 +183,7 @@ export default function DemoEditPage() {
       }
       setEnregistre(true);
       setTimeout(() => setEnregistre(false), 2500);
+      setVersionApercu((v) => v + 1);
       void charger();
     } finally {
       setEnregistrement(false);
@@ -328,6 +339,12 @@ export default function DemoEditPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setApercuPage(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <MonitorSmartphone className="w-3.5 h-3.5" /> Aperçu
+            </button>
+            <button
               onClick={copierLien}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
@@ -451,10 +468,13 @@ export default function DemoEditPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ville</label>
-            <input
+            {/* Même autocomplete que l'inscription : une ville qui existe,
+                pas une saisie libre. */}
+            <GoogleAddressAutocomplete
               value={config.city ?? ''}
-              onChange={(e) => majChamp('city', e.target.value)}
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              onChange={(v) => majChamp('city', v)}
+              onSelect={(sug: GoogleAddressSuggestion) => majChamp('city', sug.locality ?? sug.formattedAddress ?? '')}
+              placeholder="Rechercher une ville..."
             />
           </div>
           <div>
@@ -474,7 +494,9 @@ export default function DemoEditPage() {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Présentation</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Présentation de l&apos;enseigne <span className="font-normal text-gray-400">(affichée sous le nom, en tête de page)</span>
+            </label>
             <textarea
               value={config.description ?? ''}
               onChange={(e) => majChamp('description', e.target.value.slice(0, 500))}
@@ -565,6 +587,13 @@ export default function DemoEditPage() {
             rows={2}
             className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-xs text-gray-900 dark:text-gray-100"
           />
+          <button
+            onClick={() => setApercuMail(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            <Eye className="w-3.5 h-3.5" /> Voir l&apos;e-mail qui sera envoyé
+            {envoiMessage.trim() ? ' (avec votre mot personnel)' : ''}
+          </button>
           {detail.expired && (
             <p className="text-[11px] text-amber-600 dark:text-amber-400">
               Démo expirée — enregistrez une modification pour la réactiver avant d&apos;envoyer.
@@ -582,6 +611,84 @@ export default function DemoEditPage() {
           <Trash2 className="w-3.5 h-3.5" /> Supprimer cette démo
         </button>
       </div>
+
+      {/* ── Aperçu de la page — l'iframe montre la VRAIE démo ── */}
+      {apercuPage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setApercuPage(false)} />
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden w-[400px] max-w-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Ce que verra le prospect
+              </p>
+              <div className="flex items-center gap-2">
+                <a
+                  href={detail.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-flex items-center gap-1"
+                >
+                  Plein écran <ExternalLink className="w-3 h-3" />
+                </a>
+                <button
+                  onClick={() => setApercuPage(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {/* Format téléphone : c'est ainsi que 90 % des prospects la verront. */}
+            <iframe
+              key={versionApercu}
+              src={detail.url}
+              title="Aperçu de la démo"
+              className="block w-[400px] max-w-full h-[70vh] bg-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Aperçu de l'e-mail — le gabarit RÉEL, mot personnel compris ── */}
+      {apercuMail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setApercuMail(false)} />
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden w-[620px] max-w-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  L&apos;e-mail que recevra le prospect
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Objet : Votre future page de réservation est prête — {config.businessName}
+                </p>
+              </div>
+              <button
+                onClick={() => setApercuMail(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <iframe
+              title="Aperçu de l'e-mail"
+              srcDoc={
+                generateSalesDemoEmail({
+                  businessName: config.businessName,
+                  demoUrl: detail.url,
+                  coverUrl: detail.photos.cover ?? detail.coverUrl,
+                  expiresLe: detail.expiresAt
+                    ? new Date(detail.expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                    : 'dans 30 jours',
+                  fromName: detail.fromName,
+                  message: envoiMessage.trim() || null,
+                }).html
+              }
+              className="block w-full h-[70vh] bg-[#f4f2f0]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Barre d'enregistrement — n'apparaît que s'il y a quelque chose à sauver ── */}
       {(modifie || enregistre) && (

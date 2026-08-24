@@ -12,6 +12,7 @@ import {
   Mail,
   PartyPopper,
   Pencil,
+  Search,
   Wand2,
 } from 'lucide-react';
 import { DEMO_PROMPT, parseDemoConfig, configEnEuros, type DemoConfig } from '@/lib/sales-demo';
@@ -39,6 +40,7 @@ interface DemoRow {
   sentTo: string[];
   claimedProviderName: string | null;
   photos: { logo: string | null; cover: string | null };
+  coverUrl: string | null;
 }
 
 async function jeton(): Promise<Record<string, string>> {
@@ -65,6 +67,8 @@ export default function SalesDemoPage() {
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [promptCopie, setPromptCopie] = useState(false);
   const [lienCopie, setLienCopie] = useState<string | null>(null);
+  const [recherche, setRecherche] = useState('');
+  const [filtre, setFiltre] = useState<'toutes' | 'jamais' | 'vues' | 'converties' | 'expirees'>('toutes');
 
   const charger = async () => {
     const res = await fetch('/api/sales/demos', { headers: await jeton() });
@@ -238,18 +242,76 @@ export default function SalesDemoPage() {
 
       {/* ── Mes démos ── */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
-          Vos démos
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Vos démos
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                placeholder="Nom ou e-mail du prospect…"
+                className="w-56 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-8 pr-3 py-1.5 text-xs text-gray-900 dark:text-white"
+              />
+            </div>
+            {(
+              [
+                ['toutes', 'Toutes'],
+                ['jamais', 'Jamais ouvertes'],
+                ['vues', 'Vues'],
+                ['converties', 'Converties'],
+                ['expirees', 'Expirées'],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setFiltre(v)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  filtre === v
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
         {demos === null ? (
           <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
         ) : demos.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
             Aucune démo pour l&apos;instant — collez votre première carte ci-dessus.
           </p>
-        ) : (
+        ) : (() => {
+          const q = recherche.trim().toLowerCase();
+          const visibles = demos.filter((d) => {
+            if (filtre === 'jamais' && (d.views > 0 || d.expired)) return false;
+            if (filtre === 'vues' && d.views === 0) return false;
+            if (filtre === 'converties' && !d.claimedProviderName) return false;
+            if (filtre === 'expirees' && !d.expired) return false;
+            if (filtre === 'toutes' || filtre === 'vues' || filtre === 'converties') {
+              // les expirées restent visibles partout sauf « jamais ouvertes »
+            }
+            if (!q) return true;
+            return (
+              d.businessName.toLowerCase().includes(q) ||
+              d.sentTo.some((e) => e.toLowerCase().includes(q)) ||
+              (d.claimedProviderName ?? '').toLowerCase().includes(q)
+            );
+          });
+          if (visibles.length === 0) {
+            return (
+              <p className="text-sm text-gray-500 dark:text-gray-400 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
+                Aucune démo ne correspond{q ? ` à « ${recherche.trim()} »` : ' à ce filtre'}.
+              </p>
+            );
+          }
+          return (
           <div className="grid sm:grid-cols-2 gap-3">
-            {demos.map((d) => (
+            {visibles.map((d) => (
               <div
                 key={d.id}
                 className={`group rounded-2xl border bg-white dark:bg-gray-900 overflow-hidden transition-shadow hover:shadow-md ${
@@ -259,10 +321,10 @@ export default function SalesDemoPage() {
                 }`}
               >
                 {/* Vignette : photo téléversée sinon un bandeau neutre */}
-                <Link href={`/sales/demo/${d.id}`} className="block relative h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
-                  {d.photos.cover && (
+                <Link href={`/sales/demo/${d.id}`} className="block relative h-20 bg-gray-100 dark:bg-gray-800">
+                  {d.coverUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={d.photos.cover} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    <img src={d.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   )}
                   {d.photos.logo && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -336,7 +398,8 @@ export default function SalesDemoPage() {
               </div>
             ))}
           </div>
-        )}
+          );
+        })()}
       </section>
     </div>
   );

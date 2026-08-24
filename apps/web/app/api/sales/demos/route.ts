@@ -4,6 +4,7 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { parseDemoConfig, configEnEuros, demoConfigStoredSchema } from '@/lib/sales-demo';
 import { PROVIDER_THEMES } from '@booking-app/shared';
+import { couvertureDemo } from '@/lib/sales-demo-build';
 
 /**
  * Démos personnalisées d'un commercial.
@@ -100,10 +101,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Configuration illisible' }, { status: 500 });
     }
     const x = acces.snap.data()!;
+    const staffSnap = await db.collection('staffMembers').doc(x.staffUid ?? '-').get();
     return NextResponse.json({
       id,
       url: `${baseUrlDetail}/p/demo-${id}`,
       businessName: x.businessName ?? stored.data.businessName,
+      // Ce que l'e-mail d'envoi utilisera — pour un aperçu fidèle côté client.
+      coverUrl: couvertureDemo(stored.data.sector, x.photos?.cover ?? null),
+      fromName: staffSnap.data()?.displayName ?? null,
       configEuros: configEnEuros(stored.data as never),
       photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
       views: typeof x.views === 'number' ? x.views : 0,
@@ -142,6 +147,7 @@ export async function GET(request: NextRequest) {
         sentTo: Array.isArray(x.sentTo) ? x.sentTo : [],
         claimedProviderName: x.claimedProviderName ?? null,
         photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
+        coverUrl: couvertureDemo(x.config?.sector, x.photos?.cover ?? null),
       };
     }),
   });
