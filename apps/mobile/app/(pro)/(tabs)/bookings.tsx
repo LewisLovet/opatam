@@ -337,7 +337,10 @@ export default function ProBookingsScreen() {
   const [view, setView] = useState<PlanningView>('upcoming');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>(undefined);
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('week');
+  // « Tout » par défaut : arriver sur une semaine vide faisait croire à un
+  // planning vide (« Rien de prévu ») alors que des rendez-vous existaient
+  // plus loin. On montre tout, et on affine ensuite si besoin.
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const [memberFilter, setMemberFilter] = useState<string | undefined>(undefined);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
 
