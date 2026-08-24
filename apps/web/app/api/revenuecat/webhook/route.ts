@@ -64,6 +64,37 @@ interface RevenueCatWebhookPayload {
  * Map a RevenueCat product_id to our internal plan.
  * Product IDs: opatam_solo_monthly, opatam_solo_yearly, opatam_team_monthly, opatam_team_yearly
  */
+/**
+ * Conversion commerciale (compte attribué → payant) — idempotente, jamais
+ * bloquante. Un period_type TRIAL ne convertit pas : la commission se
+ * déclenche sur de l'argent réel (l'INITIAL_PURCHASE payé direct, ou le
+ * premier RENEWAL après essai).
+ */
+async function signalerConversion(
+  db: FirebaseFirestore.Firestore,
+  event: RevenueCatEvent,
+  providerId: string,
+) {
+  if (event.period_type === 'TRIAL') return;
+  if (!event.price_in_purchased_currency || event.price_in_purchased_currency <= 0) return;
+  try {
+    const { enregistrerConversionCommerciale } = await import('@/lib/sales-conversion');
+    const resultat = await enregistrerConversionCommerciale(db, {
+      providerId,
+      source: 'revenuecat',
+      amountCents: Math.round(event.price_in_purchased_currency * 100),
+      interval: /year|annual/i.test(event.product_id) ? 'year' : 'month',
+      currency: event.currency || 'eur',
+      plan: getplanFromProductId(event.product_id) ?? 'solo',
+    });
+    if (resultat === 'enregistree') {
+      console.log(`[RC-WEBHOOK] Conversion commerciale enregistrée pour ${providerId}`);
+    }
+  } catch (e) {
+    console.warn('[RC-WEBHOOK] conversion commerciale échouée (événement traité normalement):', e);
+  }
+}
+
 function getplanFromProductId(productId: string): 'solo' | 'team' | null {
   if (productId.includes('solo')) return 'solo';
   if (productId.includes('team')) return 'team';
@@ -188,9 +219,11 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'INITIAL_PURCHASE':
         await handleInitialPurchase(db, event, providerId);
+        await signalerConversion(db, event, providerId);
         break;
       case 'RENEWAL':
         await handleRenewal(db, event, providerId);
+        await signalerConversion(db, event, providerId);
         break;
       case 'CANCELLATION':
         await handleCancellation(db, event, providerId);

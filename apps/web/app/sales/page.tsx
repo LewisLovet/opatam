@@ -57,6 +57,12 @@ interface DemoRow {
   claimedProviderName: string | null;
   coverUrl: string | null;
 }
+interface ConversionRow {
+  providerId: string;
+  businessName: string | null;
+  mrrCents: number;
+  firstPaidAt: string | null;
+}
 interface LeadRow {
   id: string;
   stage: string;
@@ -223,6 +229,7 @@ export default function SalesDashboardPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [leads, setLeads] = useState<LeadRow[] | null>(null);
+  const [conversions, setConversions] = useState<ConversionRow[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
@@ -230,15 +237,17 @@ export default function SalesDashboardPage() {
       try {
         const token = await getAuth().currentUser?.getIdToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const [ovRes, demosRes, leadsRes] = await Promise.all([
+        const [ovRes, demosRes, leadsRes, convRes] = await Promise.all([
           fetch('/api/sales/overview', { headers }),
           fetch('/api/sales/demos', { headers }),
           fetch('/api/sales/leads', { headers }),
+          fetch('/api/sales/conversions', { headers }),
         ]);
         if (!ovRes.ok) throw new Error((await ovRes.json()).error ?? `Erreur ${ovRes.status}`);
         setData(await ovRes.json());
         if (demosRes.ok) setDemos((await demosRes.json()).demos);
         if (leadsRes.ok) setLeads((await leadsRes.json()).leads);
+        if (convRes.ok) setConversions((await convRes.json()).conversions);
       } catch (e) {
         setErreur(e instanceof Error ? e.message : 'Erreur inconnue');
       }
@@ -290,9 +299,17 @@ export default function SalesDashboardPage() {
     {
       icone: PartyPopper,
       ton: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
-      valeur: demos === null ? '—' : `${converties}`,
-      label: 'Comptes créés via démo',
-      aide: 'prospects convertis par une démonstration',
+      valeur:
+        conversions === null
+          ? '—'
+          : `${(conversions.reduce((n, c) => n + c.mrrCents, 0) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`,
+      label: 'MRR attribué',
+      aide:
+        conversions === null
+          ? ''
+          : conversions.length === 0
+            ? 'aucun abonné payant attribué pour l’instant'
+            : `${conversions.length} abonné${conversions.length > 1 ? 's' : ''} payant${conversions.length > 1 ? 's' : ''} · ${converties} via démo`,
     },
   ];
 

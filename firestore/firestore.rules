@@ -113,6 +113,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Conversions payantes attribuées aux commerciaux — écrites par les
+    // webhooks de paiement (Admin SDK), lues par les routes requireStaff.
+    // La rémunération en dépend : aucun accès SDK client.
+    match /salesConversions/{providerId} {
+      allow read, write: if false;
+    }
+
     // Démos personnalisées : créées/listées par les routes requireStaff,
     // rendues par la page /p/demo-<id> via l'Admin SDK. Aucun accès SDK.
     match /salesDemoLinks/{demoId} {

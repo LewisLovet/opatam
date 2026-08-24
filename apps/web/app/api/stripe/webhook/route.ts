@@ -7,6 +7,7 @@ import {
 } from '@/lib/stripe';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { enregistrerConversionCommerciale } from '@/lib/sales-conversion';
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
@@ -566,6 +567,34 @@ async function handleInvoicePaid(
   await providerRef.update(invoiceUpdateData);
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription renewed (validUntil: ${newValidUntil?.toISOString() ?? 'null'})`);
+
+  // Conversion commerciale : le PREMIER paiement réel d'un compte attribué à
+  // un commercial. `invoice.paid` couvre tout (premier règlement comme
+  // récurrence) et l'écriture est idempotente — seule la première passe.
+  // Une facture à 0 € (essai, coupon 100 %) ne convertit pas : la commission
+  // se déclenche sur de l'argent réel.
+  if ((invoice.amount_paid ?? 0) > 0) {
+    try {
+      const items = stripeSubscription.items?.data ?? [];
+      const interval = items[0]?.price?.recurring?.interval === 'year' ? ('year' as const) : ('month' as const);
+      const amountCents =
+        items.reduce((n, it) => n + (it.price?.unit_amount ?? 0) * (it.quantity ?? 1), 0) ||
+        invoice.amount_paid;
+      const resultat = await enregistrerConversionCommerciale(db, {
+        providerId,
+        source: 'stripe',
+        amountCents,
+        interval,
+        currency: invoice.currency ?? 'eur',
+        plan: existingData?.plan ?? 'solo',
+      });
+      if (resultat === 'enregistree') {
+        console.log(`[STRIPE-WEBHOOK] Conversion commerciale enregistrée pour ${providerId}`);
+      }
+    } catch (e) {
+      console.warn('[STRIPE-WEBHOOK] conversion commerciale échouée (paiement traité normalement):', e);
+    }
+  }
 
   // Affiliate commission on recurring payment
   try {
