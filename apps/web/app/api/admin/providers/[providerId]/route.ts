@@ -277,7 +277,13 @@ export async function DELETE(
     }
 
     // 1. Delete all provider subcollections in parallel
-    const subcollections = ['members', 'locations', 'services', 'availabilities', 'blockedSlots'];
+    // « availability » AU SINGULIER — le nom réel de la sous-collection
+    // (documenté dans calculateNextAvailableSlot). L'ancien pluriel ne
+    // supprimait rien : cinq prestataires supprimés ont laissé 35 documents
+    // d'horaires orphelins en base. Ce nom erroné a aussi été recopié tel
+    // quel dans le tableau de bord commercial, qui a accusé à tort des
+    // comptes réservables de n'avoir aucun horaire.
+    const subcollections = ['members', 'locations', 'services', 'availability', 'blockedSlots'];
     await Promise.all(
       subcollections.map(async (subcol) => {
         const snap = await db.collection('providers').doc(providerId).collection(subcol).get();
