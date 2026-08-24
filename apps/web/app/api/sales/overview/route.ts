@@ -44,8 +44,15 @@ export async function GET(request: NextRequest) {
       const [servicesCount, availSnap, bookingsSnap] = await Promise.all([
         db.collection('providers').doc(providerId).collection('services')
           .where('isActive', '==', true).count().get(),
-        db.collection('providers').doc(providerId).collection('availabilities').limit(1).get(),
-        db.collection('bookings').where('providerId', '==', providerId).limit(5).get(),
+        // « availability » AU SINGULIER — le nom réel de la sous-collection.
+        // La première version interrogeait « availabilities » : vide pour
+        // tout le monde, donc « Horaires ✗ » sur des comptes parfaitement
+        // réservables. Un commercial aurait appelé pour un faux problème.
+        db.collection('providers').doc(providerId).collection('availability').limit(1).get(),
+        // 20 et non 5 : un échantillon de 5 sans tri peut tomber sur cinq
+        // annulées ou cinq résas de démo et conclure à tort « aucune vraie
+        // réservation ».
+        db.collection('bookings').where('providerId', '==', providerId).limit(20).get(),
       ]);
       const realBookings = bookingsSnap.docs.filter((d) => {
         const b = d.data();
