@@ -110,7 +110,9 @@
     "walkthrough": "Parcourez les prestations, sélectionnez un professionnel et choisissez un créneau — exactement comme vos futurs clients le feront.",
     "highlight": "Votre page de réservation peut être prête en 5 minutes, sans aucune compétence technique.",
     "explore": "Explorer la démo",
-    "createPage": "Créer ma page gratuitement ({days} jours d'essai)"
+    "createPage": "Créer ma page gratuitement ({days} jours d'essai)",
+    "validateBar": "Votre future page vous plaît ?",
+    "validateCta": "Valider et créer mon compte"
   },
   "notice": {
     "title": "Information importante",

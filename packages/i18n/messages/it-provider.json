@@ -110,7 +110,9 @@
     "walkthrough": "Sfoglia i servizi, seleziona un professionista e scegli un orario — esattamente come faranno i tuoi futuri clienti.",
     "highlight": "La tua pagina di prenotazione può essere pronta in 5 minuti, senza alcuna competenza tecnica.",
     "explore": "Esplora la demo",
-    "createPage": "Crea la tua pagina gratuitamente ({days} giorni di prova)"
+    "createPage": "Crea la tua pagina gratuitamente ({days} giorni di prova)",
+    "validateBar": "Ti piace la tua futura pagina?",
+    "validateCta": "Convalida e crea il mio account"
   },
   "notice": {
     "title": "Informazione importante",

@@ -110,7 +110,9 @@
     "walkthrough": "Browse the services, pick a professional and choose a time slot — exactly like your future clients will.",
     "highlight": "Your booking page can be ready in 5 minutes, no technical skills required.",
     "explore": "Explore the demo",
-    "createPage": "Create my page for free ({days}-day trial)"
+    "createPage": "Create my page for free ({days}-day trial)",
+    "validateBar": "Like your future page?",
+    "validateCta": "Approve it and create my account"
   },
   "notice": {
     "title": "Important information",

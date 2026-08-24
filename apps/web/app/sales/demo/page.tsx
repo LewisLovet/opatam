@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
-import { Check, Clipboard, ExternalLink, Loader2, Trash2, Wand2 } from 'lucide-react';
+import { Check, Clipboard, ExternalLink, Loader2, Mail, Pencil, Trash2, Wand2 } from 'lucide-react';
 import { DEMO_PROMPT, parseDemoConfig, prixEffectif, type DemoConfig } from '@/lib/sales-demo';
 import { themeDepuisCouleur, nomDuTheme } from '@/lib/sales-demo-theme';
 
@@ -36,6 +36,14 @@ export default function SalesDemoPage() {
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [promptCopie, setPromptCopie] = useState(false);
   const [lienCopie, setLienCopie] = useState<string | null>(null);
+  // Édition : id de la démo dont le JSON est chargé dans le textarea —
+  // « Créer » devient « Mettre à jour », même lien, expiration repoussée.
+  const [editionId, setEditionId] = useState<string | null>(null);
+  // Envoi : id de la démo dont le champ e-mail est déplié.
+  const [envoiId, setEnvoiId] = useState<string | null>(null);
+  const [envoiEmail, setEnvoiEmail] = useState('');
+  const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const [envoiFait, setEnvoiFait] = useState<string | null>(null);
 
   const charger = async () => {
     const res = await fetch('/api/sales/demos', { headers: await jeton() });
@@ -68,9 +76,9 @@ export default function SalesDemoPage() {
     setCreee(null);
     try {
       const res = await fetch('/api/sales/demos', {
-        method: 'POST',
+        method: editionId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', ...(await jeton()) },
-        body: JSON.stringify({ pasted: colle }),
+        body: JSON.stringify(editionId ? { id: editionId, pasted: colle } : { pasted: colle }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -79,9 +87,44 @@ export default function SalesDemoPage() {
       }
       setCreee(data);
       setColle('');
+      setEditionId(null);
       void charger();
     } finally {
       setCreation(false);
+    }
+  };
+
+  // Recharge le JSON (reconverti en euros par le serveur) dans le textarea.
+  const modifier = async (id: string) => {
+    const res = await fetch(`/api/sales/demos?id=${id}`, { headers: await jeton() });
+    if (!res.ok) return;
+    const detail = await res.json();
+    setColle(JSON.stringify(detail.configEuros, null, 2));
+    setEditionId(id);
+    setCreee(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const envoyer = async (id: string) => {
+    if (!envoiEmail.trim()) return;
+    setEnvoiEnCours(true);
+    try {
+      const res = await fetch('/api/sales/demos/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        body: JSON.stringify({ id, email: envoiEmail }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEnvoiFait(id);
+        setEnvoiId(null);
+        setEnvoiEmail('');
+        setTimeout(() => setEnvoiFait(null), 3500);
+      } else {
+        alert(data.error ?? 'Envoi impossible');
+      }
+    } finally {
+      setEnvoiEnCours(false);
     }
   };
 
@@ -128,6 +171,19 @@ export default function SalesDemoPage() {
         <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
           2. Collez la réponse de l&apos;IA
         </h2>
+        {editionId && (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-2 text-xs text-blue-800 dark:text-blue-300">
+            <span>
+              Modification d&apos;une démo existante — même lien, l&apos;expiration repart pour 30 jours.
+            </span>
+            <button
+              onClick={() => { setEditionId(null); setColle(''); }}
+              className="font-medium hover:underline"
+            >
+              Annuler
+            </button>
+          </div>
+        )}
         <textarea
           value={colle}
           onChange={(e) => setColle(e.target.value)}
@@ -157,7 +213,7 @@ export default function SalesDemoPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
               >
                 {creation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                Créer la démo
+                {editionId ? 'Mettre à jour la démo' : 'Créer la démo'}
               </button>
             </div>
             {apercu.brandColor && (
@@ -251,7 +307,8 @@ export default function SalesDemoPage() {
         ) : (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
             {demos.map((d) => (
-              <div key={d.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={d.id} className="px-4 py-3">
+              <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.businessName}</p>
                   <p className="text-xs text-gray-400">
@@ -270,11 +327,56 @@ export default function SalesDemoPage() {
                     <button onClick={() => copierLien(d.url)} className="text-xs text-gray-500 hover:underline">
                       {lienCopie === d.url ? 'Copié !' : 'Copier'}
                     </button>
+                    <button
+                      onClick={() => modifier(d.id)}
+                      title="Recharger le JSON pour le modifier"
+                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                    >
+                      <Pencil className="w-3 h-3" /> Modifier
+                    </button>
+                    <button
+                      onClick={() => { setEnvoiId(envoiId === d.id ? null : d.id); setEnvoiEmail(''); }}
+                      title="Envoyer la démo au prospect par e-mail"
+                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                    >
+                      <Mail className="w-3 h-3" /> {envoiFait === d.id ? 'Envoyé ✓' : 'Envoyer'}
+                    </button>
                   </>
+                )}
+                {/* Une démo expirée se réactive en la modifiant (30 jours repartent) */}
+                {d.expired && (
+                  <button
+                    onClick={() => modifier(d.id)}
+                    className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                  >
+                    <Pencil className="w-3 h-3" /> Réactiver
+                  </button>
                 )}
                 <button onClick={() => supprimer(d.id)} title="Supprimer" className="text-gray-300 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
+              </div>
+              {envoiId === d.id && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={envoiEmail}
+                    onChange={(e) => setEnvoiEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void envoyer(d.id); }}
+                    placeholder="email-du-prospect@exemple.fr"
+                    autoFocus
+                    className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100"
+                  />
+                  <button
+                    onClick={() => envoyer(d.id)}
+                    disabled={envoiEnCours || !envoiEmail.trim()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-medium disabled:opacity-50"
+                  >
+                    {envoiEnCours ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                    Envoyer l&apos;e-mail
+                  </button>
+                </div>
+              )}
               </div>
             ))}
           </div>

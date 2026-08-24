@@ -110,7 +110,9 @@
     "walkthrough": "Percorra os serviços, selecione um profissional e escolha um horário — exatamente como os seus futuros clientes vão fazer.",
     "highlight": "A sua página de marcações pode estar pronta em 5 minutos, sem quaisquer conhecimentos técnicos.",
     "explore": "Explorar a demo",
-    "createPage": "Criar a minha página gratuitamente ({days} dias de teste)"
+    "createPage": "Criar a minha página gratuitamente ({days} dias de teste)",
+    "validateBar": "Gosta da sua futura página?",
+    "validateCta": "Validar e criar a minha conta"
   },
   "notice": {
     "title": "Informação importante",

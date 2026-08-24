@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDemoConfig, extraireJson, prixEffectif } from './sales-demo';
+import { parseDemoConfig, extraireJson, prixEffectif, configEnEuros } from './sales-demo';
 
 const valide = JSON.stringify({
   businessName: 'Chez Awa',
@@ -96,6 +96,24 @@ describe('parseDemoConfig — la frontière entre l’IA et la page', () => {
   it('prixEffectif retombe sur le choix le moins cher des variations', () => {
     expect(prixEffectif({ variations: [{ options: [{ price: 6000 }, { price: 4500 }] }] })).toBe(4500);
     expect(prixEffectif({})).toBe(null);
+  });
+
+  it('configEnEuros fait l’aller-retour exact : coller sa sortie recrée la même config', () => {
+    const source = JSON.stringify({
+      businessName: 'X', brandColor: '#c9a227',
+      categories: [{ name: 'A', services: [
+        { name: 'S', price: 45.5, duration: 60,
+          variations: [{ name: 'L', options: [{ name: 'c', price: 45.5 }, { name: 'l', price: 60 }] }],
+          options: [{ name: 'sup', price: 5, duration: 10 }] },
+        { name: 'Sur devis', description: 'Sur devis', duration: 30 },
+      ] }],
+    });
+    const r1 = parseDemoConfig(source);
+    expect(r1.ok).toBe(true);
+    if (!r1.ok) return;
+    const r2 = parseDemoConfig(JSON.stringify(configEnEuros(r1.config)));
+    expect(r2.ok).toBe(true);
+    if (r2.ok) expect(JSON.stringify(r2.config)).toBe(JSON.stringify(r1.config));
   });
 
   it('brandColor accepte le hex avec ou sans #, refuse le reste', () => {

@@ -267,10 +267,13 @@ export default async function ProviderPage({ params }: PageProps) {
     // Le CTA d'inscription porte l'attribution du commercial : un prospect
     // qui s'inscrit depuis SA démo lui est crédité — la boucle démo →
     // inscription → attribution se referme ici.
-    let signupUrl = '/register';
+    // `demo=` déclenche le pré-remplissage du tunnel d'inscription avec la
+    // carte du prospect — « valider sa page » devient créer son compte avec
+    // ses prestations déjà en place.
+    let signupUrl = `/register?demo=${demoId}`;
     if (demo.staffUid) {
       try {
-        signupUrl = `/register?s=${encodeURIComponent(signSalesLink({ staffUid: demo.staffUid, campaign: `demo-${demoId}`, sector: demo.config.sector ?? null }))}`;
+        signupUrl = `/register?demo=${demoId}&s=${encodeURIComponent(signSalesLink({ staffUid: demo.staffUid, campaign: `demo-${demoId}`, sector: demo.config.sector ?? null }))}`;
       } catch (e) {
         // Secret absent ou invalide : la démo s'affiche quand même, le CTA
         // retombe sur l'inscription non attribuée — jamais une page morte

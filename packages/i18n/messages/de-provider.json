@@ -110,7 +110,9 @@
     "walkthrough": "Sehen Sie sich die Leistungen an, wählen Sie einen Mitarbeiter und einen Termin — genau so, wie es Ihre künftigen Kunden tun werden.",
     "highlight": "Ihre Buchungsseite kann in 5 Minuten fertig sein, ganz ohne technische Kenntnisse.",
     "explore": "Demo ansehen",
-    "createPage": "Meine Seite kostenlos erstellen ({days} Tage testen)"
+    "createPage": "Meine Seite kostenlos erstellen ({days} Tage testen)",
+    "validateBar": "Gefällt Ihnen Ihre zukünftige Seite?",
+    "validateCta": "Bestätigen und mein Konto erstellen"
   },
   "notice": {
     "title": "Wichtiger Hinweis",

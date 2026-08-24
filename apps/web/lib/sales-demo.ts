@@ -123,6 +123,40 @@ export function prixEffectif(s: {
   return choix.length ? Math.min(...choix) : null;
 }
 
+/**
+ * L'inverse de la validation d'écriture : le document stocké (centimes) →
+ * un JSON en EUROS, la forme que le prompt décrit et que le commercial peut
+ * relire, retoucher et recoller. Utilisé par « Modifier » dans /sales/demo.
+ */
+export function configEnEuros(config: DemoConfig): Record<string, unknown> {
+  const euros = (c: number | undefined) => (typeof c === 'number' ? c / 100 : undefined);
+  const nettoie = (o: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+  return nettoie({
+    businessName: config.businessName,
+    description: config.description || undefined,
+    city: config.city || undefined,
+    sector: config.sector || undefined,
+    brandColor: config.brandColor,
+    categories: config.categories.map((c) => ({
+      name: c.name,
+      services: c.services.map((s) =>
+        nettoie({
+          name: s.name,
+          description: s.description || undefined,
+          price: euros(s.price),
+          duration: s.duration,
+          variations: s.variations?.map((v) => ({
+            name: v.name,
+            options: v.options.map((o) => nettoie({ name: o.name, price: euros(o.price), duration: o.duration })),
+          })),
+          options: s.options?.map((o) => nettoie({ name: o.name, price: euros(o.price), duration: o.duration })),
+        }),
+      ),
+    })),
+  });
+}
+
 export type DemoParseResult =
   | { ok: true; config: DemoConfig }
   | { ok: false; erreurs: string[] };
@@ -171,7 +205,7 @@ export const DEMO_PROMPT = `Tu es un assistant qui extrait la carte des prestati
 
 {
   "businessName": "Nom de l'établissement",
-  "description": "Une phrase de présentation si visible, sinon vide",
+  "description": "Une phrase de présentation engageante de l'établissement",
   "city": "Ville si visible, sinon vide",
   "sector": "coiffure",
   "brandColor": "#7c3aed",
@@ -181,7 +215,7 @@ export const DEMO_PROMPT = `Tu es un assistant qui extrait la carte des prestati
       "services": [
         {
           "name": "Nom de la prestation",
-          "description": "Détail si présent, sinon vide",
+          "description": "Une phrase courte qui décrit la prestation",
           "price": 45,
           "duration": 60,
           "variations": [
@@ -219,6 +253,7 @@ Comment trier — prestation, variation ou supplément :
 
 Règles impératives :
 - N'INVENTE AUCUNE prestation ni aucun prix : ne reprends que ce qui figure sur le document. Une mention illisible s'omet.
+- Les DESCRIPTIONS sont l'exception : rédige-en une, COURTE (une phrase, ton professionnel et chaleureux), pour l'établissement et pour chaque prestation, même quand le document n'en donne pas. Reste factuel — décris ce qu'est la prestation, sans promettre de résultat ni inventer de détail précis (marques, produits, durées non affichées).
 - Une prestation « sur devis » ou sans prix affiché : garde-la, mais OMETS son champ "price" (n'invente jamais de montant). Mentionne « Sur devis » dans sa description si le document le dit.
 - Si le document liste des prestations sans catégories, crée une seule catégorie "Prestations".
 - Réponds en conservant la langue du document pour les noms.`;

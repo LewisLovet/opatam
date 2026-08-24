@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { X, PartyPopper, ArrowRight } from 'lucide-react';
+import { X, PartyPopper, ArrowRight, CheckCircle } from 'lucide-react';
 import { APP_CONFIG } from '@booking-app/shared/constants';
 
 /**
@@ -22,10 +22,29 @@ export function DemoBanner({ signupUrl = '/register' }: { signupUrl?: string }) 
     return () => clearTimeout(timer);
   }, []);
 
-  if (!showModal) return null;
+  // Barre de validation PERSISTANTE : la modale se ferme, mais le geste qui
+  // compte — valider sa page et créer son compte — doit rester à portée de
+  // main pendant toute l'exploration de la démo.
+  const barre = (
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] sm:w-auto">
+      <div className="flex items-center justify-between sm:justify-start gap-3 rounded-full bg-gray-900/95 dark:bg-gray-800/95 backdrop-blur px-4 py-2.5 shadow-xl">
+        <span className="hidden sm:inline text-sm text-gray-200">{t('demo.validateBar')}</span>
+        <Link
+          href={signupUrl}
+          className="inline-flex items-center gap-2 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 transition-colors whitespace-nowrap"
+        >
+          <CheckCircle className="w-4 h-4" />
+          {t('demo.validateCta')}
+        </Link>
+      </div>
+    </div>
+  );
+
+  if (!showModal) return barre;
 
   return (
     <>
+      {barre}
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-gray-950/40 backdrop-blur-sm animate-fade-in"

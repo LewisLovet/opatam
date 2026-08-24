@@ -211,6 +211,40 @@ export default function RegisterPage() {
     if (s) sessionStorage.setItem('sales-link-token', s);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Démo personnalisée (?demo=<id>) : le prospect arrive de SA page de
+  // démonstration — on pré-remplit le tunnel avec sa carte (nom, secteur,
+  // prestations, variations, suppléments). Il relit et ajuste : c'est cette
+  // validation humaine qui autorise l'import, rien n'est écrit avant la fin
+  // du tunnel. On ne touche à rien si le formulaire a déjà été commencé
+  // (reprise localStorage ou saisie en cours).
+  useEffect(() => {
+    const demoId = searchParams.get('demo');
+    if (!demoId || sessionStorage.getItem('demo-prefill-done')) return;
+    fetch(`/api/sales/demos/prefill?id=${encodeURIComponent(demoId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((prefill) => {
+        if (!prefill?.businessName) return;
+        setData((prev) => {
+          const dejaCommence =
+            prev.businessName.trim() !== '' || prev.services.some((svc) => svc.name.trim() !== '');
+          if (dejaCommence) return prev;
+          sessionStorage.setItem('demo-prefill-done', '1');
+          return {
+            ...prev,
+            businessName: prefill.businessName,
+            category: prefill.category || prev.category,
+            description: prefill.description || '',
+            city: prefill.city || prev.city,
+            services: Array.isArray(prefill.services) && prefill.services.length > 0
+              ? prefill.services
+              : prev.services,
+          };
+        });
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
