@@ -106,8 +106,14 @@ export async function requireStaff(
     db.collection('staffMembers').doc(uid).get(),
   ]);
 
+  // « Vue commerciale » : un manager/admin demande à être traité comme un
+  // simple commercial (cloisonné sur SON uid). C'est une RESTRICTION
+  // volontaire — cet en-tête ne sait qu'abaisser un rôle, jamais l'élever :
+  // un client qui l'enverrait à tort n'y gagne rien.
+  const vueCommerciale = request.headers.get('x-sales-scope') === 'self';
+
   if (userSnap.data()?.isAdmin === true) {
-    return { ok: true, identity: { uid, role: 'admin' } };
+    return { ok: true, identity: { uid, role: vueCommerciale ? 'sales' : 'admin' } };
   }
 
   const staff = staffSnap.data();
@@ -117,7 +123,8 @@ export async function requireStaff(
     (staff.role === 'sales' || staff.role === 'sales_manager') &&
     (roles.length === 0 || roles.includes(staff.role))
   ) {
-    return { ok: true, identity: { uid, role: staff.role } };
+    const role = vueCommerciale ? 'sales' : staff.role;
+    return { ok: true, identity: { uid, role } };
   }
 
   return {

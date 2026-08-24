@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAuth } from 'firebase/auth';
 import { Loader } from '@/components/ui';
 import {
   ArrowRight,
@@ -19,6 +18,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { STAGE_LABELS } from '@/lib/sales-leads';
+import { enTetesStaff } from '@/app/sales/entetes';
 
 /**
  * Tableau de bord commercial — la journée en un coup d'œil.
@@ -233,8 +233,7 @@ export default function SalesDashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await getAuth().currentUser?.getIdToken();
-        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers = await enTetesStaff();
         const [ovRes, demosRes, leadsRes, convRes] = await Promise.all([
           fetch('/api/sales/overview', { headers }),
           fetch('/api/sales/demos', { headers }),

@@ -14,7 +14,10 @@ import {
   Tag,
   ShieldCheck,
   LogOut,
+  Eye,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { vueCommercialeActive, basculerVueCommerciale } from './entetes';
 
 interface StaffInfo {
   role: 'sales' | 'sales_manager';
@@ -45,6 +48,11 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [staff, setStaff] = useState<StaffInfo | null | 'refuse'>(null);
+  // Vue commerciale : lue après montage (localStorage n'existe pas au SSR).
+  const [vueCommerciale, setVueCommerciale] = useState(false);
+  useEffect(() => {
+    setVueCommerciale(vueCommercialeActive());
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -127,9 +135,33 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 p-2 rounded-xl bg-red-500/10">
             <ShieldCheck className="w-4 h-4 text-red-400 flex-shrink-0" />
             <span className="text-xs font-semibold text-red-400">
-              {staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
+              {vueCommerciale ? 'Vue commerciale' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
             </span>
           </div>
+          {/* Un manager voit tout ; ce bouton lui montre l'espace comme un
+              commercial le voit — restriction appliquée CÔTÉ SERVEUR. */}
+          {staff.role === 'sales_manager' && (
+            <button
+              onClick={() => basculerVueCommerciale(!vueCommerciale)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+                vueCommerciale
+                  ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
+            </button>
+          )}
+          {user?.isAdmin && (
+            <Link
+              href="/admin"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Espace admin
+            </Link>
+          )}
           <div className="px-1">
             <p className="text-sm font-medium truncate">{staff.displayName}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
@@ -155,6 +187,21 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </div>
+        {vueCommerciale && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-2.5 flex items-center justify-between gap-3">
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              <Eye className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+              <strong>Vue commerciale</strong> — vous voyez l&apos;espace comme un commercial :
+              uniquement vos propres démos, prospects et conversions.
+            </p>
+            <button
+              onClick={() => basculerVueCommerciale(false)}
+              className="text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline whitespace-nowrap"
+            >
+              Quitter
+            </button>
+          </div>
+        )}
         <main className="p-6 lg:p-8">{children}</main>
       </div>
     </div>

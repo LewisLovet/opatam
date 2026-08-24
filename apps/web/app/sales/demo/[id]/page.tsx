@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAuth } from 'firebase/auth';
 import {
   ArrowLeft,
   Camera,
@@ -24,6 +23,7 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
+import { enTetesStaff } from '@/app/sales/entetes';
 import { parseDemoConfig } from '@/lib/sales-demo';
 import { generateSalesDemoEmail } from '@/lib/emails/salesDemo';
 import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
@@ -69,10 +69,7 @@ const SECTEURS = [
   ['autre', 'Autre'],
 ] as const;
 
-async function jeton(): Promise<Record<string, string>> {
-  const t = await getAuth().currentUser?.getIdToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
+
 
 function depuis(iso: string): string {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
@@ -143,7 +140,7 @@ export default function DemoEditPage() {
   const chargeRef = useRef<string>('');
 
   const charger = useCallback(async () => {
-    const res = await fetch(`/api/sales/demos?id=${id}`, { headers: await jeton() });
+    const res = await fetch(`/api/sales/demos?id=${id}`, { headers: await enTetesStaff() });
     if (!res.ok) {
       setIntrouvable(true);
       return;
@@ -173,7 +170,7 @@ export default function DemoEditPage() {
     try {
       const res = await fetch('/api/sales/demos', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
         body: JSON.stringify({ id, pasted: JSON.stringify(config), themeId: themeChoisi || null }),
       });
       const data = await res.json();
@@ -197,7 +194,7 @@ export default function DemoEditPage() {
       form.set('id', id);
       form.set('kind', kind);
       form.set('file', file);
-      const res = await fetch('/api/sales/demos/upload', { method: 'POST', headers: await jeton(), body: form });
+      const res = await fetch('/api/sales/demos/upload', { method: 'POST', headers: await enTetesStaff(), body: form });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setErreurs([data.error ?? 'Téléversement impossible']);
@@ -215,7 +212,7 @@ export default function DemoEditPage() {
     try {
       const res = await fetch('/api/sales/demos/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
         body: JSON.stringify({ id, email: envoiEmail, message: envoiMessage.trim() || null }),
       });
       const data = await res.json();
@@ -247,7 +244,7 @@ export default function DemoEditPage() {
       try {
         const res = await fetch('/api/sales/demos', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+          headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
           body: JSON.stringify({ id, pasted: collage, themeId: themeChoisi || null }),
         });
         const data = await res.json();
@@ -268,7 +265,7 @@ export default function DemoEditPage() {
 
   const supprimer = async () => {
     if (!confirm('Supprimer définitivement cette démo ? Le lien cessera de fonctionner.')) return;
-    await fetch(`/api/sales/demos?id=${id}`, { method: 'DELETE', headers: await jeton() });
+    await fetch(`/api/sales/demos?id=${id}`, { method: 'DELETE', headers: await enTetesStaff() });
     router.push('/sales/demo');
   };
 

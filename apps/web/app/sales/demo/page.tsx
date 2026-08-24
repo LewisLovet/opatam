@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAuth } from 'firebase/auth';
 import {
   Bot,
   Camera,
@@ -18,6 +17,7 @@ import {
   Search,
   Wand2,
 } from 'lucide-react';
+import { enTetesStaff } from '@/app/sales/entetes';
 import { DEMO_PROMPT, parseDemoConfig, configEnEuros, type DemoConfig } from '@/lib/sales-demo';
 import { ApercuPrestations, type ConfigEurosDemo } from './components/ApercuPrestations';
 import { ChoixTheme } from './components/ChoixTheme';
@@ -46,10 +46,7 @@ interface DemoRow {
   coverUrl: string | null;
 }
 
-async function jeton(): Promise<Record<string, string>> {
-  const t = await getAuth().currentUser?.getIdToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
+
 
 function depuis(iso: string): string {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
@@ -74,7 +71,7 @@ export default function SalesDemoPage() {
   const [filtre, setFiltre] = useState<'toutes' | 'jamais' | 'vues' | 'converties' | 'expirees'>('toutes');
 
   const charger = async () => {
-    const res = await fetch('/api/sales/demos', { headers: await jeton() });
+    const res = await fetch('/api/sales/demos', { headers: await enTetesStaff() });
     if (res.ok) setDemos((await res.json()).demos);
   };
   useEffect(() => {
@@ -111,7 +108,7 @@ export default function SalesDemoPage() {
     try {
       const res = await fetch('/api/sales/demos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
         body: JSON.stringify({ pasted: colle, themeId: themeChoisi || null }),
       });
       const data = await res.json();

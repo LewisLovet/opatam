@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getAuth } from 'firebase/auth';
 import {
   Building2,
   CalendarClock,
@@ -18,6 +17,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { enTetesStaff } from '@/app/sales/entetes';
 import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS, SALES_PLATFORMS } from '@booking-app/shared';
 import { STAGE_LABELS, LOSS_LABELS, SECTOR_LABELS, SOURCES_PROSPECTION, PLATFORM_LABELS } from '@/lib/sales-leads';
 import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
@@ -90,10 +90,7 @@ const GROUPES: Array<{
   { label: 'Payant', stages: ['payant', 'conserve_j90'], entree: 'payant', accent: 'bg-emerald-600' },
 ];
 
-async function jeton(): Promise<Record<string, string>> {
-  const t = await getAuth().currentUser?.getIdToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
+
 
 function depuis(iso: string): string {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
@@ -193,7 +190,7 @@ function PipelinePage() {
   const searchParams = useSearchParams();
 
   const charger = async () => {
-    const res = await fetch('/api/sales/leads', { headers: await jeton() });
+    const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
     if (res.ok) setLeads((await res.json()).leads);
   };
   useEffect(() => {
@@ -210,7 +207,7 @@ function PipelinePage() {
   const patch = async (id: string, champs: Record<string, unknown>): Promise<Lead | null> => {
     const res = await fetch('/api/sales/leads', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
       body: JSON.stringify({ id, ...champs }),
     });
     if (!res.ok) return null;
@@ -421,7 +418,7 @@ function NouveauProspect({
     try {
       const res = await fetch('/api/sales/leads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
         body: JSON.stringify(form),
       });
       const data = await res.json();
@@ -539,7 +536,7 @@ function FicheProspect({
     setActivites(null);
     void (async () => {
       try {
-        const res = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await jeton() });
+        const res = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await enTetesStaff() });
         // Un échec s'affiche comme un état, jamais comme un chargement infini.
         setActivites(res.ok ? (await res.json()).activities : []);
       } catch {
@@ -587,12 +584,12 @@ function FicheProspect({
     try {
       const res = await fetch('/api/sales/leads/activities', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await jeton()) },
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
         body: JSON.stringify({ leadId: lead.id, type: noteType, body: noteTexte.trim() }),
       });
       if (res.ok) {
         setNoteTexte('');
-        const rel = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await jeton() });
+        const rel = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await enTetesStaff() });
         if (rel.ok) setActivites((await rel.json()).activities);
       }
     } finally {
@@ -608,7 +605,7 @@ function FicheProspect({
 
   const supprimer = async () => {
     if (!confirm('Supprimer ce prospect et tout son historique ?')) return;
-    await fetch(`/api/sales/leads?id=${lead.id}`, { method: 'DELETE', headers: await jeton() });
+    await fetch(`/api/sales/leads?id=${lead.id}`, { method: 'DELETE', headers: await enTetesStaff() });
     onSupprime(lead.id);
   };
 

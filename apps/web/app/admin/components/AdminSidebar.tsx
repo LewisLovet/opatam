@@ -15,6 +15,8 @@ import {
   Handshake,
   Megaphone,
   LogOut,
+  BriefcaseBusiness,
+  Store,
   Menu,
   X,
   Sun,
@@ -335,6 +337,33 @@ export function AdminSidebar({ collapsed = false }: SidebarProps) {
           <KeyRound className="w-5 h-5" />
           {!collapsed && <span>Modifier le code</span>}
         </button>
+
+        {/* Changer d'espace : l'admin porte les trois casquettes (admin,
+            commercial, pro) — un clic pour voir ce que chacune voit. */}
+        <Link
+          href="/sales"
+          className={`
+            w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            text-gray-400 hover:text-white hover:bg-gray-800
+            ${collapsed ? 'justify-center' : ''}
+          `}
+          title="Espace commercial"
+        >
+          <BriefcaseBusiness className="w-5 h-5" />
+          {!collapsed && <span>Espace commercial</span>}
+        </Link>
+        <Link
+          href="/pro"
+          className={`
+            w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            text-gray-400 hover:text-white hover:bg-gray-800
+            ${collapsed ? 'justify-center' : ''}
+          `}
+          title="Espace pro"
+        >
+          <Store className="w-5 h-5" />
+          {!collapsed && <span>Espace pro</span>}
+        </Link>
 
         {/* Logout button */}
         <button
