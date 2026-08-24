@@ -44,12 +44,20 @@ const variationSchema = z.object({
     .max(8),
 });
 
+/** Supplément facultatif : prix et minutes AJOUTÉS quand il est coché. */
+const supplementSchema = z.object({
+  name: z.string().min(1).max(80),
+  price: prixEuros,
+  duration: dureeMinutes.optional(),
+});
+
 const serviceSchema = z.object({
   name: z.string().min(1, 'nom de prestation manquant').max(100),
   description: z.string().max(300).optional().default(''),
   price: prixEuros,
   duration: dureeMinutes.optional().default(60),
   variations: z.array(variationSchema).max(3).optional(),
+  options: z.array(supplementSchema).max(6).optional(),
 });
 
 export const demoConfigSchema = z.object({
@@ -58,8 +66,15 @@ export const demoConfigSchema = z.object({
   city: z.string().max(60).optional().default(''),
   sector: z.string().max(40).optional().default('beaute'),
   /** Identifiant du catalogue de thèmes — validé à la construction de page,
-   *  repli sur le thème par défaut si inconnu. */
+   *  repli sur le thème par défaut si inconnu. Prime sur brandColor. */
   themeId: z.string().max(30).optional(),
+  /** Couleur dominante de l'identité visuelle du document (hex). Sert à
+   *  choisir automatiquement le thème Opatam le plus proche. */
+  brandColor: z
+    .string()
+    .regex(/^#?[0-9a-fA-F]{6}$/, 'couleur attendue au format hex #RRGGBB')
+    .transform((c) => (c.startsWith('#') ? c : `#${c}`))
+    .optional(),
   categories: z
     .array(
       z.object({
@@ -137,6 +152,8 @@ export const DEMO_PROMPT = `Tu es un assistant qui extrait la carte des prestati
   "businessName": "Nom de l'établissement",
   "description": "Une phrase de présentation si visible, sinon vide",
   "city": "Ville si visible, sinon vide",
+  "sector": "coiffure",
+  "brandColor": "#7c3aed",
   "categories": [
     {
       "name": "Nom de la catégorie (ex : Coupes, Soins, Couleur)",
@@ -154,6 +171,9 @@ export const DEMO_PROMPT = `Tu es un assistant qui extrait la carte des prestati
                 { "name": "Cheveux longs", "price": 55, "duration": 60 }
               ]
             }
+          ],
+          "options": [
+            { "name": "Soin profond en supplément", "price": 10, "duration": 15 }
           ]
         }
       ]
@@ -161,11 +181,23 @@ export const DEMO_PROMPT = `Tu es un assistant qui extrait la carte des prestati
   ]
 }
 
-Règles impératives :
+Champs généraux :
+- "sector" : choisis LA valeur la plus proche dans cette liste exacte : coiffure, barbier, ongles, esthetique, maquillage, massage, tatouage, autre.
+- "brandColor" : la couleur dominante de l'IDENTITÉ VISUELLE du document — fond, titres, logo — au format "#RRGGBB". Si le document est simplement noir sur blanc, sans couleur marquée, omets ce champ. Ignore les couleurs des photos.
+
+Prix et durées :
 - "price" en EUROS, nombre sans symbole (45.50 et non "45,50 €").
 - "duration" en MINUTES, nombre entier. Si la durée n'apparaît pas, estime-la raisonnablement selon la prestation.
+
+Comment trier — prestation, variation ou supplément :
+- VARIATION ("variations") : le MÊME acte dont le prix dépend d'une caractéristique de la cliente (longueur de cheveux, taille de la zone, densité). Les prix des choix sont des prix COMPLETS, pas des ajouts. Exemple : « Lissage : courts 35 €, longs 45 € » → une prestation "Lissage" avec une variation "Longueur des cheveux" à deux choix.
+- Plusieurs LIGNES du document qui déclinent le même acte (« Box braids courtes 70 € » puis « Box braids longues 90 € ») → UNE SEULE prestation "Box braids" avec une variation "Longueur", jamais deux prestations. Le "price" de la prestation est alors celui du choix le moins cher.
+- SUPPLÉMENT ("options" au niveau de la prestation) : un ajout facultatif signalé par « + », « en option » ou « en supplément » (« + soin profond 10 € »). Son "price" est le montant AJOUTÉ au prix de la prestation, sa "duration" les minutes AJOUTÉES (omets "duration" si rien n'est indiqué : un supplément sans durée n'allonge pas le rendez-vous). Un supplément n'est JAMAIS une prestation à part ni une variation.
+- PRESTATIONS SÉPARÉES : des actes ou des zones différents que la cliente réserve indépendamment restent des prestations distinctes, même listés sur la même ligne (« Épilation : sourcils 8 €, jambes 20 € » → deux prestations "Épilation sourcils" et "Épilation jambes").
+- En cas de doute : si les intitulés désignent le même geste sur la même zone, c'est une variation ; si le geste ou la zone change, ce sont des prestations séparées.
+
+Règles impératives :
 - N'INVENTE AUCUNE prestation ni aucun prix : ne reprends que ce qui figure sur le document. Une mention illisible s'omet.
-- "variations" seulement si le document montre plusieurs prix pour une même prestation (par longueur, par zone…) ; sinon omets le champ.
 - Si le document liste des prestations sans catégories, crée une seule catégorie "Prestations".
 - Réponds en conservant la langue du document pour les noms.`;
 
@@ -186,6 +218,7 @@ export const demoConfigStoredSchema = z.object({
   city: z.string().optional().default(''),
   sector: z.string().optional().default('beaute'),
   themeId: z.string().optional(),
+  brandColor: z.string().optional(),
   categories: z.array(
     z.object({
       name: z.string(),
@@ -204,6 +237,9 @@ export const demoConfigStoredSchema = z.object({
                 ),
               }),
             )
+            .optional(),
+          options: z
+            .array(z.object({ name: z.string(), price: centimes, duration: dureeLecture.optional() }))
             .optional(),
         }),
       ),

@@ -61,4 +61,28 @@ describe('parseDemoConfig — la frontière entre l’IA et la page', () => {
   it('extraireJson isole le premier objet complet', () => {
     expect(extraireJson('blah {"a":1} blah')).toBe('{"a":1}');
   });
+
+  it('les suppléments (options) passent, en centimes, durée facultative', () => {
+    const r = parseDemoConfig(JSON.stringify({
+      businessName: 'X',
+      categories: [{ name: 'A', services: [{ name: 'S', price: 40, duration: 60,
+        options: [{ name: 'Soin profond', price: 10, duration: 15 }, { name: 'Brillance', price: 5 }] }] }],
+    }));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const sup = r.config.categories[0].services[0].options!;
+      expect(sup[0].price).toBe(1000);
+      expect(sup[0].duration).toBe(15);
+      expect(sup[1].price).toBe(500);
+      expect(sup[1].duration).toBe(undefined);
+    }
+  });
+
+  it('brandColor accepte le hex avec ou sans #, refuse le reste', () => {
+    const base = { businessName: 'X', categories: [{ name: 'A', services: [{ name: 'S', price: 10 }] }] };
+    const avec = parseDemoConfig(JSON.stringify({ ...base, brandColor: '7c3aed' }));
+    expect(avec.ok).toBe(true);
+    if (avec.ok) expect(avec.config.brandColor).toBe('#7c3aed');
+    expect(parseDemoConfig(JSON.stringify({ ...base, brandColor: 'violet' })).ok).toBe(false);
+  });
 });

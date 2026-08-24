@@ -280,21 +280,26 @@ export default async function ProviderPage({ params }: PageProps) {
     }
     return (
       <>
+        {/* La balise <style> pose les jetons, l'attribut délimite leur
+            portée : sans le wrapper, le thème du prospect ne s'applique
+            jamais et la page reste bleue. */}
         <ProviderThemeStyle themeId={d.provider.themeId} />
-        <ProviderPageClient
-          provider={d.provider as never}
-          services={d.services as never}
-          serviceCategories={d.categories as never}
-          locations={d.locations as never}
-          members={d.members as never}
-          reviews={d.reviews as never}
-          availabilities={d.availabilities as never}
-          minPrice={d.minPrice}
-          nextAvailableDate={getDemoNextAvailableDate()}
-          memberAvailabilities={[]}
-          isDemo
-          demoSignupUrl={signupUrl}
-        />
+        <div data-provider-theme>
+          <ProviderPageClient
+            provider={d.provider as never}
+            services={d.services as never}
+            serviceCategories={d.categories as never}
+            locations={d.locations as never}
+            members={d.members as never}
+            reviews={d.reviews as never}
+            availabilities={d.availabilities as never}
+            minPrice={d.minPrice}
+            nextAvailableDate={getDemoNextAvailableDate()}
+            memberAvailabilities={[]}
+            isDemo
+            demoSignupUrl={signupUrl}
+          />
+        </div>
       </>
     );
   }

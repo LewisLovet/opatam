@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
 import { Check, Clipboard, ExternalLink, Loader2, Trash2, Wand2 } from 'lucide-react';
-import { DEMO_PROMPT, parseDemoConfig } from '@/lib/sales-demo';
+import { DEMO_PROMPT, parseDemoConfig, type DemoConfig } from '@/lib/sales-demo';
+import { themeDepuisCouleur, nomDuTheme } from '@/lib/sales-demo-theme';
 
 interface DemoRow {
   id: string;
@@ -29,7 +30,7 @@ async function jeton(): Promise<Record<string, string>> {
 export default function SalesDemoPage() {
   const [colle, setColle] = useState('');
   const [erreurs, setErreurs] = useState<string[]>([]);
-  const [apercu, setApercu] = useState<{ businessName: string; nbPrestations: number } | null>(null);
+  const [apercu, setApercu] = useState<DemoConfig | null>(null);
   const [creation, setCreation] = useState(false);
   const [creee, setCreee] = useState<{ url: string; expiresAt: string } | null>(null);
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
@@ -49,10 +50,7 @@ export default function SalesDemoPage() {
     const r = parseDemoConfig(colle);
     if (r.ok) {
       setErreurs([]);
-      setApercu({
-        businessName: r.config.businessName,
-        nbPrestations: r.config.categories.reduce((s, c) => s + c.services.length, 0),
-      });
+      setApercu(r.config);
     } else {
       setErreurs(r.erreurs);
       setApercu(null);
@@ -143,19 +141,76 @@ export default function SalesDemoPage() {
           </ul>
         )}
         {apercu && (
-          <div className="mt-3 flex items-center justify-between gap-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
-            <p className="text-sm text-emerald-800 dark:text-emerald-300">
-              <Check className="w-4 h-4 inline mr-1" />
-              <strong>{apercu.businessName}</strong> — {apercu.nbPrestations} prestations reconnues
+          <div className="mt-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                <Check className="w-4 h-4 inline mr-1" />
+                <strong>{apercu.businessName}</strong>
+                {apercu.city ? ` · ${apercu.city}` : ''}
+                {apercu.sector ? ` · ${apercu.sector}` : ''}
+                {' — '}
+                {apercu.categories.reduce((n, c) => n + c.services.length, 0)} prestations
+              </p>
+              <button
+                onClick={creer}
+                disabled={creation}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+              >
+                {creation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                Créer la démo
+              </button>
+            </div>
+            {apercu.brandColor && (
+              <p className="mt-1 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <span
+                  className="inline-block w-3 h-3 rounded-full border border-black/10"
+                  style={{ backgroundColor: apercu.brandColor }}
+                />
+                Couleur relevée {apercu.brandColor} → thème «{' '}
+                {nomDuTheme(themeDepuisCouleur(apercu.brandColor))} »
+              </p>
+            )}
+            {/* Relisez AVANT de créer : cet arbre est exactement ce que
+                l'IA a trié — une variation prise pour une prestation ou un
+                supplément mal rangé se voit ici d'un coup d'œil. */}
+            <div className="mt-3 space-y-3 border-t border-emerald-200 dark:border-emerald-800 pt-3">
+              {apercu.categories.map((cat, ci) => (
+                <div key={ci}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                    {cat.name}
+                  </p>
+                  <ul className="mt-1 space-y-1">
+                    {cat.services.map((svc, si) => (
+                      <li key={si} className="text-sm text-gray-800 dark:text-gray-200">
+                        <span className="font-medium">{svc.name}</span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {' '}— {(svc.price / 100).toLocaleString('fr-FR')} € · {svc.duration} min
+                        </span>
+                        {svc.variations?.map((v, vi) => (
+                          <span key={vi} className="block pl-4 text-xs text-gray-600 dark:text-gray-400">
+                            {v.name} :{' '}
+                            {v.options
+                              .map((o) => `${o.name} ${(o.price / 100).toLocaleString('fr-FR')} €`)
+                              .join(' · ')}
+                          </span>
+                        ))}
+                        {svc.options?.map((o, oi) => (
+                          <span key={oi} className="block pl-4 text-xs text-gray-600 dark:text-gray-400">
+                            + {o.name} : +{(o.price / 100).toLocaleString('fr-FR')} €
+                            {o.duration ? ` (+${o.duration} min)` : ''}
+                          </span>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
+              Relisez cet aperçu avant de créer : c&apos;est exactement ce que verra le prospect.
+              Un supplément mal rangé ou une variation transformée en prestation se corrige en
+              refaisant la demande à l&apos;IA.
             </p>
-            <button
-              onClick={creer}
-              disabled={creation}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
-            >
-              {creation ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-              Créer la démo
-            </button>
           </div>
         )}
         {creee && (

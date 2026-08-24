@@ -108,17 +108,24 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     if (!demo) notFound();
     const d = buildDemoData(demo.config, demoId).booking;
     return (
-      <BookingFlow
-        provider={d.provider as never}
-        services={d.services as never}
-        serviceCategories={d.categories as never}
-        locations={d.locations as never}
-        members={d.members as never}
-        availabilities={d.availabilities as never}
-        isTeam={false}
-        preselectedServiceId={preselectedServiceId}
-        isDemo
-      />
+      <>
+        {/* Le tunnel hérite de la couleur de la vitrine — même continuité
+            que sur les vraies pages, wrapper compris. */}
+        <ProviderThemeStyle themeId={d.provider.themeId} />
+        <div data-provider-theme>
+          <BookingFlow
+            provider={d.provider as never}
+            services={d.services as never}
+            serviceCategories={d.categories as never}
+            locations={d.locations as never}
+            members={d.members as never}
+            availabilities={d.availabilities as never}
+            isTeam={false}
+            preselectedServiceId={preselectedServiceId}
+            isDemo
+          />
+        </div>
+      </>
     );
   }
 

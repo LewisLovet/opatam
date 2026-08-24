@@ -18,7 +18,7 @@ import { parseDemoConfig } from '@/lib/sales-demo';
  * page — un document expiré ne sert plus, même s'il existe encore.
  */
 
-export const DEMO_TTL_DAYS = 30;
+const DEMO_TTL_DAYS = 30;
 
 export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
