@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { getAuth } from 'firebase/auth';
-import { Check, Clipboard, ExternalLink, Loader2, Mail, Pencil, Trash2, Wand2 } from 'lucide-react';
+import { Check, Clipboard, ExternalLink, Eye, ImagePlus, Loader2, Mail, PartyPopper, Pencil, Trash2, Wand2 } from 'lucide-react';
+import { PROVIDER_THEMES } from '@booking-app/shared';
 import { DEMO_PROMPT, parseDemoConfig, prixEffectif, type DemoConfig } from '@/lib/sales-demo';
 import { themeDepuisCouleur, nomDuTheme } from '@/lib/sales-demo-theme';
 
@@ -13,6 +14,21 @@ interface DemoRow {
   createdAt: string | null;
   expiresAt: string | null;
   expired: boolean;
+  views: number;
+  lastViewedAt: string | null;
+  sentTo: string[];
+  claimedProviderName: string | null;
+  photos: { logo: string | null; cover: string | null };
+}
+
+/** « il y a 2 h », « hier », « il y a 5 j » — le langage de la relance. */
+function depuis(iso: string): string {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 60) return `il y a ${Math.max(1, min)} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.round(h / 24);
+  return j === 1 ? 'hier' : `il y a ${j} j`;
 }
 
 async function jeton(): Promise<Record<string, string>> {
@@ -44,6 +60,12 @@ export default function SalesDemoPage() {
   const [envoiEmail, setEnvoiEmail] = useState('');
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [envoiFait, setEnvoiFait] = useState<string | null>(null);
+  const [envoiMessage, setEnvoiMessage] = useState('');
+  // Thème : '' = automatique (couleur relevée sur le document).
+  const [themeChoisi, setThemeChoisi] = useState('');
+  // Photos : id de la démo dont le panneau logo/couverture est déplié.
+  const [photosId, setPhotosId] = useState<string | null>(null);
+  const [uploadEnCours, setUploadEnCours] = useState<string | null>(null);
 
   const charger = async () => {
     const res = await fetch('/api/sales/demos', { headers: await jeton() });
@@ -78,7 +100,11 @@ export default function SalesDemoPage() {
       const res = await fetch('/api/sales/demos', {
         method: editionId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', ...(await jeton()) },
-        body: JSON.stringify(editionId ? { id: editionId, pasted: colle } : { pasted: colle }),
+        body: JSON.stringify({
+          ...(editionId ? { id: editionId } : {}),
+          pasted: colle,
+          themeId: themeChoisi || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -88,6 +114,7 @@ export default function SalesDemoPage() {
       setCreee(data);
       setColle('');
       setEditionId(null);
+      setThemeChoisi('');
       void charger();
     } finally {
       setCreation(false);
@@ -99,7 +126,11 @@ export default function SalesDemoPage() {
     const res = await fetch(`/api/sales/demos?id=${id}`, { headers: await jeton() });
     if (!res.ok) return;
     const detail = await res.json();
-    setColle(JSON.stringify(detail.configEuros, null, 2));
+    const { themeId: themeStocke, ...sansTheme } = detail.configEuros ?? {};
+    // Le thème vit dans le sélecteur, pas dans le JSON : plus lisible à
+    // retoucher, et le sélecteur reflète l'état réel de la démo.
+    setColle(JSON.stringify(sansTheme, null, 2));
+    setThemeChoisi(typeof themeStocke === 'string' ? themeStocke : '');
     setEditionId(id);
     setCreee(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -112,13 +143,15 @@ export default function SalesDemoPage() {
       const res = await fetch('/api/sales/demos/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await jeton()) },
-        body: JSON.stringify({ id, email: envoiEmail }),
+        body: JSON.stringify({ id, email: envoiEmail, message: envoiMessage.trim() || null }),
       });
       const data = await res.json();
       if (res.ok) {
         setEnvoiFait(id);
         setEnvoiId(null);
         setEnvoiEmail('');
+        setEnvoiMessage('');
+        void charger();
         setTimeout(() => setEnvoiFait(null), 3500);
       } else {
         alert(data.error ?? 'Envoi impossible');
@@ -131,6 +164,29 @@ export default function SalesDemoPage() {
   const supprimer = async (id: string) => {
     await fetch(`/api/sales/demos?id=${id}`, { method: 'DELETE', headers: await jeton() });
     void charger();
+  };
+
+  const televerser = async (id: string, kind: 'logo' | 'cover', file: File) => {
+    setUploadEnCours(`${id}:${kind}`);
+    try {
+      const form = new FormData();
+      form.set('id', id);
+      form.set('kind', kind);
+      form.set('file', file);
+      const res = await fetch('/api/sales/demos/upload', {
+        method: 'POST',
+        headers: await jeton(),
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? 'Téléversement impossible');
+        return;
+      }
+      void charger();
+    } finally {
+      setUploadEnCours(null);
+    }
   };
 
   const copierLien = async (url: string) => {
@@ -216,16 +272,34 @@ export default function SalesDemoPage() {
                 {editionId ? 'Mettre à jour la démo' : 'Créer la démo'}
               </button>
             </div>
-            {apercu.brandColor && (
-              <p className="mt-1 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
-                <span
-                  className="inline-block w-3 h-3 rounded-full border border-black/10"
-                  style={{ backgroundColor: apercu.brandColor }}
-                />
-                Couleur relevée {apercu.brandColor} → thème «{' '}
-                {nomDuTheme(themeDepuisCouleur(apercu.brandColor))} »
-              </p>
-            )}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+              {apercu.brandColor && (
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block w-3 h-3 rounded-full border border-black/10"
+                    style={{ backgroundColor: apercu.brandColor }}
+                  />
+                  Couleur relevée {apercu.brandColor}
+                </span>
+              )}
+              <label className="inline-flex items-center gap-1.5">
+                Thème de la page :
+                <select
+                  value={themeChoisi}
+                  onChange={(e) => setThemeChoisi(e.target.value)}
+                  className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">
+                    {apercu.brandColor
+                      ? `Automatique — ${nomDuTheme(themeDepuisCouleur(apercu.brandColor))}`
+                      : 'Automatique (défaut)'}
+                  </option>
+                  {PROVIDER_THEMES.map((t) => (
+                    <option key={t.id} value={t.id}>{t.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             {/* Relisez AVANT de créer : cet arbre est exactement ce que
                 l'IA a trié — une variation prise pour une prestation ou un
                 supplément mal rangé se voit ici d'un coup d'œil. */}
@@ -310,13 +384,34 @@ export default function SalesDemoPage() {
               <div key={d.id} className="px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.businessName}</p>
-                  <p className="text-xs text-gray-400">
-                    {d.expired
-                      ? 'expirée'
-                      : d.expiresAt
-                        ? `valable jusqu'au ${new Date(d.expiresAt).toLocaleDateString('fr-FR')}`
-                        : ''}
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {d.businessName}
+                    {d.claimedProviderName && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                        <PartyPopper className="w-3 h-3" /> Compte créé
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-3">
+                    <span>
+                      {d.expired
+                        ? 'expirée'
+                        : d.expiresAt
+                          ? `valable jusqu'au ${new Date(d.expiresAt).toLocaleDateString('fr-FR')}`
+                          : ''}
+                    </span>
+                    {/* Le signal de relance : le prospect a-t-il ouvert sa page ? */}
+                    <span className={`inline-flex items-center gap-1 ${d.views > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                      <Eye className="w-3 h-3" />
+                      {d.views === 0
+                        ? 'jamais ouverte'
+                        : `${d.views} vue${d.views > 1 ? 's' : ''}${d.lastViewedAt ? ` · ${depuis(d.lastViewedAt)}` : ''}`}
+                    </span>
+                    {d.sentTo.length > 0 && (
+                      <span className="inline-flex items-center gap-1">
+                        <Mail className="w-3 h-3" /> {d.sentTo[d.sentTo.length - 1]}
+                      </span>
+                    )}
                   </p>
                 </div>
                 {!d.expired && (
@@ -335,11 +430,18 @@ export default function SalesDemoPage() {
                       <Pencil className="w-3 h-3" /> Modifier
                     </button>
                     <button
-                      onClick={() => { setEnvoiId(envoiId === d.id ? null : d.id); setEnvoiEmail(''); }}
+                      onClick={() => { setEnvoiId(envoiId === d.id ? null : d.id); setEnvoiEmail(''); setEnvoiMessage(''); }}
                       title="Envoyer la démo au prospect par e-mail"
                       className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
                     >
                       <Mail className="w-3 h-3" /> {envoiFait === d.id ? 'Envoyé ✓' : 'Envoyer'}
+                    </button>
+                    <button
+                      onClick={() => setPhotosId(photosId === d.id ? null : d.id)}
+                      title="Logo et photo de couverture personnalisés"
+                      className="text-xs text-gray-500 hover:underline inline-flex items-center gap-1"
+                    >
+                      <ImagePlus className="w-3 h-3" /> Photos
                     </button>
                   </>
                 )}
@@ -357,24 +459,69 @@ export default function SalesDemoPage() {
                 </button>
               </div>
               {envoiId === d.id && (
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="email"
-                    value={envoiEmail}
-                    onChange={(e) => setEnvoiEmail(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') void envoyer(d.id); }}
-                    placeholder="email-du-prospect@exemple.fr"
-                    autoFocus
-                    className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100"
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      value={envoiEmail}
+                      onChange={(e) => setEnvoiEmail(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void envoyer(d.id); }}
+                      placeholder="email-du-prospect@exemple.fr"
+                      autoFocus
+                      className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100"
+                    />
+                    <button
+                      onClick={() => envoyer(d.id)}
+                      disabled={envoiEnCours || !envoiEmail.trim()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-medium disabled:opacity-50"
+                    >
+                      {envoiEnCours ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                      Envoyer l&apos;e-mail
+                    </button>
+                  </div>
+                  <textarea
+                    value={envoiMessage}
+                    onChange={(e) => setEnvoiMessage(e.target.value.slice(0, 600))}
+                    placeholder="Un mot personnel en tête d'e-mail (optionnel) — « Ravi de notre échange de ce matin… »"
+                    rows={2}
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100"
                   />
-                  <button
-                    onClick={() => envoyer(d.id)}
-                    disabled={envoiEnCours || !envoiEmail.trim()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-medium disabled:opacity-50"
-                  >
-                    {envoiEnCours ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-                    Envoyer l&apos;e-mail
-                  </button>
+                </div>
+              )}
+              {photosId === d.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-4 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                  {([['logo', 'Logo / portrait'], ['cover', 'Photo de couverture']] as const).map(([kind, label]) => (
+                    <label key={kind} className="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+                      {d.photos[kind] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={d.photos[kind] as string} alt="" className="w-8 h-8 rounded object-cover border border-gray-200 dark:border-gray-700" />
+                      ) : (
+                        <span className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 inline-flex items-center justify-center">
+                          <ImagePlus className="w-4 h-4 text-gray-400" />
+                        </span>
+                      )}
+                      <span>
+                        {label}
+                        <span className="block text-[10px] text-gray-400">
+                          {uploadEnCours === `${d.id}:${kind}` ? 'envoi en cours…' : d.photos[kind] ? 'remplacer' : 'JPEG, PNG, WebP — 5 Mo max'}
+                        </span>
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={uploadEnCours !== null}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void televerser(d.id, kind, f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <span className="text-[10px] text-gray-400 basis-full">
+                    Le logo remplace le portrait rond de la page, la couverture remplace l&apos;image du secteur — visibles immédiatement sur la démo.
+                  </span>
                 </div>
               )}
               </div>

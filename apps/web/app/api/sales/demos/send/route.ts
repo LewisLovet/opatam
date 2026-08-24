@@ -15,9 +15,10 @@ export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { id, email } = await request.json().catch(() => ({}));
+  const { id, email, message } = await request.json().catch(() => ({}));
   if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'id requis' }, { status: 400 });
   const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const messagePerso = typeof message === 'string' ? message.slice(0, 600) : null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
     return NextResponse.json({ error: 'Adresse e-mail invalide' }, { status: 400 });
   }
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     demoUrl: `${baseUrl}/p/demo-${id}`,
     expiresLe: expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
     fromName,
+    message: messagePerso,
   });
 
   const { Resend } = await import('resend');

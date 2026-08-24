@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { parseDemoConfig, configEnEuros, demoConfigStoredSchema } from '@/lib/sales-demo';
+import { PROVIDER_THEMES } from '@booking-app/shared';
 
 /**
  * Démos personnalisées d'un commercial.
@@ -25,11 +26,25 @@ import { parseDemoConfig, configEnEuros, demoConfigStoredSchema } from '@/lib/sa
 
 const DEMO_TTL_DAYS = 30;
 
+/** Thème choisi à la main par le commercial — écrit dans la config, où il
+ *  prime sur la couleur relevée par l'IA. Une valeur inconnue est ignorée. */
+function appliquerTheme(config: { themeId?: string }, themeId: unknown): void {
+  // null = retour à l'automatique (couleur du document) — efface un choix
+  // manuel resté dans le JSON rechargé par « Modifier ».
+  if (themeId === null) {
+    delete config.themeId;
+    return;
+  }
+  if (typeof themeId === 'string' && PROVIDER_THEMES.some((t) => t.id === themeId)) {
+    config.themeId = themeId;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { pasted } = await request.json().catch(() => ({}));
+  const { pasted, themeId } = await request.json().catch(() => ({}));
   if (typeof pasted !== 'string' || !pasted.trim()) {
     return NextResponse.json({ error: 'Collez la réponse JSON de l’IA.' }, { status: 400 });
   }
@@ -37,6 +52,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.ok) {
     return NextResponse.json({ error: 'Configuration invalide', erreurs: parsed.erreurs }, { status: 400 });
   }
+  appliquerTheme(parsed.config, themeId);
 
   const db = getAdminFirestore();
   const expiresAt = Timestamp.fromDate(new Date(Date.now() + DEMO_TTL_DAYS * 86_400_000));
@@ -111,6 +127,12 @@ export async function GET(request: NextRequest) {
         createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
         expiresAt: x.expiresAt?.toDate?.()?.toISOString() ?? null,
         expired: (x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now(),
+        // Signaux commerciaux — le cœur de la relance.
+        views: typeof x.views === 'number' ? x.views : 0,
+        lastViewedAt: x.lastViewedAt?.toDate?.()?.toISOString() ?? null,
+        sentTo: Array.isArray(x.sentTo) ? x.sentTo : [],
+        claimedProviderName: x.claimedProviderName ?? null,
+        photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
       };
     }),
   });
@@ -120,7 +142,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { id, pasted } = await request.json().catch(() => ({}));
+  const { id, pasted, themeId } = await request.json().catch(() => ({}));
   if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'id requis' }, { status: 400 });
   if (typeof pasted !== 'string' || !pasted.trim()) {
     return NextResponse.json({ error: 'Collez la réponse JSON de l’IA.' }, { status: 400 });
@@ -129,6 +151,7 @@ export async function PATCH(request: NextRequest) {
   if (!parsed.ok) {
     return NextResponse.json({ error: 'Configuration invalide', erreurs: parsed.erreurs }, { status: 400 });
   }
+  appliquerTheme(parsed.config, themeId);
 
   const acces = await demoAccessible(id, auth.identity);
   if (!acces.ok) return NextResponse.json({ error: acces.error }, { status: acces.status });

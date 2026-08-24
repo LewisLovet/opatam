@@ -1,4 +1,5 @@
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { demoConfigStoredSchema, type DemoConfig } from '@/lib/sales-demo';
 
 /**
@@ -12,6 +13,8 @@ import { demoConfigStoredSchema, type DemoConfig } from '@/lib/sales-demo';
 export interface LoadedDemo {
   config: DemoConfig;
   staffUid: string;
+  /** Photos téléversées par le commercial — priment sur les images de secteur. */
+  photos: { logo?: string; cover?: string };
 }
 
 export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
@@ -24,7 +27,14 @@ export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
   // Schéma de LECTURE : les prix stockés sont DÉJÀ en centimes.
   const parsed = demoConfigStoredSchema.safeParse(data.config);
   if (!parsed.success) return null;
-  return { config: parsed.data, staffUid: data.staffUid ?? '' };
+  return {
+    config: parsed.data,
+    staffUid: data.staffUid ?? '',
+    photos: {
+      logo: typeof data.photos?.logo === 'string' ? data.photos.logo : undefined,
+      cover: typeof data.photos?.cover === 'string' ? data.photos.cover : undefined,
+    },
+  };
 }
 
 /** `/p/demo-abc123` → 'abc123', sinon null. Le slug 'demo' nu reste la
@@ -32,4 +42,17 @@ export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
 export function demoIdFromSlug(slug: string): string | null {
   const m = /^demo-([A-Za-z0-9]{10,30})$/.exec(slug);
   return m ? m[1] : null;
+}
+
+/**
+ * Une vue de plus sur la démo — appelé au rendu de la vitrine, sans attendre
+ * le résultat : le signal commercial (« le prospect a ouvert le lien ») vaut
+ * mieux qu'une précision parfaite, et un échec ne doit jamais coûter un rendu.
+ */
+export function compterVueDemo(demoId: string): void {
+  getAdminFirestore()
+    .collection('salesDemoLinks')
+    .doc(demoId)
+    .update({ views: FieldValue.increment(1), lastViewedAt: FieldValue.serverTimestamp() })
+    .catch(() => {});
 }

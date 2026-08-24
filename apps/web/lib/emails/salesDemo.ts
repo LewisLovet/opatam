@@ -17,6 +17,18 @@ export interface SalesDemoEmailArgs {
   expiresLe: string;
   /** Nom du commercial, pour signer. */
   fromName?: string | null;
+  /** Mot personnel du commercial, texte brut — échappé ici avant insertion. */
+  message?: string | null;
+}
+
+/** Le message vient d'un champ libre : tout HTML y est du texte, jamais du code. */
+function echapperHtml(texte: string): string {
+  return texte
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '<br />');
 }
 
 export function generateSalesDemoEmail(args: SalesDemoEmailArgs): { subject: string; html: string } {
@@ -33,6 +45,11 @@ export function generateSalesDemoEmail(args: SalesDemoEmailArgs): { subject: str
       </div>
       <div style="padding:16px 32px 8px;font-size:15px;line-height:1.6;color:#3f3f46;">
         <p style="margin:0 0 14px;">Bonjour,</p>
+        ${
+          args.message?.trim()
+            ? `<div style="margin:0 0 16px;padding:12px 16px;background:#f8f7f5;border-left:3px solid #c81e3a;border-radius:0 8px 8px 0;color:#3f3f46;">${echapperHtml(args.message.trim())}</div>`
+            : ''
+        }
         <p style="margin:0 0 14px;">
           Nous avons préparé une démonstration de votre page de réservation, avec vos
           prestations et vos tarifs. Parcourez-la, testez une réservation — rien n'est

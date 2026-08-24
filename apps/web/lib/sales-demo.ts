@@ -137,6 +137,7 @@ export function configEnEuros(config: DemoConfig): Record<string, unknown> {
     description: config.description || undefined,
     city: config.city || undefined,
     sector: config.sector || undefined,
+    themeId: config.themeId,
     brandColor: config.brandColor,
     categories: config.categories.map((c) => ({
       name: c.name,

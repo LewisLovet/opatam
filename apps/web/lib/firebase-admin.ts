@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
@@ -70,4 +71,9 @@ export function getAdminFirestore(): FirebaseFirestore.Firestore {
 export function getAdminAuth() {
   getOrInitApp();
   return getAuth();
+}
+
+export function getAdminStorage() {
+  getOrInitApp();
+  return getStorage();
 }

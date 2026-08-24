@@ -15,7 +15,7 @@ import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 import { getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
-import { loadDemo, demoIdFromSlug } from '@/lib/sales-demo-load';
+import { loadDemo, demoIdFromSlug, compterVueDemo } from '@/lib/sales-demo-load';
 import { signSalesLink } from '@/lib/sales-attribution';
 import { buildDemoData } from '@/lib/sales-demo-build';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
@@ -263,7 +263,8 @@ export default async function ProviderPage({ params }: PageProps) {
   if (demoId) {
     const demo = await loadDemo(demoId);
     if (!demo) notFound(); // inexistante ou expirée (30 j)
-    const d = buildDemoData(demo.config, demoId).page;
+    compterVueDemo(demoId); // signal commercial : le prospect a ouvert le lien
+    const d = buildDemoData(demo.config, demoId, demo.photos).page;
     // Le CTA d'inscription porte l'attribution du commercial : un prospect
     // qui s'inscrit depuis SA démo lui est crédité — la boucle démo →
     // inscription → attribution se referme ici.

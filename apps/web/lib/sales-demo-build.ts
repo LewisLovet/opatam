@@ -129,7 +129,11 @@ function imagesDuSecteur(sector: string | undefined): JeuImages | null {
   return null;
 }
 
-export function buildDemoData(config: DemoConfig, demoId: string) {
+export function buildDemoData(
+  config: DemoConfig,
+  demoId: string,
+  photos: { logo?: string; cover?: string } = {},
+) {
   const slug = `demo-${demoId}`;
 
   // Les prestations « sur devis » (sans prix exploitable) sont écartées : la
@@ -218,6 +222,10 @@ export function buildDemoData(config: DemoConfig, demoId: string) {
           portfolioPhotos: images.galerie,
         }
       : {}),
+    // Les photos téléversées par le commercial priment sur tout : le logo
+    // remplace le portrait, la couverture remplace celle du secteur.
+    ...(photos.logo ? { photoURL: photos.logo } : {}),
+    ...(photos.cover ? { coverPhotoURL: photos.cover } : {}),
     rating: { average: 5, count: reviews.length, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: reviews.length } },
   };
 

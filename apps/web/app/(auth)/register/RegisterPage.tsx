@@ -21,6 +21,7 @@ import {
   Plus,
   X,
   Layers,
+  CheckCircle,
 } from 'lucide-react';
 import { Button, Input, Checkbox, GoogleAddressAutocomplete, type GoogleAddressSuggestion, CountrySelect } from '@/components/ui';
 import { StepIndicator } from '@/components/common/StepIndicator';
@@ -170,6 +171,7 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<WizardData>(DEFAULT_DATA);
+  const [prefillDemo, setPrefillDemo] = useState(false);
 
   // Fire a `Lead` event on first mount — Meta uses this to model
   // the top-of-funnel pool for ad audiences. The pixel itself is
@@ -230,6 +232,7 @@ export default function RegisterPage() {
             prev.businessName.trim() !== '' || prev.services.some((svc) => svc.name.trim() !== '');
           if (dejaCommence) return prev;
           sessionStorage.setItem('demo-prefill-done', '1');
+          setPrefillDemo(true);
           return {
             ...prev,
             businessName: prefill.businessName,
@@ -723,6 +726,17 @@ export default function RegisterPage() {
           Ces informations apparaîtront sur votre page publique
         </p>
       </div>
+
+      {prefillDemo && (
+        <div className="flex items-start gap-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 px-4 py-3">
+          <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-primary-800 dark:text-primary-300">
+            Nous avons pré-rempli votre inscription depuis votre page de démonstration —
+            vos prestations et vos tarifs sont déjà en place. Vérifiez chaque étape et
+            ajustez librement avant de valider.
+          </p>
+        </div>
+      )}
 
       <Input
         label="Nom de l'entreprise / activité"

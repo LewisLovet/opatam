@@ -106,7 +106,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   if (demoId) {
     const demo = await loadDemo(demoId);
     if (!demo) notFound();
-    const d = buildDemoData(demo.config, demoId).booking;
+    const d = buildDemoData(demo.config, demoId, demo.photos).booking;
     return (
       <>
         {/* Le tunnel hérite de la couleur de la vitrine — même continuité
