@@ -112,6 +112,39 @@ export async function POST(request: NextRequest) {
           } catch (e) {
             console.warn('[attribution/claim] notification démo échouée:', e);
           }
+          // Pipeline : le prospect du commercial passe « Compte créé » et se
+          // relie au compte. Retrouvé par l'e-mail du nouvel inscrit.
+          try {
+            const userSnap = await db.collection('users').doc(uid).get();
+            const emailInscrit = (userSnap.data()?.email ?? '').toLowerCase();
+            if (emailInscrit) {
+              const leads = await db
+                .collection('salesLeads')
+                .where('ownerUid', '==', verified.payload.staffUid)
+                .where('email', '==', emailInscrit)
+                .limit(1)
+                .get();
+              if (!leads.empty) {
+                const leadRef = leads.docs[0].ref;
+                await leadRef.update({
+                  stage: 'essai_cree',
+                  linkedProviderId: uid,
+                  lastInteractionAt: FieldValue.serverTimestamp(),
+                  updatedAt: FieldValue.serverTimestamp(),
+                });
+                await db.collection('salesActivities').add({
+                  leadId: leadRef.id,
+                  authorUid: verified.payload.staffUid,
+                  type: 'changement_etape',
+                  stage: 'essai_cree',
+                  body: `Compte créé : ${nomProvider}`,
+                  createdAt: FieldValue.serverTimestamp(),
+                });
+              }
+            }
+          } catch (e) {
+            console.warn('[attribution/claim] liaison pipeline échouée:', e);
+          }
         })();
       }
     }

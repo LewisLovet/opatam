@@ -11,12 +11,15 @@ import {
   Check,
   ChevronRight,
   Eye,
+  Kanban,
   PartyPopper,
+  Phone,
   Rocket,
   Megaphone,
   Wand2,
   X,
 } from 'lucide-react';
+import { STAGE_LABELS } from '@/lib/sales-leads';
 
 /**
  * Tableau de bord commercial — la journée en un coup d'œil.
@@ -54,6 +57,27 @@ interface DemoRow {
   claimedProviderName: string | null;
   coverUrl: string | null;
 }
+interface LeadRow {
+  id: string;
+  stage: string;
+  lostReason: string | null;
+  businessName: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  nextActionAt: string | null;
+}
+
+/** Le tunnel, regroupé pour la lecture — les 10 étapes du modèle restent la
+ *  vérité, l'affichage en montre 6. */
+const TUNNEL: Array<{ label: string; stages: string[] }> = [
+  { label: 'À contacter', stages: ['prospect'] },
+  { label: 'En discussion', stages: ['contacte', 'reponse', 'qualifie'] },
+  { label: 'Démo', stages: ['demo_planifiee', 'demo_realisee'] },
+  { label: 'Compte créé', stages: ['essai_cree'] },
+  { label: 'Activé', stages: ['essai_active'] },
+  { label: 'Payant', stages: ['payant', 'conserve_j90'] },
+];
 
 function prochaineAction(a: ActivationDetail): string {
   switch (a.nextStep) {
@@ -198,6 +222,7 @@ function Vide({ texte }: { texte: string }) {
 export default function SalesDashboardPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
+  const [leads, setLeads] = useState<LeadRow[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
@@ -205,13 +230,15 @@ export default function SalesDashboardPage() {
       try {
         const token = await getAuth().currentUser?.getIdToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const [ovRes, demosRes] = await Promise.all([
+        const [ovRes, demosRes, leadsRes] = await Promise.all([
           fetch('/api/sales/overview', { headers }),
           fetch('/api/sales/demos', { headers }),
+          fetch('/api/sales/leads', { headers }),
         ]);
         if (!ovRes.ok) throw new Error((await ovRes.json()).error ?? `Erreur ${ovRes.status}`);
         setData(await ovRes.json());
         if (demosRes.ok) setDemos((await demosRes.json()).demos);
+        if (leadsRes.ok) setLeads((await leadsRes.json()).leads);
       } catch (e) {
         setErreur(e instanceof Error ? e.message : 'Erreur inconnue');
       }
@@ -222,6 +249,12 @@ export default function SalesDashboardPage() {
   if (!data) return <Loader />;
 
   const demosActives = (demos ?? []).filter((d) => !d.expired);
+  const actifs = (leads ?? []).filter((l) => !l.lostReason);
+  const finJour = new Date();
+  finJour.setHours(23, 59, 59, 999);
+  const aRelancer = actifs
+    .filter((l) => l.nextActionAt && new Date(l.nextActionAt).getTime() <= finJour.getTime())
+    .sort((a, b) => (a.nextActionAt! < b.nextActionAt! ? -1 : 1));
   const vuesTotal = demosActives.reduce((n, d) => n + d.views, 0);
   const converties = (demos ?? []).filter((d) => d.claimedProviderName).length;
   const jamaisOuvertes = demosActives.filter((d) => d.views === 0 && d.sentTo.length > 0);
@@ -300,6 +333,110 @@ export default function SalesDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Le tunnel — la colonne vertébrale de l'écran ── */}
+      <SectionCard
+        icone={Kanban}
+        ton="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+        titre="Votre tunnel"
+        sousTitre="Où en sont vos prospects, du premier contact à l'abonnement"
+        action={
+          <Link
+            href="/sales/pipeline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap"
+          >
+            Ouvrir le pipeline <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        }
+      >
+        {leads === null ? (
+          <p className="px-5 py-6 text-sm text-gray-400">Chargement…</p>
+        ) : actifs.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Votre pipeline est vide — ajoutez vos premiers prospects pour que le tunnel prenne vie.
+            </p>
+            <Link
+              href="/sales/pipeline"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:opacity-90"
+            >
+              <Kanban className="w-4 h-4" /> Ouvrir le pipeline
+            </Link>
+          </div>
+        ) : (
+          <div className="px-5 py-4">
+            <div className="flex items-end gap-1.5">
+              {TUNNEL.map((etape, i) => {
+                const n = actifs.filter((l) => etape.stages.includes(l.stage)).length;
+                const max = Math.max(1, ...TUNNEL.map((e2) => actifs.filter((l) => e2.stages.includes(l.stage)).length));
+                return (
+                  <Link
+                    key={etape.label}
+                    href="/sales/pipeline"
+                    className="flex-1 group"
+                    title={`${n} prospect${n > 1 ? 's' : ''} — ${etape.label}`}
+                  >
+                    <p className="text-lg font-bold tabular-nums text-gray-900 dark:text-white leading-none text-center">
+                      {n}
+                    </p>
+                    <div className="mt-1.5 h-14 flex items-end rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      <div
+                        className={`w-full transition-all ${i >= 3 ? 'bg-emerald-500' : 'bg-red-500/80'} group-hover:opacity-80`}
+                        style={{ height: `${Math.round((n / max) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[10px] text-center text-gray-500 dark:text-gray-400 leading-tight">
+                      {etape.label}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              « Payant » se remplira automatiquement quand l&apos;attribution des paiements sera branchée —
+              en attendant, l&apos;étape se coche à la main sur la fiche.
+            </p>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── À relancer aujourd'hui — les rappels posés sur les fiches ── */}
+      {aRelancer.length > 0 && (
+        <SectionCard
+          icone={Phone}
+          ton="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+          titre="À relancer aujourd'hui"
+          sousTitre="Les rappels que vous avez posés sur vos fiches prospects"
+        >
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {aRelancer.slice(0, 8).map((l) => {
+              const retard = new Date(l.nextActionAt!).toDateString() !== new Date().toDateString();
+              return (
+                <Link
+                  key={l.id}
+                  href={`/sales/pipeline?lead=${l.id}`}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{l.businessName}</p>
+                    <p className="text-[11px] text-gray-400 truncate">
+                      {[STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] ?? l.stage, l.contactName, l.phone]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                  {retard && (
+                    <span className="text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                      en retard
+                    </span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-gray-300" />
+                </Link>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── Relance démos : envoyées mais jamais ouvertes ── */}
       {jamaisOuvertes.length > 0 && (

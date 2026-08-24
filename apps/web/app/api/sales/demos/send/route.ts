@@ -73,5 +73,60 @@ export async function POST(request: NextRequest) {
     sentAt: FieldValue.serverTimestamp(),
   });
 
+  // Le pipeline suit tout seul : envoyer une démo à un e-mail crée le
+  // prospect s'il n'existe pas, et journalise l'envoi sur sa fiche. Le
+  // commercial n'a pas de double saisie à faire — c'est la condition pour
+  // que le pipeline reste vrai. Best-effort : l'e-mail est parti, rien ici
+  // ne doit faire échouer la réponse.
+  try {
+    const proprietaire = data.staffUid ?? auth.identity.uid;
+    const existants = await db
+      .collection('salesLeads')
+      .where('ownerUid', '==', proprietaire)
+      .where('email', '==', cleanEmail)
+      .limit(1)
+      .get();
+    let leadRef;
+    if (existants.empty) {
+      leadRef = await db.collection('salesLeads').add({
+        ownerUid: proprietaire,
+        stage: 'demo_realisee',
+        lostReason: null,
+        businessName: data.businessName ?? 'Prospect',
+        contactName: null,
+        email: cleanEmail,
+        phone: null,
+        city: data.config?.city ?? null,
+        sector: 'beaute',
+        isTeam: false,
+        source: 'demo',
+        mainPain: null,
+        notes: null,
+        linkedProviderId: null,
+        optOut: false,
+        nextActionAt: null,
+        lastInteractionAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else {
+      leadRef = existants.docs[0].ref;
+      await leadRef.update({
+        lastInteractionAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    await db.collection('salesActivities').add({
+      leadId: leadRef.id,
+      authorUid: auth.identity.uid,
+      type: 'demo',
+      stage: null,
+      body: `Démo « ${data.businessName ?? id} » envoyée à ${cleanEmail}`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn('[demos/send] liaison pipeline échouée:', e);
+  }
+
   return NextResponse.json({ success: true, sentTo: cleanEmail });
 }

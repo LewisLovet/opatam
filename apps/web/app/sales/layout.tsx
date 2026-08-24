@@ -9,7 +9,6 @@ import { Loader } from '@/components/ui';
 import {
   LayoutDashboard,
   Kanban,
-  Users,
   Presentation,
   BookOpen,
   Tag,
@@ -27,8 +26,7 @@ interface StaffInfo {
  *  inertes : le commercial voit où l'outil va, sans liens morts. */
 const NAV = [
   { label: 'Tableau de bord', href: '/sales', icon: LayoutDashboard, ready: true },
-  { label: 'Pipeline', href: '/sales/pipeline', icon: Kanban, ready: false },
-  { label: 'Prospects', href: '/sales/prospects', icon: Users, ready: false },
+  { label: 'Pipeline', href: '/sales/pipeline', icon: Kanban, ready: true },
   { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
   { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: false },
   { label: 'Offres', href: '/sales/offres', icon: Tag, ready: false },
