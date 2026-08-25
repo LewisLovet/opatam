@@ -142,15 +142,33 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
-  const { uid, active } = await request.json();
-  if (!uid || typeof active !== 'boolean') {
-    return NextResponse.json({ error: 'uid + active requis' }, { status: 400 });
+  const { uid, active, objectifPayantsMensuel, tauxCommissionPct } = await request.json();
+  if (!uid) return NextResponse.json({ error: 'uid requis' }, { status: 400 });
+
+  const maj: Record<string, unknown> = {};
+  if (typeof active === 'boolean') maj.active = active;
+  // Objectif et commission — réglés par l'ADMIN uniquement (c'est de la
+  // rémunération) ; null efface, rien n'est promis tant que c'est vide.
+  if (objectifPayantsMensuel === null || typeof objectifPayantsMensuel === 'number') {
+    maj.objectifPayantsMensuel =
+      typeof objectifPayantsMensuel === 'number'
+        ? Math.max(0, Math.min(1000, Math.round(objectifPayantsMensuel)))
+        : null;
+  }
+  if (tauxCommissionPct === null || typeof tauxCommissionPct === 'number') {
+    maj.tauxCommissionPct =
+      typeof tauxCommissionPct === 'number'
+        ? Math.max(0, Math.min(100, Math.round(tauxCommissionPct * 100) / 100))
+        : null;
+  }
+  if (Object.keys(maj).length === 0) {
+    return NextResponse.json({ error: 'Aucune modification' }, { status: 400 });
   }
 
   const ref = getAdminFirestore().collection('staffMembers').doc(uid);
   if (!(await ref.get()).exists) {
     return NextResponse.json({ error: 'Commercial introuvable' }, { status: 404 });
   }
-  await ref.update({ active });
-  return NextResponse.json({ success: true, uid, active });
+  await ref.update(maj);
+  return NextResponse.json({ success: true, uid, ...maj });
 }

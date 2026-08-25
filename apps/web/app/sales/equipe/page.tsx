@@ -32,6 +32,7 @@ interface Chiffres {
   vuesDemos: number;
   comptesCrees: number;
   payants: number;
+  payantsCeMois: number;
   mrrCents: number;
 }
 interface Membre {
@@ -41,7 +42,82 @@ interface Membre {
   role: 'sales' | 'sales_manager';
   active: boolean;
   createdAt: string | null;
+  objectifPayantsMensuel: number | null;
+  tauxCommissionPct: number | null;
   chiffres: Chiffres;
+}
+
+/**
+ * Objectif mensuel + taux de commission d'un membre — modifiables en ligne.
+ * Rémunération = décision d'ADMIN : la route refuse un simple manager, et
+ * l'erreur s'affiche au lieu d'être avalée.
+ */
+function ReglagesMembre({ membre, onEnregistre }: { membre: Membre; onEnregistre: () => void }) {
+  const [objectif, setObjectif] = useState(membre.objectifPayantsMensuel?.toString() ?? '');
+  const [taux, setTaux] = useState(membre.tauxCommissionPct?.toString() ?? '');
+  const [envoi, setEnvoi] = useState(false);
+  const modifie =
+    objectif !== (membre.objectifPayantsMensuel?.toString() ?? '') ||
+    taux !== (membre.tauxCommissionPct?.toString() ?? '');
+
+  const enregistrer = async () => {
+    setEnvoi(true);
+    try {
+      const res = await fetch('/api/admin/staff', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+        body: JSON.stringify({
+          uid: membre.uid,
+          objectifPayantsMensuel: objectif.trim() === '' ? null : parseInt(objectif, 10) || 0,
+          tauxCommissionPct: taux.trim() === '' ? null : parseFloat(taux.replace(',', '.')) || 0,
+        }),
+      });
+      if (!res.ok) {
+        alert(
+          res.status === 403
+            ? 'La rémunération se règle avec un compte administrateur.'
+            : ((await res.json()).error ?? 'Enregistrement impossible'),
+        );
+        return;
+      }
+      onEnregistre();
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  const mini =
+    'w-14 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-1.5 py-1 text-xs text-right tabular-nums text-gray-900 dark:text-white';
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <input
+        value={objectif}
+        onChange={(e) => setObjectif(e.target.value)}
+        placeholder="—"
+        title="Objectif mensuel (abonnés payants)"
+        className={mini}
+      />
+      <span className="text-[10px] text-gray-400">/mois ·</span>
+      <input
+        value={taux}
+        onChange={(e) => setTaux(e.target.value)}
+        placeholder="—"
+        title="Taux de commission (% du MRR pendant 12 mois)"
+        className={mini}
+      />
+      <span className="text-[10px] text-gray-400">%</span>
+      {modifie && (
+        <button
+          onClick={enregistrer}
+          disabled={envoi}
+          className="p-1 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+          title="Enregistrer"
+        >
+          {envoi ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function EquipePage() {
@@ -234,6 +310,9 @@ export default function EquipePage() {
                   <th className="px-3 py-2.5 font-semibold text-right">Comptes</th>
                   <th className="px-3 py-2.5 font-semibold text-right">Payants</th>
                   <th className="px-3 py-2.5 font-semibold text-right">MRR</th>
+                  <th className="px-3 py-2.5 font-semibold text-right" title="Objectif mensuel (abonnés payants) et taux de commission (% du MRR, 12 mois)">
+                    Objectif · Commission
+                  </th>
                   <th className="px-5 py-2.5 font-semibold text-right">Accès</th>
                 </tr>
               </thead>
@@ -280,6 +359,14 @@ export default function EquipePage() {
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-white">
                       {(m.chiffres.mrrCents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                    </td>
+                    <td className="px-3 py-3">
+                      {m.objectifPayantsMensuel !== null && (
+                        <p className="text-right text-[10px] text-gray-400 mb-1">
+                          ce mois : <span className={m.chiffres.payantsCeMois >= m.objectifPayantsMensuel ? 'text-emerald-600 font-semibold' : ''}>{m.chiffres.payantsCeMois}</span>/{m.objectifPayantsMensuel}
+                        </p>
+                      )}
+                      <ReglagesMembre membre={m} onEnregistre={() => void charger()} />
                     </td>
                     <td className="px-5 py-3 text-right">
                       <button

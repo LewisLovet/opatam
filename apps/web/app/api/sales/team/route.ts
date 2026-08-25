@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     vuesDemos: number;
     comptesCrees: number;
     payants: number;
+    payantsCeMois: number;
     mrrCents: number;
   }
   const vide = (): Chiffres => ({
@@ -42,8 +43,12 @@ export async function GET(request: NextRequest) {
     vuesDemos: 0,
     comptesCrees: 0,
     payants: 0,
+    payantsCeMois: 0,
     mrrCents: 0,
   });
+  const debutMois = new Date();
+  debutMois.setDate(1);
+  debutMois.setHours(0, 0, 0, 0);
   const parStaff = new Map<string, Chiffres>();
   const de = (uid: string) => {
     if (!parStaff.has(uid)) parStaff.set(uid, vide());
@@ -52,6 +57,7 @@ export async function GET(request: NextRequest) {
 
   leadsSnap.docs.forEach((d) => {
     const x = d.data();
+    if (!x.ownerUid) return; // pool d'équipe : à personne pour l'instant
     const c = de(x.ownerUid);
     if (x.lostReason) c.prospectsPerdus += 1;
     else c.prospects += 1;
@@ -70,6 +76,8 @@ export async function GET(request: NextRequest) {
     const c = de(x.staffUid);
     c.payants += 1;
     c.mrrCents += typeof x.mrrCents === 'number' ? x.mrrCents : 0;
+    const quand = x.firstPaidAt?.toDate?.();
+    if (quand && quand >= debutMois) c.payantsCeMois += 1;
   });
 
   return NextResponse.json({
@@ -82,6 +90,8 @@ export async function GET(request: NextRequest) {
           email: x.email ?? '—',
           role: x.role,
           active: x.active === true,
+          objectifPayantsMensuel: typeof x.objectifPayantsMensuel === 'number' ? x.objectifPayantsMensuel : null,
+          tauxCommissionPct: typeof x.tauxCommissionPct === 'number' ? x.tauxCommissionPct : null,
           createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
           chiffres: parStaff.get(d.id) ?? vide(),
         };

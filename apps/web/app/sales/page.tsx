@@ -64,6 +64,9 @@ interface ConversionRow {
 }
 interface LeadRow {
   id: string;
+  ownerUid: string | null;
+  profileUrl: string | null;
+  city: string | null;
   stage: string;
   lostReason: string | null;
   businessName: string;
@@ -228,34 +231,58 @@ export default function SalesDashboardPage() {
   const [demos, setDemos] = useState<DemoRow[] | null>(null);
   const [leads, setLeads] = useState<LeadRow[] | null>(null);
   const [conversions, setConversions] = useState<ConversionRow[] | null>(null);
+  const [moi, setMoi] = useState<{
+    uid: string;
+    role: string;
+    objectifPayantsMensuel: number | null;
+    tauxCommissionPct: number | null;
+  } | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const headers = await enTetesStaff();
-        const [ovRes, demosRes, leadsRes, convRes] = await Promise.all([
+        const [ovRes, demosRes, leadsRes, convRes, moiRes] = await Promise.all([
           fetch('/api/sales/overview', { headers }),
           fetch('/api/sales/demos', { headers }),
           fetch('/api/sales/leads', { headers }),
           fetch('/api/sales/conversions', { headers }),
+          fetch('/api/sales/me', { headers }),
         ]);
         if (!ovRes.ok) throw new Error((await ovRes.json()).error ?? `Erreur ${ovRes.status}`);
         setData(await ovRes.json());
         if (demosRes.ok) setDemos((await demosRes.json()).demos);
         if (leadsRes.ok) setLeads((await leadsRes.json()).leads);
         if (convRes.ok) setConversions((await convRes.json()).conversions);
+        if (moiRes.ok) setMoi(await moiRes.json());
       } catch (e) {
         setErreur(e instanceof Error ? e.message : 'Erreur inconnue');
       }
     })();
   }, []);
 
+  const prendre = async (l: LeadRow) => {
+    if (!confirm(`Prendre en charge « ${l.businessName} » ? Il rejoindra votre pipeline.`)) return;
+    const headers = { 'Content-Type': 'application/json', ...(await enTetesStaff()) };
+    const res = await fetch('/api/sales/leads/claim', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: l.id }),
+    });
+    if (!res.ok) {
+      alert((await res.json()).error ?? 'Prise en charge impossible');
+    }
+    const rel = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
+    if (rel.ok) setLeads((await rel.json()).leads);
+  };
+
   if (erreur) return <p className="text-red-600">{erreur}</p>;
   if (!data) return <Loader />;
 
   const demosActives = (demos ?? []).filter((d) => !d.expired);
-  const actifs = (leads ?? []).filter((l) => !l.lostReason);
+  const actifs = (leads ?? []).filter((l) => !l.lostReason && l.ownerUid !== null);
+  const aPrendre = (leads ?? []).filter((l) => !l.lostReason && l.ownerUid === null);
   const finJour = new Date();
   finJour.setHours(23, 59, 59, 999);
   const aRelancer = actifs
@@ -347,6 +374,110 @@ export default function SalesDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Objectif du mois + commission — le moteur ── */}
+      {moi && (moi.objectifPayantsMensuel !== null || moi.tauxCommissionPct !== null) && (() => {
+        const debutMois = new Date();
+        debutMois.setDate(1);
+        debutMois.setHours(0, 0, 0, 0);
+        const payantsCeMois = (conversions ?? []).filter(
+          (c) => c.firstPaidAt && new Date(c.firstPaidAt) >= debutMois,
+        ).length;
+        const objectif = moi.objectifPayantsMensuel;
+        // Commission du mois : % du MRR de chaque conversion des 12 derniers
+        // mois (le modèle : % versé pendant 12 mois). Estimation hors
+        // résiliations — l'exactitude viendra avec le suivi du churn.
+        const il12Mois = new Date();
+        il12Mois.setMonth(il12Mois.getMonth() - 12);
+        const mrrCommissionnable = (conversions ?? [])
+          .filter((c) => c.firstPaidAt && new Date(c.firstPaidAt) >= il12Mois)
+          .reduce((n, c) => n + c.mrrCents, 0);
+        const commission = moi.tauxCommissionPct !== null
+          ? (mrrCommissionnable * moi.tauxCommissionPct) / 100 / 100
+          : null;
+        return (
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1 min-w-[220px]">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  Objectif du mois — abonnés payants
+                </p>
+                {objectif !== null ? (
+                  <>
+                    <p className="text-xl font-bold tabular-nums text-gray-900 dark:text-white mt-1">
+                      {payantsCeMois} <span className="text-sm font-normal text-gray-400">/ {objectif}</span>
+                    </p>
+                    <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${payantsCeMois >= objectif ? 'bg-emerald-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(100, Math.round((payantsCeMois / Math.max(1, objectif)) * 100))}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-1">À définir par votre manager.</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  Commission estimée ce mois-ci
+                </p>
+                {commission !== null ? (
+                  <>
+                    <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-1">
+                      {commission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      {moi.tauxCommissionPct} % du MRR des conversions de 12 derniers mois — hors résiliations
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-1">Taux à définir.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Prospects poussés par le manager — premier arrivé, premier servi ── */}
+      {aPrendre.length > 0 && (
+        <SectionCard
+          icone={Megaphone}
+          ton="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+          titre="Prospects à prendre en charge"
+          sousTitre="Proposés par le manager — le premier qui les prend se les attribue"
+        >
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {aPrendre.map((l) => (
+              <div key={l.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{l.businessName}</p>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {[l.city, STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS]].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                {l.profileUrl?.startsWith('http') && (
+                  <a
+                    href={l.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:underline whitespace-nowrap"
+                  >
+                    Voir le profil
+                  </a>
+                )}
+                <button
+                  onClick={() => prendre(l)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 whitespace-nowrap"
+                >
+                  Prendre en charge
+                </button>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── Le tunnel — la colonne vertébrale de l'écran ── */}
       <SectionCard

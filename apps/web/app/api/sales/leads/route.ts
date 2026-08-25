@@ -35,6 +35,8 @@ function serialise(id: string, x: FirebaseFirestore.DocumentData) {
     source: x.source ?? null,
     mainPain: x.mainPain ?? null,
     currentPlatform: x.currentPlatform ?? null,
+    profileUrl: x.profileUrl ?? null,
+    pushedBy: x.pushedBy ?? null,
     notes: x.notes ?? null,
     linkedProviderId: x.linkedProviderId ?? null,
     optOut: !!x.optOut,
@@ -59,7 +61,8 @@ export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const parsed = leadCreateSchema.safeParse(await request.json().catch(() => ({})));
+  const brut = await request.json().catch(() => ({}));
+  const parsed = leadCreateSchema.safeParse(brut);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? 'Données invalides' },
@@ -67,9 +70,21 @@ export async function POST(request: NextRequest) {
     );
   }
   const d = parsed.data;
+  // « Proposer à l'équipe » : le prospect part dans le POOL (ownerUid null),
+  // n'importe quel commercial pourra le prendre en charge. Réservé aux
+  // managers — un commercial crée toujours pour lui-même.
+  const pourEquipe = brut.pourEquipe === true;
+  if (pourEquipe && auth.identity.role === 'sales') {
+    return NextResponse.json(
+      { error: 'Seul un manager peut proposer un prospect à l’équipe' },
+      { status: 403 },
+    );
+  }
   const db = getAdminFirestore();
   const ref = await db.collection('salesLeads').add({
-    ownerUid: auth.identity.uid,
+    ownerUid: pourEquipe ? null : auth.identity.uid,
+    pushedBy: pourEquipe ? auth.identity.uid : null,
+    profileUrl: d.profileUrl ?? null,
     stage: d.stage,
     lostReason: null,
     businessName: d.businessName,
@@ -102,12 +117,18 @@ export async function GET(request: NextRequest) {
   // Égalité seule (pas d'orderBy) : aucune dépendance à un index composite —
   // un index oublié au déploiement a déjà produit des 500. Le tri se fait en
   // mémoire, un pipeline tient largement dans 500 documents.
-  const query =
-    auth.identity.role === 'sales'
-      ? db.collection('salesLeads').where('ownerUid', '==', auth.identity.uid).limit(500)
-      : db.collection('salesLeads').limit(500);
-  const snap = await query.get();
-  const leads = snap.docs
+  let docs: FirebaseFirestore.QueryDocumentSnapshot[];
+  if (auth.identity.role === 'sales') {
+    // Ses prospects + le POOL d'équipe (à prendre en charge).
+    const [siens, pool] = await Promise.all([
+      db.collection('salesLeads').where('ownerUid', '==', auth.identity.uid).limit(500).get(),
+      db.collection('salesLeads').where('ownerUid', '==', null).limit(100).get(),
+    ]);
+    docs = [...siens.docs, ...pool.docs];
+  } else {
+    docs = (await db.collection('salesLeads').limit(500).get()).docs;
+  }
+  const leads = docs
     .map((d) => serialise(d.id, d.data()))
     .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
   return NextResponse.json({ leads });
@@ -145,6 +166,7 @@ export async function PATCH(request: NextRequest) {
     'source',
     'mainPain',
     'currentPlatform',
+    'profileUrl',
     'notes',
     'stage',
     'lostReason',

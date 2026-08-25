@@ -36,6 +36,7 @@ export const leadCreateSchema = z.object({
   source: texteCourt(120),
   mainPain: texteCourt(200),
   currentPlatform: texteCourt(60),
+  profileUrl: texteCourt(300),
   notes: texteCourt(2000),
   stage: z.enum(SALES_STAGES).optional().default('prospect'),
   /** ISO — date du prochain contact prévu. */

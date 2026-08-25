@@ -31,6 +31,12 @@ export interface StaffMember {
   active: boolean;
   displayName: string;
   email: string;
+  /** Objectif mensuel : abonnés payants attribués. null = pas encore fixé. */
+  objectifPayantsMensuel?: number | null;
+  /** Commission : % du MRR de chaque conversion, versé pendant 12 mois.
+   *  null = pas encore fixé — RIEN n'est promis tant que ce champ est vide
+   *  (décision direction 2026-08-26). Réglé par l'admin, onglet Équipe. */
+  tauxCommissionPct?: number | null;
   createdAt: Date;
   createdBy: string;
 }
@@ -109,8 +115,13 @@ export type SalesPlatform = (typeof SALES_PLATFORMS)[number];
 
 /** Document `salesLeads/{id}`. */
 export interface SalesLead {
-  /** uid du commercial propriétaire (staffMembers). */
-  ownerUid: string;
+  /** uid du commercial propriétaire — null = POOL D'ÉQUIPE : prospect poussé
+   *  par un manager, en attente qu'un commercial le prenne en charge. */
+  ownerUid: string | null;
+  /** Manager qui a poussé le prospect dans le pool (traçabilité). */
+  pushedBy?: string | null;
+  /** Lien du profil du prospect (Instagram le plus souvent). */
+  profileUrl?: string | null;
   stage: SalesStage;
   /** Renseigné uniquement quand le prospect est perdu. */
   lostReason: SalesLossReason | null;

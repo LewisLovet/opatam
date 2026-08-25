@@ -44,7 +44,9 @@ import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/compo
 
 interface Lead {
   id: string;
-  ownerUid: string;
+  ownerUid: string | null;
+  pushedBy: string | null;
+  profileUrl: string | null;
   stage: (typeof SALES_STAGES)[number];
   lostReason: (typeof SALES_LOSS_REASONS)[number] | null;
   businessName: string;
@@ -227,6 +229,24 @@ function PipelinePage() {
   const [demos, setDemos] = useState<DemoLiee[]>([]);
   // Colonne dont l'explication est dépliée (bouton ⓘ de son en-tête).
   const [aideColonne, setAideColonne] = useState<string | null>(null);
+  const [moi, setMoi] = useState<{ uid: string; role: string } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch('/api/sales/me', { headers: await enTetesStaff() });
+      if (res.ok) setMoi(await res.json());
+    })();
+  }, []);
+
+  const prendre = async (l: Lead) => {
+    if (!confirm(`Prendre en charge « ${l.businessName} » ? Il rejoindra votre pipeline.`)) return;
+    const res = await fetch('/api/sales/leads/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+      body: JSON.stringify({ id: l.id }),
+    });
+    if (!res.ok) alert((await res.json()).error ?? 'Prise en charge impossible');
+    void charger();
+  };
 
   const searchParams = useSearchParams();
 
@@ -380,13 +400,21 @@ function PipelinePage() {
                   )}
                   {cartes.map((l) => {
                     const ech = l.nextActionAt ? echeance(l.nextActionAt) : null;
+                    const duPool = l.ownerUid === null;
+                    // Un prospect du pool ne se glisse pas : il se PREND (un
+                    // commercial clique → confirmation → il devient le sien).
+                    // Le manager peut toujours ouvrir sa fiche.
                     return (
                       <button
                         key={l.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/lead', l.id)}
-                        onClick={() => setOuvertId(l.id)}
-                        className="w-full text-left rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-2.5 shadow-sm hover:shadow-md hover:-translate-y-px transition-all cursor-grab active:cursor-grabbing"
+                        draggable={!duPool}
+                        onDragStart={(e) => !duPool && e.dataTransfer.setData('text/lead', l.id)}
+                        onClick={() => (duPool && moi?.role === 'sales' ? void prendre(l) : setOuvertId(l.id))}
+                        className={`w-full text-left rounded-xl border px-3 py-2.5 shadow-sm hover:shadow-md hover:-translate-y-px transition-all ${
+                          duPool
+                            ? 'border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 cursor-pointer'
+                            : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 cursor-grab active:cursor-grabbing'
+                        }`}
                       >
                         <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
                           {l.businessName}
@@ -395,8 +423,13 @@ function PipelinePage() {
                           {[SECTOR_LABELS[l.sector], l.city].filter(Boolean).join(' · ')}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
+                          {duPool && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-full px-1.5 py-0.5">
+                              À prendre en charge
+                            </span>
+                          )}
                           {/* Sous-étape précise quand la colonne en regroupe plusieurs */}
-                          {groupe.stages.length > 1 && (
+                          {!duPool && groupe.stages.length > 1 && (
                             <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full px-1.5 py-0.5">
                               {STAGE_LABELS[l.stage]}
                             </span>
@@ -431,6 +464,7 @@ function PipelinePage() {
 
       {creation && (
         <NouveauProspect
+          estManager={moi?.role !== 'sales' && moi !== null}
           onFerme={() => setCreation(false)}
           onCree={(lead) => {
             setLeads((prev) => (prev ? [lead, ...prev] : [lead]));
@@ -460,9 +494,11 @@ function PipelinePage() {
 // ── Création rapide ─────────────────────────────────────────────────────────
 
 function NouveauProspect({
+  estManager,
   onFerme,
   onCree,
 }: {
+  estManager: boolean;
   onFerme: () => void;
   onCree: (lead: Lead) => void;
 }) {
@@ -475,7 +511,9 @@ function NouveauProspect({
     sector: 'coiffure' as Lead['sector'],
     source: null as string | null,
     currentPlatform: null as string | null,
+    profileUrl: '',
   });
+  const [pourEquipe, setPourEquipe] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -486,7 +524,7 @@ function NouveauProspect({
       const res = await fetch('/api/sales/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, pourEquipe }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -539,6 +577,12 @@ function NouveauProspect({
               ))}
             </select>
           </div>
+          <input
+            placeholder="Lien du profil (Instagram, TikTok, site…)"
+            value={form.profileUrl}
+            onChange={(e) => setForm({ ...form, profileUrl: e.target.value })}
+            className={champ}
+          />
           <div>
             <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Source du contact</p>
             <ChampAvecListe
@@ -559,6 +603,23 @@ function NouveauProspect({
               placeholderAutre="Nom de l'outil"
             />
           </div>
+          {/* Le manager peut pousser le prospect au POOL : les commerciaux le
+              verront sur leur tableau de bord et le premier qui le prend se
+              l'attribue. */}
+          {estManager && (
+            <label className="flex items-start gap-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-2.5 text-sm text-blue-800 dark:text-blue-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pourEquipe}
+                onChange={(e) => setPourEquipe(e.target.checked)}
+                className="rounded mt-0.5"
+              />
+              <span>
+                <strong>Proposer à l&apos;équipe</strong> — sans attribution : le premier
+                commercial qui le prend en charge se l&apos;attribue.
+              </span>
+            </label>
+          )}
           {erreur && <p className="text-sm text-red-600">{erreur}</p>}
           <button
             onClick={creer}
@@ -641,6 +702,7 @@ function FicheProspect({
         source: form.source,
         mainPain: form.mainPain,
         currentPlatform: form.currentPlatform,
+        profileUrl: form.profileUrl,
         notes: form.notes,
         stage: form.stage,
         nextActionAt: form.nextActionAt,
@@ -783,6 +845,28 @@ function FicheProspect({
                     <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+            <div>
+              <label className={etiquette}>Lien du profil (Instagram, TikTok, site…)</label>
+              <div className="flex gap-2">
+                <input
+                  value={form.profileUrl ?? ''}
+                  onChange={(e) => setForm({ ...form, profileUrl: e.target.value || null })}
+                  placeholder="https://instagram.com/…"
+                  className={champ}
+                />
+                {form.profileUrl?.startsWith('http') && (
+                  <a
+                    href={form.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    title="Ouvrir le profil"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             </div>
             <div>
