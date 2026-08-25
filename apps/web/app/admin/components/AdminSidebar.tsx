@@ -504,6 +504,25 @@ export function AdminMobileSidebar({ open, onClose }: MobileSidebarProps) {
             </div>
           </div>
 
+          {/* Changer d'espace — présent aussi sur mobile (le desktop seul
+              l'avait, retour client). */}
+          <Link
+            href="/sales"
+            onClick={onClose}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-gray-800"
+          >
+            <BriefcaseBusiness className="w-5 h-5" />
+            <span>Espace commercial</span>
+          </Link>
+          <Link
+            href="/pro"
+            onClick={onClose}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-gray-800"
+          >
+            <Store className="w-5 h-5" />
+            <span>Espace pro</span>
+          </Link>
+
           {/* Change code button */}
           <button
             onClick={() => setShowChangeCode(true)}
