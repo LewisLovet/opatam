@@ -16,6 +16,7 @@ import {
   LogOut,
   Eye,
   ArrowLeftRight,
+  Users,
 } from 'lucide-react';
 import { vueCommercialeActive, basculerVueCommerciale } from './entetes';
 
@@ -33,6 +34,8 @@ const NAV = [
   { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
   { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: false },
   { label: 'Offres', href: '/sales/offres', icon: Tag, ready: true },
+  // Réservé manager/admin — filtré au rendu selon le rôle.
+  { label: 'Équipe', href: '/sales/equipe', icon: Users, ready: true, managerOnly: true },
 ];
 
 /**
@@ -97,7 +100,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {NAV.map(({ label, href, icon: Icon, ready }) => {
+          {NAV.filter((n) => !('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager').map(({ label, href, icon: Icon, ready }) => {
             const actif = pathname === href;
             if (!ready) {
               return (
@@ -181,7 +184,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
         {/* Barre mobile : le menu tient sur une ligne défilante */}
         <div className="lg:hidden bg-gray-950 text-white px-4 py-3 flex items-center gap-4 overflow-x-auto">
           <span className="text-sm font-bold whitespace-nowrap">Opatam Sales</span>
-          {NAV.filter((n) => n.ready).map(({ label, href }) => (
+          {NAV.filter((n) => n.ready && (!('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager')).map(({ label, href }) => (
             <Link key={href} href={href} className="text-sm text-gray-300 whitespace-nowrap">
               {label}
             </Link>

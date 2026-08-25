@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   Building2,
   CalendarClock,
+  Info,
   ExternalLink,
   Eye,
   Link2,
@@ -202,6 +203,7 @@ function PipelinePage() {
   const [ouvertId, setOuvertId] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
   const [demos, setDemos] = useState<DemoLiee[]>([]);
+  const [aideVisible, setAideVisible] = useState(false);
 
   const searchParams = useSearchParams();
 
@@ -267,7 +269,21 @@ function PipelinePage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pipeline</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            Pipeline
+            <button
+              onClick={() => setAideVisible((v) => !v)}
+              className={`p-1 rounded-lg transition-colors ${
+                aideVisible
+                  ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
+                  : 'text-gray-300 hover:text-gray-500 dark:hover:text-gray-400'
+              }`}
+              title="Que veulent dire les colonnes ?"
+              aria-label="Explication des étapes"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+          </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Vos prospects, du premier contact à l&apos;abonnement — glissez les cartes ou ouvrez la fiche.
           </p>
@@ -300,6 +316,31 @@ function PipelinePage() {
           </button>
         </div>
       </div>
+
+      {aideVisible && (
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-3 text-xs">
+            {[
+              ['À contacter', "Le contact existe (salon repéré, carte récupérée) mais personne ne lui a encore parlé."],
+              ['En discussion', "Le premier contact a eu lieu. Les sous-étapes précisent : Contacté (message laissé), A répondu, Qualifié (le besoin est réel et confirmé)."],
+              ['Démo', "Sa page de démonstration existe. Démo planifiée = rendez-vous pris pour la montrer ; Démo faite = il l'a vue ou reçue."],
+              ['Compte créé', "Le prospect s'est inscrit sur Opatam — son essai gratuit de 30 jours court. C'est automatique quand il valide depuis sa démo."],
+              ['Activé', "Son compte est prêt à recevoir des réservations : prestations, horaires, page publiée, première réservation."],
+              ['Payant', "Il paie son abonnement. Cette étape se remplit automatiquement au premier paiement réel — c'est elle qui compte pour la commission."],
+            ].map(([titre, texte]) => (
+              <div key={titre}>
+                <p className="font-semibold text-gray-900 dark:text-white">{titre}</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{texte}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+            Un prospect « perdu » garde son étape et reçoit un motif — bouton « Perdus » pour les
+            revoir, « Réactiver » sur sa fiche pour le remettre dans le tunnel. Glissez les cartes
+            entre colonnes, ou réglez l'étape précise dans la fiche.
+          </p>
+        </div>
+      )}
 
       {leads === null ? (
         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
