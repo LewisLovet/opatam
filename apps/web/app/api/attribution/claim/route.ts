@@ -38,6 +38,14 @@ export async function POST(request: NextRequest) {
     }
     const verified = verifySalesLink(token);
     if (!verified.ok) {
+      // Une attribution qui échoue est de la rémunération qui se perd en
+      // silence : chaque refus laisse une trace auditable.
+      // AWAIT volontaire : la trace d'une attribution perdue doit être
+      // écrite avant de répondre — un fire-and-forget se perdait.
+      await getAdminFirestore()
+        .collection('salesAttributionFailures')
+        .add({ uid, reason: `lien-invalide:${verified.reason}`, createdAt: FieldValue.serverTimestamp() })
+        .catch(() => {});
       return NextResponse.json({ error: `Lien invalide (${verified.reason})` }, { status: 400 });
     }
 
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
       const providerName: string = provider.data()?.businessName ?? 'Un prospect';
       // Un lien d'un commercial désactivé ou supprimé n'attribue plus rien.
       if (!staff.exists || staff.data()?.active !== true) {
-        return { status: 400 as const, error: 'Lien commercial inactif' };
+        return { status: 400 as const, error: 'Lien commercial inactif', echec: 'fiche-inactive' as const };
       }
 
       tx.set(attributionRef, {
@@ -181,6 +189,16 @@ export async function POST(request: NextRequest) {
     }
 
     if ('error' in result) {
+      await db
+        .collection('salesAttributionFailures')
+        .add({
+          uid,
+          staffUid: verified.payload.staffUid,
+          campaign: verified.payload.campaign ?? null,
+          reason: 'echec' in result ? result.echec : `statut-${result.status}`,
+          createdAt: FieldValue.serverTimestamp(),
+        })
+        .catch(() => {});
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
     return NextResponse.json({ success: true, alreadyClaimed: result.alreadyClaimed });

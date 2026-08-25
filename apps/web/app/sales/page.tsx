@@ -401,38 +401,55 @@ export default function SalesDashboardPage() {
   return (
     <div className="space-y-6">
       {/* ── En-tête ── */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 capitalize">{aujourdHui}</p>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">Tableau de bord</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Les comptes qui ont besoin de vous aujourd&apos;hui, et pourquoi.
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 capitalize">{aujourdHui}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">Tableau de bord</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Les comptes qui ont besoin de vous aujourd&apos;hui, et pourquoi.
+        </p>
+      </div>
+
+      {/* ── Actions rapides — LA PREMIÈRE CHOSE qu'on voit : trois grandes
+          tuiles, pas trois petits boutons timides dans un coin (retour
+          client). ── */}
+      <div className="grid sm:grid-cols-3 gap-3">
+        <button
+          onClick={copierMonLien}
+          className="group text-left rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-4 hover:opacity-95 transition-opacity shadow-lg shadow-gray-900/10"
+          title="Un lien d'inscription signé : tout compte créé par ce lien vous est attribué"
+        >
+          <span className="w-10 h-10 rounded-xl bg-white/15 dark:bg-gray-900/10 inline-flex items-center justify-center">
+            {lienCopie ? <Check className="w-5 h-5 text-emerald-400 dark:text-emerald-600" /> : <LinkIcon className="w-5 h-5" />}
+          </span>
+          <p className="text-[15px] font-bold mt-2.5">{lienCopie ? 'Lien copié !' : 'Mon lien d’inscription'}</p>
+          <p className="text-xs opacity-70 mt-0.5">
+            À partager partout — chaque inscription par ce lien vous est attribuée
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Le lien d'inscription attribué — copiable en un geste : c'est
-              l'action la plus fréquente d'une journée de prospection. */}
-          <button
-            onClick={copierMonLien}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-            title="Un lien d'inscription signé : tout compte créé par ce lien vous est attribué"
-          >
-            {lienCopie ? <Check className="w-4 h-4 text-emerald-500" /> : <LinkIcon className="w-4 h-4" />}
-            {lienCopie ? 'Lien copié !' : 'Mon lien d’inscription'}
-          </button>
-          <Link
-            href="/sales/pipeline"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            <Kanban className="w-4 h-4" /> Pipeline
-          </Link>
-          <Link
-            href="/sales/demo"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20"
-          >
-            <Wand2 className="w-4 h-4" /> Nouvelle démo
-          </Link>
-        </div>
+        </button>
+        <Link
+          href="/sales/demo"
+          className="group rounded-2xl bg-red-600 text-white p-4 hover:bg-red-700 transition-colors shadow-lg shadow-red-600/25"
+        >
+          <span className="w-10 h-10 rounded-xl bg-white/15 inline-flex items-center justify-center">
+            <Wand2 className="w-5 h-5" />
+          </span>
+          <p className="text-[15px] font-bold mt-2.5">Nouvelle démo</p>
+          <p className="text-xs opacity-80 mt-0.5">
+            La page du prospect à partir d&apos;une photo de sa carte
+          </p>
+        </Link>
+        <Link
+          href="/sales/pipeline"
+          className="group rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+        >
+          <span className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 inline-flex items-center justify-center text-gray-600 dark:text-gray-300">
+            <Kanban className="w-5 h-5" />
+          </span>
+          <p className="text-[15px] font-bold mt-2.5 text-gray-900 dark:text-white">Pipeline</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Vos prospects, du premier contact à l&apos;abonnement
+          </p>
+        </Link>
       </div>
 
       {lienNote && (

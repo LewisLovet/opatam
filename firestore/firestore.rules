@@ -135,6 +135,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Refus d'attribution — journal d'audit écrit par la route de
+    // revendication : une attribution perdue doit se voir.
+    match /salesAttributionFailures/{id} {
+      allow read, write: if false;
+    }
+
     // Démos personnalisées : créées/listées par les routes requireStaff,
     // rendues par la page /p/demo-<id> via l'Admin SDK. Aucun accès SDK.
     match /salesDemoLinks/{demoId} {
