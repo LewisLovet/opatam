@@ -440,7 +440,7 @@ function PricingPageContent() {
 
   // Le paiement suit le COMPTE CONNECTÉ — l'ancien champ « Provider ID »
   // de test permettait un checkout pour n'importe quel compte (audit).
-  const { user, provider } = useAuth();
+  const { user, provider, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Fetch prices
@@ -508,6 +508,10 @@ function PricingPageContent() {
 
   // Checkout handler — pour SON compte, ou vers l'inscription.
   const handleCheckout = async (priceId: string) => {
+    // Tant que Firebase résout la session, ne rien décider : un utilisateur
+    // connecté cliquait pendant ce battement et partait vers /register
+    // comme un anonyme (audit).
+    if (authLoading) return;
     if (!user || !provider) {
       router.push(user ? '/pro' : '/register');
       return;
@@ -724,7 +728,7 @@ function PricingPageContent() {
                   allPrices={prices}
                   billingInterval={billingInterval}
                   onCheckout={handleCheckout}
-                  isLoading={checkoutLoading}
+                  isLoading={checkoutLoading || authLoading}
                   loadingPriceId={loadingPriceId}
                 />
               ))}

@@ -88,14 +88,26 @@ export async function POST(request: NextRequest) {
     if (planServeur !== 'solo' && planServeur !== 'team' && !(planServeur === 'test' && estCompteTest)) {
       return NextResponse.json({ message: 'Tarif hors catalogue' }, { status: 400 });
     }
-    // Liste blanche STRICTE optionnelle (audit) : quand STRIPE_ALLOWED_PRICE_IDS
-    // est posée (ids séparés par des virgules), metadata.plan ne suffit plus —
-    // un ancien prix actif encore étiqueté solo/team est refusé.
-    const listeBlanche = (process.env.STRIPE_ALLOWED_PRICE_IDS ?? '')
+    // Liste blanche STRICTE, ACTIVE PAR DÉFAUT (audit, 2e passage) : le
+    // catalogue Stripe contient d'ANCIENS prix actifs encore étiquetés
+    // solo — Pro à 14,90 €/mois et 199→120 €/an — que metadata.plan
+    // acceptait. Les quatre tarifs canoniques sont codés ici ;
+    // STRIPE_ALLOWED_PRICE_IDS (ids séparés par des virgules) les remplace
+    // si un tarif change sans redéploiement. Le plan « test » des comptes
+    // isTest passe hors liste (outil de vérification du flux de paiement).
+    const LISTE_BLANCHE_DEFAUT = [
+      'price_1TAvgoRzY6soe6MNDShGM8Mn', // Pro mensuel 19,90 €
+      'price_1TAvgoRzY6soe6MNquyaHVVp', // Pro annuel 199 €
+      'price_1SyCVcRzY6soe6MN9ovoqJMX', // Studio mensuel 29,90 €
+      'price_1TAvRYRzY6soe6MNfpTJUUzb', // Studio annuel 299 €
+    ];
+    const listeBlancheEnv = (process.env.STRIPE_ALLOWED_PRICE_IDS ?? '')
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);
-    if (listeBlanche.length > 0 && !listeBlanche.includes(priceId)) {
+    const listeBlanche = listeBlancheEnv.length > 0 ? listeBlancheEnv : LISTE_BLANCHE_DEFAUT;
+    const estPlanTestAutorise = planServeur === 'test' && estCompteTest;
+    if (!estPlanTestAutorise && !listeBlanche.includes(priceId)) {
       return NextResponse.json({ message: 'Tarif hors liste autorisée' }, { status: 400 });
     }
     const plan = planServeur;
