@@ -17,6 +17,8 @@ import {
   Eye,
   ArrowLeftRight,
   Users,
+  Menu,
+  X,
 } from 'lucide-react';
 import { vueCommercialeActive, basculerVueCommerciale } from './entetes';
 
@@ -189,61 +191,123 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
 
       {/* ── Contenu ── */}
       <div className="flex-1 min-w-0">
-        {/* Barre mobile du haut : identité + rôle. Le badge de rôle OUVRE le
-            menu (vue commerciale, changement d'espace, déconnexion) — sur
-            mobile, la sidebar n'existe pas, ces gestes doivent vivre ici. */}
-        <div className="lg:hidden bg-gray-950 text-white">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <span className="text-sm font-bold">Opatam Sales</span>
-            <button
-              onClick={() => setMenuMobile((m) => !m)}
-              className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-400 bg-red-500/10 rounded-full px-2.5 py-1.5"
-            >
-              {vueCommerciale ? 'Vue commerciale' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
-              <span className={`transition-transform ${menuMobile ? 'rotate-180' : ''}`}>▾</span>
-            </button>
-          </div>
-          {menuMobile && (
-            <div className="px-4 pb-3 space-y-1 border-t border-gray-800/60 pt-2">
-              {staff.role === 'sales_manager' && (
+        {/* Barre mobile du haut : hamburger → tiroir latéral (même sidebar
+            que desktop, en superposition). */}
+        <div className="lg:hidden bg-gray-950 text-white px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setMenuMobile(true)}
+            aria-label="Ouvrir le menu"
+            className="p-1.5 -ml-1.5 rounded-lg active:bg-gray-800"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-bold">Opatam Sales</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-red-400">
+            {vueCommerciale ? 'Vue com.' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
+          </span>
+        </div>
+
+        {/* Tiroir mobile : la sidebar complète, en superposition */}
+        {menuMobile && (
+          <div className="lg:hidden fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setMenuMobile(false)} />
+            <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-gray-950 text-white flex flex-col overflow-y-auto">
+              <div className="flex items-center justify-between p-5 pb-2">
+                <div>
+                  <p className="text-lg font-bold">Opatam</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-red-400 mt-0.5">
+                    Espace commercial
+                  </p>
+                </div>
                 <button
-                  onClick={() => basculerVueCommerciale(!vueCommerciale)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm ${
-                    vueCommerciale ? 'bg-amber-500/15 text-amber-400' : 'text-gray-300 active:bg-gray-800'
-                  }`}
-                >
-                  <Eye className="w-4 h-4" />
-                  {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
-                </button>
-              )}
-              {user?.isAdmin && (
-                <Link
-                  href="/admin"
                   onClick={() => setMenuMobile(false)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-300 active:bg-gray-800"
+                  aria-label="Fermer le menu"
+                  className="p-1.5 rounded-lg text-gray-400 active:bg-gray-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <nav className="flex-1 px-3 py-4 space-y-1">
+                {NAV.filter(
+                  (n) => !('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager',
+                ).map(({ label, href, icon: Icon, ready }) => {
+                  if (!ready) {
+                    return (
+                      <span
+                        key={href}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 select-none"
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span>{label}</span>
+                        <span className="text-[10px] uppercase tracking-wide text-gray-600 border border-gray-700 rounded-full px-1.5 py-0.5">
+                          Bientôt
+                        </span>
+                      </span>
+                    );
+                  }
+                  const actif = href === '/sales' ? pathname === '/sales' : pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMenuMobile(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                        actif
+                          ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                          : 'text-gray-400 active:text-white active:bg-gray-800'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+              <div className="border-t border-gray-800/50 p-4 space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {staff.role === 'sales_manager' && (
+                  <button
+                    onClick={() => basculerVueCommerciale(!vueCommerciale)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm ${
+                      vueCommerciale ? 'bg-amber-500/15 text-amber-400' : 'text-gray-400 active:bg-gray-800'
+                    }`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
+                  </button>
+                )}
+                {user?.isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuMobile(false)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 active:bg-gray-800"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    Espace admin
+                  </Link>
+                )}
+                <Link
+                  href="/pro"
+                  onClick={() => setMenuMobile(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 active:bg-gray-800"
                 >
                   <ArrowLeftRight className="w-4 h-4" />
-                  Espace admin
+                  Espace pro
                 </Link>
-              )}
-              <Link
-                href="/pro"
-                onClick={() => setMenuMobile(false)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-300 active:bg-gray-800"
-              >
-                <ArrowLeftRight className="w-4 h-4" />
-                Espace pro
-              </Link>
-              <button
-                onClick={() => logout().then(() => router.push('/login'))}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 active:bg-gray-800"
-              >
-                <LogOut className="w-4 h-4" />
-                Se déconnecter
-              </button>
-            </div>
-          )}
-        </div>
+                <div className="px-1 pt-1">
+                  <p className="text-sm font-medium truncate">{staff.displayName}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => logout().then(() => router.push('/login'))}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 active:bg-gray-800"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Se déconnecter
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
         {vueCommerciale && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-2.5 flex items-center justify-between gap-3">
             <p className="text-xs text-amber-800 dark:text-amber-300">
@@ -259,32 +323,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
             </button>
           </div>
         )}
-        <main className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">{children}</main>
-        {/* Navigation mobile : barre d'onglets fixe en bas — le geste natif
-            du téléphone, à la place de l'ancien bandeau défilant. */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-gray-950/95 backdrop-blur border-t border-gray-800 pb-[env(safe-area-inset-bottom)]">
-          <div className="flex">
-            {NAV.filter(
-              (n) => n.ready && (!('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager'),
-            ).map(({ label, href, icon: Icon }) => {
-              const actif = href === '/sales' ? pathname === '/sales' : pathname.startsWith(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-2 transition-colors ${
-                    actif ? 'text-red-400' : 'text-gray-500 active:text-gray-300'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[9.5px] font-medium leading-none">
-                    {label === 'Tableau de bord' ? 'Accueil' : label === 'Démonstration' ? 'Démos' : label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
