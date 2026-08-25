@@ -156,6 +156,7 @@ export async function GET(request: NextRequest) {
       id,
       url: `${baseUrlDetail}/p/demo-${id}`,
       businessName: x.businessName ?? stored.data.businessName,
+      staffUid: x.staffUid ?? null,
       // Ce que l'e-mail d'envoi utilisera — pour un aperçu fidèle côté client.
       coverUrl: couvertureDemo(stored.data.sector, x.photos?.cover ?? null),
       fromName: staffSnap.data()?.displayName ?? null,

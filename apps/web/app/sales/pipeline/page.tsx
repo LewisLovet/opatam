@@ -71,6 +71,7 @@ interface DemoLiee {
   views: number;
   expired: boolean;
   leadId: string | null;
+  staffUid: string;
   claimedProviderName: string | null;
 }
 
@@ -97,13 +98,32 @@ const GROUPES: Array<{
   stages: Array<(typeof SALES_STAGES)[number]>;
   entree: (typeof SALES_STAGES)[number];
   accent: string;
+  aide: string;
 }> = [
-  { label: 'À contacter', stages: ['prospect'], entree: 'prospect', accent: 'bg-gray-400' },
-  { label: 'En discussion', stages: ['contacte', 'reponse', 'qualifie'], entree: 'contacte', accent: 'bg-blue-500' },
-  { label: 'Démo', stages: ['demo_planifiee', 'demo_realisee'], entree: 'demo_realisee', accent: 'bg-violet-500' },
-  { label: 'Compte créé', stages: ['essai_cree'], entree: 'essai_cree', accent: 'bg-amber-500' },
-  { label: 'Activé', stages: ['essai_active'], entree: 'essai_active', accent: 'bg-emerald-500' },
-  { label: 'Payant', stages: ['payant', 'conserve_j90'], entree: 'payant', accent: 'bg-emerald-600' },
+  {
+    label: 'À contacter', stages: ['prospect'], entree: 'prospect', accent: 'bg-gray-400',
+    aide: "Le contact existe (salon repéré, carte récupérée) mais personne ne lui a encore parlé.",
+  },
+  {
+    label: 'En discussion', stages: ['contacte', 'reponse', 'qualifie'], entree: 'contacte', accent: 'bg-blue-500',
+    aide: "Le premier contact a eu lieu. Sous-étapes : Contacté (message laissé), A répondu, Qualifié (besoin réel confirmé) — à régler dans la fiche.",
+  },
+  {
+    label: 'Démo', stages: ['demo_planifiee', 'demo_realisee'], entree: 'demo_realisee', accent: 'bg-violet-500',
+    aide: "Sa page de démonstration existe. Démo planifiée = rendez-vous pris pour la montrer ; Démo faite = il l'a vue ou reçue.",
+  },
+  {
+    label: 'Compte créé', stages: ['essai_cree'], entree: 'essai_cree', accent: 'bg-amber-500',
+    aide: "Le prospect s'est inscrit sur Opatam — son essai gratuit de 30 jours court. Automatique quand il valide depuis sa démo.",
+  },
+  {
+    label: 'Activé', stages: ['essai_active'], entree: 'essai_active', accent: 'bg-emerald-500',
+    aide: "Son compte est prêt à recevoir des réservations : prestations, horaires, page publiée, première réservation.",
+  },
+  {
+    label: 'Payant', stages: ['payant', 'conserve_j90'], entree: 'payant', accent: 'bg-emerald-600',
+    aide: "Il paie son abonnement. Se remplit automatiquement au premier paiement réel — l'étape qui compte pour la commission.",
+  },
 ];
 
 
@@ -203,7 +223,8 @@ function PipelinePage() {
   const [ouvertId, setOuvertId] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
   const [demos, setDemos] = useState<DemoLiee[]>([]);
-  const [aideVisible, setAideVisible] = useState(false);
+  // Colonne dont l'explication est dépliée (bouton ⓘ de son en-tête).
+  const [aideColonne, setAideColonne] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -269,21 +290,7 @@ function PipelinePage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            Pipeline
-            <button
-              onClick={() => setAideVisible((v) => !v)}
-              className={`p-1 rounded-lg transition-colors ${
-                aideVisible
-                  ? 'text-red-600 bg-red-50 dark:bg-red-900/30'
-                  : 'text-gray-300 hover:text-gray-500 dark:hover:text-gray-400'
-              }`}
-              title="Que veulent dire les colonnes ?"
-              aria-label="Explication des étapes"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pipeline</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Vos prospects, du premier contact à l&apos;abonnement — glissez les cartes ou ouvrez la fiche.
           </p>
@@ -317,31 +324,6 @@ function PipelinePage() {
         </div>
       </div>
 
-      {aideVisible && (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-3 text-xs">
-            {[
-              ['À contacter', "Le contact existe (salon repéré, carte récupérée) mais personne ne lui a encore parlé."],
-              ['En discussion', "Le premier contact a eu lieu. Les sous-étapes précisent : Contacté (message laissé), A répondu, Qualifié (le besoin est réel et confirmé)."],
-              ['Démo', "Sa page de démonstration existe. Démo planifiée = rendez-vous pris pour la montrer ; Démo faite = il l'a vue ou reçue."],
-              ['Compte créé', "Le prospect s'est inscrit sur Opatam — son essai gratuit de 30 jours court. C'est automatique quand il valide depuis sa démo."],
-              ['Activé', "Son compte est prêt à recevoir des réservations : prestations, horaires, page publiée, première réservation."],
-              ['Payant', "Il paie son abonnement. Cette étape se remplit automatiquement au premier paiement réel — c'est elle qui compte pour la commission."],
-            ].map(([titre, texte]) => (
-              <div key={titre}>
-                <p className="font-semibold text-gray-900 dark:text-white">{titre}</p>
-                <p className="text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{texte}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-gray-400 mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-            Un prospect « perdu » garde son étape et reçoit un motif — bouton « Perdus » pour les
-            revoir, « Réactiver » sur sa fiche pour le remettre dans le tunnel. Glissez les cartes
-            entre colonnes, ou réglez l'étape précise dans la fiche.
-          </p>
-        </div>
-      )}
-
       {leads === null ? (
         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
       ) : (
@@ -363,11 +345,28 @@ function PipelinePage() {
                     <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
                       <span className={`w-2 h-2 rounded-full ${groupe.accent}`} />
                       {groupe.label}
+                      <button
+                        onClick={() => setAideColonne(aideColonne === groupe.label ? null : groupe.label)}
+                        title={groupe.aide}
+                        aria-label={`Explication : ${groupe.label}`}
+                        className={`p-0.5 rounded transition-colors ${
+                          aideColonne === groupe.label
+                            ? 'text-red-500'
+                            : 'text-gray-300 dark:text-gray-600 hover:text-gray-500'
+                        }`}
+                      >
+                        <Info className="w-3 h-3" />
+                      </button>
                     </p>
                     <span className="min-w-[20px] text-center text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-full px-1.5 py-0.5">
                       {cartes.length}
                     </span>
                   </div>
+                  {aideColonne === groupe.label && (
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg px-2.5 py-2">
+                      {groupe.aide}
+                    </p>
+                  )}
                 </div>
                 <div className="flex-1 px-2 pb-2 space-y-2">
                   {cartes.length === 0 && (
@@ -593,6 +592,8 @@ function FicheProspect({
   const [form, setForm] = useState(lead);
   const [enregistrement, setEnregistrement] = useState(false);
   const [enregistre, setEnregistre] = useState(false);
+  const [liaisonEnCours, setLiaisonEnCours] = useState(false);
+  const [liaisonErreur, setLiaisonErreur] = useState<string | null>(null);
   const [activites, setActivites] = useState<Activity[] | null>(null);
   const [noteType, setNoteType] = useState<'note' | 'appel' | 'email'>('note');
   const [noteTexte, setNoteTexte] = useState('');
@@ -854,7 +855,12 @@ function FicheProspect({
             </p>
             {(() => {
               const liees = demos.filter((d) => d.leadId === lead.id);
-              const orphelines = demos.filter((d) => !d.leadId && !d.expired);
+              // Seules les démos DU MÊME commercial sont proposables : le
+              // serveur refuse les liaisons croisées (l'attribution de la
+              // commission en dépend) — autant ne pas les offrir.
+              const orphelines = demos.filter(
+                (d) => !d.leadId && !d.expired && d.staffUid === lead.ownerUid,
+              );
               return (
                 <div className="space-y-2">
                   {liees.map((d) => (
@@ -879,15 +885,26 @@ function FicheProspect({
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                       <button
+                        disabled={liaisonEnCours}
                         onClick={async () => {
-                          await fetch('/api/sales/demos', {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-                            body: JSON.stringify({ id: d.id, leadId: null }),
-                          });
-                          onDemosChange();
+                          setLiaisonEnCours(true);
+                          setLiaisonErreur(null);
+                          try {
+                            const res = await fetch('/api/sales/demos', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                              body: JSON.stringify({ id: d.id, leadId: null }),
+                            });
+                            if (!res.ok) {
+                              setLiaisonErreur((await res.json()).error ?? 'Déliaison impossible');
+                              return;
+                            }
+                            onDemosChange();
+                          } finally {
+                            setLiaisonEnCours(false);
+                          }
                         }}
-                        className="p-1 text-gray-300 hover:text-red-500"
+                        className="p-1 text-gray-300 hover:text-red-500 disabled:opacity-40"
                         title="Délier cette démo"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -904,26 +921,45 @@ function FicheProspect({
                     {orphelines.length > 0 && (
                       <select
                         value=""
+                        disabled={liaisonEnCours}
                         onChange={async (e) => {
                           const demoId = e.target.value;
                           if (!demoId) return;
-                          await fetch('/api/sales/demos', {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-                            body: JSON.stringify({ id: demoId, leadId: lead.id }),
-                          });
-                          onDemosChange();
+                          setLiaisonEnCours(true);
+                          setLiaisonErreur(null);
+                          try {
+                            const res = await fetch('/api/sales/demos', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                              body: JSON.stringify({ id: demoId, leadId: lead.id }),
+                            });
+                            if (!res.ok) {
+                              setLiaisonErreur((await res.json()).error ?? 'Liaison impossible');
+                              return;
+                            }
+                            onDemosChange();
+                          } finally {
+                            setLiaisonEnCours(false);
+                          }
                         }}
-                        className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-2 text-xs text-gray-600 dark:text-gray-300"
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2 py-2 text-xs text-gray-600 dark:text-gray-300 disabled:opacity-50"
                         title="Relier une démo existante non rattachée"
                       >
-                        <option value="">Relier une démo…</option>
+                        <option value="">{liaisonEnCours ? 'Liaison en cours…' : 'Relier une démo…'}</option>
                         {orphelines.map((d) => (
                           <option key={d.id} value={d.id}>{d.businessName}</option>
                         ))}
                       </select>
                     )}
                   </div>
+                  {liaisonEnCours && (
+                    <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Liaison en cours…
+                    </p>
+                  )}
+                  {liaisonErreur && (
+                    <p className="text-[11px] text-red-600 dark:text-red-400">{liaisonErreur}</p>
+                  )}
                 </div>
               );
             })()}

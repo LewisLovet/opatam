@@ -46,6 +46,7 @@ interface Detail {
   id: string;
   url: string;
   businessName: string;
+  staffUid: string | null;
   coverUrl: string | null;
   fromName: string | null;
   configEuros: ConfigEurosDemo;
@@ -134,7 +135,8 @@ export default function DemoEditPage() {
   const [collageOuvert, setCollageOuvert] = useState(false);
   const [lienCopie, setLienCopie] = useState(false);
   // Prospects du commercial, pour relier la démo à une fiche.
-  const [prospects, setProspects] = useState<Array<{ id: string; businessName: string }> | null>(null);
+  const [prospects, setProspects] = useState<Array<{ id: string; businessName: string; ownerUid: string }> | null>(null);
+  const [liaisonErreur, setLiaisonErreur] = useState<string | null>(null);
   useEffect(() => {
     void (async () => {
       const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
@@ -143,11 +145,16 @@ export default function DemoEditPage() {
   }, []);
 
   const relier = async (leadId: string | null) => {
-    await fetch('/api/sales/demos', {
+    setLiaisonErreur(null);
+    const res = await fetch('/api/sales/demos', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
       body: JSON.stringify({ id, leadId }),
     });
+    if (!res.ok) {
+      setLiaisonErreur((await res.json()).error ?? 'Liaison impossible');
+      return;
+    }
     void charger();
   };
   const [apercuPage, setApercuPage] = useState(false);
@@ -593,9 +600,13 @@ export default function DemoEditPage() {
               className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-1.5 text-xs text-gray-900 dark:text-white"
             >
               <option value="">— aucun —</option>
-              {(prospects ?? []).map((l) => (
-                <option key={l.id} value={l.id}>{l.businessName}</option>
-              ))}
+              {/* Seuls les prospects DU commercial de la démo : le serveur
+                  refuse les liaisons croisées (attribution de commission). */}
+              {(prospects ?? [])
+                .filter((l) => !detail.staffUid || l.ownerUid === detail.staffUid)
+                .map((l) => (
+                  <option key={l.id} value={l.id}>{l.businessName}</option>
+                ))}
             </select>
             {detail.leadId && (
               <Link
@@ -606,6 +617,7 @@ export default function DemoEditPage() {
               </Link>
             )}
           </div>
+          {liaisonErreur && <p className="text-[11px] text-red-600 dark:text-red-400">{liaisonErreur}</p>}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
