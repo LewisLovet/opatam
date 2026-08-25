@@ -264,6 +264,33 @@ export default function SalesDashboardPage() {
   }, []);
 
   const [lienCopie, setLienCopie] = useState(false);
+  // Versements Connect — chargé à part (appel Stripe côté serveur, ne doit
+  // pas retarder le reste du tableau de bord).
+  const [connect, setConnect] = useState<{
+    statut: 'aucun' | 'active' | 'pending' | 'restricted';
+    aUneFiche: boolean;
+    totalVerseCents: number;
+    nbVersements: number;
+  } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch('/api/sales/connect', { headers: await enTetesStaff() });
+      if (res.ok) setConnect(await res.json());
+    })();
+  }, []);
+
+  const configurerVersements = async () => {
+    const res = await fetch('/api/sales/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      alert(d.error ?? 'Configuration impossible');
+      return;
+    }
+    window.location.href = d.url;
+  };
   // Le lien personnel du commercial : signé, il attribue l'inscription à son
   // porteur — c'est LE lien à envoyer à un prospect hors démo.
   const copierMonLien = async () => {
@@ -459,6 +486,38 @@ export default function SalesDashboardPage() {
                   <p className="text-sm text-gray-400 mt-1">À définir par votre manager.</p>
                 )}
               </div>
+              {connect?.aUneFiche && (
+                <div className="min-w-[190px]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    Mes versements
+                  </p>
+                  {connect.statut === 'active' ? (
+                    <>
+                      <p className="text-xl font-bold tabular-nums text-gray-900 dark:text-white mt-1">
+                        {(connect.totalVerseCents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €
+                      </p>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ Versements actifs · {connect.nbVersements} virement{connect.nbVersements > 1 ? 's' : ''}
+                      </p>
+                    </>
+                  ) : (
+                    <button
+                      onClick={configurerVersements}
+                      className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+                    >
+                      {connect.statut === 'aucun'
+                        ? 'Configurer mes versements'
+                        : 'Reprendre la configuration'}
+                    </button>
+                  )}
+                  {connect.statut !== 'active' && (
+                    <p className="text-[10px] text-gray-400 mt-1.5 max-w-[210px]">
+                      Identité + IBAN via Stripe — requis pour recevoir vos commissions
+                      (indépendants).
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="text-right">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                   Commission estimée ce mois-ci

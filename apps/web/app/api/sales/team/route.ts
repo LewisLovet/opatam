@@ -18,13 +18,15 @@ export async function GET(request: NextRequest) {
   }
 
   const db = getAdminFirestore();
-  const [staffSnap, leadsSnap, demosSnap, attributionsSnap, conversionsSnap] = await Promise.all([
-    db.collection('staffMembers').get(),
-    db.collection('salesLeads').limit(1000).get(),
-    db.collection('salesDemoLinks').limit(1000).get(),
-    db.collection('salesAttribution').limit(1000).get(),
-    db.collection('salesConversions').limit(1000).get(),
-  ]);
+  const [staffSnap, leadsSnap, demosSnap, attributionsSnap, conversionsSnap, commissionsSnap] =
+    await Promise.all([
+      db.collection('staffMembers').get(),
+      db.collection('salesLeads').limit(1000).get(),
+      db.collection('salesDemoLinks').limit(1000).get(),
+      db.collection('salesAttribution').limit(1000).get(),
+      db.collection('salesConversions').limit(1000).get(),
+      db.collection('salesCommissions').limit(2000).get(),
+    ]);
 
   interface Chiffres {
     prospects: number;
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
     payants: number;
     payantsCeMois: number;
     mrrCents: number;
+    commissionsVerseesCents: number;
   }
   const vide = (): Chiffres => ({
     prospects: 0,
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
     payants: 0,
     payantsCeMois: 0,
     mrrCents: 0,
+    commissionsVerseesCents: 0,
   });
   const debutMois = new Date();
   debutMois.setDate(1);
@@ -80,6 +84,11 @@ export async function GET(request: NextRequest) {
     if (quand && quand >= debutMois) c.payantsCeMois += 1;
   });
 
+  commissionsSnap.docs.forEach((d) => {
+    const x = d.data();
+    if (x.transferId) de(x.staffUid).commissionsVerseesCents += x.commissionCents ?? 0;
+  });
+
   return NextResponse.json({
     team: staffSnap.docs
       .map((d) => {
@@ -92,6 +101,7 @@ export async function GET(request: NextRequest) {
           active: x.active === true,
           objectifPayantsMensuel: typeof x.objectifPayantsMensuel === 'number' ? x.objectifPayantsMensuel : null,
           tauxCommissionPct: typeof x.tauxCommissionPct === 'number' ? x.tauxCommissionPct : null,
+          stripeAccountStatus: x.stripeAccountStatus ?? null,
           createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
           chiffres: parStaff.get(d.id) ?? vide(),
         };

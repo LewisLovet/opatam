@@ -594,6 +594,85 @@ async function handleInvoicePaid(
     } catch (e) {
       console.warn('[STRIPE-WEBHOOK] conversion commerciale échouée (paiement traité normalement):', e);
     }
+
+    // COMMISSION du commercial : chaque facture payée d'un compte attribué,
+    // dans les 12 mois de la conversion, déclenche sa tranche — taux % du
+    // montant payé, transféré vers le compte Connect (indépendants, décision
+    // direction). Le churn se gère tout seul : plus de facture, plus de
+    // commission.
+    //
+    // IDEMPOTENT PAR FACTURE : salesCommissions/{invoiceId} se crée dans une
+    // transaction avant le transfert — un webhook rejoué ne paie pas deux
+    // fois. Si le transfert a échoué après l'écriture (transferId null), une
+    // relance de plus de 10 minutes a le droit de retenter.
+    try {
+      const convSnap = await db.collection('salesConversions').doc(providerId).get();
+      const conv = convSnap.data();
+      const firstPaidAt = conv?.firstPaidAt?.toDate?.();
+      const dansFenetre =
+        firstPaidAt && Date.now() < firstPaidAt.getTime() + 365 * 86_400_000;
+      if (conv && dansFenetre) {
+        const staffSnap = await db.collection('staffMembers').doc(conv.staffUid).get();
+        const staffPaie = staffSnap.data();
+        const taux =
+          typeof staffPaie?.tauxCommissionPct === 'number' ? staffPaie.tauxCommissionPct : null;
+        const commissionCents = taux ? Math.round(invoice.amount_paid * (taux / 100)) : 0;
+        if (
+          taux &&
+          commissionCents > 0 &&
+          staffPaie?.active === true &&
+          staffPaie?.stripeAccountId &&
+          staffPaie?.stripeAccountStatus === 'active'
+        ) {
+          const comRef = db.collection('salesCommissions').doc(String(invoice.id));
+          const decision = await db.runTransaction(async (tx) => {
+            const existante = await tx.get(comRef);
+            if (existante.exists) {
+              const x = existante.data()!;
+              if (x.transferId) return 'deja-payee';
+              const verrou = x.lockedAt?.toDate?.()?.getTime() ?? 0;
+              if (Date.now() - verrou < 10 * 60_000) return 'en-cours';
+              tx.update(comRef, { lockedAt: FieldValue.serverTimestamp() });
+              return 'retenter';
+            }
+            tx.set(comRef, {
+              invoiceId: invoice.id,
+              providerId,
+              staffUid: conv.staffUid,
+              amountPaidCents: invoice.amount_paid,
+              tauxPct: taux,
+              commissionCents,
+              transferId: null,
+              lockedAt: FieldValue.serverTimestamp(),
+              createdAt: FieldValue.serverTimestamp(),
+            });
+            return 'virer';
+          });
+          if (decision === 'virer' || decision === 'retenter') {
+            const chargeCommission = extractId((invoice as any).charge);
+            const transfert = await stripe.transfers.create({
+              amount: commissionCents,
+              currency: 'eur',
+              destination: staffPaie.stripeAccountId,
+              ...(chargeCommission ? { source_transaction: chargeCommission } : {}),
+              metadata: {
+                type: 'sales_commission',
+                providerId,
+                staffUid: conv.staffUid,
+                invoiceId: String(invoice.id),
+                tauxPct: String(taux),
+              },
+            });
+            await comRef.update({ transferId: transfert.id, paidAt: FieldValue.serverTimestamp() });
+            console.log(
+              `[STRIPE-WEBHOOK] Commission commerciale ${commissionCents}c → ${conv.staffUid} (facture ${invoice.id})`,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[STRIPE-WEBHOOK] commission commerciale échouée (paiement traité normalement):', e);
+    }
   }
 
   // Affiliate commission on recurring payment

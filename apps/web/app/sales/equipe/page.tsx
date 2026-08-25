@@ -34,6 +34,7 @@ interface Chiffres {
   payants: number;
   payantsCeMois: number;
   mrrCents: number;
+  commissionsVerseesCents: number;
 }
 interface Membre {
   uid: string;
@@ -44,6 +45,7 @@ interface Membre {
   createdAt: string | null;
   objectifPayantsMensuel: number | null;
   tauxCommissionPct: number | null;
+  stripeAccountStatus: string | null;
   chiffres: Chiffres;
 }
 
@@ -335,6 +337,19 @@ export default function EquipePage() {
                         )}
                       </p>
                       <p className="text-[11px] text-gray-400">{m.email}</p>
+                      <p className="text-[10px] mt-0.5">
+                        {m.stripeAccountStatus === 'active' ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            Versements actifs
+                            {m.chiffres.commissionsVerseesCents > 0 &&
+                              ` · ${(m.chiffres.commissionsVerseesCents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} € versés`}
+                          </span>
+                        ) : m.stripeAccountStatus ? (
+                          <span className="text-amber-600 dark:text-amber-400">Versements : configuration en cours</span>
+                        ) : (
+                          <span className="text-gray-400">Versements non configurés</span>
+                        )}
+                      </p>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                       {m.chiffres.prospects}
