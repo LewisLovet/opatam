@@ -194,6 +194,20 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
               );
             }
+            // Code d'offre RÉSERVÉ à un compte (paiement direct, ou déjà
+            // revendiqué à l'inscription) : personne d'autre ne l'utilise
+            // (audit P2). Stripe limiterait de toute façon à un usage, mais
+            // le refus doit être clair et au BON compte.
+            if (offreId) {
+              const offreDoc = await db.collection('salesOffers').doc(c.toUpperCase()).get();
+              const reserveA = offreDoc.data()?.claimedByProviderId;
+              if (reserveA && reserveA !== providerId) {
+                return NextResponse.json(
+                  { message: `Le code ${c} est réservé à un autre compte.` },
+                  { status: 400 }
+                );
+              }
+            }
             stripePromotionCodeId = promos.data[0].id;
             break;
           }

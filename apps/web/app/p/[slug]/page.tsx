@@ -16,6 +16,7 @@ import type { Availability, Member } from '@booking-app/shared';
 import { getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { loadDemo, demoIdFromSlug, compterVueDemo } from '@/lib/sales-demo-load';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { signSalesLink } from '@/lib/sales-attribution';
 import { buildDemoData } from '@/lib/sales-demo-build';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
@@ -272,7 +273,20 @@ export default async function ProviderPage({ params }: PageProps) {
     // carte du prospect — « valider sa page » devient créer son compte avec
     // ses prestations déjà en place.
     let signupUrl = `/register?demo=${demoId}`;
+    // Un jeton signé au nom d'un compte SANS fiche commerciale active serait
+    // refusé à la revendication (audit) : autant ne pas le mettre — le
+    // prospect s'inscrit sans attribution plutôt qu'avec une attribution
+    // morte.
+    let ficheActive = false;
     if (demo.staffUid) {
+      try {
+        const fiche = await getAdminFirestore().collection('staffMembers').doc(demo.staffUid).get();
+        ficheActive = fiche.exists && fiche.data()?.active === true;
+      } catch {
+        ficheActive = false;
+      }
+    }
+    if (demo.staffUid && ficheActive) {
       try {
         signupUrl = `/register?demo=${demoId}&s=${encodeURIComponent(signSalesLink({ staffUid: demo.staffUid, campaign: `demo-${demoId}`, sector: demo.config.sector ?? null }))}`;
       } catch (e) {

@@ -86,6 +86,21 @@ export async function POST(request: NextRequest) {
   if (!offre) return NextResponse.json({ error: 'Offre inconnue' }, { status: 400 });
 
   const db = getAdminFirestore();
+
+  // Une offre sans fiche commerciale active est de l'argent sans
+  // responsable (audit P1) : le code porterait un staffUid que la
+  // revendication refuserait — prospect payé, commission perdue. Même
+  // règle que les liens d'attribution.
+  const ficheOffre = await db.collection('staffMembers').doc(auth.identity.uid).get();
+  if (!ficheOffre.exists || ficheOffre.data()?.active !== true) {
+    return NextResponse.json(
+      {
+        error:
+          'Les offres sont réservées aux fiches commerciales actives — votre compte n’en a pas. Invitez-vous depuis l’onglet Équipe pour tester.',
+      },
+      { status: 403 },
+    );
+  }
   if ((await offresDesactivees(db)).includes(offre.id)) {
     return NextResponse.json({ error: 'Cette offre est désactivée par la direction' }, { status: 400 });
   }
@@ -131,14 +146,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Génération du code impossible (Stripe)' }, { status: 502 });
   }
 
-  // Traçabilité — la contrepartie de la génération libre.
+  // Traçabilité — la contrepartie de la génération libre. En PAIEMENT
+  // DIRECT (compte existant), le code est RÉSERVÉ à ce compte dès sa
+  // naissance (audit P2) : claimedByProviderId = le compte lié de la
+  // fiche — l'interface le montre servi, et le checkout refusera tout
+  // autre compte.
+  let providerReserve: string | null = null;
+  if (compteExistant === true && typeof leadId === 'string' && leadId) {
+    const leadPourReserve = await db.collection('salesLeads').doc(leadId).get();
+    providerReserve = (leadPourReserve.data()?.linkedProviderId as string) ?? null;
+  }
   await db.collection('salesOffers').doc(code).set({
     offerId: offre.id,
     staffUid: auth.identity.uid,
     leadId: typeof leadId === 'string' ? leadId : null,
     email: cleanEmail,
     stripePromotionCodeId: promotion.id,
-    claimedByProviderId: null,
+    claimedByProviderId: providerReserve,
+    ...(providerReserve ? { claimedAt: FieldValue.serverTimestamp() } : {}),
     createdAt: FieldValue.serverTimestamp(),
     expiresAt: Timestamp.fromDate(expiresAt),
   });

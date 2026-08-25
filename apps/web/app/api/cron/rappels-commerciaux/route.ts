@@ -71,10 +71,13 @@ export async function GET(request: NextRequest) {
       })
       .join('');
 
-    if (resendApiKey) {
+    // Sans clé d'envoi, ne SURTOUT pas marquer : le rappel repartira quand
+    // l'envoi sera possible (audit P2 — le marquage vivait hors du if).
+    if (!resendApiKey) continue;
+    {
       try {
         const { Resend } = await import('resend');
-        await new Resend(resendApiKey).emails.send({
+        const resultatEnvoi = await new Resend(resendApiKey).emails.send({
           from: 'Opatam <noreply@kamerleontech.com>',
           to: staff.email,
           subject: `${fiches.length} prospect${fiches.length > 1 ? 's' : ''} à relancer aujourd'hui`,
@@ -90,13 +93,19 @@ export async function GET(request: NextRequest) {
     </div>
   </div>`,
         });
+        // Resend signale ses refus par { error } SANS lever d'exception
+        // (audit P2) : un envoi refusé ne doit pas marquer le rappel.
+        if (resultatEnvoi.error) {
+          console.warn('[cron/rappels] Resend a refusé pour', uid, resultatEnvoi.error);
+          continue;
+        }
         envoyes += 1;
       } catch (e) {
         console.warn('[cron/rappels] e-mail échoué pour', uid, e);
         continue; // ne pas marquer : le rappel repartira demain
       }
     }
-    // Marquer pour ne pas renvoyer le même rappel chaque jour.
+    // Marquer APRÈS un envoi accepté seulement.
     const batch = db.batch();
     fiches.forEach((d) => batch.update(d.ref, { rappelEnvoyeAt: FieldValue.serverTimestamp() }));
     await batch.commit();

@@ -78,7 +78,7 @@ export function generateSalesOffreEmail(args: SalesOffreEmailArgs): { subject: s
           <p style="margin:12px 0 0;font-size:12.5px;color:#9a9aa0;">
             ${
               args.paiementDirect
-                ? "Le code est pré-appliqué sur la page de paiement. Votre essai gratuit reste entier : vous réglez maintenant, le prélèvement ne démarre qu'à la fin de l'essai."
+                ? "Le code est pré-appliqué sur la page de paiement. Votre essai n'est pas perdu : le prélèvement démarre à la fin de votre période d'essai en cours — ou immédiatement si elle touche à sa fin."
                 : "30 jours d'essai gratuit d'abord, sans carte bancaire — le code s'applique au moment de l'abonnement, sur le site."
             }
           </p>
