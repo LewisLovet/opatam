@@ -79,9 +79,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Tarif indisponible' }, { status: 400 });
     }
     const providerPourPlan = await db.collection('providers').doc(providerId).get();
+    // Un compte Firebase client SANS espace prestataire ne souscrit rien
+    // (audit) : la session Stripe créerait un abonnement orphelin.
+    if (!providerPourPlan.exists) {
+      return NextResponse.json({ message: 'Aucun espace prestataire pour ce compte' }, { status: 403 });
+    }
     const estCompteTest = providerPourPlan.data()?.isTest === true;
     if (planServeur !== 'solo' && planServeur !== 'team' && !(planServeur === 'test' && estCompteTest)) {
       return NextResponse.json({ message: 'Tarif hors catalogue' }, { status: 400 });
+    }
+    // Liste blanche STRICTE optionnelle (audit) : quand STRIPE_ALLOWED_PRICE_IDS
+    // est posée (ids séparés par des virgules), metadata.plan ne suffit plus —
+    // un ancien prix actif encore étiqueté solo/team est refusé.
+    const listeBlanche = (process.env.STRIPE_ALLOWED_PRICE_IDS ?? '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (listeBlanche.length > 0 && !listeBlanche.includes(priceId)) {
+      return NextResponse.json({ message: 'Tarif hors liste autorisée' }, { status: 400 });
     }
     const plan = planServeur;
     void planClient; // ignoré volontairement — le serveur fait foi

@@ -61,7 +61,15 @@ export async function POST(request: NextRequest) {
         tx.get(staffRef),
       ]);
       if (!provider.exists) return { status: 404 as const, error: 'Compte prestataire introuvable' };
-      if (attribution.exists) return { status: 200 as const, alreadyClaimed: true };
+      if (attribution.exists) {
+        return {
+          status: 200 as const,
+          alreadyClaimed: true,
+          // L'offre en aval doit connaître le commercial DÉJÀ crédité :
+          // un compte attribué à A ne consomme pas le code de B (audit).
+          attributionStaffUid: (attribution.data()?.staffUid as string) ?? null,
+        };
+      }
       const providerName: string = provider.data()?.businessName ?? 'Un prospect';
       // Un lien d'un commercial désactivé ou supprimé n'attribue plus rien.
       if (!staff.exists || staff.data()?.active !== true) {
@@ -184,6 +192,13 @@ export async function POST(request: NextRequest) {
     // que celle où il a reçu l'offre.
     if (!('error' in result) && typeof offre === 'string' && /^OPA-[A-Z0-9]{4,10}$/i.test(offre.trim())) {
       const codeOffre = offre.trim().toUpperCase();
+      // Le commercial réellement crédité : celui de l'attribution EXISTANTE
+      // si le compte était déjà attribué (rejeu ou 2e lien), sinon celui du
+      // lien qui vient d'attribuer. Le code doit être LE SIEN.
+      const staffCredite =
+        'attributionStaffUid' in result && result.attributionStaffUid
+          ? result.attributionStaffUid
+          : verified.payload.staffUid;
       try {
         const offreRef = db.collection('salesOffers').doc(codeOffre);
         const providerRefOffre = db.collection('providers').doc(uid);
@@ -193,7 +208,7 @@ export async function POST(request: NextRequest) {
           const x = offreSnap.data()!;
           if ((x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now()) return 'code-expire';
           if (x.claimedByProviderId && x.claimedByProviderId !== uid) return 'code-deja-pris';
-          if (x.staffUid && x.staffUid !== verified.payload.staffUid) return 'commercial-different';
+          if (x.staffUid && x.staffUid !== staffCredite) return 'commercial-different';
           tx.update(offreRef, { claimedByProviderId: uid, claimedAt: FieldValue.serverTimestamp() });
           tx.update(providerRefOffre, { pendingSalesPromoCode: codeOffre });
           return null;

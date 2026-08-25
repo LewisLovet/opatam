@@ -220,9 +220,16 @@ export default function StripeTestPage() {
     if (trialEnabled) addLog('Période d\'essai: 30 jours');
 
     try {
+      // La route exige désormais le jeton du propriétaire (audit) : cet
+      // outil ne teste plus que le compte CONNECTÉ.
+      const { getAuth } = await import('firebase/auth');
+      const jeton = await getAuth().currentUser?.getIdToken();
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
+        },
         body: JSON.stringify({
           priceId,
           providerId: providerId.trim(),

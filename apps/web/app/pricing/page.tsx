@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getAuth } from 'firebase/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared';
 import {
@@ -221,7 +223,6 @@ function PlanCard({
   price,
   allPrices,
   billingInterval,
-  providerId,
   onCheckout,
   isLoading,
   loadingPriceId,
@@ -229,7 +230,6 @@ function PlanCard({
   price: StripePrice;
   allPrices: StripePrice[];
   billingInterval: BillingInterval;
-  providerId: string;
   onCheckout: (priceId: string) => void;
   isLoading: boolean;
   loadingPriceId: string | null;
@@ -389,7 +389,7 @@ function PlanCard({
         <button
           type="button"
           onClick={() => onCheckout(price.id)}
-          disabled={isLoading || !providerId.trim()}
+          disabled={isLoading}
           className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-sm font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
             isPopular
               ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-[1.02]'
@@ -438,10 +438,10 @@ function PricingPageContent() {
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Provider ID (testing — collapsible)
-  const [providerId, setProviderId] = useState('');
-  const [showProviderInput, setShowProviderInput] = useState(false);
-  const [trialEnabled, setTrialEnabled] = useState(true);
+  // Le paiement suit le COMPTE CONNECTÉ — l'ancien champ « Provider ID »
+  // de test permettait un checkout pour n'importe quel compte (audit).
+  const { user, provider } = useAuth();
+  const router = useRouter();
 
   // Fetch prices
   useEffect(() => {
@@ -506,11 +506,10 @@ function PricingPageContent() {
     return maxSaving;
   }, [prices]);
 
-  // Checkout handler
+  // Checkout handler — pour SON compte, ou vers l'inscription.
   const handleCheckout = async (priceId: string) => {
-    if (!providerId.trim()) {
-      setShowProviderInput(true);
-      setCheckoutError('Veuillez entrer un Provider ID pour continuer.');
+    if (!user || !provider) {
+      router.push(user ? '/pro' : '/register');
       return;
     }
 
@@ -519,15 +518,17 @@ function PricingPageContent() {
     setCheckoutError(null);
 
     try {
+      const jeton = await getAuth().currentUser?.getIdToken();
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
+        },
         body: JSON.stringify({
           priceId,
-          providerId: providerId.trim(),
-          plan: prices.find((p) => p.id === priceId)?.plan ?? undefined,
-          ...(trialEnabled ? { trialDays: APP_CONFIG.trialDays } : {}),
-          successUrl: '/pricing',
+          providerId: provider.id,
+          successUrl: '/pro/abonnement',
           cancelUrl: '/pricing',
         }),
       });
@@ -557,62 +558,6 @@ function PricingPageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
-      {/* Provider ID config bar — discreet collapsible at very top */}
-      <div className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => setShowProviderInput(!showProviderInput)}
-            className="w-full flex items-center justify-between py-2.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="w-3.5 h-3.5" />
-              <span>Configuration test</span>
-              {providerId && (
-                <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 font-mono text-[10px]">
-                  {providerId}
-                </span>
-              )}
-            </div>
-            {showProviderInput ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
-            )}
-          </button>
-
-          <div
-            className={`overflow-hidden transition-all duration-300 ${
-              showProviderInput ? 'max-h-40 pb-4' : 'max-h-0'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-              <div className="flex-1 w-full sm:max-w-xs">
-                <label className="block text-xs text-gray-400 mb-1">Provider ID</label>
-                <input
-                  type="text"
-                  value={providerId}
-                  onChange={(e) => setProviderId(e.target.value)}
-                  placeholder="ex: abc123..."
-                  className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 font-mono"
-                />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={trialEnabled}
-                  onChange={(e) => setTrialEnabled(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                />
-                <span className="text-xs text-gray-300">
-                  Essai gratuit ({APP_CONFIG.trialDays} jours)
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Status banners */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8">
         <Suspense fallback={null}>
@@ -778,7 +723,6 @@ function PricingPageContent() {
                   price={price}
                   allPrices={prices}
                   billingInterval={billingInterval}
-                  providerId={providerId}
                   onCheckout={handleCheckout}
                   isLoading={checkoutLoading}
                   loadingPriceId={loadingPriceId}

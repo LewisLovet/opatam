@@ -557,15 +557,16 @@ export default function SalesDashboardPage() {
               )}
               <div className="text-right">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Commission estimée ce mois-ci
+                  Estimation au tarif catalogue
                 </p>
                 {commission !== null ? (
                   <>
                     <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-1">
                       {commission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €
                     </p>
-                    <p className="text-[10px] text-gray-400">
-                      {moi.tauxCommissionPct} % du MRR des conversions de 12 derniers mois — hors résiliations
+                    <p className="text-[10px] text-gray-400 max-w-[220px]">
+                      {moi.tauxCommissionPct} % du tarif catalogue des conversions de 12 derniers
+                      mois — hors remises et résiliations. Le réel est dans « Mes versements ».
                     </p>
                   </>
                 ) : (
