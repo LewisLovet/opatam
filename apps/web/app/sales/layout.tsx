@@ -227,7 +227,24 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <nav className="flex-1 px-3 py-4 space-y-1">
+              {/* La bascule de vue, EN TÊTE — introuvable quand elle vivait
+                  en pied de tiroir (retour client). */}
+              {staff.role === 'sales_manager' && (
+                <div className="px-3 pt-1">
+                  <button
+                    onClick={() => basculerVueCommerciale(!vueCommerciale)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold border ${
+                      vueCommerciale
+                        ? 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                        : 'text-gray-200 border-gray-700 active:bg-gray-800'
+                    }`}
+                  >
+                    <Eye className="w-5 h-5" />
+                    {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
+                  </button>
+                </div>
+              )}
+              <nav className="flex-1 min-h-0 px-3 py-4 space-y-1">
                 {NAV.filter(
                   (n) => !('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager',
                 ).map(({ label, href, icon: Icon, ready }) => {
@@ -264,17 +281,6 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
                 })}
               </nav>
               <div className="border-t border-gray-800/50 p-4 space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                {staff.role === 'sales_manager' && (
-                  <button
-                    onClick={() => basculerVueCommerciale(!vueCommerciale)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm ${
-                      vueCommerciale ? 'bg-amber-500/15 text-amber-400' : 'text-gray-400 active:bg-gray-800'
-                    }`}
-                  >
-                    <Eye className="w-4 h-4" />
-                    {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
-                  </button>
-                )}
                 {user?.isAdmin && (
                   <Link
                     href="/admin"
