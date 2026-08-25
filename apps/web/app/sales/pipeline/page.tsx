@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
+  BookOpen,
   Building2,
   CalendarClock,
   Info,
@@ -26,6 +27,7 @@ import {
 import { enTetesStaff } from '@/app/sales/entetes';
 import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS, SALES_PLATFORMS } from '@booking-app/shared';
 import { STAGE_LABELS, LOSS_LABELS, SECTOR_LABELS, SOURCES_PROSPECTION, PLATFORM_LABELS } from '@/lib/sales-leads';
+import { BATTLECARDS } from '@/app/sales/bibliotheque/battlecards';
 import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
 
 /**
@@ -802,6 +804,22 @@ function FicheProspect({
                 onChange={(v) => setForm({ ...form, currentPlatform: v })}
                 placeholderAutre="Nom de l'outil"
               />
+              {/* L'argumentaire s'OFFRE, il ne s'impose pas (décision client :
+                  l'afficher d'office surchargerait la fiche). */}
+              {(() => {
+                const carte = form.currentPlatform
+                  ? BATTLECARDS.find((c) => c.id === form.currentPlatform)
+                  : null;
+                return carte ? (
+                  <Link
+                    href={`/sales/bibliotheque?carte=${carte.id}`}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    Voir l&apos;argumentaire face à {carte.nom}
+                  </Link>
+                ) : null;
+              })()}
             </div>
             <div>
               <label className={etiquette}>Problème principal exprimé</label>

@@ -116,6 +116,7 @@ export const PLATFORM_LABELS: Record<string, string> = {
   fresha: 'Fresha',
   kiute: 'Kiute',
   wavy: 'Wavy',
+  booksy: 'Booksy',
   iara_beauty: 'Iara Beauty',
   instagram_dm: 'Instagram / DM uniquement',
   papier_telephone: 'Papier / téléphone',

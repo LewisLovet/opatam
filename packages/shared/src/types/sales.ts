@@ -99,6 +99,7 @@ export const SALES_PLATFORMS = [
   'fresha',
   'kiute',
   'wavy',
+  'booksy',
   'iara_beauty',
   'instagram_dm',
   'papier_telephone',

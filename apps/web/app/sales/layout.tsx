@@ -32,7 +32,7 @@ const NAV = [
   { label: 'Tableau de bord', href: '/sales', icon: LayoutDashboard, ready: true },
   { label: 'Pipeline', href: '/sales/pipeline', icon: Kanban, ready: true },
   { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
-  { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: false },
+  { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: true },
   { label: 'Offres', href: '/sales/offres', icon: Tag, ready: true },
   // Réservé manager/admin — filtré au rendu selon le rôle.
   { label: 'Équipe', href: '/sales/equipe', icon: Users, ready: true, managerOnly: true },
@@ -181,14 +181,12 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
 
       {/* ── Contenu ── */}
       <div className="flex-1 min-w-0">
-        {/* Barre mobile : le menu tient sur une ligne défilante */}
-        <div className="lg:hidden bg-gray-950 text-white px-4 py-3 flex items-center gap-4 overflow-x-auto">
-          <span className="text-sm font-bold whitespace-nowrap">Opatam Sales</span>
-          {NAV.filter((n) => n.ready && (!('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager')).map(({ label, href }) => (
-            <Link key={href} href={href} className="text-sm text-gray-300 whitespace-nowrap">
-              {label}
-            </Link>
-          ))}
+        {/* Barre mobile du haut : identité et rôle — la navigation vit en bas */}
+        <div className="lg:hidden bg-gray-950 text-white px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-bold">Opatam Sales</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-red-400">
+            {vueCommerciale ? 'Vue commerciale' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
+          </span>
         </div>
         {vueCommerciale && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-2.5 flex items-center justify-between gap-3">
@@ -205,7 +203,32 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
             </button>
           </div>
         )}
-        <main className="p-6 lg:p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">{children}</main>
+        {/* Navigation mobile : barre d'onglets fixe en bas — le geste natif
+            du téléphone, à la place de l'ancien bandeau défilant. */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-gray-950/95 backdrop-blur border-t border-gray-800 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex">
+            {NAV.filter(
+              (n) => n.ready && (!('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager'),
+            ).map(({ label, href, icon: Icon }) => {
+              const actif = href === '/sales' ? pathname === '/sales' : pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-2 transition-colors ${
+                    actif ? 'text-red-400' : 'text-gray-500 active:text-gray-300'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[9.5px] font-medium leading-none">
+                    {label === 'Tableau de bord' ? 'Accueil' : label === 'Démonstration' ? 'Démos' : label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   );
