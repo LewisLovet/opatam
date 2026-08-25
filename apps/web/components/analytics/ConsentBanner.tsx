@@ -20,16 +20,24 @@
  * IP anonymisation, so they're allowed without prior consent.
  */
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useConsent } from '@/hooks/useConsent';
 
 export function ConsentBanner() {
   const t = useTranslations('consent');
+  const pathname = usePathname();
   const { status, setConsent } = useConsent();
 
-  // Hide once the user has made a decision OR while we're still
-  // figuring it out on first render (the `'unknown'` server-render
-  // state is rendered briefly before localStorage rehydrates).
+  // Les espaces internes (équipe commerciale, admin) ne montrent JAMAIS la
+  // bannière : aucun traceur marketing n'y a sa place, et un outil de
+  // travail qui redemande les cookies à chaque page est insupportable.
+  if (pathname.startsWith('/sales') || pathname.startsWith('/admin')) return null;
+
+  // 'loading' = localStorage pas encore lu : ne rien afficher — c'était la
+  // frame de bannière fantôme visible à chaque chargement. 'granted'/'denied'
+  // = décision prise, plus de bannière. Seul 'unknown' (hydraté, sans
+  // décision) l'affiche.
   if (status !== 'unknown') return null;
 
   return (

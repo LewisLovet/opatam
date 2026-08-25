@@ -56,6 +56,9 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
   // Vue commerciale : lue après montage (localStorage n'existe pas au SSR).
   const [vueCommerciale, setVueCommerciale] = useState(false);
   const [menuMobile, setMenuMobile] = useState(false);
+  // Rôle EFFECTIF côté interface : la vue commerciale doit cacher ce que le
+  // serveur refuserait de toute façon (l'onglet Équipe en tête) — voir
+  // l'onglet puis un refus donne l'impression d'un cloisonnement raté.
   useEffect(() => {
     setVueCommerciale(vueCommercialeActive());
   }, []);
@@ -103,7 +106,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {NAV.filter((n) => !('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager').map(({ label, href, icon: Icon, ready }) => {
+          {NAV.filter((n) => !('managerOnly' in n && n.managerOnly) || (staff.role === 'sales_manager' && !vueCommerciale)).map(({ label, href, icon: Icon, ready }) => {
             const actif = pathname === href;
             if (!ready) {
               return (
@@ -246,7 +249,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
               )}
               <nav className="flex-1 min-h-0 px-3 py-4 space-y-1">
                 {NAV.filter(
-                  (n) => !('managerOnly' in n && n.managerOnly) || staff.role === 'sales_manager',
+                  (n) => !('managerOnly' in n && n.managerOnly) || (staff.role === 'sales_manager' && !vueCommerciale),
                 ).map(({ label, href, icon: Icon, ready }) => {
                   if (!ready) {
                     return (

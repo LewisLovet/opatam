@@ -25,9 +25,12 @@ import { useCallback, useEffect, useState } from 'react';
 /** Allowed values stored under STORAGE_KEY. */
 type StoredConsent = 'granted' | 'denied';
 
-/** What `useConsent()` returns. The 'unknown' state means the
- *  visitor hasn't seen the banner yet (or hydrated from storage). */
-export type ConsentStatus = 'unknown' | StoredConsent;
+/** What `useConsent()` returns. 'loading' = pas encore hydraté depuis
+ *  localStorage (NE RIEN AFFICHER) ; 'unknown' = hydraté, aucune décision
+ *  (la bannière peut se montrer). La distinction supprime la frame de
+ *  bannière fantôme qui clignotait à CHAQUE chargement pour les visiteurs
+ *  ayant déjà choisi. */
+export type ConsentStatus = 'loading' | 'unknown' | StoredConsent;
 
 const STORAGE_KEY = '@opatam/consent-v1';
 /** Same-tab notifications (the native `storage` event only fires
@@ -47,9 +50,10 @@ function readStored(): ConsentStatus {
 }
 
 export function useConsent() {
-  // Start with 'unknown' on the server-render path; hydrate from
-  // localStorage on the client to avoid a hydration mismatch.
-  const [status, setStatus] = useState<ConsentStatus>('unknown');
+  // Start with 'loading' on the server-render path; hydrate from
+  // localStorage on the client to avoid a hydration mismatch. Rien ne
+  // s'affiche ni ne se déclenche tant que la lecture n'a pas eu lieu.
+  const [status, setStatus] = useState<ConsentStatus>('loading');
 
   useEffect(() => {
     setStatus(readStored());

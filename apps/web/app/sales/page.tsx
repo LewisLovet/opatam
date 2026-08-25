@@ -6,6 +6,7 @@ import { Loader } from '@/components/ui';
 import {
   ArrowRight,
   AlertTriangle,
+  Link as LinkIcon,
   CalendarClock,
   Check,
   ChevronRight,
@@ -262,6 +263,25 @@ export default function SalesDashboardPage() {
     })();
   }, []);
 
+  const [lienCopie, setLienCopie] = useState(false);
+  // Le lien personnel du commercial : signé, il attribue l'inscription à son
+  // porteur — c'est LE lien à envoyer à un prospect hors démo.
+  const copierMonLien = async () => {
+    const res = await fetch('/api/sales/links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+      body: JSON.stringify({ campaign: 'lien-direct' }),
+    });
+    if (!res.ok) {
+      alert((await res.json()).error ?? 'Génération du lien impossible');
+      return;
+    }
+    const { url } = await res.json();
+    await navigator.clipboard.writeText(url);
+    setLienCopie(true);
+    setTimeout(() => setLienCopie(false), 2500);
+  };
+
   const prendre = async (l: LeadRow) => {
     if (!confirm(`Prendre en charge « ${l.businessName} » ? Il rejoindra votre pipeline.`)) return;
     const headers = { 'Content-Type': 'application/json', ...(await enTetesStaff()) };
@@ -348,12 +368,30 @@ export default function SalesDashboardPage() {
             Les comptes qui ont besoin de vous aujourd&apos;hui, et pourquoi.
           </p>
         </div>
-        <Link
-          href="/sales/demo"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20"
-        >
-          <Wand2 className="w-4 h-4" /> Nouvelle démo
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Le lien d'inscription attribué — copiable en un geste : c'est
+              l'action la plus fréquente d'une journée de prospection. */}
+          <button
+            onClick={copierMonLien}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+            title="Un lien d'inscription signé : tout compte créé par ce lien vous est attribué"
+          >
+            {lienCopie ? <Check className="w-4 h-4 text-emerald-500" /> : <LinkIcon className="w-4 h-4" />}
+            {lienCopie ? 'Lien copié !' : 'Mon lien d’inscription'}
+          </button>
+          <Link
+            href="/sales/pipeline"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <Kanban className="w-4 h-4" /> Pipeline
+          </Link>
+          <Link
+            href="/sales/demo"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20"
+          >
+            <Wand2 className="w-4 h-4" /> Nouvelle démo
+          </Link>
+        </div>
       </div>
 
       {/* ── Chiffres du jour ── */}

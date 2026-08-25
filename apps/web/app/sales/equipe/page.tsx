@@ -206,6 +206,14 @@ export default function EquipePage() {
     );
   }
 
+  // RIEN ne s'affiche avant la réponse du serveur : montrer le squelette
+  // manager (formulaire d'invitation compris) puis le remplacer par le refus
+  // laissait entrevoir une interface qui n'est pas la sienne — perçu, à
+  // juste titre, comme un défaut de cloisonnement.
+  if (team === null) {
+    return <Loader2 className="w-5 h-5 animate-spin text-gray-400" />;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -292,9 +300,7 @@ export default function EquipePage() {
             L&apos;équipe {team ? `· ${team.length}` : ''}
           </h2>
         </div>
-        {team === null ? (
-          <p className="px-5 py-6 text-sm text-gray-400">Chargement…</p>
-        ) : team.length === 0 ? (
+        {team.length === 0 ? (
           <p className="px-5 py-8 text-sm text-gray-400 text-center">
             Aucun commercial pour l&apos;instant — invitez le premier ci-dessus.
           </p>
