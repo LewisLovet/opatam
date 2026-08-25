@@ -317,7 +317,9 @@ export default function EquipePage() {
                   <th className="px-3 py-2.5 font-semibold text-right">Vues</th>
                   <th className="px-3 py-2.5 font-semibold text-right">Comptes</th>
                   <th className="px-3 py-2.5 font-semibold text-right">Payants</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">MRR</th>
+                  <th className="px-3 py-2.5 font-semibold text-right" title="Tarif catalogue des abonnements convertis — la commission, elle, se calcule sur les montants réellement payés">
+                    MRR cat.
+                  </th>
                   <th className="px-3 py-2.5 font-semibold text-right" title="Objectif mensuel (abonnés payants) et taux de commission (% du MRR, 12 mois)">
                     Objectif · Commission
                   </th>

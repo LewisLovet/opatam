@@ -145,6 +145,9 @@ function SalesDemoPage() {
         return;
       }
       setCreee(data);
+      if (data.liaisonErreur) {
+        alert(`Démo créée, mais NON reliée au prospect : ${data.liaisonErreur}`);
+      }
       setColle('');
       setThemeChoisi('');
       void charger();

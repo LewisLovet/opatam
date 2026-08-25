@@ -650,19 +650,25 @@ async function handleInvoicePaid(
           });
           if (decision === 'virer' || decision === 'retenter') {
             const chargeCommission = extractId((invoice as any).charge);
-            const transfert = await stripe.transfers.create({
-              amount: commissionCents,
-              currency: 'eur',
-              destination: staffPaie.stripeAccountId,
-              ...(chargeCommission ? { source_transaction: chargeCommission } : {}),
-              metadata: {
-                type: 'sales_commission',
-                providerId,
-                staffUid: conv.staffUid,
-                invoiceId: String(invoice.id),
-                tauxPct: String(taux),
+            // Clé d'idempotence Stripe (audit P1) : si le transfert a réussi
+            // mais que l'écriture Firestore a échoué, la relance renvoie LE
+            // MÊME transfert au lieu d'en créer un second.
+            const transfert = await stripe.transfers.create(
+              {
+                amount: commissionCents,
+                currency: 'eur',
+                destination: staffPaie.stripeAccountId,
+                ...(chargeCommission ? { source_transaction: chargeCommission } : {}),
+                metadata: {
+                  type: 'sales_commission',
+                  providerId,
+                  staffUid: conv.staffUid,
+                  invoiceId: String(invoice.id),
+                  tauxPct: String(taux),
+                },
               },
-            });
+              { idempotencyKey: `sales-commission:${invoice.id}` },
+            );
             await comRef.update({ transferId: transfert.id, paidAt: FieldValue.serverTimestamp() });
             console.log(
               `[STRIPE-WEBHOOK] Commission commerciale ${commissionCents}c → ${conv.staffUid} (facture ${invoice.id})`,

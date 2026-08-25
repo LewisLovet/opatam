@@ -1,5 +1,7 @@
 'use client';
 
+import { getAuth } from 'firebase/auth';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui';
@@ -478,9 +480,13 @@ function ChoosePlanSection({
 
     try {
       const selectedPrice = prices.find((p) => p.id === priceId);
+      const jetonCheckout = await getAuth().currentUser?.getIdToken();
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(jetonCheckout ? { Authorization: `Bearer ${jetonCheckout}` } : {}),
+        },
         body: JSON.stringify({
           priceId,
           providerId,

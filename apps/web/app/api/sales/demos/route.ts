@@ -66,9 +66,13 @@ export async function POST(request: NextRequest) {
   });
 
   // Démo créée DEPUIS une fiche prospect : la liaison se fait à la naissance.
+  // Un échec de liaison ne doit pas passer sous silence (audit P2) : la démo
+  // existe, mais l'appelant est prévenu qu'elle est orpheline et pourquoi.
+  let liaisonErreur: string | null = null;
   if (typeof leadId === 'string' && leadId) {
     const snapCree = await ref.get();
-    await relierProspect(db, ref, snapCree.data()!, leadId, auth.identity);
+    const liaison = await relierProspect(db, ref, snapCree.data()!, leadId, auth.identity);
+    if (!liaison.ok) liaisonErreur = liaison.error;
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
     id: ref.id,
     url: `${baseUrl}/p/demo-${ref.id}`,
     expiresAt: expiresAt.toDate().toISOString(),
+    ...(liaisonErreur ? { liaisonErreur } : {}),
   });
 }
 

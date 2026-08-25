@@ -174,14 +174,41 @@ export async function POST(request: NextRequest) {
     // Code d'offre commerciale arrivé avec le lien : rattaché au compte pour
     // que la page Abonnement le pré-remplisse, et tracé sur salesOffers.
     // Best-effort — un code invalide n'empêche jamais une inscription.
+    //
+    // TRANSACTIONNEL (audit P0) : premier compte servi, une seule fois —
+    // deux inscriptions avec le même code voyaient chacune le code
+    // pré-appliqué alors que Stripe n'en accepte qu'une. Et le commercial
+    // du CODE doit être celui du LIEN : sinon un code généré par A
+    // s'utiliserait sous l'attribution de B. Volontairement PAS de contrôle
+    // d'e-mail : un prospect s'inscrit légitimement avec une autre adresse
+    // que celle où il a reçu l'offre.
     if (!('error' in result) && typeof offre === 'string' && /^OPA-[A-Z0-9]{4,10}$/i.test(offre.trim())) {
       const codeOffre = offre.trim().toUpperCase();
       try {
-        const offreSnap = await db.collection('salesOffers').doc(codeOffre).get();
-        const expire = (offreSnap.data()?.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now();
-        if (offreSnap.exists && !expire) {
-          await db.collection('providers').doc(uid).update({ pendingSalesPromoCode: codeOffre });
-          await offreSnap.ref.update({ claimedByProviderId: uid, claimedAt: FieldValue.serverTimestamp() });
+        const offreRef = db.collection('salesOffers').doc(codeOffre);
+        const providerRefOffre = db.collection('providers').doc(uid);
+        const refus = await db.runTransaction(async (tx) => {
+          const offreSnap = await tx.get(offreRef);
+          if (!offreSnap.exists) return 'code-inconnu';
+          const x = offreSnap.data()!;
+          if ((x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now()) return 'code-expire';
+          if (x.claimedByProviderId && x.claimedByProviderId !== uid) return 'code-deja-pris';
+          if (x.staffUid && x.staffUid !== verified.payload.staffUid) return 'commercial-different';
+          tx.update(offreRef, { claimedByProviderId: uid, claimedAt: FieldValue.serverTimestamp() });
+          tx.update(providerRefOffre, { pendingSalesPromoCode: codeOffre });
+          return null;
+        });
+        if (refus) {
+          await db
+            .collection('salesAttributionFailures')
+            .add({
+              uid,
+              staffUid: verified.payload.staffUid,
+              campaign: verified.payload.campaign ?? null,
+              reason: `offre:${refus}:${codeOffre}`,
+              createdAt: FieldValue.serverTimestamp(),
+            })
+            .catch(() => {});
         }
       } catch (e) {
         console.warn('[attribution/claim] rattachement offre échoué:', e);

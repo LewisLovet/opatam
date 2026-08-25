@@ -388,7 +388,7 @@ export default function SalesDashboardPage() {
         conversions === null
           ? '—'
           : `${(conversions.reduce((n, c) => n + c.mrrCents, 0) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`,
-      label: 'MRR attribué',
+      label: 'MRR attribué (tarif catalogue)',
       aide:
         conversions === null
           ? ''

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
-import { getAdminFirestore } from '@/lib/firebase-admin';
+import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
+import { offreParId } from '@/lib/sales-offres';
 
 interface CheckoutRequest {
   priceId: string;
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
       trialDays: body.trialDays ?? 'NOT PROVIDED',
     });
 
-    const { priceId, providerId, plan, trialDays, successUrl, cancelUrl, promoCode } = body;
+    const { priceId, providerId, plan: planClient, trialDays, successUrl, cancelUrl, promoCode } = body;
 
     // Validate required fields
     if (!priceId || !providerId) {
@@ -37,8 +38,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── AUTHENTIFICATION (audit P0) : cette route acceptait n'importe quel
+    // providerId, prix et plan sans jeton — permettant d'abonner le compte
+    // d'un tiers, de lui rattacher un affilié, ou de payer un plan au prix
+    // d'un autre. Désormais : Bearer Firebase obligatoire, et l'appelant ne
+    // paie QUE pour son propre compte (Provider.id === User.id). ──
+    const authHeader = request.headers.get('authorization') ?? '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: 'Authentification requise' }, { status: 401 });
+    }
+    let uid: string;
+    try {
+      uid = (await getAdminAuth().verifyIdToken(authHeader.slice(7))).uid;
+    } catch {
+      return NextResponse.json({ message: 'Jeton invalide ou expiré' }, { status: 401 });
+    }
+    if (uid !== providerId) {
+      return NextResponse.json(
+        { message: 'Vous ne pouvez souscrire que pour votre propre compte' },
+        { status: 403 }
+      );
+    }
+
     const stripe = getStripe();
     const db = getAdminFirestore();
+
+    // ── PRIX ET PLAN CÔTÉ SERVEUR (audit P0) : le prix doit être un tarif
+    // actif de NOTRE catalogue, et le plan se déduit du produit Stripe —
+    // jamais du client (un priceId à 0 € avec plan « team » aurait activé
+    // un abonnement équipe gratuit). ──
+    let prixStripe: import('stripe').Stripe.Price;
+    try {
+      prixStripe = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+    } catch {
+      return NextResponse.json({ message: 'Tarif inconnu' }, { status: 400 });
+    }
+    const produit = prixStripe.product as import('stripe').Stripe.Product;
+    const planServeur = (produit?.metadata?.plan ?? '').trim();
+    if (!prixStripe.active || !prixStripe.recurring || produit?.deleted) {
+      return NextResponse.json({ message: 'Tarif indisponible' }, { status: 400 });
+    }
+    const providerPourPlan = await db.collection('providers').doc(providerId).get();
+    const estCompteTest = providerPourPlan.data()?.isTest === true;
+    if (planServeur !== 'solo' && planServeur !== 'team' && !(planServeur === 'test' && estCompteTest)) {
+      return NextResponse.json({ message: 'Tarif hors catalogue' }, { status: 400 });
+    }
+    const plan = planServeur;
+    void planClient; // ignoré volontairement — le serveur fait foi
+
+    // Les URLs de retour restent chez nous : chemins relatifs uniquement.
+    const successUrlSur = typeof successUrl === 'string' && successUrl.startsWith('/') ? successUrl : '/pro/abonnement';
+    const cancelUrlSur = typeof cancelUrl === 'string' && cancelUrl.startsWith('/') ? cancelUrl : '/pro/abonnement';
 
     // Check if provider has an affiliate code + capture the remaining
     // free-trial end so we can honor it (see trial_end below).
@@ -107,6 +157,16 @@ export async function POST(request: NextRequest) {
           // re-validates the promotion_code at checkout, so existence is enough.
           const promos = await stripe.promotionCodes.list({ code: c, active: true, limit: 1 });
           if (promos.data[0]) {
+            // Offre commerciale « annuel seulement » : la restriction était un
+            // texte d'interface (audit P1) — le serveur la fait respecter.
+            const offreId = promos.data[0].metadata?.offerId;
+            const offre = offreId ? offreParId(offreId) : null;
+            if (offre?.annuelSeulement && prixStripe.recurring?.interval !== 'year') {
+              return NextResponse.json(
+                { message: `Le code ${c} est réservé à l'abonnement annuel.` },
+                { status: 400 }
+              );
+            }
             stripePromotionCodeId = promos.data[0].id;
             break;
           }
@@ -137,7 +197,9 @@ export async function POST(request: NextRequest) {
       if (vuSec > nowSec + 48 * 60 * 60) trialEndUnix = vuSec;
     }
     const subscriptionData: Record<string, unknown> = { metadata };
-    if (typeof trialDays === 'number' && trialDays > 0) {
+    // trialDays client : outil de test uniquement — un pro authentifié
+    // pourrait sinon s'offrir un essai arbitraire (audit P0).
+    if (typeof trialDays === 'number' && trialDays > 0 && estCompteTest) {
       subscriptionData.trial_period_days = trialDays;
     } else if (trialEndUnix) {
       subscriptionData.trial_end = trialEndUnix;
@@ -164,12 +226,9 @@ export async function POST(request: NextRequest) {
       ],
       subscription_data: subscriptionData as any,
       metadata,
-      success_url: successUrl
-        ? `${process.env.NEXT_PUBLIC_APP_URL}${successUrl}${successUrl.includes('?') ? '&' : '?'}success=true&session_id={CHECKOUT_SESSION_ID}`
-        : `${process.env.NEXT_PUBLIC_APP_URL}/dev/tests/stripe?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl
-        ? `${process.env.NEXT_PUBLIC_APP_URL}${cancelUrl}${cancelUrl.includes('?') ? '&' : '?'}cancelled=true`
-        : `${process.env.NEXT_PUBLIC_APP_URL}/dev/tests/stripe?cancelled=true`,
+      // Chemins RELATIFS validés plus haut — pas de redirection arbitraire.
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}${successUrlSur}${successUrlSur.includes('?') ? '&' : '?'}success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}${cancelUrlSur}${cancelUrlSur.includes('?') ? '&' : '?'}cancelled=true`,
     });
 
     console.log('[STRIPE-CHECKOUT] SUCCESS - Session created:', session.id);

@@ -33,11 +33,40 @@ export async function GET(request: NextRequest) {
     const db = getAdminFirestore();
     const now = Date.now();
 
-    const [trialingSnap, recentSnap, leadsSnap] = await Promise.all([
+    // CLOISONNEMENT (audit P1) : un commercial ne voit que les comptes
+    // QU'IL A ATTRIBUÉS et SON pipeline — l'écran servait à tout le monde
+    // les essais et inscrits de toute la plateforme, noms compris.
+    // Manager/admin gardent la vue complète.
+    const estCommercial = auth.identity.role === 'sales';
+    const mesAttributions = estCommercial
+      ? new Set(
+          (
+            await db
+              .collection('salesAttribution')
+              .where('staffUid', '==', auth.identity.uid)
+              .limit(1000)
+              .get()
+          ).docs.map((d) => d.id),
+        )
+      : null;
+
+    const [trialingSnapBrut, recentSnapBrut, leadsSnap] = await Promise.all([
       db.collection('providers').where('subscription.status', '==', 'trialing').get(),
       db.collection('providers').orderBy('createdAt', 'desc').limit(20).get(),
-      db.collection('salesLeads').get(),
+      estCommercial
+        ? db.collection('salesLeads').where('ownerUid', '==', auth.identity.uid).limit(500).get()
+        : db.collection('salesLeads').get(),
     ]);
+    const trialingSnap = {
+      docs: mesAttributions
+        ? trialingSnapBrut.docs.filter((d) => mesAttributions.has(d.id))
+        : trialingSnapBrut.docs,
+    };
+    const recentSnap = {
+      docs: mesAttributions
+        ? recentSnapBrut.docs.filter((d) => mesAttributions.has(d.id))
+        : recentSnapBrut.docs,
+    };
 
     /** Activation réelle d'un compte — trois petites lectures ciblées. */
     async function activationDe(providerId: string, isPublished: boolean) {
