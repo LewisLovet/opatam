@@ -108,6 +108,9 @@ interface WizardData {
   password: string;
   confirmPassword: string;
   acceptTerms: boolean;
+  // « Comment avez-vous connu Opatam ? » — obligatoire à la dernière étape.
+  acquisitionChannel: string;
+  acquisitionDetail: string;
   // Affiliation
   referralCode: string;
   referralInfo: { valid: boolean; affiliateId: string; affiliateName: string; discount: number | null; discountLabel: string | null } | null;
@@ -144,6 +147,8 @@ const DEFAULT_DATA: WizardData = {
   password: '',
   confirmPassword: '',
   acceptTerms: false,
+  acquisitionChannel: '',
+  acquisitionDetail: '',
   referralCode: '',
   referralInfo: null,
 };
@@ -484,6 +489,14 @@ export default function RegisterPage() {
           setError('Les mots de passe ne correspondent pas');
           return false;
         }
+        if (!data.acquisitionChannel) {
+          setError('Dites-nous comment vous avez connu Opatam');
+          return false;
+        }
+        if (data.acquisitionChannel === 'autre' && !data.acquisitionDetail.trim()) {
+          setError('Précisez comment vous avez connu Opatam');
+          return false;
+        }
         if (!data.acceptTerms) {
           setError("Veuillez accepter les conditions d'utilisation");
           return false;
@@ -520,6 +533,18 @@ export default function RegisterPage() {
       businessName: data.businessName,
       category: data.category,
       description: data.description,
+      acquisitionSource: data.acquisitionChannel
+        ? {
+            channel: data.acquisitionChannel as
+              | 'equipe'
+              | 'instagram'
+              | 'tiktok'
+              | 'google'
+              | 'recommandation'
+              | 'autre',
+            detail: data.acquisitionDetail.trim() || null,
+          }
+        : undefined,
     });
 
     // If referral code, link affiliate to provider + increment stats
@@ -1745,6 +1770,38 @@ export default function RegisterPage() {
             className="pl-10"
           />
           <Lock className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* « Membre de l'équipe » plutôt que « commercial » — décision
+            client : moins business. La réponse sert au marketing ET au
+            recoupement des attributions. */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Comment avez-vous connu Opatam ? <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={data.acquisitionChannel}
+            onChange={(e) => updateData({ acquisitionChannel: e.target.value, acquisitionDetail: '' })}
+            disabled={loading}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white"
+          >
+            <option value="">Choisissez…</option>
+            <option value="equipe">Un membre de l&apos;équipe Opatam</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="google">Recherche Google</option>
+            <option value="recommandation">Recommandation d&apos;un·e autre professionnel·le</option>
+            <option value="autre">Autre…</option>
+          </select>
+          {data.acquisitionChannel === 'autre' && (
+            <Input
+              placeholder="Dites-nous en plus…"
+              value={data.acquisitionDetail}
+              onChange={(e) => updateData({ acquisitionDetail: e.target.value.slice(0, 120) })}
+              disabled={loading}
+              className="mt-2"
+            />
+          )}
         </div>
 
         <div className="flex items-start gap-3">

@@ -133,6 +133,17 @@ export const createProviderSchema = z.object({
     .max(1000, { message: 'La description ne peut pas dépasser 1000 caractères' })
     .optional()
     .default(''),
+  /**
+   * « Comment avez-vous connu Opatam ? » — posé à la fin de l'inscription
+   * (obligatoire côté formulaire). MÊME PIÈGE zod que themeId/affiliateCode :
+   * sans déclaration ici, la réponse serait silencieusement retirée.
+   */
+  acquisitionSource: z
+    .object({
+      channel: z.enum(['equipe', 'instagram', 'tiktok', 'google', 'recommandation', 'autre']),
+      detail: z.string().max(120).nullable().optional(),
+    })
+    .optional(),
 });
 
 // Update provider schema - Tout optionnel

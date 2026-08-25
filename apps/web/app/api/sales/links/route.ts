@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '@/lib/admin-auth';
 import { signSalesLink } from '@/lib/sales-attribution';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 
 /**
  * Génération d'un lien commercial signé.
@@ -14,6 +15,19 @@ import { signSalesLink } from '@/lib/sales-attribution';
 export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
+
+  // Un lien signé n'a de sens que pour une FICHE commerciale active : la
+  // revendication vérifie staffMembers/{uid} — le lien d'un admin sans fiche
+  // serait accepté à la signature puis refusé à l'inscription du prospect.
+  // Mieux vaut le dire tout de suite que produire un lien mort.
+  const fiche = await getAdminFirestore().collection('staffMembers').doc(auth.identity.uid).get();
+  if (!fiche.exists || fiche.data()?.active !== true) {
+    return NextResponse.json({
+      url: null,
+      raison:
+        'Votre compte n’a pas de fiche commerciale : un lien généré ici ne créditerait personne. Les commerciaux invités ont chacun le leur.',
+    });
+  }
 
   const body = await request.json().catch(() => ({}));
   const campaign = typeof body.campaign === 'string' && body.campaign.trim()

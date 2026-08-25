@@ -264,6 +264,7 @@ export default function SalesDashboardPage() {
   }, []);
 
   const [lienCopie, setLienCopie] = useState(false);
+  const [lienNote, setLienNote] = useState<string | null>(null);
   // Versements Connect — chargé à part (appel Stripe côté serveur, ne doit
   // pas retarder le reste du tableau de bord).
   const [connect, setConnect] = useState<{
@@ -294,19 +295,32 @@ export default function SalesDashboardPage() {
   // Le lien personnel du commercial : signé, il attribue l'inscription à son
   // porteur — c'est LE lien à envoyer à un prospect hors démo.
   const copierMonLien = async () => {
+    setLienNote(null);
     const res = await fetch('/api/sales/links', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
       body: JSON.stringify({ campaign: 'lien-direct' }),
     });
+    const d = await res.json();
     if (!res.ok) {
-      alert((await res.json()).error ?? 'Génération du lien impossible');
+      setLienNote(d.error ?? 'Génération du lien impossible');
       return;
     }
-    const { url } = await res.json();
-    await navigator.clipboard.writeText(url);
-    setLienCopie(true);
-    setTimeout(() => setLienCopie(false), 2500);
+    // Pas de fiche commerciale (admin) : pas de lien, mais l'interface reste
+    // celle qu'un commercial verra — on l'explique au lieu d'alerter.
+    if (!d.url) {
+      setLienNote(d.raison ?? 'Pas de lien pour ce compte.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(d.url);
+      setLienCopie(true);
+      setTimeout(() => setLienCopie(false), 2500);
+    } catch {
+      // Presse-papiers indisponible (HTTP sur IP locale, navigateurs
+      // stricts) : montrer le lien à copier à la main.
+      setLienNote(`Copie automatique impossible — votre lien : ${d.url}`);
+    }
   };
 
   const prendre = async (l: LeadRow) => {
@@ -420,6 +434,12 @@ export default function SalesDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {lienNote && (
+        <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300 break-all">
+          {lienNote}
+        </div>
+      )}
 
       {/* ── Chiffres du jour ── */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">

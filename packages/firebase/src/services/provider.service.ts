@@ -90,6 +90,7 @@ export class ProviderService {
     await providerRepository.createWithId(userId, {
       userId,
       plan: 'trial', // Toujours trial a la creation
+      acquisitionSource: validated.acquisitionSource ?? null,
       businessName: validated.businessName,
       description: validated.description || '',
       category: validated.category || '',

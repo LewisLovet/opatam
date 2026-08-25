@@ -89,6 +89,13 @@ export interface AccessOverride {
 }
 
 export interface Provider {
+  /** « Comment avez-vous connu Opatam ? » — réponse d'inscription.
+   *  `equipe` = amené par un commercial (libellé public : « un membre de
+   *  l'équipe »). Sert au marketing ET au recoupement des attributions. */
+  acquisitionSource?: {
+    channel: 'equipe' | 'instagram' | 'tiktok' | 'google' | 'recommandation' | 'autre';
+    detail?: string | null;
+  } | null;
   userId: string;
   plan: ProviderPlan;
   businessName: string;

@@ -132,6 +132,20 @@ export async function POST(request: NextRequest) {
                   lastInteractionAt: FieldValue.serverTimestamp(),
                   updatedAt: FieldValue.serverTimestamp(),
                 });
+                // Le lien Instagram relevé en prospection suit le compte : la
+                // vitrine du nouvel inscrit affiche son réseau sans qu'il ait
+                // à le ressaisir. Jamais d'écrasement d'une valeur existante.
+                const profileUrl: string | undefined = leads.docs[0].data().profileUrl;
+                if (profileUrl && /instagram\.com/i.test(profileUrl)) {
+                  const provSnap = await db.collection('providers').doc(uid).get();
+                  if (!provSnap.data()?.socialLinks?.instagram) {
+                    await db
+                      .collection('providers')
+                      .doc(uid)
+                      .update({ 'socialLinks.instagram': profileUrl })
+                      .catch(() => {});
+                  }
+                }
                 await db.collection('salesActivities').add({
                   leadId: leadRef.id,
                   authorUid: verified.payload.staffUid,
