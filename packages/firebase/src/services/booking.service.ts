@@ -19,6 +19,7 @@ import {
   parseOrThrow,
   createBookingSchema,
   resolveDeposit,
+  combineResolvedDeposits,
   computeServiceTotal,
   computeDiscountedTotal,
   buildBookingSelections,
@@ -268,22 +269,15 @@ export class BookingService {
     // effective price + per-service config). Null when none apply.
     let resolvedDeposit: { amount: number; refundDeadlineHours: number } | null = null;
     if (depositReady) {
-      let amount = 0;
-      let refundDeadlineHours = 0;
-      let any = false;
+      const deposits: Array<{ amount: number; refundDeadlineHours: number }> = [];
       for (const r of resolvedItems) {
         const d = resolveDeposit(
           { ...r.service, price: r.effective.price },
           provider.settings ?? {},
         );
-        if (d) {
-          any = true;
-          amount += d.amount;
-          // Keep the most client-favourable (longest) refund window.
-          refundDeadlineHours = Math.max(refundDeadlineHours, d.refundDeadlineHours);
-        }
+        if (d) deposits.push(d);
       }
-      resolvedDeposit = any ? { amount, refundDeadlineHours: refundDeadlineHours || 24 } : null;
+      resolvedDeposit = combineResolvedDeposits(deposits);
     }
 
     // Status precedence:

@@ -2185,7 +2185,8 @@
       "errors": {
         "percentRange": "Percentuale tra 1 e 100",
         "hoursRange": "Termine tra 0 e 720 ore"
-      }
+      },
+      "refundableToggle": "Acconto rimborsabile"
     }
   },
   "paywall": {
@@ -2515,7 +2516,8 @@
       "percentRange": "Lo sconto deve essere tra 1 e 100 %",
       "endAfterStart": "La data di fine deve essere dopo l'inizio",
       "variationsIncomplete": "Completa almeno una variante: un nome e almeno una scelta con nome.",
-      "amountRange": "Lo sconto deve essere compreso tra 0,01 € e 10 000 €"
+      "amountRange": "Lo sconto deve essere compreso tra 0,01 € e 10 000 €",
+      "depositRefundHours": "Termine di rimborso: tra 1 e 720 ore"
     },
     "deleteService": {
       "title": "Elimina il servizio",
@@ -2617,7 +2619,11 @@
       "percentLabel": "Percentuale (%)",
       "amountLabel": "Importo (€)",
       "refundDelayLabel": "Termine di rimborso (ore prima dell'appuntamento)",
-      "refundDelayNote": "0 = nessun rimborso automatico. Oltre il termine, l'acconto non viene rimborsato in caso di annullamento da parte del cliente."
+      "refundDelayNote": "Tra 1 e 720 ore (30 giorni). Oltre questo termine, l'acconto non viene rimborsato se il cliente annulla.",
+      "refundableToggle": "Acconto rimborsabile",
+      "refundableUntilLabel": "Rimborsabile fino a (ore prima dell'appuntamento)",
+      "refundableKept": "In caso di annullamento l'acconto resta acquisito.",
+      "hintInheritNonRefundable": "{{percent}} % del prezzo · non rimborsabile (l'acconto resta acquisito)"
     },
     "availability": {
       "title": "Disponibilità",

@@ -94,7 +94,11 @@ export function DepositSection({
             defaultDeposit
               ? `${defaultDeposit.percent} % du prix${
                   servicePrice > 0 ? ` = ${fmt(defaultAmount)}` : ''
-                } · remboursable jusqu'à ${defaultDeposit.refundDeadlineHours}h avant le RDV`
+                }${
+                  defaultDeposit.refundDeadlineHours > 0
+                    ? ` · remboursable jusqu'à ${defaultDeposit.refundDeadlineHours}h avant le RDV`
+                    : " · non remboursable (l'acompte reste acquis)"
+                }`
               : 'Aucun acompte par défaut configuré → pas d\'acompte demandé sur cette prestation.'
           }
         />
@@ -181,18 +185,48 @@ export function DepositSection({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
-                Délai de remboursement
-              </label>
-              <Input
-                numericValue={deposit.refundDeadlineHours ?? 24}
-                onNumericChange={(h) =>
-                  onChange({ ...deposit, refundDeadlineHours: Math.round(h) })
-                }
-                min={0}
-                max={720}
-                suffix="heures"
-              />
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Acompte remboursable
+                </label>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={(deposit.refundDeadlineHours ?? 24) > 0}
+                  onClick={() =>
+                    onChange({
+                      ...deposit,
+                      refundDeadlineHours: (deposit.refundDeadlineHours ?? 24) > 0 ? 0 : 24,
+                    })
+                  }
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                    (deposit.refundDeadlineHours ?? 24) > 0
+                      ? 'bg-primary-600'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      (deposit.refundDeadlineHours ?? 24) > 0 ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+              {(deposit.refundDeadlineHours ?? 24) > 0 ? (
+                <Input
+                  numericValue={deposit.refundDeadlineHours ?? 24}
+                  onNumericChange={(h) =>
+                    onChange({ ...deposit, refundDeadlineHours: Math.max(1, Math.min(720, Math.round(h))) })
+                  }
+                  min={1}
+                  max={720}
+                  suffix="heures"
+                />
+              ) : (
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 rounded-md bg-gray-50 dark:bg-gray-900/40 px-2.5 py-2">
+                  L&apos;acompte reste acquis en cas d&apos;annulation.
+                </p>
+              )}
             </div>
           </div>
 
@@ -201,8 +235,8 @@ export function DepositSection({
             <strong className="text-gray-900 dark:text-white">Acompte demandé :</strong>{' '}
             {servicePrice > 0 ? fmt(overrideAmount) : 'configurez d\'abord le prix'}
             {(deposit.refundDeadlineHours ?? 0) === 0
-              ? ' · non remboursable'
-              : ` · remboursé si annulation > ${deposit.refundDeadlineHours} h avant`}
+              ? " · l'acompte reste acquis en cas d'annulation"
+              : ` · remboursable jusqu'à ${deposit.refundDeadlineHours} h avant le rendez-vous`}
           </div>
         </div>
       )}

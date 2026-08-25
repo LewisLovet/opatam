@@ -39,7 +39,9 @@ import { Text, Card, Button, Switch, useToast } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useDepositsSummary, useServices } from '../../hooks';
-import { hasDepositAccess, isBaseTrialActive } from '@booking-app/shared';
+import { hasDepositAccess, isBaseTrialActive,
+  parseRefundDeadlineHours,
+} from '@booking-app/shared';
 import i18n, { getIntlLocale } from '../../lib/i18n';
 import { API_URL as BASE_URL } from '../../lib/config';
 
@@ -52,7 +54,9 @@ const PERCENT_PRESETS = [10, 20, 30, 50, 100];
  *  automatic refund, the deposit is always kept on cancellation".
  *  Hence the explicit "Jamais/Never" label (translated at render
  *  time) rather than "0h". */
-const HOURS_PRESET_VALUES = [0, 24, 48, 72];
+// Le « Jamais » (0) quitte les presets : la non-remboursabilité est un
+// TOGGLE explicite, pas une valeur de délai parmi d'autres.
+const HOURS_PRESET_VALUES = [24, 48, 72];
 
 export default function PaymentsScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -106,7 +110,10 @@ export default function PaymentsScreen() {
   const [editing, setEditing] = useState(false);
   const [enabled, setEnabled] = useState(!!depositDefault);
   const [percent, setPercent] = useState(String(depositDefault?.percent ?? 30));
-  const [hours, setHours] = useState(String(depositDefault?.refundDeadlineHours ?? 24));
+  const [refundable, setRefundable] = useState((depositDefault?.refundDeadlineHours ?? 24) > 0);
+  const [hours, setHours] = useState(
+    String((depositDefault?.refundDeadlineHours ?? 24) > 0 ? depositDefault?.refundDeadlineHours ?? 24 : 24),
+  );
   const [saving, setSaving] = useState(false);
   const [addonWorking, setAddonWorking] = useState(false);
 
@@ -114,19 +121,22 @@ export default function PaymentsScreen() {
     if (editing) return;
     setEnabled(!!depositDefault);
     setPercent(String(depositDefault?.percent ?? 30));
-    setHours(String(depositDefault?.refundDeadlineHours ?? 24));
+    const heures = depositDefault?.refundDeadlineHours ?? 24;
+    setRefundable(heures > 0);
+    setHours(String(heures > 0 ? heures : 24));
   }, [depositDefault, editing]);
 
   const dirty = useMemo(() => {
     const persistedEnabled = !!depositDefault;
     const persistedPercent = depositDefault?.percent ?? 30;
     const persistedHours = depositDefault?.refundDeadlineHours ?? 24;
+    const saisieHours = refundable ? Number(hours) : 0;
     return (
       enabled !== persistedEnabled ||
       Number(percent) !== persistedPercent ||
-      Number(hours) !== persistedHours
+      saisieHours !== persistedHours
     );
-  }, [enabled, percent, hours, depositDefault]);
+  }, [enabled, percent, hours, refundable, depositDefault]);
 
   // ─── Web fallback for Stripe Connect KYC ─────────────────────────
   // (Onboarding requires Stripe's hosted form — no native option.)
@@ -205,12 +215,13 @@ export default function PaymentsScreen() {
       return;
     }
     const percentNum = Number(percent);
-    const hoursNum = Number(hours);
+    // Toggle éteint → 0 EXACTEMENT (acompte acquis) ; allumé → 1..720.
+    const hoursNum = refundable ? (parseRefundDeadlineHours(hours) ?? NaN) : 0;
     if (enabled && (!Number.isFinite(percentNum) || percentNum < 1 || percentNum > 100)) {
       toast.showToast({ variant: 'error', message: t('proPayments.deposit.errors.percentRange') });
       return;
     }
-    if (!Number.isFinite(hoursNum) || hoursNum < 0 || hoursNum > 720) {
+    if (refundable && (!Number.isFinite(hoursNum) || hoursNum < 1 || hoursNum > 720)) {
       toast.showToast({ variant: 'error', message: t('proPayments.deposit.errors.hoursRange') });
       return;
     }
@@ -760,8 +771,40 @@ export default function PaymentsScreen() {
                     fontWeight: '600',
                   }}
                 >
-                  {t('proPayments.deposit.refundLabel')}
+                  {t('proPayments.deposit.refundableToggle')}
                 </Text>
+                <Pressable
+                  onPress={() => {
+                    setRefundable((r) => !r);
+                    setEditing(true);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Text variant="bodySmall" style={{ color: colors.textSecondary, flex: 1 }}>
+                    {refundable
+                      ? t('proPayments.deposit.refundLabel')
+                      : t('proPayments.deposit.refundNeverHint')}
+                  </Text>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 26,
+                      borderRadius: 13,
+                      padding: 2,
+                      backgroundColor: refundable ? colors.primary : colors.border,
+                      alignItems: refundable ? 'flex-end' : 'flex-start',
+                    }}
+                  >
+                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' }} />
+                  </View>
+                </Pressable>
+                {refundable && (
+                <>
                 <View style={s.chipRow}>
                   {HOURS_PRESET_VALUES.map((value) => {
                     const active = Number(hours) === value;
@@ -788,9 +831,7 @@ export default function PaymentsScreen() {
                             fontWeight: '600',
                           }}
                         >
-                          {value === 0
-                            ? t('proPayments.deposit.refundNever')
-                            : t('proPayments.deposit.refundBefore', { hours: value })}
+                          {t('proPayments.deposit.refundBefore', { hours: value })}
                         </Text>
                       </Pressable>
                     );
@@ -824,10 +865,10 @@ export default function PaymentsScreen() {
                   color="textSecondary"
                   style={{ marginTop: spacing.sm, lineHeight: 17 }}
                 >
-                  {Number(hours) === 0
-                    ? t('proPayments.deposit.refundNeverHint')
-                    : t('proPayments.deposit.refundHint', { delay: formatHours(Number(hours)) })}
+                  {t('proPayments.deposit.refundHint', { delay: formatHours(Number(hours)) })}
                 </Text>
+                </>
+                )}
               </View>
             </View>
           )}

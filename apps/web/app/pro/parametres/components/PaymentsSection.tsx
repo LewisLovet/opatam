@@ -271,6 +271,10 @@ export function PaymentsSection() {
   const [defaultEnabled, setDefaultEnabled] = useState(false);
   const [defaultPercent, setDefaultPercent] = useState(30);
   const [defaultRefundHours, setDefaultRefundHours] = useState(24);
+  // Toggle « Acompte remboursable » — 0 h n'est plus une saisie implicite
+  // mais un choix explicite. defaultRefundHours garde la dernière valeur
+  // POSITIVE saisie, pour la retrouver si le pro réactive en cours d'édition.
+  const [defaultRefundable, setDefaultRefundable] = useState(true);
   const [defaultSaving, setDefaultSaving] = useState(false);
   const [defaultDirty, setDefaultDirty] = useState(false);
 
@@ -279,10 +283,13 @@ export function PaymentsSection() {
     if (existingDefault) {
       setDefaultEnabled(true);
       setDefaultPercent(existingDefault.percent);
-      setDefaultRefundHours(existingDefault.refundDeadlineHours);
+      const heures = existingDefault.refundDeadlineHours;
+      setDefaultRefundable(heures > 0);
+      setDefaultRefundHours(heures > 0 ? heures : 24);
     } else {
       setDefaultEnabled(false);
       setDefaultPercent(30);
+      setDefaultRefundable(true);
       setDefaultRefundHours(24);
     }
     setDefaultDirty(false);
@@ -295,7 +302,11 @@ export function PaymentsSection() {
     try {
       const token = await getIdToken();
       const body = defaultEnabled
-        ? { percent: defaultPercent, refundDeadlineHours: defaultRefundHours }
+        ? {
+            percent: defaultPercent,
+            // Toggle éteint → exactement 0 : l'acompte reste acquis.
+            refundDeadlineHours: defaultRefundable ? defaultRefundHours : 0,
+          }
         : { percent: null };
       const res = await fetch('/api/pro/deposits-default', {
         method: 'PUT',
@@ -715,25 +726,51 @@ export function PaymentsSection() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    Délai de remboursement
-                  </label>
-                  <Input
-                    numericValue={defaultRefundHours}
-                    onNumericChange={(h) => {
-                      setDefaultRefundHours(Math.round(h));
-                      setDefaultDirty(true);
-                    }}
-                    min={0}
-                    max={720}
-                    suffix="heures"
-                  />
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                    {defaultRefundHours === 0
-                      ? "Aucun remboursement automatique"
-                      : `Remboursé si annulation > ${defaultRefundHours}h avant le RDV`}
-                  </p>
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      Acompte remboursable
+                    </label>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={defaultRefundable}
+                      onClick={() => {
+                        setDefaultRefundable(!defaultRefundable);
+                        setDefaultDirty(true);
+                      }}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                        defaultRefundable ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          defaultRefundable ? 'translate-x-4' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {defaultRefundable ? (
+                    <>
+                      <Input
+                        numericValue={defaultRefundHours}
+                        onNumericChange={(h) => {
+                          setDefaultRefundHours(Math.max(1, Math.min(720, Math.round(h))));
+                          setDefaultDirty(true);
+                        }}
+                        min={1}
+                        max={720}
+                        suffix="heures"
+                      />
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Remboursable jusqu&apos;à {defaultRefundHours} h avant le rendez-vous
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 rounded-md bg-gray-50 dark:bg-gray-900/40 px-2.5 py-2">
+                      L&apos;acompte reste acquis en cas d&apos;annulation.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

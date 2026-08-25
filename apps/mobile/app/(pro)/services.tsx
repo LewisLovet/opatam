@@ -65,6 +65,7 @@ import {
   sanitizeInfoFields,
   type DiscountPreviewRow,
   type ServiceDiscountPreview,
+  parseRefundDeadlineHours,
 } from '@booking-app/shared';
 import {
   VariationsEditor,
@@ -119,6 +120,7 @@ interface ServiceFormData {
   depositType: DepositCustomType;
   depositValue: string; // % when percent, € when fixed
   depositRefundHours: string;
+  depositRefundable: boolean;
   // Promotion — pourcentage OU montant fixe. Empty/disabled = no promo.
   discountEnabled: boolean;
   /** Forme active. Les deux saisies sont conservées pour ne rien perdre en
@@ -163,6 +165,7 @@ const DEFAULT_FORM: ServiceFormData = {
   depositType: 'percent',
   depositValue: '30',
   depositRefundHours: '24',
+  depositRefundable: true,
   discountEnabled: false,
   discountMode: 'percent',
   discountPercent: '10',
@@ -832,6 +835,7 @@ export default function ServicesScreen() {
     let depositType: DepositCustomType = 'percent';
     let depositValue = '30';
     let depositRefundHours = '24';
+    let depositRefundable = true;
     if (service.deposit?.type === 'none') {
       depositMode = 'none';
     } else if (service.deposit?.type === 'fixed' || service.deposit?.type === 'percent') {
@@ -842,7 +846,11 @@ export default function ServicesScreen() {
         depositType === 'fixed'
           ? String((service.deposit.value ?? 0) / 100)
           : String(service.deposit.value ?? 30);
-      depositRefundHours = String(service.deposit.refundDeadlineHours ?? 24);
+      const heuresStockees = service.deposit.refundDeadlineHours ?? 24;
+      depositRefundable = heuresStockees > 0;
+      // Toggle éteint : le champ caché garde 24 comme valeur de reprise si
+      // le pro réactive le remboursement pendant l'édition.
+      depositRefundHours = heuresStockees > 0 ? String(heuresStockees) : '24';
     }
 
     setForm({
@@ -868,6 +876,7 @@ export default function ServicesScreen() {
       depositType,
       depositValue,
       depositRefundHours,
+      depositRefundable,
       discountEnabled: !!service.discount,
       discountMode: isAmountDiscount(service.discount) ? 'amount' : 'percent',
       discountPercent: service.discount?.percent ? String(service.discount.percent) : '10',
@@ -946,7 +955,19 @@ export default function ServicesScreen() {
       depositPayload = { type: 'none' };
     } else {
       const valueRaw = Number(form.depositValue);
-      const hoursRaw = Number(form.depositRefundHours);
+      // Toggle « Acompte remboursable » éteint → 0 EXACTEMENT (l'acompte
+      // reste acquis). Allumé → entier 1..720 exigé ; une saisie invalide
+      // BLOQUE avec un message au lieu d'être maquillée en 24 (l'ancien
+      // `Math.round(x) || 24` transformait aussi 0 en 24).
+      let refundDeadlineHours = 0;
+      if (form.depositRefundable) {
+        const h = parseRefundDeadlineHours(form.depositRefundHours);
+        if (h === null || h < 1) {
+          showToast({ variant: 'error', message: t('proServices.errors.depositRefundHours') });
+          return null;
+        }
+        refundDeadlineHours = h;
+      }
       if (!Number.isFinite(valueRaw) || valueRaw < 1) {
         showToast({ variant: 'error', message: t('proServices.errors.depositPositive') });
         return null;
@@ -964,7 +985,7 @@ export default function ServicesScreen() {
       depositPayload = {
         type: form.depositType,
         value: valueCents,
-        refundDeadlineHours: Math.max(0, Math.min(720, Math.round(hoursRaw) || 24)),
+        refundDeadlineHours,
       };
     }
 
@@ -2061,10 +2082,14 @@ export default function ServicesScreen() {
                       };
                       const hints: Record<DepositMode, string> = {
                         inherit: defaultDepositSettings
-                          ? t('proServices.deposit.hintInheritWithDefault', {
-                              percent: defaultDepositSettings.percent,
-                              hours: defaultDepositSettings.refundDeadlineHours,
-                            })
+                          ? defaultDepositSettings.refundDeadlineHours > 0
+                            ? t('proServices.deposit.hintInheritWithDefault', {
+                                percent: defaultDepositSettings.percent,
+                                hours: defaultDepositSettings.refundDeadlineHours,
+                              })
+                            : t('proServices.deposit.hintInheritNonRefundable', {
+                                percent: defaultDepositSettings.percent,
+                              })
                           : t('proServices.deposit.hintInheritNoDefault'),
                         custom: t('proServices.deposit.hintCustom'),
                         none: defaultDepositSettings
@@ -2177,16 +2202,53 @@ export default function ServicesScreen() {
                           }
                           keyboardType={form.depositType === 'percent' ? 'number-pad' : 'decimal-pad'}
                         />
-                        <Input
-                          label={t('proServices.deposit.refundDelayLabel')}
-                          placeholder="24"
-                          value={form.depositRefundHours}
-                          onChangeText={(t) => setForm((p) => ({ ...p, depositRefundHours: t.replace(/[^0-9]/g, '') }))}
-                          keyboardType="number-pad"
-                        />
-                        <Text variant="caption" color="textSecondary">
-                          {t('proServices.deposit.refundDelayNote')}
-                        </Text>
+                        {/* Toggle EXPLICITE — le « 0 h » implicite cachait la
+                            politique la plus importante de l'acompte. */}
+                        <Pressable
+                          onPress={() =>
+                            setForm((p) => ({ ...p, depositRefundable: !p.depositRefundable }))
+                          }
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            paddingVertical: spacing.sm,
+                          }}
+                        >
+                          <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text, flex: 1 }}>
+                            {t('proServices.deposit.refundableToggle')}
+                          </Text>
+                          <View
+                            style={{
+                              width: 44,
+                              height: 26,
+                              borderRadius: 13,
+                              padding: 2,
+                              backgroundColor: form.depositRefundable ? colors.primary : colors.border,
+                              alignItems: form.depositRefundable ? 'flex-end' : 'flex-start',
+                            }}
+                          >
+                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' }} />
+                          </View>
+                        </Pressable>
+                        {form.depositRefundable ? (
+                          <>
+                            <Input
+                              label={t('proServices.deposit.refundableUntilLabel')}
+                              placeholder="24"
+                              value={form.depositRefundHours}
+                              onChangeText={(t) => setForm((p) => ({ ...p, depositRefundHours: t.replace(/[^0-9]/g, '') }))}
+                              keyboardType="number-pad"
+                            />
+                            <Text variant="caption" color="textSecondary">
+                              {t('proServices.deposit.refundDelayNote')}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text variant="caption" color="textSecondary">
+                            {t('proServices.deposit.refundableKept')}
+                          </Text>
+                        )}
                       </View>
                     )}
                   </View>

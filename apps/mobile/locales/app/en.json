@@ -2185,7 +2185,8 @@
       "errors": {
         "percentRange": "Percentage must be between 1 and 100",
         "hoursRange": "Deadline must be between 0 and 720 hours"
-      }
+      },
+      "refundableToggle": "Deposit refundable"
     }
   },
   "paywall": {
@@ -2515,7 +2516,8 @@
       "percentRange": "The discount must be between 1 and 100%",
       "endAfterStart": "The end date must be after the start",
       "variationsIncomplete": "Complete at least one variation: a name and at least one named choice.",
-      "amountRange": "The discount must be between €0.01 and €10,000"
+      "amountRange": "The discount must be between €0.01 and €10,000",
+      "depositRefundHours": "Refund window: between 1 and 720 hours"
     },
     "deleteService": {
       "title": "Delete service",
@@ -2617,7 +2619,11 @@
       "percentLabel": "Percentage (%)",
       "amountLabel": "Amount (€)",
       "refundDelayLabel": "Refund deadline (hours before the appointment)",
-      "refundDelayNote": "0 = no automatic refund. Past the deadline, the deposit is not refunded if the client cancels."
+      "refundDelayNote": "Between 1 and 720 hours (30 days). Past this window, the deposit is not refunded if the client cancels.",
+      "refundableToggle": "Deposit refundable",
+      "refundableUntilLabel": "Refundable until (hours before the appointment)",
+      "refundableKept": "The deposit is kept if the booking is cancelled.",
+      "hintInheritNonRefundable": "{{percent}}% of the price · non-refundable (the deposit is kept)"
     },
     "availability": {
       "title": "Availability",

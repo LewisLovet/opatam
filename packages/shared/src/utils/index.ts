@@ -421,3 +421,58 @@ export function resolveDeposit(
   }
   return null;
 }
+
+/**
+ * Combine les acomptes résolus des prestations d'un même rendez-vous.
+ *
+ * Montants ADDITIONNÉS ; fenêtre de remboursement = la plus FAVORABLE à la
+ * cliente (le délai le plus long). Un délai de 0 est une politique VALIDE
+ * (« acompte non remboursable ») et doit survivre tel quel : l'ancien
+ * `refundDeadlineHours || 24` transformait « toutes les prestations non
+ * remboursables » en « remboursable 24 h » — le contraire exact de ce que
+ * le prestataire avait configuré.
+ *
+ * Pure et exportée : les règles d'argent se testent sans Firestore.
+ */
+export function combineResolvedDeposits(
+  deposits: Array<{ amount: number; refundDeadlineHours: number }>,
+): { amount: number; refundDeadlineHours: number } | null {
+  if (deposits.length === 0) return null;
+  let amount = 0;
+  let refundDeadlineHours = 0;
+  for (const d of deposits) {
+    amount += d.amount;
+    // Le plus favorable à la cliente ; 0 ne gagne que si TOUT est à 0.
+    refundDeadlineHours = Math.max(refundDeadlineHours, d.refundDeadlineHours);
+  }
+  return { amount, refundDeadlineHours };
+}
+
+/**
+ * L'acompte est-il remboursable ? — l'état du toggle « Acompte remboursable »
+ * à l'hydratation des formulaires (web ET mobile, global ET par prestation).
+ * `0` = non remboursable ; absent (documents historiques) = 24 h, donc
+ * remboursable.
+ */
+export function isDepositRefundable(refundDeadlineHours: number | null | undefined): boolean {
+  return (refundDeadlineHours ?? 24) > 0;
+}
+
+/**
+ * Valide la saisie du délai de remboursement.
+ *
+ * Retourne l'entier 0–720 (0 CONSERVÉ — c'est une politique valide), ou
+ * `null` si la saisie est absente/invalide : l'appelant choisit alors entre
+ * afficher l'erreur (formulaires — ne jamais masquer une faute de frappe)
+ * et retomber sur 24 (données absentes d'un document historique).
+ */
+export function parseRefundDeadlineHours(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  const texte = typeof raw === 'number' ? String(raw) : raw.trim();
+  if (texte === '') return null;
+  const n = Number(texte);
+  if (!Number.isFinite(n)) return null;
+  const h = Math.round(n);
+  if (h < 0 || h > 720) return null;
+  return h;
+}

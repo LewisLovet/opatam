@@ -2185,7 +2185,8 @@
       "errors": {
         "percentRange": "Pourcentage entre 1 et 100",
         "hoursRange": "Délai entre 0 et 720 heures"
-      }
+      },
+      "refundableToggle": "Acompte remboursable"
     }
   },
   "paywall": {
@@ -2515,7 +2516,8 @@
       "percentRange": "La réduction doit être entre 1 et 100 %",
       "endAfterStart": "La date de fin doit être après le début",
       "variationsIncomplete": "Complétez au moins une variation : un nom et au moins un choix nommé.",
-      "amountRange": "La réduction doit être comprise entre 0,01 € et 10 000 €"
+      "amountRange": "La réduction doit être comprise entre 0,01 € et 10 000 €",
+      "depositRefundHours": "Délai de remboursement : entre 1 et 720 heures"
     },
     "deleteService": {
       "title": "Supprimer la prestation",
@@ -2617,7 +2619,11 @@
       "percentLabel": "Pourcentage (%)",
       "amountLabel": "Montant (€)",
       "refundDelayLabel": "Délai de remboursement (heures avant le RDV)",
-      "refundDelayNote": "0 = pas de remboursement automatique. Au-delà du délai, l'acompte n'est pas remboursé en cas d'annulation par le client."
+      "refundDelayNote": "Entre 1 et 720 heures (30 jours). Passé ce délai, l'acompte n'est pas remboursé si le client annule.",
+      "refundableToggle": "Acompte remboursable",
+      "refundableUntilLabel": "Remboursable jusqu'à (heures avant le rendez-vous)",
+      "refundableKept": "L'acompte reste acquis en cas d'annulation.",
+      "hintInheritNonRefundable": "{{percent}} % du prix · non remboursable (l'acompte reste acquis)"
     },
     "availability": {
       "title": "Disponibilité",
