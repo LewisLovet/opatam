@@ -53,6 +53,7 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
   const [staff, setStaff] = useState<StaffInfo | null | 'refuse'>(null);
   // Vue commerciale : lue après montage (localStorage n'existe pas au SSR).
   const [vueCommerciale, setVueCommerciale] = useState(false);
+  const [menuMobile, setMenuMobile] = useState(false);
   useEffect(() => {
     setVueCommerciale(vueCommercialeActive());
   }, []);
@@ -165,6 +166,13 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
               Espace admin
             </Link>
           )}
+          <Link
+            href="/pro"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            Espace pro
+          </Link>
           <div className="px-1">
             <p className="text-sm font-medium truncate">{staff.displayName}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
@@ -181,12 +189,60 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
 
       {/* ── Contenu ── */}
       <div className="flex-1 min-w-0">
-        {/* Barre mobile du haut : identité et rôle — la navigation vit en bas */}
-        <div className="lg:hidden bg-gray-950 text-white px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-bold">Opatam Sales</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-red-400">
-            {vueCommerciale ? 'Vue commerciale' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
-          </span>
+        {/* Barre mobile du haut : identité + rôle. Le badge de rôle OUVRE le
+            menu (vue commerciale, changement d'espace, déconnexion) — sur
+            mobile, la sidebar n'existe pas, ces gestes doivent vivre ici. */}
+        <div className="lg:hidden bg-gray-950 text-white">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <span className="text-sm font-bold">Opatam Sales</span>
+            <button
+              onClick={() => setMenuMobile((m) => !m)}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-400 bg-red-500/10 rounded-full px-2.5 py-1.5"
+            >
+              {vueCommerciale ? 'Vue commerciale' : staff.role === 'sales_manager' ? 'Manager' : 'Commercial'}
+              <span className={`transition-transform ${menuMobile ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+          </div>
+          {menuMobile && (
+            <div className="px-4 pb-3 space-y-1 border-t border-gray-800/60 pt-2">
+              {staff.role === 'sales_manager' && (
+                <button
+                  onClick={() => basculerVueCommerciale(!vueCommerciale)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm ${
+                    vueCommerciale ? 'bg-amber-500/15 text-amber-400' : 'text-gray-300 active:bg-gray-800'
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  {vueCommerciale ? 'Revenir à la vue manager' : 'Voir comme un commercial'}
+                </button>
+              )}
+              {user?.isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuMobile(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-300 active:bg-gray-800"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                  Espace admin
+                </Link>
+              )}
+              <Link
+                href="/pro"
+                onClick={() => setMenuMobile(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-300 active:bg-gray-800"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Espace pro
+              </Link>
+              <button
+                onClick={() => logout().then(() => router.push('/login'))}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 active:bg-gray-800"
+              >
+                <LogOut className="w-4 h-4" />
+                Se déconnecter
+              </button>
+            </div>
+          )}
         </div>
         {vueCommerciale && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-2.5 flex items-center justify-between gap-3">

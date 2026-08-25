@@ -240,13 +240,22 @@ export function AdminGuard({ children }: AdminGuardProps) {
               )}
             </button>
 
-            <Link
-              href="/pro"
-              className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              Aller à l&apos;interface pro
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/pro"
+                className="py-3 px-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 text-sm"
+              >
+                Interface pro
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/sales"
+                className="py-3 px-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 text-sm"
+              >
+                Espace commercial
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -313,13 +322,22 @@ export function AdminGuard({ children }: AdminGuardProps) {
               )}
             </button>
 
-            <Link
-              href="/pro"
-              className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              Aller à l&apos;interface pro
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/pro"
+                className="py-3 px-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 text-sm"
+              >
+                Interface pro
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/sales"
+                className="py-3 px-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 text-sm"
+              >
+                Espace commercial
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
