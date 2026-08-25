@@ -28,6 +28,8 @@ import { enTetesStaff } from '@/app/sales/entetes';
 import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS, SALES_PLATFORMS } from '@booking-app/shared';
 import { STAGE_LABELS, LOSS_LABELS, SECTOR_LABELS, SOURCES_PROSPECTION, PLATFORM_LABELS } from '@/lib/sales-leads';
 import { BATTLECARDS } from '@/app/sales/bibliotheque/battlecards';
+import { CarteDetail } from '@/app/sales/bibliotheque/CarteDetail';
+import { generateSalesOffreEmail } from '@/lib/emails/salesOffre';
 import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui/GoogleAddressAutocomplete';
 
 /**
@@ -229,7 +231,7 @@ function PipelinePage() {
   const [demos, setDemos] = useState<DemoLiee[]>([]);
   // Colonne dont l'explication est dépliée (bouton ⓘ de son en-tête).
   const [aideColonne, setAideColonne] = useState<string | null>(null);
-  const [moi, setMoi] = useState<{ uid: string; role: string } | null>(null);
+  const [moi, setMoi] = useState<{ uid: string; role: string; displayName: string | null } | null>(null);
   useEffect(() => {
     void (async () => {
       const res = await fetch('/api/sales/me', { headers: await enTetesStaff() });
@@ -477,6 +479,7 @@ function PipelinePage() {
       {ouvert && (
         <FicheProspect
           lead={ouvert}
+          moiNom={moi?.displayName ?? null}
           demos={demos}
           onDemosChange={chargerDemos}
           onFerme={() => setOuvertId(null)}
@@ -639,6 +642,7 @@ function NouveauProspect({
 
 function FicheProspect({
   lead,
+  moiNom,
   demos,
   onDemosChange,
   onFerme,
@@ -646,6 +650,7 @@ function FicheProspect({
   onSupprime,
 }: {
   lead: Lead;
+  moiNom: string | null;
   demos: DemoLiee[];
   onDemosChange: () => void;
   onFerme: () => void;
@@ -658,10 +663,19 @@ function FicheProspect({
   const [liaisonEnCours, setLiaisonEnCours] = useState(false);
   const [liaisonErreur, setLiaisonErreur] = useState<string | null>(null);
   // Offres : catalogue chargé à l'ouverture de la fiche, génération tracée.
-  const [offres, setOffres] = useState<Array<{ id: string; label: string; active: boolean }>>([]);
+  const [offres, setOffres] = useState<
+    Array<{ id: string; label: string; pitch: string; annuelSeulement: boolean; active: boolean }>
+  >([]);
   const [offreChoisie, setOffreChoisie] = useState('');
+  const [offreEmail, setOffreEmail] = useState('');
+  const [offreMessage, setOffreMessage] = useState('');
+  const [offreModale, setOffreModale] = useState(false);
   const [offreEnCours, setOffreEnCours] = useState(false);
   const [offreResultat, setOffreResultat] = useState<string | null>(null);
+  // Argumentaire face à la plateforme actuelle — en MODALE, sur place.
+  const [argumentaireOuvert, setArgumentaireOuvert] = useState(false);
+  // Historique : replié à 5 entrées, déroulable.
+  const [historiqueComplet, setHistoriqueComplet] = useState(false);
   const [activites, setActivites] = useState<Activity[] | null>(null);
   const [noteType, setNoteType] = useState<'note' | 'appel' | 'email'>('note');
   const [noteTexte, setNoteTexte] = useState('');
@@ -677,7 +691,14 @@ function FicheProspect({
     setOffreResultat(null);
     void (async () => {
       const res = await fetch('/api/sales/offres', { headers: await enTetesStaff() });
-      if (res.ok) setOffres(((await res.json()).catalogue as Array<{ id: string; label: string; active: boolean }>).filter((o) => o.active));
+      if (res.ok)
+        setOffres(
+          (
+            (await res.json()).catalogue as Array<{
+              id: string; label: string; pitch: string; annuelSeulement: boolean; active: boolean;
+            }>
+          ).filter((o) => o.active),
+        );
     })();
     void (async () => {
       try {
@@ -905,13 +926,13 @@ function FicheProspect({
                   ? BATTLECARDS.find((c) => c.id === form.currentPlatform)
                   : null;
                 return carte ? (
-                  <Link
-                    href={`/sales/bibliotheque?carte=${carte.id}`}
+                  <button
+                    onClick={() => setArgumentaireOuvert(true)}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     Voir l&apos;argumentaire face à {carte.nom}
-                  </Link>
+                  </button>
                 ) : null;
               })()}
             </div>
@@ -1077,59 +1098,24 @@ function FicheProspect({
             })()}
           </div>
 
-          {/* Proposer une offre — le code part par e-mail si la fiche en a
-              un, sinon le lien est copié. Tout est tracé et journalisé. */}
+          {/* Proposer une offre — MODALE avec l'aperçu exact de l'e-mail qui
+              partira (demande client : plus de copie de lien à l'aveugle). */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
               Proposer une offre
             </p>
-            <div className="flex gap-2">
-              <select
-                value={offreChoisie}
-                onChange={(e) => setOffreChoisie(e.target.value)}
-                className={champ}
-              >
-                <option value="">Choisir une offre…</option>
-                {offres.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-              </select>
-              <button
-                disabled={!offreChoisie || offreEnCours}
-                onClick={async () => {
-                  setOffreEnCours(true);
-                  setOffreResultat(null);
-                  try {
-                    const res = await fetch('/api/sales/offres', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-                      body: JSON.stringify({
-                        offerId: offreChoisie,
-                        leadId: lead.id,
-                        email: form.email ?? undefined,
-                      }),
-                    });
-                    const d = await res.json();
-                    if (!res.ok) {
-                      setOffreResultat(d.error ?? 'Génération impossible');
-                      return;
-                    }
-                    if (!d.emailEnvoye) await navigator.clipboard.writeText(d.url);
-                    setOffreResultat(
-                      d.emailEnvoye
-                        ? `Code ${d.code} envoyé à ${form.email} ✓`
-                        : `Code ${d.code} généré — lien copié (pas d'e-mail sur la fiche)`,
-                    );
-                    setOffreChoisie('');
-                  } finally {
-                    setOffreEnCours(false);
-                  }
-                }}
-                className="px-3 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 whitespace-nowrap"
-              >
-                {offreEnCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : form.email ? 'Envoyer' : 'Copier le lien'}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setOffreModale(true);
+                setOffreChoisie(offres[0]?.id ?? '');
+                setOffreEmail(form.email ?? '');
+                setOffreMessage('');
+                setOffreResultat(null);
+              }}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-red-200 dark:border-red-800 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              Proposer une offre…
+            </button>
             {offreResultat && (
               <p className="mt-1.5 text-[11px] text-gray-600 dark:text-gray-300">{offreResultat}</p>
             )}
@@ -1186,7 +1172,7 @@ function FicheProspect({
               ) : activites.length === 0 ? (
                 <p className="text-xs text-gray-400">Aucune interaction pour l&apos;instant.</p>
               ) : (
-                activites.map((a) => {
+                (historiqueComplet ? activites : activites.slice(0, 5)).map((a) => {
                   const Icone = ICONES_ACTIVITE[a.type];
                   return (
                     <div key={a.id} className="flex items-start gap-2.5">
@@ -1205,8 +1191,163 @@ function FicheProspect({
                   );
                 })
               )}
+              {activites !== null && activites.length > 5 && (
+                <button
+                  onClick={() => setHistoriqueComplet((h) => !h)}
+                  className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:underline"
+                >
+                  {historiqueComplet
+                    ? 'Replier l’historique'
+                    : `Dérouler l’historique (${activites.length} au total)`}
+                </button>
+              )}
             </div>
           </div>
+
+          {/* ── Modale : proposer une offre, avec l'APERÇU de l'e-mail ── */}
+          {offreModale && (() => {
+            const offreSel = offres.find((o) => o.id === offreChoisie) ?? offres[0];
+            const compteExistant = !!lead.linkedProviderId;
+            const apercu = offreSel
+              ? generateSalesOffreEmail({
+                  offreLabel: offreSel.label,
+                  pitch: offreSel.pitch,
+                  annuelSeulement: offreSel.annuelSeulement,
+                  code: 'OPA-······',
+                  url: '#',
+                  expiresLe: new Date(Date.now() + 14 * 86_400_000).toLocaleDateString('fr-FR', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  }),
+                  fromName: moiNom,
+                  message: offreMessage.trim() || null,
+                  paiementDirect: compteExistant,
+                }).html
+              : '';
+            const proposer = async (envoyerEmail: boolean) => {
+              setOffreEnCours(true);
+              try {
+                const res = await fetch('/api/sales/offres', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                  body: JSON.stringify({
+                    offerId: offreChoisie,
+                    leadId: lead.id,
+                    email: envoyerEmail ? offreEmail.trim() : undefined,
+                    message: offreMessage.trim() || undefined,
+                    compteExistant,
+                  }),
+                });
+                const d = await res.json();
+                if (!res.ok) {
+                  setOffreResultat(d.error ?? 'Génération impossible');
+                  return;
+                }
+                if (!d.emailEnvoye) {
+                  try {
+                    await navigator.clipboard.writeText(d.url);
+                    setOffreResultat(`Code ${d.code} généré — lien copié`);
+                  } catch {
+                    setOffreResultat(`Code ${d.code} — lien : ${d.url}`);
+                  }
+                } else {
+                  setOffreResultat(`Code ${d.code} envoyé à ${offreEmail.trim()} ✓`);
+                }
+                setOffreModale(false);
+              } finally {
+                setOffreEnCours(false);
+              }
+            };
+            return (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setOffreModale(false)} />
+                <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Proposer une offre à {lead.businessName}
+                      {compteExistant && (
+                        <span className="ml-2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">
+                          compte existant → lien de paiement direct
+                        </span>
+                      )}
+                    </p>
+                    <button onClick={() => setOffreModale(false)} className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="p-5 space-y-3 overflow-y-auto">
+                    <div className="grid sm:grid-cols-2 gap-2.5">
+                      <select value={offreChoisie} onChange={(e) => setOffreChoisie(e.target.value)} className={champ}>
+                        {offres.map((o) => (
+                          <option key={o.id} value={o.id}>{o.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="email"
+                        value={offreEmail}
+                        onChange={(e) => setOffreEmail(e.target.value)}
+                        placeholder="E-mail du prospect"
+                        className={champ}
+                      />
+                    </div>
+                    <textarea
+                      value={offreMessage}
+                      onChange={(e) => setOffreMessage(e.target.value.slice(0, 600))}
+                      placeholder="Un mot personnel en tête d'e-mail (optionnel)"
+                      rows={2}
+                      className={champ}
+                    />
+                    {/* L'APERÇU : le gabarit réel, mot personnel compris — le
+                        code définitif remplacera OPA-······ à l'envoi. */}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <iframe title="Aperçu de l'e-mail d'offre" srcDoc={apercu} className="w-full h-[340px] bg-[#f4f2f0]" />
+                    </div>
+                  </div>
+                  <div className="px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      onClick={() => proposer(false)}
+                      disabled={offreEnCours || !offreChoisie}
+                      className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      Générer et copier le lien
+                    </button>
+                    <button
+                      onClick={() => proposer(true)}
+                      disabled={offreEnCours || !offreChoisie || !offreEmail.trim()}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {offreEnCours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      Envoyer cet e-mail
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Modale : l'argumentaire face à la plateforme actuelle ── */}
+          {argumentaireOuvert && (() => {
+            const carte = form.currentPlatform
+              ? BATTLECARDS.find((c) => c.id === form.currentPlatform)
+              : null;
+            if (!carte) return null;
+            return (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => setArgumentaireOuvert(false)} />
+                <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col">
+                  <button
+                    onClick={() => setArgumentaireOuvert(false)}
+                    className="self-end mb-2 p-2 rounded-full bg-white dark:bg-gray-900 text-gray-500 shadow-lg"
+                    aria-label="Fermer l'argumentaire"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <div className="overflow-y-auto rounded-2xl">
+                    <CarteDetail carte={carte} />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Issue du prospect — un geste VISIBLE, pas un lien gris à chercher */}
           <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">

@@ -318,11 +318,21 @@ function ChoosePlanSection({
     discount: number | null;
     discountDuration: string | null;
   } | null>(null);
-
-  // Code d'offre commerciale rattaché à l'inscription (lien du commercial) :
-  // vérifié et appliqué automatiquement — le pro n'a rien à saisir.
+  // ?offre=CODE — le lien « payer en ligne » envoyé par un commercial à un
+  // compte existant. Lu via window.location : pas de useSearchParams (et sa
+  // frontière Suspense) pour un simple paramètre facultatif.
+  const [offreCode, setOffreCode] = useState<string | null>(null);
   useEffect(() => {
-    const enAttente = (provider as { pendingSalesPromoCode?: string } | null)?.pendingSalesPromoCode;
+    setOffreCode(new URLSearchParams(window.location.search).get('offre'));
+  }, []);
+
+  // Code d'offre commerciale rattaché à l'inscription (lien du commercial)
+  // OU porté par l'URL (?offre=CODE — le lien « payer en ligne » envoyé à un
+  // compte existant) : vérifié et appliqué automatiquement.
+  useEffect(() => {
+    const enAttente =
+      offreCode ??
+      (provider as { pendingSalesPromoCode?: string } | null)?.pendingSalesPromoCode;
     if (!enAttente || appliedPromo) return;
     void (async () => {
       try {
@@ -341,7 +351,7 @@ function ChoosePlanSection({
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider]);
+  }, [provider, offreCode]);
 
   const verifyPromo = async () => {
     const code = promoInput.toUpperCase().trim();

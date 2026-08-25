@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
 
-  const { offerId, leadId, email, message } = await request.json().catch(() => ({}));
+  const { offerId, leadId, email, message, compteExistant } = await request.json().catch(() => ({}));
   const offre = typeof offerId === 'string' ? offreParId(offerId) : null;
   if (!offre) return NextResponse.json({ error: 'Offre inconnue' }, { status: 400 });
 
@@ -143,14 +143,23 @@ export async function POST(request: NextRequest) {
     expiresAt: Timestamp.fromDate(expiresAt),
   });
 
-  // Le lien : attribution signée + le code embarqué (pré-rempli à l'arrivée).
+  // Le lien dépend de l'audience (décision client, anti-IAP) :
+  //  - compte EXISTANT (prospect déjà inscrit, en essai) → directement la
+  //    page de PAIEMENT web avec le code pré-appliqué — payer en ligne avant
+  //    la fin de l'essai, sans passer par les achats intégrés des stores ;
+  //  - prospect SANS compte → inscription, attribution signée + code.
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
-  let url = `${baseUrl}/register?offre=${encodeURIComponent(code)}`;
-  try {
-    const token = signSalesLink({ staffUid: auth.identity.uid, campaign: `offre-${offre.id}`, sector: null });
-    url = `${baseUrl}/register?offre=${encodeURIComponent(code)}&s=${encodeURIComponent(token)}`;
-  } catch (e) {
-    console.warn('[sales/offres] signature du lien impossible (lien sans attribution):', e);
+  const paiementDirect = compteExistant === true;
+  let url = paiementDirect
+    ? `${baseUrl}/pro/abonnement?offre=${encodeURIComponent(code)}`
+    : `${baseUrl}/register?offre=${encodeURIComponent(code)}`;
+  if (!paiementDirect) {
+    try {
+      const token = signSalesLink({ staffUid: auth.identity.uid, campaign: `offre-${offre.id}`, sector: null });
+      url = `${baseUrl}/register?offre=${encodeURIComponent(code)}&s=${encodeURIComponent(token)}`;
+    } catch (e) {
+      console.warn('[sales/offres] signature du lien impossible (lien sans attribution):', e);
+    }
   }
 
   // Journal sur la fiche prospect (best-effort).
@@ -192,6 +201,7 @@ export async function POST(request: NextRequest) {
           expiresLe: expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
           fromName: staffSnap.data()?.displayName ?? null,
           message: typeof message === 'string' ? message.slice(0, 600) : null,
+          paiementDirect,
         });
         const { Resend } = await import('resend');
         await new Resend(resendApiKey).emails.send({

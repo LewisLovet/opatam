@@ -18,6 +18,9 @@ export interface SalesOffreEmailArgs {
   expiresLe: string;
   fromName?: string | null;
   message?: string | null;
+  /** Compte déjà inscrit : le CTA mène au PAIEMENT web (code pré-appliqué),
+   *  pas à l'inscription — l'essai en cours reste entier. */
+  paiementDirect?: boolean;
 }
 
 function echapperHtml(texte: string): string {
@@ -70,11 +73,14 @@ export function generateSalesOffreEmail(args: SalesOffreEmailArgs): { subject: s
         </div>
         <div style="padding:12px 36px 26px;text-align:center;">
           <a href="${args.url}" style="display:inline-block;background:#c81e3a;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 36px;border-radius:12px;">
-            Créer mon compte avec l'offre
+            ${args.paiementDirect ? "Payer en ligne avec l'offre" : "Créer mon compte avec l'offre"}
           </a>
           <p style="margin:12px 0 0;font-size:12.5px;color:#9a9aa0;">
-            30 jours d'essai gratuit d'abord, sans carte bancaire — le code s'applique au moment
-            de l'abonnement, sur le site.
+            ${
+              args.paiementDirect
+                ? "Le code est pré-appliqué sur la page de paiement. Votre essai gratuit reste entier : vous réglez maintenant, le prélèvement ne démarre qu'à la fin de l'essai."
+                : "30 jours d'essai gratuit d'abord, sans carte bancaire — le code s'applique au moment de l'abonnement, sur le site."
+            }
           </p>
         </div>
         <div style="padding:16px 36px 22px;border-top:1px solid #f0ece9;">
