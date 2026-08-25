@@ -317,13 +317,43 @@ function ChoosePlanSection({
     discountDuration: string | null;
   } | null>(null);
 
+  // Code d'offre commerciale rattaché à l'inscription (lien du commercial) :
+  // vérifié et appliqué automatiquement — le pro n'a rien à saisir.
+  useEffect(() => {
+    const enAttente = (provider as { pendingSalesPromoCode?: string } | null)?.pendingSalesPromoCode;
+    if (!enAttente || appliedPromo) return;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/stripe/promo-verify?code=${encodeURIComponent(enAttente)}`);
+        const d = r.ok ? await r.json() : null;
+        if (d?.valid && d?.discountLabel) {
+          setAppliedPromo({
+            code: enAttente,
+            discountLabel: d.discountLabel,
+            discount: d.discount ?? null,
+            discountDuration: d.discountDuration ?? null,
+          });
+        }
+      } catch {
+        // silencieux : le pro peut toujours saisir le code à la main
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider]);
+
   const verifyPromo = async () => {
     const code = promoInput.toUpperCase().trim();
     if (!code) return;
     setPromoStatus('checking');
     try {
+      // Deux familles de codes : ceux des affiliés, et les codes Stripe
+      // natifs (dont les offres commerciales OPA-…). On tente dans l'ordre.
       const r = await fetch(`/api/affiliates/verify?code=${encodeURIComponent(code)}`);
-      const d = r.ok ? await r.json() : null;
+      let d = r.ok ? await r.json() : null;
+      if (!(d?.valid && d?.discountLabel)) {
+        const r2 = await fetch(`/api/stripe/promo-verify?code=${encodeURIComponent(code)}`);
+        d = r2.ok ? await r2.json() : null;
+      }
       if (d?.valid && d?.discountLabel) {
         setAppliedPromo({
           code,

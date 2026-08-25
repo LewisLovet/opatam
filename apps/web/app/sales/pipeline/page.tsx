@@ -657,6 +657,11 @@ function FicheProspect({
   const [enregistre, setEnregistre] = useState(false);
   const [liaisonEnCours, setLiaisonEnCours] = useState(false);
   const [liaisonErreur, setLiaisonErreur] = useState<string | null>(null);
+  // Offres : catalogue chargé à l'ouverture de la fiche, génération tracée.
+  const [offres, setOffres] = useState<Array<{ id: string; label: string; active: boolean }>>([]);
+  const [offreChoisie, setOffreChoisie] = useState('');
+  const [offreEnCours, setOffreEnCours] = useState(false);
+  const [offreResultat, setOffreResultat] = useState<string | null>(null);
   const [activites, setActivites] = useState<Activity[] | null>(null);
   const [noteType, setNoteType] = useState<'note' | 'appel' | 'email'>('note');
   const [noteTexte, setNoteTexte] = useState('');
@@ -669,6 +674,11 @@ function FicheProspect({
     setForm(lead);
     chargeRef.current = JSON.stringify(lead);
     setActivites(null);
+    setOffreResultat(null);
+    void (async () => {
+      const res = await fetch('/api/sales/offres', { headers: await enTetesStaff() });
+      if (res.ok) setOffres(((await res.json()).catalogue as Array<{ id: string; label: string; active: boolean }>).filter((o) => o.active));
+    })();
     void (async () => {
       try {
         const res = await fetch(`/api/sales/leads/activities?leadId=${lead.id}`, { headers: await enTetesStaff() });
@@ -1065,6 +1075,64 @@ function FicheProspect({
                 </div>
               );
             })()}
+          </div>
+
+          {/* Proposer une offre — le code part par e-mail si la fiche en a
+              un, sinon le lien est copié. Tout est tracé et journalisé. */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+              Proposer une offre
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={offreChoisie}
+                onChange={(e) => setOffreChoisie(e.target.value)}
+                className={champ}
+              >
+                <option value="">Choisir une offre…</option>
+                {offres.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+              <button
+                disabled={!offreChoisie || offreEnCours}
+                onClick={async () => {
+                  setOffreEnCours(true);
+                  setOffreResultat(null);
+                  try {
+                    const res = await fetch('/api/sales/offres', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+                      body: JSON.stringify({
+                        offerId: offreChoisie,
+                        leadId: lead.id,
+                        email: form.email ?? undefined,
+                      }),
+                    });
+                    const d = await res.json();
+                    if (!res.ok) {
+                      setOffreResultat(d.error ?? 'Génération impossible');
+                      return;
+                    }
+                    if (!d.emailEnvoye) await navigator.clipboard.writeText(d.url);
+                    setOffreResultat(
+                      d.emailEnvoye
+                        ? `Code ${d.code} envoyé à ${form.email} ✓`
+                        : `Code ${d.code} généré — lien copié (pas d'e-mail sur la fiche)`,
+                    );
+                    setOffreChoisie('');
+                  } finally {
+                    setOffreEnCours(false);
+                  }
+                }}
+                className="px-3 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {offreEnCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : form.email ? 'Envoyer' : 'Copier le lien'}
+              </button>
+            </div>
+            {offreResultat && (
+              <p className="mt-1.5 text-[11px] text-gray-600 dark:text-gray-300">{offreResultat}</p>
+            )}
           </div>
 
           {/* Journal */}

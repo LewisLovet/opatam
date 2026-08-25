@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Jeton invalide' }, { status: 401 });
     }
 
-    const { token } = await request.json();
+    const { token, offre } = await request.json();
     if (typeof token !== 'string' || !token) {
       return NextResponse.json({ error: 'token requis' }, { status: 400 });
     }
@@ -146,6 +146,23 @@ export async function POST(request: NextRequest) {
             console.warn('[attribution/claim] liaison pipeline échouée:', e);
           }
         })();
+      }
+    }
+
+    // Code d'offre commerciale arrivé avec le lien : rattaché au compte pour
+    // que la page Abonnement le pré-remplisse, et tracé sur salesOffers.
+    // Best-effort — un code invalide n'empêche jamais une inscription.
+    if (!('error' in result) && typeof offre === 'string' && /^OPA-[A-Z0-9]{4,10}$/i.test(offre.trim())) {
+      const codeOffre = offre.trim().toUpperCase();
+      try {
+        const offreSnap = await db.collection('salesOffers').doc(codeOffre).get();
+        const expire = (offreSnap.data()?.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now();
+        if (offreSnap.exists && !expire) {
+          await db.collection('providers').doc(uid).update({ pendingSalesPromoCode: codeOffre });
+          await offreSnap.ref.update({ claimedByProviderId: uid, claimedAt: FieldValue.serverTimestamp() });
+        }
+      } catch (e) {
+        console.warn('[attribution/claim] rattachement offre échoué:', e);
       }
     }
 

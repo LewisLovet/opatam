@@ -211,6 +211,10 @@ export default function RegisterPage() {
   useEffect(() => {
     const s = searchParams.get('s');
     if (s) sessionStorage.setItem('sales-link-token', s);
+    // Code d'offre commerciale (?offre=OPA-…) : mémorisé pour être rattaché
+    // au compte à l'inscription — la page Abonnement le pré-remplira.
+    const offre = searchParams.get('offre');
+    if (offre) sessionStorage.setItem('sales-offre-code', offre.slice(0, 30));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -548,6 +552,7 @@ export default function RegisterPage() {
     // revendiquer maintenant — le serveur vérifie la signature et n'attribue
     // qu'une fois, au commercial porté par le jeton. Best-effort tracé.
     const salesToken = sessionStorage.getItem('sales-link-token');
+    const offreCode = sessionStorage.getItem('sales-offre-code');
     if (salesToken) {
       try {
         const token = await getAuth().currentUser?.getIdToken();
@@ -557,9 +562,12 @@ export default function RegisterPage() {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ token: salesToken }),
+          body: JSON.stringify({ token: salesToken, offre: offreCode ?? undefined }),
         });
-        if (res.ok) sessionStorage.removeItem('sales-link-token');
+        if (res.ok) {
+          sessionStorage.removeItem('sales-link-token');
+          sessionStorage.removeItem('sales-offre-code');
+        }
         else {
           const body = await res.json().catch(() => ({}));
           console.warn('[register] attribution commerciale refusée:', res.status, body.error);

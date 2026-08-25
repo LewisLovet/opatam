@@ -120,6 +120,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Offres commerciales (codes générés) et configuration du catalogue —
+    // routes requireStaff/requireAdmin uniquement.
+    match /salesOffers/{code} {
+      allow read, write: if false;
+    }
+    match /salesConfig/{docId} {
+      allow read, write: if false;
+    }
+
     // Démos personnalisées : créées/listées par les routes requireStaff,
     // rendues par la page /p/demo-<id> via l'Admin SDK. Aucun accès SDK.
     match /salesDemoLinks/{demoId} {
