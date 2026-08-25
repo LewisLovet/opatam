@@ -375,8 +375,11 @@ export default function SalesDashboardPage() {
         ))}
       </div>
 
-      {/* ── Objectif du mois + commission — le moteur ── */}
-      {moi && (moi.objectifPayantsMensuel !== null || moi.tauxCommissionPct !== null) && (() => {
+      {/* ── Objectif du mois + commission — le moteur. TOUJOURS visible en
+          rôle commercial, même sans réglages : « à définir » vaut mieux
+          qu'une carte qui disparaît (le premier réflexe d'un commercial est
+          de chercher où sont ses chiffres). ── */}
+      {moi && (moi.role === 'sales' || moi.objectifPayantsMensuel !== null || moi.tauxCommissionPct !== null) && (() => {
         const debutMois = new Date();
         debutMois.setDate(1);
         debutMois.setHours(0, 0, 0, 0);
