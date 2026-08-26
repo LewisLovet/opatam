@@ -162,17 +162,34 @@ export type DemoParseResult =
   | { ok: true; config: DemoConfig }
   | { ok: false; erreurs: string[] };
 
+/**
+ * Certaines IA (et un copier-coller via Word/Notes) remplacent les guillemets
+ * droits par des guillemets typographiques « “ ” » — JSON.parse échoue alors
+ * sur un texte visuellement irréprochable. On ne normalise QUE les doubles
+ * (les seuls qui portent la syntaxe JSON) : les apostrophes françaises dans
+ * les textes (« d'une pose ») restent intactes.
+ */
+function normaliseGuillemets(s: string): string {
+  return s.replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB\uFF02]/g, '"');
+}
+
 export function parseDemoConfig(colle: string): DemoParseResult {
   let brut: unknown;
+  const extrait = extraireJson(colle);
   try {
-    brut = JSON.parse(extraireJson(colle));
+    brut = JSON.parse(extrait);
   } catch {
-    return {
-      ok: false,
-      erreurs: [
-        "Le texte collé n'est pas du JSON valide. Recopiez la réponse complète de l'IA, de la première accolade { à la dernière }.",
-      ],
-    };
+    // Second essai : guillemets typographiques normalisés.
+    try {
+      brut = JSON.parse(normaliseGuillemets(extrait));
+    } catch {
+      return {
+        ok: false,
+        erreurs: [
+          "Le texte collé n'est pas du JSON valide. Recopiez la réponse complète de l'IA, de la première accolade { à la dernière }.",
+        ],
+      };
+    }
   }
   const res = demoConfigSchema.safeParse(brut);
   if (res.success) return { ok: true, config: res.data };

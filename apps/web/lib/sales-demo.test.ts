@@ -15,6 +15,19 @@ const valide = JSON.stringify({
 });
 
 describe('parseDemoConfig — la frontière entre l’IA et la page', () => {
+  it('guillemets typographiques (GPT/Word) normalisés, apostrophes françaises intactes', () => {
+    // Cas réel « ZS institut » (2026-08) : GPT avait rendu tout le JSON en
+    // guillemets courbes — refusé alors que le contenu était irréprochable.
+    const courbes = '{\u201CbusinessName\u201D: \u201CZS institut\u201D, \u201Ccategories\u201D: [{\u201Cname\u201D: \u201CManucure\u201D, \u201Cservices\u201D: [{\u201Cname\u201D: \u201CRemplissage d\u2019une pose\u201D, \u201Cprice\u201D: 30, \u201Cduration\u201D: 75}]}]}';
+    const r = parseDemoConfig(courbes);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.config.businessName).toBe('ZS institut');
+      // L'apostrophe typographique du texte n'est PAS touchée.
+      expect(r.config.categories[0].services[0].name).toBe('Remplissage d\u2019une pose');
+    }
+  });
+
   it('un JSON propre passe, prix convertis en centimes', () => {
     const r = parseDemoConfig(valide);
     expect(r.ok).toBe(true);
