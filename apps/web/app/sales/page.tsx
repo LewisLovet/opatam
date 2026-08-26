@@ -288,8 +288,11 @@ export default function SalesDashboardPage() {
   // secondes côté Stripe — sans état de chargement, on croit que rien ne se
   // passe et on re-clique (retour client).
   const [connectEnCours, setConnectEnCours] = useState(false);
-  // Simulateur de revenus — X clients payants → commission.
+  // Simulateur de revenus — X clients payants → commission. Quand le taux
+  // réel n'est pas encore défini par le manager, on simule avec un taux
+  // HYPOTHÉTIQUE réglable, marqué comme tel (rien n'est promis).
   const [simClients, setSimClients] = useState(10);
+  const [simTaux, setSimTaux] = useState(10);
   const configurerVersements = async () => {
     if (connectEnCours) return;
     setConnectEnCours(true);
@@ -628,9 +631,11 @@ export default function SalesDashboardPage() {
       })()}
 
       {/* ── Simulateur de revenus — pour se projeter : X clients → commission ── */}
-      {moi && moi.tauxCommissionPct !== null && (() => {
+      {moi && (() => {
+        const tauxReel = moi.tauxCommissionPct;
+        const tauxEffectif = tauxReel ?? simTaux;
         const mensuelSolo = SUBSCRIPTION_PLANS.solo.monthlyPrice; // centimes, tarif catalogue
-        const parMois = (simClients * mensuelSolo * moi.tauxCommissionPct!) / 100 / 100;
+        const parMois = (simClients * mensuelSolo * tauxEffectif) / 100 / 100;
         const parAn = parMois * 12;
         return (
           <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
@@ -641,7 +646,9 @@ export default function SalesDashboardPage() {
               <div>
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Simulateur de revenus</h2>
                 <p className="text-[11px] text-gray-400">
-                  Votre commission ({moi.tauxCommissionPct} % du MRR pendant 12 mois) selon le nombre de clients payants actifs.
+                  {tauxReel !== null
+                    ? `Votre commission (${tauxReel} % du MRR pendant 12 mois) selon le nombre de clients payants actifs.`
+                    : 'Simulation à titre indicatif — votre taux réel sera défini par votre manager.'}
                 </p>
               </div>
             </div>
@@ -663,6 +670,26 @@ export default function SalesDashboardPage() {
                   onChange={(e) => setSimClients(Number(e.target.value))}
                   className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                 />
+                {tauxReel === null && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                        Taux de commission (hypothèse)
+                      </label>
+                      <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                        {simTaux} %
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={40}
+                      value={simTaux}
+                      onChange={(e) => setSimTaux(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-500"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex gap-8">
                 <div>
@@ -681,6 +708,7 @@ export default function SalesDashboardPage() {
               <p className="w-full text-[11px] text-gray-400">
                 Base : abonnement Solo mensuel au tarif catalogue ({(mensuelSolo / 100).toLocaleString('fr-FR')} €/mois),
                 clients conservés 12 mois, hors remises. Le réel dépend des plans souscrits et des offres appliquées.
+                {tauxReel === null && ' Le taux affiché est une hypothèse — rien n\'est promis tant que votre taux n\'est pas défini.'}
               </p>
             </div>
           </section>
