@@ -105,6 +105,9 @@ const GROUPES: Array<{
   entree: (typeof SALES_STAGES)[number];
   accent: string;
   aide: string;
+  /** Étape pilotée par le CLIENT (inscription, activation) — on ne peut pas
+   *  y déposer une carte à la main, l'état change tout seul. */
+  auto?: boolean;
 }> = [
   {
     label: 'À contacter', stages: ['prospect'], entree: 'prospect', accent: 'bg-gray-400',
@@ -119,11 +122,11 @@ const GROUPES: Array<{
     aide: "Sa page de démonstration existe. Démo planifiée = rendez-vous pris pour la montrer ; Démo faite = il l'a vue ou reçue.",
   },
   {
-    label: 'Compte créé', stages: ['essai_cree'], entree: 'essai_cree', accent: 'bg-amber-500',
+    label: 'Compte créé', stages: ['essai_cree'], entree: 'essai_cree', accent: 'bg-amber-500', auto: true,
     aide: "Le prospect s'est inscrit sur Opatam — son essai gratuit de 30 jours court. Automatique quand il valide depuis sa démo.",
   },
   {
-    label: 'Activé', stages: ['essai_active'], entree: 'essai_active', accent: 'bg-emerald-500',
+    label: 'Activé', stages: ['essai_active'], entree: 'essai_active', accent: 'bg-emerald-500', auto: true,
     aide: "Son compte est prêt à recevoir des réservations : prestations, horaires, page publiée, première réservation.",
   },
   {
@@ -239,15 +242,26 @@ function PipelinePage() {
     })();
   }, []);
 
-  const prendre = async (l: Lead) => {
-    if (!confirm(`Prendre en charge « ${l.businessName} » ? Il rejoindra votre pipeline.`)) return;
-    const res = await fetch('/api/sales/leads/claim', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-      body: JSON.stringify({ id: l.id }),
-    });
-    if (!res.ok) alert((await res.json()).error ?? 'Prise en charge impossible');
-    void charger();
+  // La fiche s'affiche AVANT la prise en charge : on ne s'engage pas sur un
+  // nom seul (demande client 2026-08).
+  const [aPrendre, setAPrendre] = useState<Lead | null>(null);
+  const [prise, setPrise] = useState(false);
+  const prendre = (l: Lead) => setAPrendre(l);
+  const confirmerPrise = async () => {
+    if (!aPrendre) return;
+    setPrise(true);
+    try {
+      const res = await fetch('/api/sales/leads/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+        body: JSON.stringify({ id: aPrendre.id }),
+      });
+      if (!res.ok) alert((await res.json()).error ?? 'Prise en charge impossible');
+      setAPrendre(null);
+      void charger();
+    } finally {
+      setPrise(false);
+    }
   };
 
   const searchParams = useSearchParams();
@@ -273,6 +287,12 @@ function PipelinePage() {
     if (cible && leads?.some((l) => l.id === cible)) setOuvertId(cible);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads]);
+
+  // ?nouveau=1 (bouton « Nouveau prospect » de l'accueil) : formulaire direct.
+  useEffect(() => {
+    if (searchParams.get('nouveau')) setCreation(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const patch = async (id: string, champs: Record<string, unknown>): Promise<Lead | null> => {
     const res = await fetch('/api/sales/leads', {
@@ -361,7 +381,14 @@ function PipelinePage() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   const id = e.dataTransfer.getData('text/lead');
-                  if (id) void deplacer(id, groupe.entree);
+                  if (!id) return;
+                  if (groupe.auto) {
+                    alert(
+                      `« ${groupe.label} » se remplit automatiquement : c'est l'action du prospect (inscription, activation) qui change cet état, pas un glisser-déposer.`,
+                    );
+                    return;
+                  }
+                  void deplacer(id, groupe.entree);
                 }}
               >
                 <div className="px-3 pt-3 pb-2">
@@ -396,7 +423,7 @@ function PipelinePage() {
                   {cartes.length === 0 && (
                     <div className="h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center">
                       <p className="text-[11px] text-gray-300 dark:text-gray-600 text-center px-3">
-                        Déposez une carte ici
+                        {groupe.auto ? 'Se remplit automatiquement' : 'Déposez une carte ici'}
                       </p>
                     </div>
                   )}
@@ -474,6 +501,88 @@ function PipelinePage() {
             setOuvertId(lead.id);
           }}
         />
+      )}
+
+      {/* Prise en charge — la fiche AVANT l'engagement, pas un confirm() nu */}
+      {aPrendre && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => !prise && setAPrendre(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                Prospect à prendre en charge
+              </p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                {aPrendre.businessName}
+              </h2>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              {([
+                ['Secteur', SECTOR_LABELS[aPrendre.sector] ?? aPrendre.sector],
+                ['Ville', aPrendre.city],
+                ['Contact', aPrendre.contactName],
+                ['Téléphone', aPrendre.phone],
+                ['E-mail', aPrendre.email],
+                ['Plateforme actuelle', aPrendre.currentPlatform ? (PLATFORM_LABELS[aPrendre.currentPlatform] ?? aPrendre.currentPlatform) : null],
+                ['Source', aPrendre.source],
+                ['Équipe', aPrendre.isTeam ? 'Oui — plusieurs membres' : null],
+                ['Point de douleur', aPrendre.mainPain],
+              ] as Array<[string, string | null]>)
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className="flex gap-2">
+                    <dt className="w-36 flex-shrink-0 text-gray-400">{k}</dt>
+                    <dd className="text-gray-900 dark:text-white">{v}</dd>
+                  </div>
+                ))}
+              {aPrendre.notes && (
+                <div className="pt-1.5">
+                  <dt className="text-gray-400 mb-0.5">Notes</dt>
+                  <dd className="text-gray-700 dark:text-gray-300 text-[13px] whitespace-pre-wrap rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2">
+                    {aPrendre.notes}
+                  </dd>
+                </div>
+              )}
+              {aPrendre.profileUrl && (
+                <div className="flex gap-2">
+                  <dt className="w-36 flex-shrink-0 text-gray-400">Profil</dt>
+                  <dd>
+                    <a
+                      href={aPrendre.profileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline break-all"
+                    >
+                      {aPrendre.profileUrl}
+                    </a>
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setAPrendre(null)}
+                disabled={prise}
+                className="px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Pas maintenant
+              </button>
+              <button
+                onClick={() => void confirmerPrise()}
+                disabled={prise}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {prise && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Prendre en charge
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {ouvert && (

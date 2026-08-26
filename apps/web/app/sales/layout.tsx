@@ -20,7 +20,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import { vueCommercialeActive, basculerVueCommerciale } from './entetes';
+import { vueCommercialeActive, basculerVueCommerciale, enTetesStaff } from './entetes';
 
 interface StaffInfo {
   role: 'sales' | 'sales_manager';
@@ -56,6 +56,26 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
   // Vue commerciale : lue après montage (localStorage n'existe pas au SSR).
   const [vueCommerciale, setVueCommerciale] = useState(false);
   const [menuMobile, setMenuMobile] = useState(false);
+  // Prospects du pool en attente de prise en charge — badge sur « Pipeline » :
+  // un prospect proposé à l'équipe qui dort, c'est un client perdu.
+  const [poolCount, setPoolCount] = useState(0);
+  useEffect(() => {
+    if (!staff || staff === 'refuse') return;
+    void (async () => {
+      try {
+        const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
+        if (!res.ok) return;
+        const { leads } = await res.json();
+        setPoolCount(
+          Array.isArray(leads)
+            ? leads.filter((l: { ownerUid: string | null }) => l.ownerUid === null).length
+            : 0,
+        );
+      } catch {
+        // badge silencieux
+      }
+    })();
+  }, [staff]);
   // Rôle EFFECTIF côté interface : la vue commerciale doit cacher ce que le
   // serveur refuserait de toute façon (l'onglet Équipe en tête) — voir
   // l'onglet puis un refus donne l'impression d'un cloisonnement raté.
@@ -135,6 +155,14 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
               >
                 <Icon className="w-5 h-5" />
                 <span>{label}</span>
+                {href === '/sales/pipeline' && poolCount > 0 && (
+                  <span
+                    className="ml-auto min-w-[20px] text-center text-[11px] font-bold tabular-nums bg-blue-500 text-white rounded-full px-1.5 py-0.5"
+                    title={`${poolCount} prospect${poolCount > 1 ? 's' : ''} à prendre en charge`}
+                  >
+                    {poolCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -279,6 +307,11 @@ export default function SalesLayout({ children }: { children: ReactNode }) {
                     >
                       <Icon className="w-5 h-5" />
                       <span>{label}</span>
+                      {href === '/sales/pipeline' && poolCount > 0 && (
+                        <span className="ml-auto min-w-[20px] text-center text-[11px] font-bold tabular-nums bg-blue-500 text-white rounded-full px-1.5 py-0.5">
+                          {poolCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

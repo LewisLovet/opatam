@@ -17,7 +17,11 @@ import {
   Rocket,
   Megaphone,
   Wand2,
+  UserPlus,
+  Loader2,
+  Calculator,
 } from 'lucide-react';
+import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
 import { STAGE_LABELS } from '@/lib/sales-leads';
 import { enTetesStaff } from '@/app/sales/entetes';
 
@@ -280,17 +284,32 @@ export default function SalesDashboardPage() {
     })();
   }, []);
 
+  // La création du compte Express + lien d'onboarding prend plusieurs
+  // secondes côté Stripe — sans état de chargement, on croit que rien ne se
+  // passe et on re-clique (retour client).
+  const [connectEnCours, setConnectEnCours] = useState(false);
+  // Simulateur de revenus — X clients payants → commission.
+  const [simClients, setSimClients] = useState(10);
   const configurerVersements = async () => {
-    const res = await fetch('/api/sales/connect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-    });
-    const d = await res.json();
-    if (!res.ok) {
-      alert(d.error ?? 'Configuration impossible');
-      return;
+    if (connectEnCours) return;
+    setConnectEnCours(true);
+    try {
+      const res = await fetch('/api/sales/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        alert(d.error ?? 'Configuration impossible');
+        setConnectEnCours(false);
+        return;
+      }
+      window.location.href = d.url;
+      // pas de reset : on part vers Stripe, le spinner couvre la redirection
+    } catch {
+      setConnectEnCours(false);
+      alert('Configuration impossible — réessayez');
     }
-    window.location.href = d.url;
   };
   // Le lien personnel du commercial : signé, il attribue l'inscription à son
   // porteur — c'est LE lien à envoyer à un prospect hors démo.
@@ -409,6 +428,32 @@ export default function SalesDashboardPage() {
         </p>
       </div>
 
+      {/* ── Versements non configurés : bandeau PERMANENT — un commercial
+          sans Connect signe des clients dont la commission ne peut pas lui
+          être virée. ── */}
+      {connect?.aUneFiche && connect.statut !== 'active' && (
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3.5 flex flex-wrap items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+          <div className="flex-1 min-w-[220px]">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Vos versements ne sont pas configurés
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              Sans identité et IBAN vérifiés chez Stripe, vos commissions ne peuvent pas vous
+              être virées — vos ventes s&apos;accumulent sans paiement.
+            </p>
+          </div>
+          <button
+            onClick={configurerVersements}
+            disabled={connectEnCours}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 disabled:opacity-60"
+          >
+            {connectEnCours && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {connectEnCours ? 'Ouverture de Stripe…' : 'Configurer maintenant'}
+          </button>
+        </div>
+      )}
+
       {/* ── Actions rapides — LA PREMIÈRE CHOSE qu'on voit : trois grandes
           tuiles, pas trois petits boutons timides dans un coin (retour
           client). ── */}
@@ -439,15 +484,15 @@ export default function SalesDashboardPage() {
           </p>
         </Link>
         <Link
-          href="/sales/pipeline"
+          href="/sales/pipeline?nouveau=1"
           className="group rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
         >
           <span className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 inline-flex items-center justify-center text-gray-600 dark:text-gray-300">
-            <Kanban className="w-5 h-5" />
+            <UserPlus className="w-5 h-5" />
           </span>
-          <p className="text-[15px] font-bold mt-2.5 text-gray-900 dark:text-white">Pipeline</p>
+          <p className="text-[15px] font-bold mt-2.5 text-gray-900 dark:text-white">Nouveau prospect</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Vos prospects, du premier contact à l&apos;abonnement
+            Un salon repéré ? Enregistrez-le avant qu&apos;il ne s&apos;évapore
           </p>
         </Link>
       </div>
@@ -540,11 +585,15 @@ export default function SalesDashboardPage() {
                   ) : (
                     <button
                       onClick={configurerVersements}
-                      className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+                      disabled={connectEnCours}
+                      className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90 disabled:opacity-60"
                     >
-                      {connect.statut === 'aucun'
-                        ? 'Configurer mes versements'
-                        : 'Reprendre la configuration'}
+                      {connectEnCours && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      {connectEnCours
+                        ? 'Ouverture de Stripe…'
+                        : connect.statut === 'aucun'
+                          ? 'Configurer mes versements'
+                          : 'Reprendre la configuration'}
                     </button>
                   )}
                   {connect.statut !== 'active' && (
@@ -575,6 +624,66 @@ export default function SalesDashboardPage() {
               </div>
             </div>
           </div>
+        );
+      })()}
+
+      {/* ── Simulateur de revenus — pour se projeter : X clients → commission ── */}
+      {moi && moi.tauxCommissionPct !== null && (() => {
+        const mensuelSolo = SUBSCRIPTION_PLANS.solo.monthlyPrice; // centimes, tarif catalogue
+        const parMois = (simClients * mensuelSolo * moi.tauxCommissionPct!) / 100 / 100;
+        const parAn = parMois * 12;
+        return (
+          <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 inline-flex items-center justify-center">
+                <Calculator className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Simulateur de revenus</h2>
+                <p className="text-[11px] text-gray-400">
+                  Votre commission ({moi.tauxCommissionPct} % du MRR pendant 12 mois) selon le nombre de clients payants actifs.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 flex flex-wrap items-center gap-6">
+              <div className="flex-1 min-w-[220px]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                    Clients payants
+                  </label>
+                  <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    {simClients}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={simClients}
+                  onChange={(e) => setSimClients(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                />
+              </div>
+              <div className="flex gap-8">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Par mois</p>
+                  <p className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {parMois.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sur 12 mois</p>
+                  <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-white mt-0.5">
+                    {parAn.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                  </p>
+                </div>
+              </div>
+              <p className="w-full text-[11px] text-gray-400">
+                Base : abonnement Solo mensuel au tarif catalogue ({(mensuelSolo / 100).toLocaleString('fr-FR')} €/mois),
+                clients conservés 12 mois, hors remises. Le réel dépend des plans souscrits et des offres appliquées.
+              </p>
+            </div>
+          </section>
         );
       })()}
 

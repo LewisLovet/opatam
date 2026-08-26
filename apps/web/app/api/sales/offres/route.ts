@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
       pitch: o.pitch,
       annuelSeulement: o.annuelSeulement === true,
       active: !desactivees.includes(o.id),
+      // Pour le calcul « ce que l'offre vous coûte en commission » côté page.
+      coupon: o.coupon,
     })),
     codes: codesSnap.docs
       .map((d) => {

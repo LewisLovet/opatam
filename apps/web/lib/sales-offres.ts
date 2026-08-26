@@ -67,3 +67,44 @@ export function couponIdPourOffre(offreId: string): string {
 export function offreParId(id: string): OffreCommerciale | null {
   return OFFRES_CATALOGUE.find((o) => o.id === id) ?? null;
 }
+
+/**
+ * Ce que l'offre coûte au commercial — commission = % du MRR réellement
+ * facturé pendant 12 mois. Renvoie la commission sur 12 mois SANS l'offre et
+ * AVEC, en centimes, pour un abonnement au tarif catalogue donné.
+ *
+ * Hypothèses affichées comme telles dans l'UI : le client reste 12 mois, au
+ * tarif catalogue. `once` = 1 facture réduite ; `repeating` = n factures
+ * réduites ; une offre « annuel seulement » réduit la facture annuelle
+ * (mensualisée sur 12 mois côté commission, l'effet est identique).
+ */
+export function commissionOffreSurDouzeMois(args: {
+  mensuelCents: number;
+  annuelCents: number;
+  tauxPct: number;
+  coupon: { percentOff: number; duration: 'once' | 'repeating' | 'forever'; durationInMonths?: number };
+  annuelSeulement?: boolean;
+}): { sansOffreCents: number; avecOffreCents: number } {
+  const taux = args.tauxPct / 100;
+  const pct = args.coupon.percentOff / 100;
+  if (args.annuelSeulement) {
+    // Une seule facture annuelle, réduite une fois.
+    const base = args.annuelCents;
+    return {
+      sansOffreCents: Math.round(base * taux),
+      avecOffreCents: Math.round(base * (1 - pct) * taux),
+    };
+  }
+  const base = args.mensuelCents * 12;
+  const moisReduits =
+    args.coupon.duration === 'once'
+      ? 1
+      : args.coupon.duration === 'repeating'
+        ? (args.coupon.durationInMonths ?? 1)
+        : 12;
+  const reduction = args.mensuelCents * pct * Math.min(12, moisReduits);
+  return {
+    sansOffreCents: Math.round(base * taux),
+    avecOffreCents: Math.round((base - reduction) * taux),
+  };
+}
