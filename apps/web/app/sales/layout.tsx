@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   TrendingUp,
+  Globe,
 } from 'lucide-react';
 import { vueCommercialeActive, basculerVueCommerciale, enTetesStaff } from './entetes';
 
@@ -37,6 +38,7 @@ const NAV = [
   { label: 'Démonstration', href: '/sales/demo', icon: Presentation, ready: true },
   { label: 'Bibliothèque', href: '/sales/bibliotheque', icon: BookOpen, ready: true },
   { label: 'Offres', href: '/sales/offres', icon: Tag, ready: true },
+  { label: 'Sites web', href: '/sales/sites', icon: Globe, ready: true },
   // Réservé manager/admin — filtré au rendu selon le rôle.
   { label: 'Performance', href: '/sales/performance', icon: TrendingUp, ready: true, managerOnly: true },
   { label: 'Équipe', href: '/sales/equipe', icon: Users, ready: true, managerOnly: true },
