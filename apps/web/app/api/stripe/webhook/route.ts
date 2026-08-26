@@ -616,7 +616,19 @@ async function handleInvoicePaid(
         const staffPaie = staffSnap.data();
         const taux =
           typeof staffPaie?.tauxCommissionPct === 'number' ? staffPaie.tauxCommissionPct : null;
-        const commissionCents = taux ? Math.round(invoice.amount_paid * (taux / 100)) : 0;
+        // Commission assise sur le HORS TAXES (décision 2026-08-26) : la TVA
+        // collectée n'est pas du revenu. Si Stripe a calculé la taxe, on
+        // prend son total_excluding_tax ; sinon (pas de tax configurée —
+        // franchise actuelle), les tarifs affichés sont réputés TTC à 20 % :
+        // base = payé / 1,20. Le jour où la TVA est facturée pour de vrai,
+        // la première branche prend le relais sans rien retoucher.
+        const taxeStripe = (invoice as { tax?: number | null }).tax ?? 0;
+        const totalHT = (invoice as { total_excluding_tax?: number | null }).total_excluding_tax;
+        const baseHtCents =
+          taxeStripe > 0 && typeof totalHT === 'number'
+            ? totalHT
+            : Math.round(invoice.amount_paid / 1.2);
+        const commissionCents = taux ? Math.round(baseHtCents * (taux / 100)) : 0;
         if (
           taux &&
           commissionCents > 0 &&
@@ -640,6 +652,7 @@ async function handleInvoicePaid(
               providerId,
               staffUid: conv.staffUid,
               amountPaidCents: invoice.amount_paid,
+              baseHtCents,
               tauxPct: taux,
               commissionCents,
               transferId: null,

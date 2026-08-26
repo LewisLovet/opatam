@@ -545,8 +545,11 @@ export default function SalesDashboardPage() {
         const mrrCommissionnable = (conversions ?? [])
           .filter((c) => c.firstPaidAt && new Date(c.firstPaidAt) >= il12Mois)
           .reduce((n, c) => n + c.mrrCents, 0);
+        // Commission assise sur le HORS TAXES : les mrrCents snapshotés sont
+        // TTC (TVA 20 % réputée incluse dans le tarif) — même règle que le
+        // webhook des virements.
         const commission = moi.tauxCommissionPct !== null
-          ? (mrrCommissionnable * moi.tauxCommissionPct) / 100 / 100
+          ? (mrrCommissionnable / 1.2 * moi.tauxCommissionPct) / 100 / 100
           : null;
         return (
           <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4">
@@ -617,8 +620,9 @@ export default function SalesDashboardPage() {
                       {commission.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €
                     </p>
                     <p className="text-[10px] text-gray-400 max-w-[220px]">
-                      {moi.tauxCommissionPct} % du tarif catalogue des conversions de 12 derniers
-                      mois — hors remises et résiliations. Le réel est dans « Mes versements ».
+                      {moi.tauxCommissionPct} % du tarif catalogue HORS TAXES des conversions
+                      des 12 derniers mois — hors remises et résiliations. Le réel est dans
+                      « Mes versements ».
                     </p>
                   </>
                 ) : (
@@ -634,8 +638,12 @@ export default function SalesDashboardPage() {
       {moi && (() => {
         const tauxReel = moi.tauxCommissionPct;
         const tauxEffectif = tauxReel ?? simTaux;
-        const mensuelSolo = SUBSCRIPTION_PLANS.solo.monthlyPrice; // centimes, tarif catalogue
-        const parMois = (simClients * mensuelSolo * tauxEffectif) / 100 / 100;
+        // Base HORS TAXES : le tarif catalogue est TTC (TVA 20 %), la
+        // commission ne porte jamais sur la TVA collectée — même règle que
+        // les virements réels.
+        const mensuelSoloTtc = SUBSCRIPTION_PLANS.solo.monthlyPrice; // centimes TTC
+        const mensuelSoloHt = Math.round(mensuelSoloTtc / 1.2);
+        const parMois = (simClients * mensuelSoloHt * tauxEffectif) / 100 / 100;
         const parAn = parMois * 12;
         return (
           <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
@@ -647,7 +655,7 @@ export default function SalesDashboardPage() {
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Simulateur de revenus</h2>
                 <p className="text-[11px] text-gray-400">
                   {tauxReel !== null
-                    ? `Votre commission (${tauxReel} % du MRR pendant 12 mois) selon le nombre de clients payants actifs.`
+                    ? `Votre commission (${tauxReel} % du MRR hors taxes pendant 12 mois) selon le nombre de clients payants actifs.`
                     : 'Simulation à titre indicatif — votre taux réel sera défini par votre manager.'}
                 </p>
               </div>
@@ -706,8 +714,10 @@ export default function SalesDashboardPage() {
                 </div>
               </div>
               <p className="w-full text-[11px] text-gray-400">
-                Base : abonnement Solo mensuel au tarif catalogue ({(mensuelSolo / 100).toLocaleString('fr-FR')} €/mois),
-                clients conservés 12 mois, hors remises. Le réel dépend des plans souscrits et des offres appliquées.
+                Base : abonnement Solo mensuel {(mensuelSoloTtc / 100).toLocaleString('fr-FR')} € TTC,
+                soit {(mensuelSoloHt / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € HT
+                (la commission ne porte jamais sur la TVA collectée) — clients conservés 12 mois,
+                hors remises. Le réel dépend des plans souscrits et des offres appliquées.
                 {tauxReel === null && ' Le taux affiché est une hypothèse — rien n\'est promis tant que votre taux n\'est pas défini.'}
               </p>
             </div>

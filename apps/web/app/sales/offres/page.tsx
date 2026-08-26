@@ -334,16 +334,18 @@ export default function OffresPage() {
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{o.pitch}</p>
               {tauxPct !== null && o.coupon && (() => {
+                // Base HORS TAXES (tarifs catalogue TTC, TVA 20 %) — même
+                // assiette que les virements réels.
                 const g = commissionOffreSurDouzeMois({
-                  mensuelCents: solo.monthlyPrice,
-                  annuelCents: solo.yearlyPrice,
+                  mensuelCents: Math.round(solo.monthlyPrice / 1.2),
+                  annuelCents: Math.round(solo.yearlyPrice / 1.2),
                   tauxPct,
                   coupon: o.coupon,
                   annuelSeulement: o.annuelSeulement,
                 });
                 return (
                   <p className="text-[11px] text-gray-400 mt-1.5">
-                    Votre commission (Solo, 12 mois) :{' '}
+                    Votre commission (Solo HT, 12 mois) :{' '}
                     <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">
                       {euros(g.avecOffreCents)} €
                     </strong>{' '}
