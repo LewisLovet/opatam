@@ -11,6 +11,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { enTetesStaff } from '@/app/sales/entetes';
+import { SALES_SECTORS } from '@booking-app/shared';
+import { SECTOR_LABELS } from '@/lib/sales-leads';
 
 /**
  * Sites web — la seconde corde à l'arc du commercial : un site vitrine
@@ -249,12 +251,18 @@ export default function SitesWebPage() {
               placeholder="https://…"
               className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-xs text-gray-900 dark:text-white"
             />
-            <input
+            <select
               value={secteur}
               onChange={(e) => setSecteur(e.target.value)}
-              placeholder="Secteur (ex. coiffure, ongles…) — optionnel"
               className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-xs text-gray-900 dark:text-white"
-            />
+            >
+              <option value="">Secteur — optionnel</option>
+              {SALES_SECTORS.map((code) => (
+                <option key={code} value={code}>
+                  {SECTOR_LABELS[code] ?? code}
+                </option>
+              ))}
+            </select>
             <input
               value={prix}
               onChange={(e) => setPrix(e.target.value.replace(/[^\d]/g, ''))}
@@ -333,7 +341,12 @@ export default function SitesWebPage() {
                         {site.name}
                       </p>
                       <p className="text-[11px] text-gray-400 truncate">
-                        {[site.sector, new URL(site.url).hostname.replace('www.', '')]
+                        {[
+                          site.sector
+                            ? (SECTOR_LABELS[site.sector as keyof typeof SECTOR_LABELS] ?? site.sector)
+                            : '',
+                          new URL(site.url).hostname.replace('www.', ''),
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                         {estManager && site.priceEuros !== null && ` · vendu ${site.priceEuros} €`}

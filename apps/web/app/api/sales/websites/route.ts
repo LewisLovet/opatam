@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
+import { SALES_SECTORS } from '@booking-app/shared';
 
 /**
  * Portfolio des sites web vendus/réalisés — la vitrine de l'offre « site
@@ -23,7 +24,8 @@ const ajoutSchema = z.object({
     .url({ message: 'URL invalide (https://…)' })
     .max(300)
     .refine((u) => u.startsWith('https://') || u.startsWith('http://'), 'URL invalide'),
-  sector: z.string().max(60).optional().default(''),
+  // Référentiel Opatam — pas de champ libre (cohérence avec les prospects).
+  sector: z.enum(SALES_SECTORS).or(z.literal('')).optional().default(''),
   description: z.string().max(300).optional().default(''),
   priceEuros: z.number().int().min(0).max(5000).nullable().optional(),
 });
