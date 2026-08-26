@@ -211,7 +211,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     address: l.address,
     city: l.city,
     postalCode: l.postalCode,
+    countryCode: l.countryCode || 'FR',
     type: l.type,
+    travelZone: l.travelZone ?? null,
   }));
 
   const serializedMembers = members.map((m) => ({

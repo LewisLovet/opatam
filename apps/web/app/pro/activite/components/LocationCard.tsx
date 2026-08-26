@@ -80,8 +80,13 @@ export function LocationCard({
   const Icon = isMobile ? Car : Building2;
 
   // Format location info based on type
+  const travelTierCount = location.travelZone?.length ?? 0;
   const locationInfo = isMobile
-    ? `Déplacement dans un rayon de ${location.travelRadius} km autour de ${location.city}`
+    ? travelTierCount > 0
+      ? `Frais de déplacement : ${travelTierCount} palier${travelTierCount > 1 ? 's' : ''} · jusqu'à ${
+          location.travelZone![travelTierCount - 1].maxKm
+        } km autour de ${location.city}`
+      : `Déplacement dans un rayon de ${location.travelRadius} km autour de ${location.city}`
     : location.address
       ? `${location.address}, ${location.postalCode} ${location.city}`
       : `${location.postalCode} ${location.city}`;

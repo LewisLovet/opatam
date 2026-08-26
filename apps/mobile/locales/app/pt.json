@@ -515,7 +515,18 @@
     "everyDay": "todos os dias",
     "exceptDaysInline": "todos os dias exceto {{days}}",
     "onlyDaysNotice": "Esta prestação marca-se {{days}}.",
-    "exceptDaysNotice": "Esta prestação marca-se todos os dias exceto {{days}}."
+    "exceptDaysNotice": "Esta prestação marca-se todos os dias exceto {{days}}.",
+    "travel": {
+      "addressLabel": "A sua morada",
+      "addressPlaceholder": "Para onde é a deslocação?",
+      "quoteLoading": "A calcular a distância…",
+      "quoteUnavailable": "Verificação da distância indisponível — tente novamente dentro de minutos.",
+      "fee": "Taxa de deslocação: {{amount}} €",
+      "feeLine": "Taxa de deslocação",
+      "free": "Deslocação gratuita",
+      "freeShort": "Grátis",
+      "outOfZone": "Esta morada fica além da zona de deslocação ({{maxKm}} km)."
+    }
   },
   "bookingDetailScreen": {
     "status": {
@@ -1374,6 +1385,12 @@
       "emailError": "Não foi possível abrir a aplicação de email",
       "copiedTitle": "Copiado",
       "copiedMessage": "\"{{text}}\" copiado para a área de transferência."
+    },
+    "travel": {
+      "clientAddress": "Morada da intervenção",
+      "cityUntilConfirmed": "{{city}} — morada completa após confirmação",
+      "fee": "Deslocação",
+      "free": "Grátis"
     }
   },
   "proCreateBooking": {
@@ -2903,6 +2920,21 @@
       "empty": "Nenhum membro ativo.\nCrie membros a partir da página Equipa.",
       "thisLocation": "Este local",
       "updated": "Membros atualizados"
+    },
+    "travelZone": {
+      "title": "Taxas de deslocação automáticas",
+      "description": "A cliente introduz a sua morada, a distância rodoviária é calculada e a taxa do escalão soma-se ao total. Para além do último escalão, a reserva online é recusada.",
+      "originLabel": "Morada ou cidade de partida",
+      "originPlaceholder": "De onde parte?",
+      "originHint": "Ponto de partida das deslocações — nunca mostrado às clientes.",
+      "tiersLabel": "Escalões (até … km → taxa)",
+      "free": "€ — grátis",
+      "addTier": "Adicionar um escalão",
+      "beyondLimit": "Para além de {{km}} km: reserva online indisponível.",
+      "needsOrigin": "Selecione a sua morada ou cidade de partida",
+      "invalidTiers": "Escalões inválidos: limites crescentes (máx. 300 km), taxas não negativas, máximo 8 escalões",
+      "authRequired": "Sessão expirada — inicie sessão novamente",
+      "saveFailed": "Falha ao guardar as taxas de deslocação"
     }
   },
   "proAvailability": {

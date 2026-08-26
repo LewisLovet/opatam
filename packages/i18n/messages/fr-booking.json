@@ -317,5 +317,19 @@
     "footer": {
       "poweredBy": "Réservation propulsée par <b>Opatam</b>"
     }
+  },
+  "travel": {
+    "addressLabel": "Votre adresse",
+    "addressPlaceholder": "Où faut-il se déplacer ?",
+    "addressHelp": "Ce professionnel se déplace chez vous — l'adresse sert à calculer les frais de déplacement.",
+    "quoteLoading": "Calcul de la distance…",
+    "quoteUnavailable": "Vérification de la distance impossible — réessayez dans quelques minutes.",
+    "retry": "Réessayer",
+    "feeLine": "Frais de déplacement",
+    "feeFree": "Déplacement offert",
+    "distance": "{km} km",
+    "outOfZoneTitle": "Adresse hors zone",
+    "outOfZoneBody": "Cette adresse est au-delà de la zone de déplacement ({maxKm} km).",
+    "otherLocations": "Autres lieux proposés :"
   }
 }

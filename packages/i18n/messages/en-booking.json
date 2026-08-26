@@ -317,5 +317,19 @@
     "footer": {
       "poweredBy": "Booking powered by <b>Opatam</b>"
     }
+  },
+  "travel": {
+    "addressLabel": "Your address",
+    "addressPlaceholder": "Where should they travel to?",
+    "addressHelp": "This professional comes to you — the address is used to calculate the travel fee.",
+    "quoteLoading": "Calculating distance…",
+    "quoteUnavailable": "Distance check unavailable — please try again in a few minutes.",
+    "retry": "Retry",
+    "feeLine": "Travel fee",
+    "feeFree": "Free travel",
+    "distance": "{km} km",
+    "outOfZoneTitle": "Address out of range",
+    "outOfZoneBody": "This address is beyond the travel area ({maxKm} km).",
+    "otherLocations": "Other available locations:"
   }
 }

@@ -515,7 +515,18 @@
     "everyDay": "tous les jours",
     "exceptDaysInline": "tous les jours sauf {{days}}",
     "onlyDaysNotice": "Cette prestation se réserve {{days}}.",
-    "exceptDaysNotice": "Cette prestation se réserve tous les jours sauf {{days}}."
+    "exceptDaysNotice": "Cette prestation se réserve tous les jours sauf {{days}}.",
+    "travel": {
+      "addressLabel": "Votre adresse",
+      "addressPlaceholder": "Où faut-il se déplacer ?",
+      "quoteLoading": "Calcul de la distance…",
+      "quoteUnavailable": "Vérification de la distance impossible — réessayez dans quelques minutes.",
+      "fee": "Frais de déplacement : {{amount}} €",
+      "feeLine": "Frais de déplacement",
+      "free": "Déplacement offert",
+      "freeShort": "Offert",
+      "outOfZone": "Cette adresse est au-delà de la zone de déplacement ({{maxKm}} km)."
+    }
   },
   "bookingDetailScreen": {
     "status": {
@@ -1374,6 +1385,12 @@
       "emailError": "Impossible d'ouvrir l'application mail",
       "copiedTitle": "Copié",
       "copiedMessage": "\"{{text}}\" copié dans le presse-papier."
+    },
+    "travel": {
+      "clientAddress": "Adresse d'intervention",
+      "cityUntilConfirmed": "{{city}} — adresse complète après confirmation",
+      "fee": "Déplacement",
+      "free": "Offert"
     }
   },
   "proCreateBooking": {
@@ -2903,6 +2920,21 @@
       "empty": "Aucun membre actif.\nCréez des membres depuis la page Équipe.",
       "thisLocation": "Ce lieu",
       "updated": "Membres mis à jour"
+    },
+    "travelZone": {
+      "title": "Frais de déplacement automatiques",
+      "description": "La cliente saisit son adresse, la distance routière est calculée et le frais du palier s'ajoute au total. Au-delà du dernier palier, la réservation en ligne est refusée.",
+      "originLabel": "Adresse ou ville de départ",
+      "originPlaceholder": "D'où partez-vous ?",
+      "originHint": "Point de départ des trajets — jamais montré aux clientes.",
+      "tiersLabel": "Paliers (jusqu'à … km → frais)",
+      "free": "€ — offert",
+      "addTier": "Ajouter un palier",
+      "beyondLimit": "Au-delà de {{km}} km : réservation en ligne impossible.",
+      "needsOrigin": "Sélectionnez votre adresse ou ville de départ",
+      "invalidTiers": "Paliers invalides : bornes croissantes (max 300 km), frais positifs, 8 paliers maximum",
+      "authRequired": "Session expirée — reconnectez-vous",
+      "saveFailed": "Échec de la sauvegarde des frais de déplacement"
     }
   },
   "proAvailability": {

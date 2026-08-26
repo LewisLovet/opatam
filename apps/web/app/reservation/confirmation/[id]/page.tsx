@@ -59,6 +59,14 @@ export default async function ConfirmationPage({ params }: PageProps) {
           status: booking.deposit.status,
         }
       : null,
+    // Déplacement à domicile — snapshot public (montants + ville seulement).
+    travel: booking.travel
+      ? {
+          fee: booking.travel.fee,
+          distanceKm: booking.travel.distanceKm,
+          clientCity: booking.travel.clientCity,
+        }
+      : null,
   };
 
   // Programme de fidélité du pro — quand il est actif, le bloc « Téléchargez

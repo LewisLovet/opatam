@@ -515,7 +515,18 @@
     "everyDay": "an allen Tagen",
     "exceptDaysInline": "an allen Tagen außer {{days}}",
     "onlyDaysNotice": "Diese Leistung ist {{days}} buchbar.",
-    "exceptDaysNotice": "Diese Leistung ist an allen Tagen außer {{days}} buchbar."
+    "exceptDaysNotice": "Diese Leistung ist an allen Tagen außer {{days}} buchbar.",
+    "travel": {
+      "addressLabel": "Ihre Adresse",
+      "addressPlaceholder": "Wohin soll die Anfahrt gehen?",
+      "quoteLoading": "Entfernung wird berechnet…",
+      "quoteUnavailable": "Entfernungsprüfung nicht möglich — bitte in einigen Minuten erneut versuchen.",
+      "fee": "Anfahrtskosten: {{amount}} €",
+      "feeLine": "Anfahrtskosten",
+      "free": "Anfahrt kostenlos",
+      "freeShort": "Kostenlos",
+      "outOfZone": "Diese Adresse liegt außerhalb des Anfahrtsgebiets ({{maxKm}} km)."
+    }
   },
   "bookingDetailScreen": {
     "status": {
@@ -1374,6 +1385,12 @@
       "emailError": "Die Mail-App kann nicht geöffnet werden",
       "copiedTitle": "Kopiert",
       "copiedMessage": "„{{text}}“ in die Zwischenablage kopiert."
+    },
+    "travel": {
+      "clientAddress": "Einsatzadresse",
+      "cityUntilConfirmed": "{{city}} — vollständige Adresse nach Bestätigung",
+      "fee": "Anfahrt",
+      "free": "Kostenlos"
     }
   },
   "proCreateBooking": {
@@ -2903,6 +2920,21 @@
       "empty": "Kein aktives Mitglied.\nLegen Sie Mitglieder auf der Seite Team an.",
       "thisLocation": "Dieser Ort",
       "updated": "Mitglieder aktualisiert"
+    },
+    "travelZone": {
+      "title": "Automatische Anfahrtskosten",
+      "description": "Die Kundin gibt ihre Adresse ein, die Straßenentfernung wird berechnet und die Stufengebühr zum Gesamtbetrag addiert. Jenseits der letzten Stufe wird die Online-Buchung abgelehnt.",
+      "originLabel": "Startadresse oder -stadt",
+      "originPlaceholder": "Von wo starten Sie?",
+      "originHint": "Startpunkt der Fahrten — wird Kundinnen nie angezeigt.",
+      "tiersLabel": "Stufen (bis … km → Gebühr)",
+      "free": "€ — kostenlos",
+      "addTier": "Stufe hinzufügen",
+      "beyondLimit": "Jenseits von {{km}} km: Online-Buchung nicht möglich.",
+      "needsOrigin": "Wählen Sie Ihre Startadresse oder -stadt",
+      "invalidTiers": "Ungültige Stufen: aufsteigende Grenzen (max. 300 km), nicht negative Gebühren, maximal 8 Stufen",
+      "authRequired": "Sitzung abgelaufen — bitte erneut anmelden",
+      "saveFailed": "Anfahrtskosten konnten nicht gespeichert werden"
     }
   },
   "proAvailability": {

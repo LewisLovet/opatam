@@ -50,6 +50,7 @@ import {
   Moon,
   Wallet,
   Gift,
+  Car,
 } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -166,6 +167,11 @@ export function BookingDetailModal({
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  // Adresse d'intervention (résa à domicile) — servie par l'endpoint gaté :
+  // ville seule avant confirmation, adresse complète après.
+  const [clientAddress, setClientAddress] = useState<
+    { revealed: boolean; address?: string; postalCode?: string; city: string } | null
+  >(null);
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
     morning: true,
     afternoon: false,
@@ -200,6 +206,28 @@ export function BookingDetailModal({
   };
 
   // Load available slots when date changes
+  useEffect(() => {
+    setClientAddress(null);
+    if (!booking?.travel || !firebaseAuth.currentUser) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const idToken = await firebaseAuth.currentUser!.getIdToken();
+        const res = await fetch(`/api/bookings/${booking.id}/client-address`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        if (!res.ok || cancelled) return;
+        setClientAddress(await res.json());
+      } catch {
+        // silencieux — le bloc affiche la ville du snapshot en repli
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?.id, booking?.travel, booking?.status]);
+
   useEffect(() => {
     if (!showReschedule || !rescheduleDate || !booking || !provider) return;
 
@@ -609,11 +637,49 @@ export function BookingDetailModal({
               </span>
             </div>
           )}
+          {booking.travel && (
+            <div className="flex items-start gap-3 text-sm">
+              <Car className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-gray-700 dark:text-gray-300 block">
+                  {clientAddress?.revealed && clientAddress.address ? (
+                    <>
+                      {clientAddress.address}
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(clientAddress.address!)}
+                        className="ml-2 text-xs text-primary-600 hover:underline"
+                      >
+                        Copier
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {clientAddress?.city || booking.travel.clientCity}
+                      <span className="text-gray-400 dark:text-gray-500">
+                        {' '}
+                        · adresse complète visible après confirmation
+                      </span>
+                    </>
+                  )}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Déplacement : {booking.travel.fee === 0 ? 'offert' : formatBookingPrice(booking.travel.fee)}
+                  {' '}· {booking.travel.distanceKm} km
+                </span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3 text-sm pt-1 border-t border-gray-200 dark:border-gray-700/60">
             <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <span className="text-gray-700 dark:text-gray-300">Prix</span>
             <span className="ml-auto font-bold text-base text-primary-600 dark:text-primary-400">
-              {formatBookingPrice(booking.price)}
+              {formatBookingPrice(booking.price + (booking.travel?.fee ?? 0))}
+              {booking.travel && booking.travel.fee > 0 && (
+                <span className="block text-[11px] font-normal text-gray-500 dark:text-gray-400 text-right">
+                  dont {formatBookingPrice(booking.travel.fee)} de déplacement
+                </span>
+              )}
             </span>
           </div>
           {/* Récompense fidélité appliquée à cette résa (snapshot booking.loyalty) */}
@@ -642,7 +708,10 @@ export function BookingDetailModal({
                 <Wallet className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                 <span className="text-gray-700 dark:text-gray-300">Reste à payer</span>
                 <span className="ml-auto font-bold text-base text-gray-900 dark:text-white">
-                  {formatBookingPrice(Math.max(0, booking.price - booking.deposit.amount))}
+                  {/* Formule unique : prestations + déplacement − acompte */}
+                  {formatBookingPrice(
+                    Math.max(0, booking.price + (booking.travel?.fee ?? 0) - booking.deposit.amount),
+                  )}
                 </span>
               </div>
             </>

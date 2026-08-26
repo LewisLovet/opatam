@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_SERVER_KEY ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 export async function GET(request: NextRequest) {
   try {
+    if (!checkRateLimit('places-details', request, { max: 120, windowMs: 10 * 60 * 1000 })) {
+      return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 });
+    }
     const { searchParams } = new URL(request.url);
     const placeId = searchParams.get('placeId');
     const sessionToken = searchParams.get('sessionToken');

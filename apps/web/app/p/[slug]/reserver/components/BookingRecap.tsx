@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, MapPin, User, Calendar } from 'lucide-react';
+import { Clock, MapPin, User, Calendar, Car } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import {
@@ -84,6 +84,9 @@ interface BookingRecapProps {
   promoDaysLeft?: number | null;
   /** Labels of the chosen variations/options to list under the service. */
   choiceLabels?: string[];
+  /** Frais de déplacement (centimes) — HORS du prix des prestations.
+   *  null/undefined = pas de déplacement ; 0 = offert (affiché). */
+  travelFee?: number | null;
 }
 
 function formatDuration(minutes: number): string {
@@ -140,6 +143,7 @@ export function BookingRecap({
   promoEndsAt,
   promoDaysLeft,
   choiceLabels = [],
+  travelFee = null,
 }: BookingRecapProps) {
   const t = useTranslations('booking');
   const locale = useLocale();
@@ -195,7 +199,8 @@ export function BookingRecap({
                 {displayName}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {formatDuration(displayDuration)} · {formatPrice(displayPrice, displayMax)}
+                {formatDuration(displayDuration)} ·{' '}
+                {formatPrice(displayPrice + (travelFee ?? 0), displayMax)}
               </p>
               {promoCountdownText && (
                 <p className="text-[11px] font-semibold text-rose-500 dark:text-rose-400">
@@ -221,7 +226,7 @@ export function BookingRecap({
                 hasPromo ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'
               }`}
             >
-              {formatPrice(displayPrice, displayMax)}
+              {formatPrice(displayPrice + (travelFee ?? 0), displayMax)}
             </span>
           </div>
         )}
@@ -387,6 +392,17 @@ export function BookingRecap({
               {formatDuration(displayDuration)}
             </span>
           </div>
+          {travelFee != null && (
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
+                <Car className="w-4 h-4" />
+                {t('travel.feeLine')}
+              </span>
+              <span className="text-base font-semibold text-gray-900 dark:text-white">
+                {travelFee === 0 ? t('travel.feeFree') : formatPrice(travelFee)}
+              </span>
+            </div>
+          )}
           <div className="flex items-end justify-between">
             <span className="text-base font-semibold text-gray-900 dark:text-white">
               {t('common.total')}
@@ -398,7 +414,7 @@ export function BookingRecap({
                 </span>
               )}
               <span className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
-                {formatPrice(displayPrice, displayMax)}
+                {formatPrice(displayPrice + (travelFee ?? 0), displayMax)}
               </span>
             </span>
           </div>

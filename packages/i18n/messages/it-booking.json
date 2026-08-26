@@ -317,5 +317,19 @@
     "footer": {
       "poweredBy": "Prenotazione gestita da <b>Opatam</b>"
     }
+  },
+  "travel": {
+    "addressLabel": "Il tuo indirizzo",
+    "addressPlaceholder": "Dove deve spostarsi?",
+    "addressHelp": "Questo professionista viene da te — l'indirizzo serve a calcolare le spese di trasferta.",
+    "quoteLoading": "Calcolo della distanza…",
+    "quoteUnavailable": "Verifica della distanza non disponibile — riprova tra qualche minuto.",
+    "retry": "Riprova",
+    "feeLine": "Spese di trasferta",
+    "feeFree": "Trasferta gratuita",
+    "distance": "{km} km",
+    "outOfZoneTitle": "Indirizzo fuori zona",
+    "outOfZoneBody": "Questo indirizzo è oltre la zona di trasferta ({maxKm} km).",
+    "otherLocations": "Altre sedi disponibili:"
   }
 }

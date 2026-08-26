@@ -277,6 +277,8 @@ export interface BookingEmailData {
   priceMax?: number | null;
   /** Pre-discount total (cents) when a promo was applied. null = no promo. */
   originalPrice?: number | null;
+  /** Prestation à domicile — la cliente voit toujours SA propre adresse. */
+  travel?: { fee: number; addressLine: string | null; city: string } | null;
   providerName: string;
   providerSlug?: string;
   locationName?: string;
@@ -666,6 +668,11 @@ export interface ProviderNewBookingEmailData {
   locationName?: string;
   locationAddress?: string;
   memberName?: string;
+  /** Prestation à domicile : frais (centimes) + adresse d'intervention.
+   *  addressLine = null tant que la résa n'est pas confirmée (ville dans
+   *  city) — la révélation est décidée par le builder via
+   *  clientAddressReveal, jamais ici. */
+  travel?: { fee: number; addressLine: string | null; city: string } | null;
   /** Multi-prestation breakdown (see BookingEmailData.items). */
   items?: EmailServiceItem[];
   /** Mono-booking choices (see BookingEmailData). Rendered under the single
@@ -782,8 +789,10 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Date</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Horaire</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Lieu</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
+                      ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Adresse d'intervention</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.addressLine ?? `${data.travel.city} — adresse complète communiquée à la confirmation`}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Membre</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Prix</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice)}</td></tr>
+                      ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Frais de déplacement</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? 'Offert' : formatPriceFr(data.travel.fee)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">Acompte perçu</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatPriceFr(data.depositPaid.amount)}</td></tr>` : ''}
                     </table>
                   </div>
@@ -822,8 +831,10 @@ ${data.items && data.items.length >= 2
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}
 ${data.locationName ? `- Lieu : ${data.locationName}` : ''}
+${data.travel ? `- Adresse d'intervention : ${data.travel.addressLine ?? `${data.travel.city} — adresse complète communiquée à la confirmation`}` : ''}
 ${data.memberName ? `- Membre : ${data.memberName}` : ''}
 - Prix : ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice)}
+${data.travel ? `- Frais de déplacement : ${data.travel.fee === 0 ? 'Offert' : formatPriceFr(data.travel.fee)}` : ''}
 ${data.depositPaid ? `- Acompte perçu : ${formatPriceFr(data.depositPaid.amount)}` : ''}
 
 Voir mon calendrier : ${data.calendarUrl}
@@ -1425,10 +1436,12 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data, l)}
+                      ${data.travel?.addressLine ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.clientAddress}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.addressLine}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
+                      ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.travelFee}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
                   ${loyaltyBlockHtml(data.loyalty ?? null, data.businessName, l)}
@@ -1488,9 +1501,11 @@ ${data.items && data.items.length >= 2
 ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
 ${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
 ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
+${data.travel?.addressLine ? `- ${c.labels.clientAddress}${c.colon} ${data.travel.addressLine}` : ''}
 - ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
+${data.travel ? `- ${c.labels.travelFee}${c.colon} ${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l)}` : ''}
 ${data.depositPaid ? `- ${c.labels.depositPaid}${c.colon} ${formatEmailPrice(data.depositPaid.amount, l)}` : ''}
-${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)}` : ''}
+${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null)}` : ''}
 ${data.loyalty ? `
 ${EMAIL_TEXTS.loyalty[l].cardTitle(data.businessName)}
 ${data.loyalty.appliedAmountOff > 0 ? EMAIL_TEXTS.loyalty[l].applied(data.loyalty.rewardLabel) + '\n' : ''}${data.loyalty.count > 0 && data.loyalty.count % data.loyalty.threshold === 0 ? EMAIL_TEXTS.loyalty[l].readyForNext(data.loyalty.rewardLabel) : EMAIL_TEXTS.loyalty[l].counted(data.loyalty.count, data.loyalty.threshold, data.loyalty.threshold - (data.loyalty.count % data.loyalty.threshold), data.loyalty.rewardLabel)}` : ''}

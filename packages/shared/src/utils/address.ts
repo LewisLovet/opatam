@@ -49,3 +49,18 @@ export function getPublicAreaLabel(loc: {
   if (loc.city?.trim()) return loc.city.trim();
   return loc.postalCode?.trim() || '';
 }
+
+/**
+ * L'adresse de la CLIENTE (prestation à domicile) est-elle visible du pro ?
+ *
+ * Miroir inverse de `isAddressRevealed` : ici c'est la cliente qui confie
+ * son adresse, et le pro ne la voit qu'une fois l'engagement pris — dès la
+ * CONFIRMATION (pas de fenêtre 48 h : il doit pouvoir planifier sa tournée).
+ * Avant : ville seule.
+ *
+ * MIROIR dans functions/src/utils/clientAddressReveal.ts (les Cloud
+ * Functions n'importent pas ce package) — tenir les deux synchronisés.
+ */
+export function isClientAddressRevealed(booking: { status: string }): boolean {
+  return booking.status === 'confirmed' || booking.status === 'completed';
+}

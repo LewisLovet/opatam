@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { getServiceText, type ServiceTranslations } from '@booking-app/shared';
 import { StepMember } from '../../reserver/components/StepMember';
 import { StepSlot } from '../../reserver/components/StepSlot';
-import { StepConfirm } from '../../reserver/components/StepConfirm';
+import { StepConfirm, type ClientAddressValue, type TravelQuoteState } from '../../reserver/components/StepConfirm';
 import { EmbedServices } from './EmbedServices';
 import { EmbedHeader } from './EmbedHeader';
 import { EmbedFooter } from './EmbedFooter';
@@ -57,7 +57,9 @@ interface EmbedLocation {
   address: string;
   city: string;
   postalCode: string;
+  countryCode?: string;
   type: 'fixed' | 'mobile';
+  travelZone?: Array<{ maxKm: number; fee: number }> | null;
 }
 
 interface EmbedMember {
@@ -135,6 +137,46 @@ export function EmbedBookingFlow({
   const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Frais de déplacement (lieu mobile à zone configurée) ────────────────
+  const embedLocation = locations.find((l) => l.id === locationId) ?? null;
+  const requiresClientAddress =
+    embedLocation?.type === 'mobile' && (embedLocation.travelZone?.length ?? 0) > 0;
+  const [clientAddress, setClientAddress] = useState<ClientAddressValue | null>(null);
+  const [travelQuote, setTravelQuote] = useState<TravelQuoteState>({ status: 'idle' });
+
+  const fetchTravelQuote = async (address: ClientAddressValue | null) => {
+    setClientAddress(address);
+    if (!address || !locationId) {
+      setTravelQuote({ status: 'idle' });
+      return;
+    }
+    setTravelQuote({ status: 'loading' });
+    try {
+      const res = await fetch('/api/travel/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerId: provider.id,
+          locationId,
+          placeId: address.placeId,
+          serviceIds: serviceId ? [serviceId] : [],
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.applicable && data.inZone) {
+        setTravelQuote({ status: 'ok', fee: data.fee, distanceKm: data.distanceKm, quoteToken: data.quoteToken });
+      } else if (res.ok && data?.applicable && data.inZone === false) {
+        setTravelQuote({ status: 'out_of_zone', maxKm: data.maxKm, alternatives: data.alternativeLocations ?? [] });
+      } else if (res.ok && data?.applicable === false) {
+        setTravelQuote({ status: 'ok', fee: 0, distanceKm: 0, quoteToken: '' });
+      } else {
+        setTravelQuote({ status: 'error' });
+      }
+    } catch {
+      setTravelQuote({ status: 'error' });
+    }
+  };
 
   // Booking notice modal
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -282,6 +324,19 @@ export function EmbedBookingFlow({
           source: 'embed',
           // Language the client booked in → transactional emails follow it.
           clientLocale: locale,
+          ...(requiresClientAddress && clientAddress
+            ? {
+                clientAddress: {
+                  placeId: clientAddress.placeId,
+                  address: clientAddress.formattedAddress,
+                  city: clientAddress.city,
+                  postalCode: clientAddress.postalCode,
+                  countryCode: clientAddress.countryCode,
+                },
+                travelQuoteToken:
+                  travelQuote.status === 'ok' && travelQuote.quoteToken ? travelQuote.quoteToken : undefined,
+              }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -384,6 +439,12 @@ export function EmbedBookingFlow({
           onBack={handleBack}
           isSubmitting={submitting}
           requiresConfirmation={provider.settings.requiresConfirmation}
+          requiresClientAddress={requiresClientAddress}
+          clientAddress={clientAddress}
+          onClientAddressSelect={fetchTravelQuote}
+          travelQuote={travelQuote}
+          onRetryQuote={() => fetchTravelQuote(clientAddress)}
+          addressCountry={embedLocation?.countryCode}
         />
       )}
 

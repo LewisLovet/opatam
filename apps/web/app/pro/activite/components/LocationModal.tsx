@@ -15,9 +15,11 @@ import {
   ConfirmDialog,
   type GoogleAddressSuggestion,
 } from '@/components/ui';
-import { Loader2, Trash2, Building2, Car, Lock } from 'lucide-react';
-import type { Location, LocationType } from '@booking-app/shared';
+import { Loader2, Trash2, Building2, Car, Lock, Plus, X } from 'lucide-react';
+import type { Location, LocationType, TravelZoneTier } from '@booking-app/shared';
+import { isValidTravelZone } from '@booking-app/shared';
 import { isValidPostalCode } from '@booking-app/shared/schemas';
+import { auth as firebaseAuth } from '@booking-app/firebase';
 
 type WithId<T> = { id: string } & T;
 
@@ -44,6 +46,31 @@ export interface LocationFormData {
   accessInstructions: string | null;
   geopoint?: { latitude: number; longitude: number } | null;
   region?: string | null;
+  /**
+   * Frais de déplacement (lieu mobile). undefined = ne pas toucher ;
+   * { originPlaceId: null, tiers: null } = désactiver. Sauvegardé par la
+   * route /api/pro/locations/[id]/travel-zone (l'origine est PRIVÉE —
+   * jamais écrite sur le document public du lieu).
+   */
+  travel?: { originPlaceId: string | null; tiers: TravelZoneTier[] | null };
+}
+
+/** Ligne d'édition d'un palier (saisies en texte, converties à la sauvegarde). */
+interface TierRow {
+  maxKm: string;
+  feeEuros: string;
+}
+
+/** Convertit les lignes saisies en paliers (centimes) ; null si illisible. */
+function parseTierRows(rows: TierRow[]): TravelZoneTier[] | null {
+  const tiers: TravelZoneTier[] = [];
+  for (const row of rows) {
+    const maxKm = Number(row.maxKm.replace(',', '.'));
+    const feeEuros = Number(row.feeEuros.replace(',', '.'));
+    if (!Number.isFinite(maxKm) || !Number.isFinite(feeEuros)) return null;
+    tiers.push({ maxKm, fee: Math.round(feeEuros * 100) });
+  }
+  return tiers;
 }
 
 export function LocationModal({
@@ -59,6 +86,14 @@ export function LocationModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [cityOnly, setCityOnly] = useState(false);
+
+  // Frais de déplacement — l'origine (privée) et les paliers viennent de la
+  // route dédiée, pas du document public.
+  const [travelEnabled, setTravelEnabled] = useState(false);
+  const [tierRows, setTierRows] = useState<TierRow[]>([{ maxKm: '10', feeEuros: '0' }]);
+  const [originPlaceId, setOriginPlaceId] = useState<string | null>(null);
+  const [originAddress, setOriginAddress] = useState('');
+  const [originQuery, setOriginQuery] = useState('');
 
   const [formData, setFormData] = useState<LocationFormData>({
     name: '',
@@ -97,6 +132,41 @@ export function LocationModal({
           accessInstructions: location.accessInstructions ?? null,
         });
         setCityOnly(location.type === 'fixed' && !location.address);
+        // Hydrate la zone de déplacement depuis la route (origine privée).
+        setTravelEnabled(false);
+        setTierRows([{ maxKm: '10', feeEuros: '0' }]);
+        setOriginPlaceId(null);
+        setOriginAddress('');
+        setOriginQuery('');
+        if (location.type === 'mobile') {
+          void (async () => {
+            try {
+              const user = firebaseAuth.currentUser;
+              if (!user) return;
+              const res = await fetch(`/api/pro/locations/${location.id}/travel-zone`, {
+                headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+              });
+              if (!res.ok) return;
+              const data = await res.json();
+              if (Array.isArray(data.tiers) && data.tiers.length > 0) {
+                setTravelEnabled(true);
+                setTierRows(
+                  data.tiers.map((t: TravelZoneTier) => ({
+                    maxKm: String(t.maxKm),
+                    feeEuros: (t.fee / 100).toString(),
+                  })),
+                );
+              }
+              if (data.origin) {
+                setOriginPlaceId(data.origin.placeId ?? null);
+                setOriginAddress(data.origin.address ?? '');
+                setOriginQuery(data.origin.address ?? '');
+              }
+            } catch {
+              // silencieux : la section reste vierge, le pro re-choisit
+            }
+          })();
+        }
       } else {
         setFormData({
           name: '',
@@ -113,6 +183,11 @@ export function LocationModal({
           accessInstructions: null,
         });
         setCityOnly(false);
+        setTravelEnabled(false);
+        setTierRows([{ maxKm: '10', feeEuros: '0' }]);
+        setOriginPlaceId(null);
+        setOriginAddress('');
+        setOriginQuery('');
       }
       setErrors({});
       setShowDeleteConfirm(false);
@@ -146,6 +221,9 @@ export function LocationModal({
       travelRadius: type === 'fixed' ? null : prev.travelRadius || 15,
       // Clear address when switching to mobile (optional)
       address: type === 'mobile' ? '' : prev.address,
+      // Un lieu mobile ne porte JAMAIS de geopoint public : sans cette purge,
+      // les coordonnées de l'ancienne adresse fixe resteraient sur le doc.
+      geopoint: type === 'mobile' ? null : prev.geopoint,
     }));
     setErrors((prev) => ({ ...prev, type: '', travelRadius: '', address: '' }));
   };
@@ -199,11 +277,14 @@ export function LocationModal({
       }
     }
 
-    // Postal code: required for full address, optional for city-only
-    if (!cityOnly && formData.postalCode?.trim() && !isValidPostalCode(formData.postalCode, formData.countryCode)) {
+    // Postal code: required for full FIXED address only — a mobile location
+    // keeps its public address fields empty (privacy: the pro's start point
+    // lives in the private travelOrigin doc).
+    const needsPostalCode = formData.type === 'fixed' && !cityOnly;
+    if (needsPostalCode && formData.postalCode?.trim() && !isValidPostalCode(formData.postalCode, formData.countryCode)) {
       newErrors.postalCode = 'Code postal invalide';
     }
-    if (!cityOnly && !formData.postalCode?.trim()) {
+    if (needsPostalCode && !formData.postalCode?.trim()) {
       newErrors.postalCode = 'Le code postal est requis';
     }
 
@@ -213,12 +294,25 @@ export function LocationModal({
       newErrors.city = 'La ville doit contenir au moins 2 caractères';
     }
 
-    // Travel radius required for mobile type
-    if (formData.type === 'mobile') {
+    // Travel radius required for mobile type (quand les frais automatiques
+    // sont actifs, le rayon est dérivé du dernier palier — pas de saisie).
+    if (formData.type === 'mobile' && !travelEnabled) {
       if (!formData.travelRadius || formData.travelRadius < 1) {
         newErrors.travelRadius = 'Le rayon de déplacement est requis';
       } else if (formData.travelRadius > 100) {
         newErrors.travelRadius = 'Le rayon ne peut pas dépasser 100 km';
+      }
+    }
+
+    // Frais de déplacement : origine + paliers valides exigés ensemble.
+    if (formData.type === 'mobile' && travelEnabled) {
+      if (!originPlaceId) {
+        newErrors.travelOrigin = 'Sélectionnez votre adresse ou ville de départ';
+      }
+      const tiers = parseTierRows(tierRows);
+      if (!tiers || !isValidTravelZone(tiers)) {
+        newErrors.travelTiers =
+          'Paliers invalides : bornes croissantes (max 300 km), frais positifs, 8 paliers maximum';
       }
     }
 
@@ -232,9 +326,21 @@ export function LocationModal({
 
     setLoading(true);
     try {
-      const dataToSave = cityOnly
+      let dataToSave: LocationFormData = cityOnly
         ? { ...formData, address: '', geopoint: null }
         : formData;
+      if (formData.type === 'mobile') {
+        // Champs publics vidés : le point de départ du pro est privé.
+        dataToSave = {
+          ...dataToSave,
+          address: '',
+          postalCode: '',
+          geopoint: null,
+          travel: travelEnabled
+            ? { originPlaceId, tiers: parseTierRows(tierRows) }
+            : { originPlaceId: null, tiers: null },
+        };
+      }
       await onSave(dataToSave);
       onClose();
     } catch (error) {
@@ -464,8 +570,8 @@ export function LocationModal({
           )}
 
           {/* City and Postal Code - readonly when auto-filled, postal code hidden in city-only mode */}
-          <div className={`grid gap-4 ${cityOnly ? 'grid-cols-1' : 'grid-cols-3'}`}>
-            {!cityOnly && (
+          <div className={`grid gap-4 ${cityOnly || formData.type === 'mobile' ? 'grid-cols-1' : 'grid-cols-3'}`}>
+            {!cityOnly && formData.type === 'fixed' && (
               <Input
                 label="Code postal"
                 name="postalCode"
@@ -479,7 +585,7 @@ export function LocationModal({
               />
             )}
 
-            <div className={cityOnly ? '' : 'col-span-2'}>
+            <div className={cityOnly || formData.type === 'mobile' ? '' : 'col-span-2'}>
               <Input
                 label={formData.type === 'fixed' ? 'Ville' : 'Zone centrale'}
                 name="city"
@@ -494,8 +600,9 @@ export function LocationModal({
             </div>
           </div>
 
-          {/* Travel radius - only for mobile type */}
-          {formData.type === 'mobile' && (
+          {/* Travel radius - only for mobile type, saisi seulement quand les
+              frais automatiques sont désactivés (sinon dérivé du dernier palier) */}
+          {formData.type === 'mobile' && !travelEnabled && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Rayon de deplacement
@@ -529,6 +636,150 @@ export function LocationModal({
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Zone de deplacement autour de {formData.city || 'la ville'}
               </p>
+            </div>
+          )}
+
+          {/* Frais de déplacement automatiques (lieu mobile) */}
+          {formData.type === 'mobile' && (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Frais de déplacement automatiques
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    La cliente saisit son adresse, la distance routière est calculée et le
+                    frais du palier s&apos;ajoute au total. Au-delà du dernier palier, la
+                    réservation en ligne est refusée.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={travelEnabled}
+                  onClick={() => setTravelEnabled((v) => !v)}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                    travelEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      travelEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {travelEnabled && (
+                <>
+                  <div>
+                    <GoogleAddressAutocomplete
+                      label="Adresse ou ville de départ"
+                      value={originQuery}
+                      onChange={(value) => {
+                        setOriginQuery(value);
+                        setOriginPlaceId(null);
+                        setErrors((prev) => ({ ...prev, travelOrigin: '' }));
+                      }}
+                      onSelect={(suggestion: GoogleAddressSuggestion) => {
+                        setOriginPlaceId(suggestion.placeId ?? null);
+                        setOriginAddress(suggestion.formattedAddress);
+                        setOriginQuery(suggestion.formattedAddress);
+                        setFormData((prev) => ({
+                          ...prev,
+                          city: prev.city || suggestion.locality || '',
+                        }));
+                        setErrors((prev) => ({ ...prev, travelOrigin: '' }));
+                      }}
+                      countries={[formData.countryCode.toLowerCase()]}
+                      placeholder="D'où partez-vous ? (adresse précise ou ville)"
+                      error={errors.travelOrigin}
+                      hint="Point de départ des trajets — jamais montré aux clientes."
+                    />
+                    {originPlaceId && originAddress && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Départ : {originAddress}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Paliers (jusqu&apos;à … km → frais)
+                    </p>
+                    {tierRows.map((row, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 w-14 flex-shrink-0">
+                          {i === 0 ? "Jusqu'à" : '→'}
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="300"
+                          value={row.maxKm}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setTierRows((rows) => rows.map((r, j) => (j === i ? { ...r, maxKm: v } : r)));
+                            setErrors((prev) => ({ ...prev, travelTiers: '' }));
+                          }}
+                          className="w-20 px-2 py-1.5 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">km :</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={row.feeEuros}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setTierRows((rows) => rows.map((r, j) => (j === i ? { ...r, feeEuros: v } : r)));
+                            setErrors((prev) => ({ ...prev, travelTiers: '' }));
+                          }}
+                          className="w-20 px-2 py-1.5 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">
+                          {Number(row.feeEuros.replace(',', '.')) === 0 ? '€ — offert' : '€'}
+                        </span>
+                        {tierRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setTierRows((rows) => rows.filter((_, j) => j !== i))}
+                            className="p-1 text-gray-400 hover:text-error-600"
+                            aria-label="Supprimer ce palier"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {errors.travelTiers && (
+                      <p className="text-sm text-error-600 dark:text-error-400">{errors.travelTiers}</p>
+                    )}
+                    {tierRows.length < 8 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTierRows((rows) => {
+                            const lastKm = Number(rows[rows.length - 1]?.maxKm) || 10;
+                            return [...rows, { maxKm: String(lastKm + 5), feeEuros: '' }];
+                          })
+                        }
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Ajouter un palier
+                      </button>
+                    )}
+                    {(() => {
+                      const last = Number(tierRows[tierRows.length - 1]?.maxKm.replace(',', '.'));
+                      return Number.isFinite(last) && last > 0 ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 rounded-md bg-gray-50 dark:bg-gray-900/40 px-2.5 py-2">
+                          Au-delà de {last} km : réservation en ligne impossible.
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

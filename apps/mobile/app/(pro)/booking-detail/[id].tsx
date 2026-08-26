@@ -54,6 +54,8 @@ import type {
 } from '@booking-app/shared';
 import { ServiceChoicesPreview } from '../../../components/business/ServiceChoicesPreview';
 import type { WithId } from '@booking-app/firebase';
+import { auth as firebaseAuth } from '@booking-app/firebase';
+import { API_URL } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import {
@@ -402,6 +404,11 @@ export default function ProBookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [booking, setBooking] = useState<WithId<Booking> | null>(null);
+  // Adresse d'intervention (résa à domicile) — endpoint gaté : ville seule
+  // avant confirmation, adresse complète après.
+  const [clientAddress, setClientAddress] = useState<
+    { revealed: boolean; address?: string; city: string } | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -431,6 +438,29 @@ export default function ProBookingDetailScreen() {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    setClientAddress(null);
+    if (!booking?.travel) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const user = firebaseAuth.currentUser;
+        if (!user) return;
+        const res = await fetch(`${API_URL}/api/bookings/${booking.id}/client-address`, {
+          headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+        });
+        if (!res.ok || cancelled) return;
+        setClientAddress(await res.json());
+      } catch {
+        // repli : la ville du snapshot public
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?.id, booking?.status, booking?.travel]);
 
   useEffect(() => {
     loadBooking();
@@ -1104,10 +1134,32 @@ export default function ProBookingDetailScreen() {
     });
   }
 
+  if (booking.travel) {
+    detailRows.push({
+      icon: 'navigate-outline',
+      label: t('proBookingDetail.travel.clientAddress'),
+      value:
+        clientAddress?.revealed && clientAddress.address
+          ? clientAddress.address
+          : t('proBookingDetail.travel.cityUntilConfirmed', {
+              city: clientAddress?.city || booking.travel.clientCity,
+            }),
+    });
+    detailRows.push({
+      icon: 'car-outline',
+      label: t('proBookingDetail.travel.fee'),
+      value:
+        booking.travel.fee === 0
+          ? t('proBookingDetail.travel.free')
+          : `${formatPrice(booking.travel.fee)} · ${booking.travel.distanceKm} km`,
+    });
+  }
+
   detailRows.push({
     icon: 'cash-outline',
     label: t('proBookingDetail.details.price'),
-    value: formatPrice(booking.price),
+    // Formule unique : total dû = prestations + déplacement.
+    value: formatPrice(booking.price + (booking.travel?.fee ?? 0)),
     valueColor: colors.primary,
     valueWeight: '700' as const,
   });
@@ -1167,7 +1219,9 @@ export default function ProBookingDetailScreen() {
       detailRows.push({
         icon: 'wallet-outline',
         label: t('proBookingDetail.details.remainingBalance'),
-        value: formatPrice(Math.max(0, booking.price - booking.deposit.amount)),
+        value: formatPrice(
+          Math.max(0, booking.price + (booking.travel?.fee ?? 0) - booking.deposit.amount),
+        ),
         valueColor: colors.text,
         valueWeight: '700' as const,
       });

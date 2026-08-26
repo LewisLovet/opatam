@@ -43,6 +43,7 @@ export type {
 // Location schemas
 export {
   geopointSchema,
+  travelZoneTiersSchema,
   createLocationSchema,
   updateLocationSchema,
   POSTAL_CODE_PATTERNS,

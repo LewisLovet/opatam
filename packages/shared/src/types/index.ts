@@ -690,8 +690,30 @@ export interface Member {
   updatedAt: Date;
 }
 
+/** Snapshot public du déplacement d'une réservation à domicile. */
+export interface BookingTravel {
+  /** Frais appliqué, centimes (0 = offert), figé à la création. */
+  fee: number;
+  /** Distance routière, km arrondis à 0,1. */
+  distanceKm: number;
+  /** Trajet aller estimé hors trafic, minutes ; réservé au futur chantier planning. */
+  durationMin: number | null;
+  /** Ville de la cliente (issue de resolvePlace) — seule donnée de localisation publique. */
+  clientCity: string;
+  quotedAt: Date;
+}
+
 // Location types
 export type LocationType = 'fixed' | 'mobile';
+
+/**
+ * Palier de frais de déplacement d'un lieu mobile. `maxKm` est la borne
+ * supérieure INCLUSE, en kilomètres ROUTIERS ; `fee` en centimes (0 = offert).
+ */
+export interface TravelZoneTier {
+  maxKm: number;
+  fee: number;
+}
 
 export interface Location {
   name: string;
@@ -703,6 +725,19 @@ export interface Location {
   description: string | null;
   type: LocationType;
   travelRadius: number | null;
+  /**
+   * Paliers de frais de déplacement (lieu mobile uniquement) — bornes
+   * strictement croissantes, la dernière = limite de zone. Absent/null =
+   * comportement historique (déclaratif : ni frais ni blocage).
+   *
+   * Les TARIFS sont publics ; l'ORIGINE des trajets ne l'est jamais :
+   * pour un lieu mobile, `address`/`postalCode`/`geopoint` publics restent
+   * vides, le point de départ exact vit dans le sous-document Admin-only
+   * `locations/{id}/private/travelOrigin`. Ce champ n'est écrit QUE par la
+   * route serveur /api/pro/locations/[id]/travel-zone (jamais par les
+   * schémas create/update — hors de la chaîne zod volontairement).
+   */
+  travelZone?: TravelZoneTier[] | null;
   /**
    * Address-privacy (opt-in, default false). When true, the exact `address` +
    * `accessInstructions` are hidden from clients until ~48h before the
@@ -1195,6 +1230,15 @@ export interface Booking {
   locationProtected?: boolean;
   /** Public approximate area for a protected location (e.g. "Paris 17e"). */
   locationApproxArea?: string | null;
+  /**
+   * Déplacement à domicile — snapshot PUBLIC (les docs bookings sont en
+   * lecture publique) : montants et ville SEULEMENT. L'adresse exacte de la
+   * cliente vit dans `bookings/{id}/private/clientAddress` (Admin-only),
+   * servie au pro par /api/bookings/[id]/client-address une fois la
+   * réservation confirmée. Le frais est HORS de `price` :
+   * total dû = price + travel.fee ; reste à payer = price + travel.fee − acompte.
+   */
+  travel?: BookingTravel | null;
   serviceId: string;
   serviceName: string;
   /** Denormalised from Service.color at booking creation so the

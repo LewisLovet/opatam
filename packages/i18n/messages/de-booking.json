@@ -317,5 +317,19 @@
     "footer": {
       "poweredBy": "Buchung powered by <b>Opatam</b>"
     }
+  },
+  "travel": {
+    "addressLabel": "Ihre Adresse",
+    "addressPlaceholder": "Wohin soll die Anfahrt gehen?",
+    "addressHelp": "Diese Fachkraft kommt zu Ihnen — die Adresse dient zur Berechnung der Anfahrtskosten.",
+    "quoteLoading": "Entfernung wird berechnet…",
+    "quoteUnavailable": "Entfernungsprüfung nicht möglich — bitte in einigen Minuten erneut versuchen.",
+    "retry": "Erneut versuchen",
+    "feeLine": "Anfahrtskosten",
+    "feeFree": "Anfahrt kostenlos",
+    "distance": "{km} km",
+    "outOfZoneTitle": "Adresse außerhalb des Gebiets",
+    "outOfZoneBody": "Diese Adresse liegt außerhalb des Anfahrtsgebiets ({maxKm} km).",
+    "otherLocations": "Weitere verfügbare Standorte:"
   }
 }

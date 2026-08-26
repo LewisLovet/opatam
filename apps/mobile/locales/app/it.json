@@ -515,7 +515,18 @@
     "everyDay": "tutti i giorni",
     "exceptDaysInline": "tutti i giorni tranne {{days}}",
     "onlyDaysNotice": "Questa prestazione si prenota {{days}}.",
-    "exceptDaysNotice": "Questa prestazione si prenota tutti i giorni tranne {{days}}."
+    "exceptDaysNotice": "Questa prestazione si prenota tutti i giorni tranne {{days}}.",
+    "travel": {
+      "addressLabel": "Il tuo indirizzo",
+      "addressPlaceholder": "Dove deve spostarsi?",
+      "quoteLoading": "Calcolo della distanza…",
+      "quoteUnavailable": "Verifica della distanza non disponibile — riprova tra qualche minuto.",
+      "fee": "Spese di trasferta: {{amount}} €",
+      "feeLine": "Spese di trasferta",
+      "free": "Trasferta gratuita",
+      "freeShort": "Gratuita",
+      "outOfZone": "Questo indirizzo è oltre la zona di trasferta ({{maxKm}} km)."
+    }
   },
   "bookingDetailScreen": {
     "status": {
@@ -1374,6 +1385,12 @@
       "emailError": "Impossibile aprire l'app di posta",
       "copiedTitle": "Copiato",
       "copiedMessage": "\"{{text}}\" copiato negli appunti."
+    },
+    "travel": {
+      "clientAddress": "Indirizzo dell'intervento",
+      "cityUntilConfirmed": "{{city}} — indirizzo completo dopo la conferma",
+      "fee": "Trasferta",
+      "free": "Gratuita"
     }
   },
   "proCreateBooking": {
@@ -2903,6 +2920,21 @@
       "empty": "Nessun membro attivo.\nCrea membri dalla pagina Team.",
       "thisLocation": "Questa sede",
       "updated": "Membri aggiornati"
+    },
+    "travelZone": {
+      "title": "Spese di trasferta automatiche",
+      "description": "La cliente inserisce il suo indirizzo, la distanza stradale viene calcolata e la tariffa dello scaglione si aggiunge al totale. Oltre l'ultimo scaglione, la prenotazione online viene rifiutata.",
+      "originLabel": "Indirizzo o città di partenza",
+      "originPlaceholder": "Da dove parti?",
+      "originHint": "Punto di partenza dei viaggi — mai mostrato alle clienti.",
+      "tiersLabel": "Scaglioni (fino a … km → tariffa)",
+      "free": "€ — gratuito",
+      "addTier": "Aggiungi uno scaglione",
+      "beyondLimit": "Oltre {{km}} km: prenotazione online non disponibile.",
+      "needsOrigin": "Seleziona il tuo indirizzo o la tua città di partenza",
+      "invalidTiers": "Scaglioni non validi: limiti crescenti (max 300 km), tariffe non negative, massimo 8 scaglioni",
+      "authRequired": "Sessione scaduta — accedi di nuovo",
+      "saveFailed": "Salvataggio delle spese di trasferta non riuscito"
     }
   },
   "proAvailability": {

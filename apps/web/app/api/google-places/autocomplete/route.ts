@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!checkRateLimit('places-autocomplete', request, { max: 120, windowMs: 10 * 60 * 1000 })) {
+      return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 });
+    }
     const body = await request.json();
 
     const response = await fetch(

@@ -6,6 +6,7 @@ export * from './access';
 export * from './activation';
 // Address-privacy helpers (protected à-domicile addresses revealed ~48h before).
 export * from './address';
+export * from './travel';
 // Service variation/option/info builders + sanitizers (shared web + mobile).
 export * from './serviceChoices';
 // Provider business stats — pure aggregation logic (daily + monthly

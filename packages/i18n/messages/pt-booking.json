@@ -317,5 +317,19 @@
     "footer": {
       "poweredBy": "Marcações com tecnologia <b>Opatam</b>"
     }
+  },
+  "travel": {
+    "addressLabel": "A sua morada",
+    "addressPlaceholder": "Para onde é a deslocação?",
+    "addressHelp": "Este profissional desloca-se até si — a morada serve para calcular a taxa de deslocação.",
+    "quoteLoading": "A calcular a distância…",
+    "quoteUnavailable": "Verificação da distância indisponível — tente novamente dentro de minutos.",
+    "retry": "Tentar novamente",
+    "feeLine": "Taxa de deslocação",
+    "feeFree": "Deslocação gratuita",
+    "distance": "{km} km",
+    "outOfZoneTitle": "Morada fora da zona",
+    "outOfZoneBody": "Esta morada fica além da zona de deslocação ({maxKm} km).",
+    "otherLocations": "Outros locais disponíveis:"
   }
 }

@@ -1,6 +1,40 @@
 import { z } from 'zod';
 
 // Postal code validation by country (ISO 3166-1 alpha-2)
+/**
+ * Paliers de frais de déplacement — validés UNIQUEMENT par la route
+ * /api/pro/locations/[id]/travel-zone (le champ `travelZone` n'entre pas
+ * dans create/updateLocationSchema : l'origine associée est privée et la
+ * route est la seule écriture autorisée).
+ */
+export const travelZoneTiersSchema = z
+  .array(
+    z.object({
+      maxKm: z
+        .number({ required_error: 'La borne du palier est requise' })
+        .positive({ message: 'La borne doit être positive' })
+        .max(300, { message: 'La zone ne peut pas dépasser 300 km' }),
+      fee: z
+        .number()
+        .int({ message: 'Le frais doit être un montant entier en centimes' })
+        .min(0, { message: 'Le frais ne peut pas être négatif' })
+        .max(50000, { message: 'Le frais ne peut pas dépasser 500 €' }),
+    }),
+  )
+  .min(1, { message: 'Au moins un palier est requis' })
+  .max(8, { message: 'Maximum 8 paliers' })
+  .superRefine((tiers, ctx) => {
+    for (let i = 1; i < tiers.length; i++) {
+      if (tiers[i].maxKm <= tiers[i - 1].maxKm) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Les bornes des paliers doivent être strictement croissantes',
+          path: [i, 'maxKm'],
+        });
+      }
+    }
+  });
+
 export const POSTAL_CODE_PATTERNS: Record<string, { regex: RegExp; example: string }> = {
   FR: { regex: /^\d{5}$/, example: '75001' },
   BE: { regex: /^[1-9]\d{3}$/, example: '1000' },

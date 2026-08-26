@@ -1,13 +1,36 @@
 'use client';
 
-import { ArrowLeft, Loader2, Info } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useState } from 'react';
+import { ArrowLeft, Loader2, Info, MapPin, RotateCw } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
+import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui';
 
 interface ClientInfo {
   name: string;
   email: string;
   phone: string;
 }
+
+/** Adresse cliente sélectionnée — seul le placeId fait foi côté serveur. */
+export interface ClientAddressValue {
+  placeId: string;
+  formattedAddress: string;
+  city: string;
+  postalCode: string;
+  countryCode: string;
+}
+
+/** État du devis de déplacement, possédé par le parent (tunnel ou embed). */
+export type TravelQuoteState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ok'; fee: number; distanceKm: number; quoteToken: string }
+  | {
+      status: 'out_of_zone';
+      maxKm: number;
+      alternatives: Array<{ id: string; name: string; city: string }>;
+    }
+  | { status: 'error' };
 
 interface StepConfirmProps {
   clientInfo: ClientInfo;
@@ -16,6 +39,15 @@ interface StepConfirmProps {
   onBack: () => void;
   isSubmitting: boolean;
   requiresConfirmation: boolean;
+  /** Prestation à domicile (lieu mobile à zone configurée) : adresse requise.
+   *  Props optionnelles — l'embed et les lieux fixes ne passent rien. */
+  requiresClientAddress?: boolean;
+  clientAddress?: ClientAddressValue | null;
+  onClientAddressSelect?: (address: ClientAddressValue | null) => void;
+  travelQuote?: TravelQuoteState;
+  onRetryQuote?: () => void;
+  /** Pays du lieu (ISO alpha-2) — restreint la recherche d'adresse. */
+  addressCountry?: string;
 }
 
 // Phone validation: accepts international formats
@@ -44,13 +76,33 @@ export function StepConfirm({
   onBack,
   isSubmitting,
   requiresConfirmation,
+  requiresClientAddress = false,
+  clientAddress = null,
+  onClientAddressSelect,
+  travelQuote = { status: 'idle' },
+  onRetryQuote,
+  addressCountry,
 }: StepConfirmProps) {
   const t = useTranslations('booking.confirm');
+  const tt = useTranslations('booking.travel');
+  const locale = useLocale();
+  const [addressQuery, setAddressQuery] = useState(clientAddress?.formattedAddress ?? '');
   // Simple validation
   const isNameValid = clientInfo.name.trim().length >= 2;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientInfo.email);
   const isPhoneValid = isValidPhone(clientInfo.phone);
-  const isValid = isNameValid && isEmailValid && isPhoneValid;
+  // Adresse + devis « ok » exigés pour un domicile : hors zone ou devis en
+  // erreur = pas de passage en force (le serveur refuserait de toute façon).
+  const isAddressValid =
+    !requiresClientAddress || (!!clientAddress && travelQuote?.status === 'ok');
+  const isValid = isNameValid && isEmailValid && isPhoneValid && isAddressValid;
+
+  const formatFee = (cents: number) =>
+    new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    }).format(cents / 100);
 
   // Allow free-form phone input (international formats)
   const handlePhoneChange = (value: string) => {
@@ -165,6 +217,86 @@ export function StepConfirm({
             </p>
           )}
         </div>
+
+        {/* Adresse de la cliente — prestation à domicile */}
+        {requiresClientAddress && (
+          <div>
+            <GoogleAddressAutocomplete
+              label={tt('addressLabel')}
+              value={addressQuery}
+              onChange={(value) => {
+                setAddressQuery(value);
+                if (clientAddress) onClientAddressSelect?.(null);
+              }}
+              onSelect={(suggestion: GoogleAddressSuggestion) => {
+                if (!suggestion.placeId) return;
+                setAddressQuery(suggestion.formattedAddress);
+                onClientAddressSelect?.({
+                  placeId: suggestion.placeId,
+                  formattedAddress: suggestion.formattedAddress,
+                  city: suggestion.locality ?? '',
+                  postalCode: suggestion.postalCode ?? '',
+                  countryCode: (suggestion.countryCode ?? addressCountry ?? 'FR').toUpperCase(),
+                });
+              }}
+              countries={addressCountry ? [addressCountry.toLowerCase()] : undefined}
+              placeholder={tt('addressPlaceholder')}
+              hint={tt('addressHelp')}
+              disabled={isSubmitting}
+              required
+            />
+
+            {travelQuote.status === 'loading' && (
+              <p className="mt-2 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {tt('quoteLoading')}
+              </p>
+            )}
+            {travelQuote.status === 'ok' && (
+              <p className="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <MapPin className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                {travelQuote.fee === 0
+                  ? tt('feeFree')
+                  : tt('feeLine', { amount: formatFee(travelQuote.fee) })}
+                <span className="text-gray-400">
+                  · {tt('distance', { km: travelQuote.distanceKm })}
+                </span>
+              </p>
+            )}
+            {travelQuote.status === 'out_of_zone' && (
+              <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg space-y-2">
+                <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                  {tt('outOfZoneTitle')}
+                </p>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {tt('outOfZoneBody', { maxKm: travelQuote.maxKm })}
+                </p>
+                {travelQuote.alternatives.length > 0 && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {tt('otherLocations')}{' '}
+                    {travelQuote.alternatives.map((l) => `${l.name} (${l.city})`).join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+            {travelQuote.status === 'error' && (
+              <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-between gap-3">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  {tt('quoteUnavailable')}
+                </p>
+                {onRetryQuote && (
+                  <button
+                    type="button"
+                    onClick={onRetryQuote}
+                    className="flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline flex-shrink-0"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" /> {tt('retry')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Info about confirmation */}
         {requiresConfirmation && (

@@ -10,6 +10,7 @@ import { schedulingService } from './scheduling.service';
 import type {
   Booking,
   BookingDeposit,
+  BookingTravel,
   BookingStatus,
   BookingServiceItem,
   LoyaltySettings,
@@ -57,6 +58,17 @@ export class BookingService {
        *  Réservé au prestataire AUTHENTIFIÉ : l'indisponibilité coupe la
        *  réservation en ligne, pas le rendez-vous pris au téléphone. */
       allowUnavailable?: boolean;
+      /** Résa manuelle du pro : ni exigence d'adresse ni frais automatique. */
+      skipTravel?: boolean;
+      /**
+       * Snapshot de déplacement PRÊT, calculé par la route (Mapbox + palier,
+       * serveur only — ce package est isomorphe et ne fait aucun appel
+       * réseau). Le service se contente de la règle : zone configurée sans
+       * snapshot → refus.
+       */
+      travel?: BookingTravel | null;
+      /** Id pré-généré par la route (l'adresse privée est écrite avant). */
+      bookingId?: string;
     } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
@@ -90,6 +102,23 @@ export class BookingService {
     const location = await locationRepository.getById(validated.providerId, validated.locationId);
     if (!location) {
       throw new Error('Lieu non trouvé');
+    }
+
+    // Frais de déplacement — la zone est un ENGAGEMENT : lieu mobile avec
+    // travelZone configurée ⇒ pas de réservation en ligne sans le snapshot
+    // calculé par la route (adresse résolue + distance routière + palier).
+    // Les vieilles versions de l'app qui n'envoient pas d'adresse reçoivent
+    // ce message tel quel. La résa manuelle du pro (skipTravel) est exemptée.
+    const travelZoneActive =
+      location.type === 'mobile' &&
+      Array.isArray(location.travelZone) &&
+      location.travelZone.length > 0;
+    const travelSnapshot = opts.travel ?? null;
+    if (travelZoneActive && !opts.skipTravel && !travelSnapshot) {
+      throw new Error(
+        'Ce professionnel se déplace à domicile : votre adresse est requise pour réserver. ' +
+        'Mettez à jour l\'application ou réservez depuis le site.',
+      );
     }
 
     // NOUVEAU MODÈLE: memberId est requis pour la vérification de disponibilité
@@ -313,6 +342,10 @@ export class BookingService {
 
     // Create booking
     const bookingId = await bookingRepository.create({
+      // Snapshot public du déplacement : montants + ville SEULEMENT (les docs
+      // bookings sont lisibles publiquement) ; l'adresse exacte vit dans la
+      // sous-collection privée écrite par la route AVANT cette création.
+      ...(travelSnapshot ? { travel: travelSnapshot } : {}),
       providerId: validated.providerId,
       clientId: validated.clientId || null, // Set if user is logged in
       memberId: effectiveMemberId || null, // Use effective member ID
@@ -368,7 +401,7 @@ export class BookingService {
       remindersSent: [],
       reviewRequestSentAt: null,
       deposit: depositField,
-    });
+    }, opts.bookingId);
 
     const booking = await bookingRepository.getById(bookingId);
     if (!booking) {

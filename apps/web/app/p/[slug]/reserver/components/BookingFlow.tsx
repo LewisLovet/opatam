@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2, Plus } from 'lucide-react';
@@ -32,7 +32,7 @@ import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker'
 import { StepService } from './StepService';
 import { StepMember } from './StepMember';
 import { StepSlot } from './StepSlot';
-import { StepConfirm } from './StepConfirm';
+import { StepConfirm, type ClientAddressValue, type TravelQuoteState } from './StepConfirm';
 import { BookingRecap } from './BookingRecap';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
 import { describeServiceDays, joinDays } from '@/lib/serviceDays';
@@ -93,9 +93,11 @@ interface Location {
   address: string;
   city: string;
   postalCode: string;
+  countryCode?: string;
   type: 'fixed' | 'mobile';
   protectAddress?: boolean;
   approxArea?: string | null;
+  travelZone?: Array<{ maxKm: number; fee: number }> | null;
 }
 
 interface Member {
@@ -424,6 +426,64 @@ export function BookingFlow({
     [locations, state.locationId]
   );
 
+  // ── Frais de déplacement (lieu mobile à zone configurée) ──────────────────
+  const requiresClientAddress =
+    selectedLocation?.type === 'mobile' && (selectedLocation.travelZone?.length ?? 0) > 0;
+  const [clientAddress, setClientAddress] = useState<ClientAddressValue | null>(null);
+  const [travelQuote, setTravelQuote] = useState<TravelQuoteState>({ status: 'idle' });
+
+  const fetchTravelQuote = useCallback(
+    async (address: ClientAddressValue | null) => {
+      setClientAddress(address);
+      if (!address || !state.locationId) {
+        setTravelQuote({ status: 'idle' });
+        return;
+      }
+      setTravelQuote({ status: 'loading' });
+      try {
+        const res = await fetch('/api/travel/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            providerId: provider.id,
+            locationId: state.locationId,
+            placeId: address.placeId,
+            serviceIds: state.cart.map((c) => c.serviceId),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.applicable && data.inZone) {
+          setTravelQuote({
+            status: 'ok',
+            fee: data.fee,
+            distanceKm: data.distanceKm,
+            quoteToken: data.quoteToken,
+          });
+        } else if (res.ok && data?.applicable && data.inZone === false) {
+          setTravelQuote({
+            status: 'out_of_zone',
+            maxKm: data.maxKm,
+            alternatives: data.alternativeLocations ?? [],
+          });
+        } else if (res.ok && data?.applicable === false) {
+          // Zone déconfigurée entre-temps : plus rien à facturer.
+          setTravelQuote({ status: 'ok', fee: 0, distanceKm: 0, quoteToken: '' });
+        } else {
+          setTravelQuote({ status: 'error' });
+        }
+      } catch {
+        setTravelQuote({ status: 'error' });
+      }
+    },
+    [provider.id, state.locationId, state.cart],
+  );
+
+  // Changement de lieu/membre → l'adresse et le devis repartent de zéro.
+  useEffect(() => {
+    setClientAddress(null);
+    setTravelQuote({ status: 'idle' });
+  }, [state.locationId]);
+
   // Get members who can perform EVERY prestation in the cart (intersection).
   // A member qualifies for a single cart service when: it's in the service's
   // memberIds (if set), else its location is in the service's locationIds
@@ -700,6 +760,10 @@ export function BookingFlow({
       setError(t('flow.errorMissingInfo'));
       return;
     }
+    if (requiresClientAddress && (!clientAddress || travelQuote.status !== 'ok')) {
+      setError(t('flow.errorMissingInfo'));
+      return;
+    }
 
     // Demo mode — skip real API, show success screen
     if (isDemo) {
@@ -737,6 +801,23 @@ export function BookingFlow({
           selections: state.cart[0].selections,
           // Language the client booked in → transactional emails follow it.
           clientLocale: locale,
+          // Prestation à domicile : le serveur re-résout le placeId (aucune
+          // confiance au texte) et consomme le devis signé.
+          ...(requiresClientAddress && clientAddress
+            ? {
+                clientAddress: {
+                  placeId: clientAddress.placeId,
+                  address: clientAddress.formattedAddress,
+                  city: clientAddress.city,
+                  postalCode: clientAddress.postalCode,
+                  countryCode: clientAddress.countryCode,
+                },
+                travelQuoteToken:
+                  travelQuote.status === 'ok' && travelQuote.quoteToken
+                    ? travelQuote.quoteToken
+                    : undefined,
+              }
+            : {}),
         }),
       });
 
@@ -1134,6 +1215,12 @@ export function BookingFlow({
                 onBack={handleBack}
                 isSubmitting={isSubmitting}
                 requiresConfirmation={provider.settings.requiresConfirmation}
+                requiresClientAddress={requiresClientAddress}
+                clientAddress={clientAddress}
+                onClientAddressSelect={fetchTravelQuote}
+                travelQuote={travelQuote}
+                onRetryQuote={() => fetchTravelQuote(clientAddress)}
+                addressCountry={selectedLocation?.countryCode}
               />
             )}
 
@@ -1264,6 +1351,7 @@ export function BookingFlow({
               promoEndsAt={cartPromo?.endsAt ?? null}
               promoDaysLeft={cartPromo?.daysLeft ?? null}
               choiceLabels={choiceLabels}
+              travelFee={travelQuote.status === 'ok' && requiresClientAddress ? travelQuote.fee : null}
             />
           </div>
           )}
@@ -1291,6 +1379,7 @@ export function BookingFlow({
             promoEndsAt={cartPromo?.endsAt ?? null}
             promoDaysLeft={cartPromo?.daysLeft ?? null}
             choiceLabels={choiceLabels}
+            travelFee={travelQuote.status === 'ok' && requiresClientAddress ? travelQuote.fee : null}
             compact
           />
         </div>

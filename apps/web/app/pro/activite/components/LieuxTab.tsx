@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
-import { locationService, memberService } from '@booking-app/firebase';
+import { locationService, memberService, auth as firebaseAuth } from '@booking-app/firebase';
 import { Plus, MapPin, Loader2 } from 'lucide-react';
 import { LocationCard } from './LocationCard';
 import { LocationModal, type LocationFormData } from './LocationModal';
@@ -128,6 +128,29 @@ export function LieuxTab() {
     }
   };
 
+  // Sauvegarde des frais de déplacement — route dédiée : l'origine (adresse
+  // de départ du pro) est PRIVÉE, elle ne passe jamais par le repository ni
+  // par le document public du lieu.
+  const saveTravelZone = async (
+    locationId: string,
+    travel: NonNullable<LocationFormData['travel']>,
+  ) => {
+    const user = firebaseAuth.currentUser;
+    if (!user) throw new Error('Non authentifié');
+    const res = await fetch(`/api/pro/locations/${locationId}/travel-zone`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${await user.getIdToken()}`,
+      },
+      body: JSON.stringify({ originPlaceId: travel.originPlaceId, tiers: travel.tiers }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? 'Échec de la sauvegarde des frais de déplacement');
+    }
+  };
+
   // Save location (create or update)
   const handleSaveLocation = async (data: LocationFormData) => {
     if (!provider) return;
@@ -149,6 +172,10 @@ export function LieuxTab() {
         geopoint: data.geopoint ?? null,
         region: data.region,
       });
+
+      if (data.travel !== undefined) {
+        await saveTravelZone(editingLocation.id, data.travel);
+      }
 
       // If setting as default
       if (data.isDefault && !editingLocation.isDefault) {
@@ -175,6 +202,10 @@ export function LieuxTab() {
         geopoint: data.geopoint ?? null,
         region: data.region,
       });
+
+      if (data.travel !== undefined && data.travel.tiers) {
+        await saveTravelZone(newLocation.id, data.travel);
+      }
 
       // If setting as default
       if (data.isDefault) {

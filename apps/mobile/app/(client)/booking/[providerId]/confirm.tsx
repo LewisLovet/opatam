@@ -3,7 +3,7 @@
  * Review booking details and confirm
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -29,6 +29,7 @@ import { useLocations } from '../../../../hooks';
 import { computeDiscountedTotal } from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
+import { searchAddress, type AddressSuggestion } from '../../../../lib/addressSearch';
 import i18n, { getAppLocale, getIntlLocale, normalizeAppLocale } from '../../../../lib/i18n';
 import { recordPositiveMomentAndMaybeAskReview } from '../../../../lib/appReview';
 import { getServiceText } from '@booking-app/shared';
@@ -171,6 +172,73 @@ export default function ConfirmBookingScreen() {
   const { locations } = useLocations(providerId);
   const location = locations.find((l) => l.id === locationId);
 
+  // ── Frais de déplacement (lieu mobile à zone configurée) ────────────────
+  const requiresClientAddress =
+    location?.type === 'mobile' && (location.travelZone?.length ?? 0) > 0;
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [clientAddress, setClientAddress] = useState<{
+    placeId: string;
+    label: string;
+    city: string;
+  } | null>(null);
+  const [travelQuote, setTravelQuote] = useState<
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'ok'; fee: number; distanceKm: number; quoteToken: string }
+    | { status: 'out_of_zone'; maxKm: number }
+    | { status: 'error' }
+  >({ status: 'idle' });
+  const addressSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAddressQueryChange = (value: string) => {
+    setAddressQuery(value);
+    setClientAddress(null);
+    setTravelQuote({ status: 'idle' });
+    if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current);
+    if (value.trim().length < 3) { setAddressSuggestions([]); return; }
+    addressSearchTimer.current = setTimeout(async () => {
+      const results = await searchAddress(value.trim(), location?.countryCode ?? 'fr');
+      // Seules les suggestions Google portent un placeId — la seule monnaie
+      // que le serveur accepte (il le résout lui-même).
+      setAddressSuggestions(results.filter((r) => r.placeId));
+    }, 300);
+  };
+
+  const handleAddressPick = async (sug: AddressSuggestion) => {
+    setAddressSuggestions([]);
+    setAddressQuery(sug.label);
+    setClientAddress({ placeId: sug.placeId, label: sug.label, city: sug.city });
+    setTravelQuote({ status: 'loading' });
+    try {
+      const res = await fetch(`${API_URL}/api/travel/quote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providerId,
+          locationId,
+          placeId: sug.placeId,
+          serviceIds: cart.map((c) => c.service.id),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.applicable && data.inZone) {
+        setTravelQuote({ status: 'ok', fee: data.fee, distanceKm: data.distanceKm, quoteToken: data.quoteToken });
+      } else if (res.ok && data?.applicable && data.inZone === false) {
+        setTravelQuote({ status: 'out_of_zone', maxKm: data.maxKm });
+      } else if (res.ok && data?.applicable === false) {
+        setTravelQuote({ status: 'ok', fee: 0, distanceKm: 0, quoteToken: '' });
+      } else {
+        setTravelQuote({ status: 'error' });
+      }
+    } catch {
+      setTravelQuote({ status: 'error' });
+    }
+  };
+
+  const travelFee = requiresClientAddress && travelQuote.status === 'ok' ? travelQuote.fee : 0;
+  const travelReady = !requiresClientAddress || (clientAddress !== null && travelQuote.status === 'ok');
+
   // Phone state — pre-fill from profile if available
   const [phone, setPhone] = useState(userData?.phone || '');
 
@@ -263,6 +331,20 @@ export default function ConfirmBookingScreen() {
           // booking.clientLocale côté serveur, pilote les 6 emails client.
           clientLocale: getAppLocale(),
           clientCapabilities: ['deposit'],
+          // Prestation à domicile : seul le placeId fait foi (résolu serveur).
+          ...(requiresClientAddress && clientAddress
+            ? {
+                clientAddress: {
+                  placeId: clientAddress.placeId,
+                  address: clientAddress.label,
+                  city: clientAddress.city,
+                  postalCode: '',
+                  countryCode: (location?.countryCode ?? 'FR').toUpperCase(),
+                },
+                travelQuoteToken:
+                  travelQuote.status === 'ok' && travelQuote.quoteToken ? travelQuote.quoteToken : undefined,
+              }
+            : {}),
         }),
       });
 
@@ -664,8 +746,64 @@ export default function ConfirmBookingScreen() {
           </View>
         </Card>
 
+        {/* Adresse de la cliente — prestation à domicile */}
+        {requiresClientAddress && (
+          <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
+            <Input
+              label={t('bookingFlow.travel.addressLabel')}
+              placeholder={t('bookingFlow.travel.addressPlaceholder')}
+              value={addressQuery}
+              onChangeText={handleAddressQueryChange}
+            />
+            {addressSuggestions.length > 0 && !clientAddress && (
+              <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginTop: 4 }}>
+                {addressSuggestions.map((sug) => (
+                  <Pressable
+                    key={sug.placeId}
+                    onPress={() => void handleAddressPick(sug)}
+                    style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                  >
+                    <Text variant="bodySmall">{sug.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            {travelQuote.status === 'loading' && (
+              <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+                {t('bookingFlow.travel.quoteLoading')}
+              </Text>
+            )}
+            {travelQuote.status === 'ok' && clientAddress && (
+              <Text variant="caption" style={{ marginTop: spacing.xs, color: colors.text }}>
+                {travelQuote.fee === 0
+                  ? t('bookingFlow.travel.free')
+                  : t('bookingFlow.travel.fee', { amount: (travelQuote.fee / 100).toFixed(2) })}
+                {travelQuote.distanceKm > 0 ? ` · ${travelQuote.distanceKm} km` : ''}
+              </Text>
+            )}
+            {travelQuote.status === 'out_of_zone' && (
+              <Text variant="caption" style={{ marginTop: spacing.xs, color: colors.error, fontWeight: '600' }}>
+                {t('bookingFlow.travel.outOfZone', { maxKm: travelQuote.maxKm })}
+              </Text>
+            )}
+            {travelQuote.status === 'error' && (
+              <Text variant="caption" style={{ marginTop: spacing.xs, color: colors.warning, fontWeight: '600' }}>
+                {t('bookingFlow.travel.quoteUnavailable')}
+              </Text>
+            )}
+          </Card>
+        )}
+
         {/* Price summary */}
         <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
+          {requiresClientAddress && travelQuote.status === 'ok' && (
+            <View style={[styles.priceRow, { marginBottom: spacing.xs }]}>
+              <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.travel.feeLine')}</Text>
+              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                {travelQuote.fee === 0 ? t('bookingFlow.travel.freeShort') : `${(travelQuote.fee / 100).toFixed(2)} €`}
+              </Text>
+            </View>
+          )}
           <View style={styles.priceRow}>
             <Text variant="body">{t('bookingFlow.total')}</Text>
             <View style={{ alignItems: 'flex-end' }}>
@@ -678,7 +816,9 @@ export default function ConfirmBookingScreen() {
                 </Text>
               )}
               <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
-                {cartPrice === 0 ? t('common.free') : `${(cartPrice / 100).toFixed(2)} €`}
+                {cartPrice + travelFee === 0
+                  ? t('common.free')
+                  : `${((cartPrice + travelFee) / 100).toFixed(2)} €`}
               </Text>
             </View>
           </View>
@@ -730,7 +870,7 @@ export default function ConfirmBookingScreen() {
           title={isAuthenticated ? t('bookingFlow.confirm.confirmButton') : t('bookingFlow.confirm.loginButton')}
           onPress={handleConfirm}
           loading={isSubmitting}
-          disabled={isSubmitting || (isAuthenticated && !isPhoneValid)}
+          disabled={isSubmitting || (isAuthenticated && (!isPhoneValid || !travelReady))}
         />
       </View>
     </View>

@@ -68,6 +68,23 @@ export const createBookingSchema = z.object({
     .string()
     .regex(/^[a-z]{2}$/, { message: 'Locale invalide' })
     .optional(),
+  /**
+   * Adresse de la cliente pour une prestation à DOMICILE (lieu mobile avec
+   * travelZone). Seul le placeId fait foi : le serveur le résout lui-même
+   * (Google Details, clé serveur) — les champs texte ne servent qu'à
+   * l'affichage et ne sont jamais stockés tels quels.
+   */
+  clientAddress: z
+    .object({
+      placeId: z.string().min(5).max(300),
+      address: z.string().max(300).default(''),
+      city: z.string().max(100).default(''),
+      postalCode: z.string().max(12).default(''),
+      countryCode: z.string().length(2),
+    })
+    .optional(),
+  /** Devis signé (HMAC, 15 min) renvoyé par /api/travel/quote — évite un recalcul. */
+  travelQuoteToken: z.string().max(600).optional(),
 }).refine(
   (data) => data.clientInfo !== undefined || data.clientId !== undefined,
   { message: 'Les informations du client sont requises' }

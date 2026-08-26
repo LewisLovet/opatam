@@ -515,7 +515,18 @@
     "everyDay": "every day",
     "exceptDaysInline": "every day except {{days}}",
     "onlyDaysNotice": "This service is available {{days}}.",
-    "exceptDaysNotice": "This service is available every day except {{days}}."
+    "exceptDaysNotice": "This service is available every day except {{days}}.",
+    "travel": {
+      "addressLabel": "Your address",
+      "addressPlaceholder": "Where should they travel to?",
+      "quoteLoading": "Calculating distance…",
+      "quoteUnavailable": "Distance check unavailable — please try again in a few minutes.",
+      "fee": "Travel fee: {{amount}} €",
+      "feeLine": "Travel fee",
+      "free": "Free travel",
+      "freeShort": "Free",
+      "outOfZone": "This address is beyond the travel area ({{maxKm}} km)."
+    }
   },
   "bookingDetailScreen": {
     "status": {
@@ -1374,6 +1385,12 @@
       "emailError": "Unable to open the mail app",
       "copiedTitle": "Copied",
       "copiedMessage": "\"{{text}}\" copied to clipboard."
+    },
+    "travel": {
+      "clientAddress": "Service address",
+      "cityUntilConfirmed": "{{city}} — full address after confirmation",
+      "fee": "Travel",
+      "free": "Free"
     }
   },
   "proCreateBooking": {
@@ -2903,6 +2920,21 @@
       "empty": "No active members.\nCreate members from the Team page.",
       "thisLocation": "This location",
       "updated": "Members updated"
+    },
+    "travelZone": {
+      "title": "Automatic travel fees",
+      "description": "The client enters their address, the road distance is calculated and the tier fee is added to the total. Beyond the last tier, online booking is refused.",
+      "originLabel": "Starting address or city",
+      "originPlaceholder": "Where do you start from?",
+      "originHint": "Starting point for trips — never shown to clients.",
+      "tiersLabel": "Tiers (up to … km → fee)",
+      "free": "€ — free",
+      "addTier": "Add a tier",
+      "beyondLimit": "Beyond {{km}} km: online booking unavailable.",
+      "needsOrigin": "Select your starting address or city",
+      "invalidTiers": "Invalid tiers: increasing limits (max 300 km), non-negative fees, 8 tiers maximum",
+      "authRequired": "Session expired — please sign in again",
+      "saveFailed": "Failed to save travel fees"
     }
   },
   "proAvailability": {

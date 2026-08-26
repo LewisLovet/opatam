@@ -33,16 +33,26 @@ export class BookingRepository extends BaseRepository<Booking> {
   /**
    * Override create to handle date conversion
    */
-  async create(data: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  /**
+   * @param id  Id imposé (optionnel). Utilisé par la route /api/bookings pour
+   *   pré-générer l'id : l'adresse privée de la cliente est écrite AVANT la
+   *   création sous bookings/{id}/private/clientAddress — pas de réservation
+   *   sans adresse.
+   */
+  async create(data: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>, id?: string): Promise<string> {
     const docData = removeUndefined({
       ...data,
       datetime: Timestamp.fromDate(data.datetime),
       endDatetime: Timestamp.fromDate(data.endDatetime),
       cancelledAt: data.cancelledAt ? Timestamp.fromDate(data.cancelledAt) : null,
       remindersSent: data.remindersSent.map((d) => Timestamp.fromDate(d)),
-    } as Record<string, unknown>);
+    } as Record<string, unknown>) as unknown as Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>;
 
-    return super.create(docData as unknown as Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>);
+    if (id) {
+      await super.createWithId(id, docData);
+      return id;
+    }
+    return super.create(docData);
   }
 
   /**

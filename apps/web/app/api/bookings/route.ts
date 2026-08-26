@@ -17,6 +17,9 @@ import { getStripeDev } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { loyaltyRedemptionKey, resolveLoyaltyCard } from '@/lib/loyalty-identity';
 import { sendDepositPaymentRequestEmail } from '@/lib/emails/depositPaymentRequest';
+import { resolvePlace } from '@/lib/google-places';
+import { computeTravelQuote, verifyTravelQuote } from '@/lib/travel';
+import { MapboxUnavailableError } from '@/lib/mapbox';
 
 // Stripe Checkout Sessions require expires_at to be at least 30 minutes
 // in the future. We use that minimum so the slot is held for as little
@@ -94,6 +97,10 @@ export async function POST(request: NextRequest) {
       // (price/duration aggregated server-side). Without this the booking
       // would silently fall back to the single top-level serviceId.
       items: body.items,
+      // Prestation à domicile (même piège P2.4 : sans ce remapping explicite,
+      // le champ validé par le schéma n'atteindrait jamais le serveur).
+      clientAddress: body.clientAddress,
+      travelQuoteToken: body.travelQuoteToken,
     });
     // ── Identité client (audit P1.1) ─────────────────────────────
     // `clientUid` = uid VÉRIFIÉ via le Firebase ID token (Authorization:
@@ -297,6 +304,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Frais de déplacement (lieu mobile avec zone configurée) ─────────
+    // Tout est recalculé/validé SERVEUR : le placeId est résolu par la clé
+    // serveur (jamais confiance au texte du formulaire), le devis signé de
+    // /api/travel/quote évite un second appel Mapbox, et l'adresse EXACTE
+    // est écrite en sous-collection privée AVANT la création — un booking
+    // à domicile sans adresse ne peut pas exister.
+    const travelPrep = await prepareTravelForBooking(validated, isProVerified);
+    if ('response' in travelPrep) return travelPrep.response;
+
     // Create booking
     // Emails (client confirmation + provider notification) are sent automatically
     // by the onBookingWrite Cloud Function trigger via handleBookingEmails()
@@ -310,8 +326,16 @@ export async function POST(request: NextRequest) {
         // en ligne, pas l'appel téléphonique. `isProSource` seul ne suffirait
         // pas — c'est une simple valeur envoyée par le client.
         allowUnavailable: isProVerified,
+        skipTravel: isProVerified,
+        travel: travelPrep.travel,
+        bookingId: travelPrep.bookingId,
       });
     } catch (e) {
+      // Création refusée après l'écriture de l'adresse privée → nettoyage
+      // best-effort (un doc privé orphelin est inoffensif : Admin-only).
+      if (travelPrep.privateAddressRef) {
+        await travelPrep.privateAddressRef.delete().catch(() => undefined);
+      }
       // Résa refusée après réservation du ticket → on le libère pour que
       // la récompense reste disponible.
       if (loyaltyRedemptionRef) await loyaltyRedemptionRef.delete().catch(() => undefined);
@@ -642,4 +666,167 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// ── Frais de déplacement ─────────────────────────────────────────────────────
+
+type TravelPrep =
+  | { response: NextResponse }
+  | {
+      travel: import('@booking-app/shared').BookingTravel | null;
+      bookingId: string | undefined;
+      privateAddressRef: FirebaseFirestore.DocumentReference | null;
+    };
+
+/**
+ * Prépare le déplacement d'une réservation à domicile : lit la zone + son
+ * origine privée, résout le placeId de la cliente côté serveur, applique le
+ * devis signé (ou recalcule via Mapbox), et écrit l'adresse EXACTE dans
+ * `bookings/{id}/private/clientAddress` avec un id pré-généré — AVANT la
+ * création du booking (pas de résa sans adresse).
+ *
+ * Retourne soit `{ response }` (erreur à renvoyer telle quelle), soit le
+ * snapshot public + l'id + la ref privée (pour nettoyage si la création
+ * échoue ensuite).
+ */
+async function prepareTravelForBooking(
+  validated: import('@booking-app/shared').CreateBookingInput,
+  isProVerified: boolean,
+): Promise<TravelPrep> {
+  const none: TravelPrep = { travel: null, bookingId: undefined, privateAddressRef: null };
+  // La résa manuelle du pro est exemptée (skipTravel côté service).
+  if (isProVerified) return none;
+
+  const db = getAdminFirestore();
+  const locationRef = db
+    .collection('providers')
+    .doc(validated.providerId)
+    .collection('locations')
+    .doc(validated.locationId);
+  const [locationSnap, originSnap] = await Promise.all([
+    locationRef.get(),
+    locationRef.collection('private').doc('travelOrigin').get(),
+  ]);
+  const location = locationSnap.data();
+  const tiers = location?.travelZone;
+  const origin = originSnap.data();
+  const zoneActive =
+    location?.type === 'mobile' && Array.isArray(tiers) && tiers.length > 0 && origin?.geopoint;
+  if (!zoneActive) return none; // comportement historique, rien à faire
+
+  const clientAddress = validated.clientAddress;
+  if (!clientAddress?.placeId) {
+    return {
+      response: NextResponse.json(
+        {
+          error:
+            'Ce professionnel se déplace à domicile : votre adresse est requise pour réserver.',
+          code: 'ADDRESS_REQUIRED',
+        },
+        { status: 422 },
+      ),
+    };
+  }
+
+  // Le placeId fait foi : résolution SERVEUR (adresse formatée, ville, pays,
+  // coordonnées). Le texte saisi dans le formulaire n'est jamais stocké.
+  let place;
+  try {
+    place = await resolvePlace(clientAddress.placeId);
+  } catch (e) {
+    console.error('[bookings] resolvePlace:', e);
+    return {
+      response: NextResponse.json(
+        { error: 'Adresse introuvable — sélectionnez-la dans les suggestions', code: 'ADDRESS_REQUIRED' },
+        { status: 422 },
+      ),
+    };
+  }
+  if (location.countryCode && place.countryCode && place.countryCode !== location.countryCode) {
+    return {
+      response: NextResponse.json(
+        { error: 'Ce professionnel ne se déplace pas dans ce pays.', code: 'OUT_OF_ZONE' },
+        { status: 422 },
+      ),
+    };
+  }
+
+  // Devis signé de /api/travel/quote (15 min, lié au couple lieu/adresse) —
+  // sinon recalcul complet.
+  let fee: number;
+  let distanceKm: number;
+  let durationMin: number | null;
+  const quote = validated.travelQuoteToken
+    ? verifyTravelQuote(validated.travelQuoteToken, {
+        locationId: validated.locationId,
+        placeId: place.placeId,
+      })
+    : null;
+  if (quote) {
+    ({ fee, distanceKm, durationMin } = quote);
+  } else {
+    try {
+      const computed = await computeTravelQuote(
+        validated.locationId,
+        origin.geopoint,
+        tiers,
+        place.geopoint,
+      );
+      if (!computed.inZone) {
+        return {
+          response: NextResponse.json(
+            {
+              error: `Cette adresse est au-delà de la zone de déplacement (${computed.maxKm} km).`,
+              code: 'OUT_OF_ZONE',
+              maxKm: computed.maxKm,
+            },
+            { status: 422 },
+          ),
+        };
+      }
+      fee = computed.fee!;
+      distanceKm = computed.distanceKm!;
+      durationMin = computed.durationMin;
+    } catch (e) {
+      if (e instanceof MapboxUnavailableError) {
+        console.error('[bookings] Mapbox indisponible:', e.message);
+        return {
+          response: NextResponse.json(
+            {
+              error: 'Vérification de la distance impossible — réessayez dans quelques minutes.',
+              code: 'TRAVEL_UNAVAILABLE',
+            },
+            { status: 503 },
+          ),
+        };
+      }
+      throw e;
+    }
+  }
+
+  // Id pré-généré + adresse exacte écrite AVANT la création : un échec ici
+  // = 500, pas de réservation, pas d'e-mail, pas de paiement.
+  const bookingRef = db.collection('bookings').doc();
+  const privateAddressRef = bookingRef.collection('private').doc('clientAddress');
+  await privateAddressRef.set({
+    address: place.formattedAddress,
+    postalCode: place.postalCode,
+    city: place.city,
+    countryCode: place.countryCode,
+    placeId: place.placeId,
+    geopoint: place.geopoint,
+    createdAt: new Date(),
+  });
+
+  return {
+    travel: {
+      fee,
+      distanceKm,
+      durationMin,
+      clientCity: place.city,
+      quotedAt: new Date(),
+    },
+    bookingId: bookingRef.id,
+    privateAddressRef,
+  };
 }

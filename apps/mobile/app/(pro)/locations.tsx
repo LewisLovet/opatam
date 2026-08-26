@@ -23,88 +23,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, Avatar, useToast } from '../../components';
 import { useProvider } from '../../contexts';
-import { locationService, memberService, type WithId } from '@booking-app/firebase';
+import { locationService, memberService, auth as firebaseAuth, type WithId } from '@booking-app/firebase';
+import { isValidTravelZone, type TravelZoneTier } from '@booking-app/shared';
+import { API_URL } from '../../lib/config';
 import type { Location, Member } from '@booking-app/shared/types';
+import { searchAddress, fetchPlaceDetails, type AddressSuggestion } from '../../lib/addressSearch';
 
 // ---------------------------------------------------------------------------
 // Address Autocomplete (Google Places + BAN fallback)
 // ---------------------------------------------------------------------------
-
-interface AddressSuggestion {
-  label: string;
-  name: string;
-  city: string;
-  postcode: string;
-  coordinates: { latitude: number; longitude: number } | null;
-  placeId: string;
-}
-
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-
-async function searchAddress(query: string, countryCode: string = 'fr', limit = 5): Promise<AddressSuggestion[]> {
-  if (GOOGLE_API_KEY) {
-    try {
-      const body = {
-        input: query,
-        includedRegionCodes: [countryCode.toLowerCase()],
-        includedPrimaryTypes: ['street_address', 'premise', 'subpremise', 'route', 'locality'],
-      };
-      const response = await fetch(
-        `https://places.googleapis.com/v1/places:autocomplete?key=${GOOGLE_API_KEY}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-      );
-      if (response.ok) {
-        const json = await response.json();
-        const results = (json.suggestions ?? []).slice(0, limit).map((s: any) => ({
-          label: s.placePrediction?.text?.text ?? '',
-          name: s.placePrediction?.structuredFormat?.mainText?.text ?? '',
-          city: s.placePrediction?.structuredFormat?.secondaryText?.text ?? '',
-          postcode: '',
-          coordinates: null,
-          placeId: s.placePrediction?.placeId ?? '',
-        }));
-        if (results.length > 0) return results;
-      }
-    } catch { /* fall through to BAN */ }
-  }
-  // Fallback BAN (France only)
-  if (countryCode.toLowerCase() !== 'fr') return [];
-  const params = new URLSearchParams({ q: query, limit: String(limit) });
-  const response = await fetch(`https://api-adresse.data.gouv.fr/search?${params}`);
-  if (!response.ok) return [];
-  const json = await response.json();
-  return (json.features ?? []).map((f: any) => ({
-    label: f.properties.label,
-    name: f.properties.name,
-    city: f.properties.city,
-    postcode: f.properties.postcode,
-    coordinates: { latitude: f.geometry.coordinates[1], longitude: f.geometry.coordinates[0] },
-    placeId: '',
-  }));
-}
-
-async function fetchPlaceDetails(placeId: string): Promise<{
-  city: string; postcode: string; region: string; coordinates: { latitude: number; longitude: number } | null; formattedAddress: string;
-} | null> {
-  if (!GOOGLE_API_KEY || !placeId) return null;
-  const response = await fetch(
-    `https://places.googleapis.com/v1/places/${placeId}?key=${GOOGLE_API_KEY}&fields=formattedAddress,addressComponents,location,id`
-  );
-  if (!response.ok) return null;
-  const place = await response.json();
-  const components: any[] = place.addressComponents ?? [];
-  const getComp = (type: string) => components.find((c: any) => c.types?.includes(type));
-  const locality = getComp('locality') ?? getComp('postal_town') ?? getComp('administrative_area_level_3');
-  const postalCode = getComp('postal_code');
-  const adminArea1 = getComp('administrative_area_level_1');
-  return {
-    city: locality?.longText ?? '',
-    region: adminArea1?.longText ?? '',
-    postcode: postalCode?.longText ?? '',
-    formattedAddress: place.formattedAddress ?? '',
-    coordinates: place.location ? { latitude: place.location.latitude, longitude: place.location.longitude } : null,
-  };
-}
 
 // Libellés localisés via proLocations.countries.<code>
 const COUNTRY_CODES = ['FR', 'BE', 'LU', 'CH', 'DE', 'ES', 'IT', 'NL', 'PT'] as const;
@@ -192,6 +119,38 @@ export default function LocationsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<LocationFormData>(DEFAULT_FORM);
+
+  // Frais de déplacement — origine PRIVÉE + paliers, gérés par la route
+  // /api/pro/locations/[id]/travel-zone (jamais par le repository).
+  const [travelEnabled, setTravelEnabled] = useState(false);
+  const [tierRows, setTierRows] = useState<Array<{ maxKm: string; feeEuros: string }>>([
+    { maxKm: '10', feeEuros: '0' },
+  ]);
+  const [originPlaceId, setOriginPlaceId] = useState<string | null>(null);
+  const [originQuery, setOriginQuery] = useState('');
+  const [originSuggestions, setOriginSuggestions] = useState<AddressSuggestion[]>([]);
+  const originSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTravelState = () => {
+    setTravelEnabled(false);
+    setTierRows([{ maxKm: '10', feeEuros: '0' }]);
+    setOriginPlaceId(null);
+    setOriginQuery('');
+    setOriginSuggestions([]);
+  };
+
+  const handleOriginQueryChange = (value: string) => {
+    setOriginQuery(value);
+    setOriginPlaceId(null);
+    if (originSearchTimer.current) clearTimeout(originSearchTimer.current);
+    if (value.trim().length < 3) { setOriginSuggestions([]); return; }
+    originSearchTimer.current = setTimeout(async () => {
+      const results = await searchAddress(value.trim(), form.countryCode);
+      // Origine résolue par placeId côté serveur — le repli BAN (sans
+      // placeId) ne peut pas servir ici.
+      setOriginSuggestions(results.filter((r) => r.placeId));
+    }, 300);
+  };
   const [isSaving, setIsSaving] = useState(false);
 
   // Address autocomplete
@@ -313,6 +272,7 @@ export default function LocationsScreen() {
     setForm(DEFAULT_FORM);
     setAddressQuery('');
     setCityQuery('');
+    resetTravelState();
     setShowModal(true);
   };
 
@@ -336,6 +296,35 @@ export default function LocationsScreen() {
     });
     setAddressQuery(loc.address || '');
     setCityQuery(loc.city || '');
+    resetTravelState();
+    if (loc.type === 'mobile') {
+      void (async () => {
+        try {
+          const user = firebaseAuth.currentUser;
+          if (!user) return;
+          const res = await fetch(`${API_URL}/api/pro/locations/${loc.id}/travel-zone`, {
+            headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data.tiers) && data.tiers.length > 0) {
+            setTravelEnabled(true);
+            setTierRows(
+              data.tiers.map((tier: TravelZoneTier) => ({
+                maxKm: String(tier.maxKm),
+                feeEuros: (tier.fee / 100).toString(),
+              })),
+            );
+          }
+          if (data.origin) {
+            setOriginPlaceId(data.origin.placeId ?? null);
+            setOriginQuery(data.origin.address ?? '');
+          }
+        } catch {
+          // silencieux : la section reste vierge
+        }
+      })();
+    }
     setShowModal(true);
   };
 
@@ -344,14 +333,25 @@ export default function LocationsScreen() {
     if (!providerId) return;
     if (!form.name.trim()) { showToast({ variant: 'error', message: t('proLocations.form.nameRequired') }); return; }
     if (!form.city.trim()) { showToast({ variant: 'error', message: t('proLocations.form.cityRequired') }); return; }
-    if (!form.cityOnly && !form.postalCode.trim()) { showToast({ variant: 'error', message: t('proLocations.form.postalCodeRequired') }); return; }
+    // Le code postal n'est exigé que pour une adresse fixe complète — un lieu
+    // mobile garde ses champs publics vides (l'origine des trajets est privée).
+    if (form.type === 'fixed' && !form.cityOnly && !form.postalCode.trim()) { showToast({ variant: 'error', message: t('proLocations.form.postalCodeRequired') }); return; }
+    const parsedTiers: TravelZoneTier[] = tierRows.map((row) => ({
+      maxKm: Number(row.maxKm.replace(',', '.')),
+      fee: Math.round(Number(row.feeEuros.replace(',', '.')) * 100),
+    }));
+    if (form.type === 'mobile' && travelEnabled) {
+      if (!originPlaceId) { showToast({ variant: 'error', message: t('proLocations.travelZone.needsOrigin') }); return; }
+      if (!isValidTravelZone(parsedTiers)) { showToast({ variant: 'error', message: t('proLocations.travelZone.invalidTiers') }); return; }
+    }
 
     setIsSaving(true);
     try {
+      const estMobile = form.type === 'mobile';
       const payload = {
         name: form.name.trim(),
-        address: form.cityOnly ? '' : form.address.trim(),
-        postalCode: form.postalCode.trim(),
+        address: form.cityOnly || estMobile ? '' : form.address.trim(),
+        postalCode: estMobile ? '' : form.postalCode.trim(),
         city: form.city.trim(),
         country: 'France' as const,
         countryCode: form.countryCode,
@@ -359,20 +359,44 @@ export default function LocationsScreen() {
         geopoint: null,
         description: form.description.trim() || null,
         type: form.type,
-        travelRadius: form.type === 'mobile' ? Number(form.travelRadius) || 20 : null,
+        travelRadius: estMobile ? Number(form.travelRadius) || 20 : null,
         protectAddress: form.type === 'fixed' && !form.cityOnly ? form.protectAddress : false,
         approxArea: form.approxArea.trim() || null,
         accessInstructions: form.accessInstructions.trim() || null,
         photoURLs: [],
       };
 
+      let locationId = editingId;
       if (editingId) {
         await locationService.updateLocation(providerId, editingId, payload);
-        showToast({ variant: 'success', message: t('proLocations.form.updated') });
       } else {
-        await locationService.createLocation(providerId, payload);
-        showToast({ variant: 'success', message: t('proLocations.form.created') });
+        const created = await locationService.createLocation(providerId, payload);
+        locationId = created.id;
       }
+
+      // Zone de déplacement — route dédiée (origine privée + paliers publics).
+      if (estMobile && locationId) {
+        const user = firebaseAuth.currentUser;
+        if (!user) throw new Error(t('proLocations.travelZone.authRequired'));
+        const res = await fetch(`${API_URL}/api/pro/locations/${locationId}/travel-zone`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify(
+            travelEnabled
+              ? { originPlaceId, tiers: parsedTiers }
+              : { originPlaceId: null, tiers: null },
+          ),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.error || t('proLocations.travelZone.saveFailed'));
+        }
+      }
+
+      showToast({ variant: 'success', message: editingId ? t('proLocations.form.updated') : t('proLocations.form.created') });
       setShowModal(false);
       loadData();
     } catch (err: any) {
@@ -886,8 +910,114 @@ export default function LocationsScreen() {
                     </View>
                   </View>
 
-                  {form.type === 'mobile' && (
+                  {form.type === 'mobile' && !travelEnabled && (
                     <Input label={t('proLocations.form.travelRadiusLabel')} placeholder="20" value={form.travelRadius} onChangeText={(v) => setForm((p) => ({ ...p, travelRadius: v }))} keyboardType="number-pad" />
+                  )}
+
+                  {/* Frais de déplacement automatiques */}
+                  {form.type === 'mobile' && (
+                    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <View style={{ flex: 1, marginRight: spacing.md }}>
+                          <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>{t('proLocations.travelZone.title')}</Text>
+                          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                            {t('proLocations.travelZone.description')}
+                          </Text>
+                        </View>
+                        <Switch value={travelEnabled} onValueChange={setTravelEnabled} />
+                      </View>
+
+                      {travelEnabled && (
+                        <>
+                          <View>
+                            <Input
+                              label={t('proLocations.travelZone.originLabel')}
+                              placeholder={t('proLocations.travelZone.originPlaceholder')}
+                              value={originQuery}
+                              onChangeText={handleOriginQueryChange}
+                            />
+                            {originSuggestions.length > 0 && !originPlaceId && (
+                              <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, marginTop: 4 }}>
+                                {originSuggestions.map((sug) => (
+                                  <Pressable
+                                    key={sug.placeId}
+                                    onPress={() => {
+                                      setOriginPlaceId(sug.placeId);
+                                      setOriginQuery(sug.label);
+                                      setOriginSuggestions([]);
+                                      if (!form.city.trim()) {
+                                        void fetchPlaceDetails(sug.placeId).then((d) => {
+                                          if (d?.city) setForm((p) => ({ ...p, city: p.city || d.city }));
+                                        });
+                                      }
+                                    }}
+                                    style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                                  >
+                                    <Text variant="bodySmall">{sug.label}</Text>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            )}
+                            <Text variant="caption" color="textSecondary" style={{ marginTop: 4 }}>
+                              {t('proLocations.travelZone.originHint')}
+                            </Text>
+                          </View>
+
+                          <View style={{ gap: spacing.sm }}>
+                            <Text variant="caption" style={{ fontWeight: '600', color: colors.text }}>{t('proLocations.travelZone.tiersLabel')}</Text>
+                            {tierRows.map((row, i) => (
+                              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                                <View style={{ flex: 1 }}>
+                                  <Input
+                                    placeholder="10"
+                                    value={row.maxKm}
+                                    onChangeText={(v) => setTierRows((rows) => rows.map((r, j) => (j === i ? { ...r, maxKm: v } : r)))}
+                                    keyboardType="decimal-pad"
+                                  />
+                                </View>
+                                <Text variant="caption" color="textSecondary">km :</Text>
+                                <View style={{ flex: 1 }}>
+                                  <Input
+                                    placeholder="0"
+                                    value={row.feeEuros}
+                                    onChangeText={(v) => setTierRows((rows) => rows.map((r, j) => (j === i ? { ...r, feeEuros: v } : r)))}
+                                    keyboardType="decimal-pad"
+                                  />
+                                </View>
+                                <Text variant="caption" color="textSecondary">
+                                  {Number(row.feeEuros.replace(',', '.')) === 0 ? t('proLocations.travelZone.free') : '€'}
+                                </Text>
+                                {tierRows.length > 1 && (
+                                  <Pressable onPress={() => setTierRows((rows) => rows.filter((_, j) => j !== i))} hitSlop={8}>
+                                    <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
+                                  </Pressable>
+                                )}
+                              </View>
+                            ))}
+                            {tierRows.length < 8 && (
+                              <Pressable
+                                onPress={() => setTierRows((rows) => {
+                                  const lastKm = Number(rows[rows.length - 1]?.maxKm) || 10;
+                                  return [...rows, { maxKm: String(lastKm + 5), feeEuros: '' }];
+                                })}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                              >
+                                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                                <Text variant="caption" style={{ color: colors.primary, fontWeight: '600' }}>{t('proLocations.travelZone.addTier')}</Text>
+                              </Pressable>
+                            )}
+                            {(() => {
+                              const last = Number((tierRows[tierRows.length - 1]?.maxKm ?? '').replace(',', '.'));
+                              return Number.isFinite(last) && last > 0 ? (
+                                <Text variant="caption" color="textSecondary">
+                                  {t('proLocations.travelZone.beyondLimit', { km: last })}
+                                </Text>
+                              ) : null;
+                            })()}
+                          </View>
+                        </>
+                      )}
+                    </View>
                   )}
 
                   {/* Address privacy — only for a fixed location with a precise address */}

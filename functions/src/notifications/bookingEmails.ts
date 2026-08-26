@@ -20,6 +20,7 @@ import type {
   BookingSelectedInfo,
 } from '@booking-app/shared';
 import { resolveRevealedAddress } from '../utils/addressReveal';
+import { resolveClientAddress } from '../utils/clientAddressReveal';
 import {
   countsTowardLoyalty,
   isLoyaltyConfigValidMirror,
@@ -63,6 +64,8 @@ interface BookingData {
   /** Language the client booked in ('fr' | 'en'). Absent on legacy
    *  bookings → French. Drives the language of client emails. */
   clientLocale?: string;
+  /** Prestation à domicile — snapshot public (frais + ville seulement). */
+  travel?: { fee: number; distanceKm: number; clientCity: string } | null;
   providerName: string;
   status: string;
   cancelledBy?: 'client' | 'provider' | null;
@@ -231,6 +234,30 @@ async function toEmailData(
     addressAvailableAt = candidate > Date.now() ? new Date(candidate) : null;
   }
 
+  // Prestation à domicile : la cliente voit toujours SA propre adresse —
+  // on lit le doc privé sans la garde de statut (elle est l'auteure).
+  let travel: BookingEmailData['travel'] = null;
+  if (booking.travel) {
+    let addressLine: string | null = null;
+    try {
+      const snap = await admin
+        .firestore()
+        .collection('bookings')
+        .doc(bookingId)
+        .collection('private')
+        .doc('clientAddress')
+        .get();
+      addressLine = (snap.data()?.address as string | undefined) ?? null;
+    } catch {
+      // repli ville
+    }
+    travel = {
+      fee: booking.travel.fee,
+      addressLine,
+      city: booking.travel.clientCity ?? '',
+    };
+  }
+
   return {
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
@@ -265,6 +292,7 @@ async function toEmailData(
     bookingId,
     bookingNotice,
     depositPaid,
+    travel,
   };
 }
 
@@ -324,6 +352,15 @@ export async function emailProviderNewBooking(
       ? { amount: booking.deposit.amount }
       : null;
 
+  // Adresse d'intervention : révélée au pro à la CONFIRMATION seulement
+  // (résa auto-confirmée → tout de suite ; en attente → ville + mention).
+  const clientTravelAddress = booking.travel
+    ? await resolveClientAddress(bookingId, {
+        status: booking.status,
+        travel: booking.travel,
+      })
+    : null;
+
   const result = await sendProviderNewBookingEmail({
     providerEmail,
     clientName: booking.clientInfo.name,
@@ -351,6 +388,13 @@ export async function emailProviderNewBooking(
     locationAddress: booking.locationAddress,
     memberName: booking.memberName,
     depositPaid,
+    travel: booking.travel
+      ? {
+          fee: booking.travel.fee,
+          addressLine: clientTravelAddress?.revealed ? clientTravelAddress.line : null,
+          city: booking.travel.clientCity ?? '',
+        }
+      : null,
   });
 
   console.log('[EMAIL] Provider new booking email result:', result);

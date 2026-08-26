@@ -241,6 +241,9 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     type: l.type,
     protectAddress: l.protectAddress ?? false,
     approxArea: l.approxArea ?? null,
+    // Paliers de frais de déplacement (tarifs publics). JAMAIS l'origine :
+    // le devis passe par /api/travel/quote avec le locationId.
+    travelZone: l.travelZone ?? null,
   }));
 
   const serializedMembers = members.map((m) => ({

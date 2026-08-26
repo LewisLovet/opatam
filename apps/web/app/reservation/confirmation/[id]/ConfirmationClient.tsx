@@ -26,6 +26,7 @@ interface Booking {
   duration: number;
   price: number;
   priceMax?: number | null;
+  travel?: { fee: number; distanceKm: number; clientCity: string } | null;
   originalPrice?: number | null;
   items?: {
     serviceName: string;
@@ -203,12 +204,15 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
   // mid-checkout), the booking is still `pending_payment` server-side.
   const isPendingPayment = booking.status === 'pending_payment';
   const depositPaid = booking.deposit?.status === 'paid';
+  // Formule unique : total dû = prestations + déplacement ;
+  // reste à payer = prestations + déplacement − acompte.
+  const travelFee = booking.travel?.fee ?? 0;
   const remainingDue = depositPaid
-    ? Math.max(0, booking.price - (booking.deposit?.amount ?? 0))
+    ? Math.max(0, booking.price + travelFee - (booking.deposit?.amount ?? 0))
     : null;
   const remainingDueMax =
     depositPaid && booking.priceMax != null
-      ? Math.max(0, booking.priceMax - (booking.deposit?.amount ?? 0))
+      ? Math.max(0, booking.priceMax + travelFee - (booking.deposit?.amount ?? 0))
       : null;
 
   // Trigger animation on mount
@@ -472,6 +476,18 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
 
           {/* Total */}
           <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            {booking.travel && (
+              <div className="flex items-center justify-between mb-2 text-sm">
+                <span className="text-gray-500 dark:text-gray-400">
+                  {t('travel.feeLine')}
+                </span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {booking.travel.fee === 0
+                    ? t('travel.feeFree')
+                    : formatPrice(booking.travel.fee)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-900 dark:text-white">
                 {t('common.total')}
@@ -479,11 +495,11 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
               <span className="text-right">
                 {booking.originalPrice != null && booking.originalPrice > booking.price && (
                   <span className="block text-sm font-normal text-gray-400 line-through">
-                    {formatPrice(booking.originalPrice)}
+                    {formatPrice(booking.originalPrice + travelFee)}
                   </span>
                 )}
                 <span className="text-xl font-bold text-gray-900 dark:text-white">
-                  {formatPrice(booking.price, booking.priceMax)}
+                  {formatPrice(booking.price + travelFee, booking.priceMax != null ? booking.priceMax + travelFee : booking.priceMax)}
                 </span>
               </span>
             </div>

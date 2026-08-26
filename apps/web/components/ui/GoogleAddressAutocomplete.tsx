@@ -99,14 +99,14 @@ async function fetchAutocompleteSuggestions(
     body.includedRegionCodes = options.countries;
   }
 
-  const response = await fetch(
-    `https://places.googleapis.com/v1/places:autocomplete?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }
-  );
+  // Proxy serveur : la clé Google ne transite plus par le navigateur, et le
+  // rate-limit de la route protège le quota (le champ est désormais exposé
+  // au public dans le tunnel de réservation).
+  const response = await fetch('/api/google-places/autocomplete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
