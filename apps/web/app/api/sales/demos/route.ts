@@ -176,14 +176,20 @@ export async function GET(request: NextRequest) {
       expired: (x.expiresAt?.toDate?.()?.getTime() ?? 0) < Date.now(),
     });
   }
-  // Cloisonnement : un commercial ne voit que SES démos. Égalité seule +
-  // tri en mémoire — pas d'index composite à déployer.
-  const query =
-    auth.identity.role === 'sales'
-      ? db.collection('salesDemoLinks').where('staffUid', '==', auth.identity.uid).limit(300)
-      : db.collection('salesDemoLinks').limit(300);
-  const snap = await query.get();
+  // Visibilité d'équipe (système incitatif) : TOUT le monde voit toutes les
+  // démos — voir un confrère produire donne envie de produire. Mais les
+  // données personnelles des prospects d'autrui (e-mails d'envoi) sont
+  // masquées, et la modification reste réservée au propriétaire (PATCH).
+  const snap = await db.collection('salesDemoLinks').limit(300).get();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  const { resolveStaffNames } = await import('@/lib/staff-names');
+  const fichesSnap = await db.collection('staffMembers').get();
+  const fiches = new Map<string, string>();
+  fichesSnap.docs.forEach((f) => fiches.set(f.id, f.data().displayName ?? '—'));
+  const annuaire = await resolveStaffNames(
+    fiches,
+    snap.docs.map((d) => d.data().staffUid).filter((u): u is string => typeof u === 'string'),
+  );
 
   return NextResponse.json({
     demos: snap.docs.sort((a, b) => {
@@ -192,10 +198,15 @@ export async function GET(request: NextRequest) {
       return tb - ta;
     }).map((d) => {
       const x = d.data();
+      const estLaMienne = x.staffUid === auth.identity.uid || auth.identity.role !== 'sales';
+      const proprio = x.staffUid ? annuaire[x.staffUid] : null;
       return {
         id: d.id,
         businessName: x.businessName,
         staffUid: x.staffUid,
+        estLaMienne: x.staffUid === auth.identity.uid,
+        ownerNom: proprio?.nom ?? null,
+        ownerInitiales: proprio?.initiales ?? null,
         url: `${baseUrl}/p/demo-${d.id}`,
         createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
         expiresAt: x.expiresAt?.toDate?.()?.toISOString() ?? null,
@@ -203,11 +214,11 @@ export async function GET(request: NextRequest) {
         // Signaux commerciaux — le cœur de la relance.
         views: typeof x.views === 'number' ? x.views : 0,
         lastViewedAt: x.lastViewedAt?.toDate?.()?.toISOString() ?? null,
-        sentTo: Array.isArray(x.sentTo) ? x.sentTo : [],
+        sentTo: estLaMienne ? (Array.isArray(x.sentTo) ? x.sentTo : []) : [],
         claimedProviderName: x.claimedProviderName ?? null,
         photos: { logo: x.photos?.logo ?? null, cover: x.photos?.cover ?? null },
         coverUrl: couvertureDemo(x.config?.sector, x.photos?.cover ?? null),
-        leadId: x.leadId ?? null,
+        leadId: estLaMienne ? (x.leadId ?? null) : null,
       };
     }),
   });

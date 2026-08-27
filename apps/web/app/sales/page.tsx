@@ -308,12 +308,6 @@ export default function SalesDashboardPage() {
     const jour = Math.floor(Date.now() / 86_400_000);
     return toutes[jour % toutes.length];
   })();
-  const carteAReviser = (() => {
-    const triees = [...BATTLECARDS].sort(
-      (a, b) => new Date(a.verifieLe).getTime() - new Date(b.verifieLe).getTime(),
-    );
-    return triees[0] ?? null;
-  })();
 
   // Dernières nouvelles de l'équipe — le fil d'émulation.
   const [nouvelles, setNouvelles] = useState<Array<{
@@ -541,6 +535,40 @@ export default function SalesDashboardPage() {
           </p>
         </Link>
       </div>
+
+      {/* ── L'objection du jour — l'entraînement en trente secondes, bien en
+          vue sous les actions (elle était invisible en bas de page). ── */}
+      {objectionDuJour && (
+        <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-900/15 px-4 py-3.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 flex-shrink-0">
+              Objection du jour · {objectionDuJour.concurrent}
+            </p>
+            <p className="flex-1 min-w-[240px] text-sm font-semibold text-gray-900 dark:text-white">
+              « {objectionDuJour.objection} »
+            </p>
+            {!reponseDevoilee && (
+              <button
+                onClick={() => setReponseDevoilee(true)}
+                className="flex-shrink-0 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:underline"
+              >
+                Formulez votre réponse… puis comparez →
+              </button>
+            )}
+          </div>
+          {reponseDevoilee && (
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed bg-white dark:bg-gray-900 rounded-lg px-3 py-2">
+              {objectionDuJour.reponse}
+              <Link
+                href={`/sales/bibliotheque?carte=${objectionDuJour.carteId}`}
+                className="ml-2 text-violet-600 dark:text-violet-400 hover:underline"
+              >
+                battlecard complète
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
 
       {lienNote && (
         <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 px-4 py-2.5 text-xs text-gray-600 dark:text-gray-300 break-all">
@@ -907,60 +935,6 @@ export default function SalesDashboardPage() {
           </div>
         </SectionCard>
       )}
-
-      {/* ── Pour progresser aujourd'hui — motivation sur la base existante :
-          une objection à travailler, une carte à réviser. Pas de simulation,
-          pas de quiz : le geste utile en trente secondes. ── */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        {objectionDuJour && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              L&apos;objection du jour · face à {objectionDuJour.concurrent}
-            </p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1.5">
-              « {objectionDuJour.objection} »
-            </p>
-            {reponseDevoilee ? (
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
-                {objectionDuJour.reponse}
-              </p>
-            ) : (
-              <button
-                onClick={() => setReponseDevoilee(true)}
-                className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
-              >
-                Formulez votre réponse… puis comparez →
-              </button>
-            )}
-            <Link
-              href={`/sales/bibliotheque?carte=${objectionDuJour.carteId}`}
-              className="block mt-2 text-[11px] text-gray-400 hover:underline"
-            >
-              Revoir la battlecard {objectionDuJour.concurrent}
-            </Link>
-          </div>
-        )}
-        {carteAReviser && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              Battlecard à réviser
-            </p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1.5">
-              Opatam face à {carteAReviser.nom}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              La plus ancienne vérification ({new Date(carteAReviser.verifieLe).toLocaleDateString('fr-FR')}) —
-              cinq minutes pour la relire, ou signalez un chiffre périmé au manager.
-            </p>
-            <Link
-              href={`/sales/bibliotheque?carte=${carteAReviser.id}`}
-              className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:underline"
-            >
-              Ouvrir la carte <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        )}
-      </div>
 
       {/* ── À relancer aujourd'hui — les rappels posés sur les fiches ── */}
       {aRelancer.length > 0 && (

@@ -35,6 +35,9 @@ import { ChoixTheme } from './components/ChoixTheme';
 interface DemoRow {
   id: string;
   businessName: string;
+  estLaMienne: boolean;
+  ownerNom: string | null;
+  ownerInitiales: string | null;
   url: string;
   createdAt: string | null;
   expiresAt: string | null;
@@ -334,16 +337,16 @@ function SalesDemoPage() {
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Vos démos
+            Les démos — les vôtres et celles de l&apos;équipe
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+            <div className="relative h-8">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
                 placeholder="Nom ou e-mail du prospect…"
-                className="w-56 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-8 pr-3 py-1.5 text-xs text-gray-900 dark:text-white"
+                className="w-56 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-8 pr-3 text-xs text-gray-900 dark:text-white"
               />
             </div>
             {(
@@ -358,7 +361,7 @@ function SalesDemoPage() {
               <button
                 key={v}
                 onClick={() => setFiltre(v)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                className={`h-8 px-3 rounded-full text-[11px] font-medium transition-colors ${
                   filtre === v
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -411,7 +414,11 @@ function SalesDemoPage() {
                 }`}
               >
                 {/* Vignette : photo téléversée sinon un bandeau neutre */}
-                <Link href={`/sales/demo/${d.id}`} className="block relative h-20 bg-gray-100 dark:bg-gray-800">
+                <Link
+                  href={d.estLaMienne ? `/sales/demo/${d.id}` : d.url}
+                  target={d.estLaMienne ? undefined : '_blank'}
+                  className="block relative h-20 bg-gray-100 dark:bg-gray-800"
+                >
                   {d.coverUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={d.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -437,12 +444,28 @@ function SalesDemoPage() {
                 </Link>
 
                 <div className={`px-4 pb-3 ${d.photos.logo ? 'pt-6' : 'pt-3'}`}>
-                  <Link
-                    href={`/sales/demo/${d.id}`}
-                    className="block text-sm font-semibold text-gray-900 dark:text-white truncate hover:underline"
-                  >
-                    {d.businessName}
-                  </Link>
+                  <div className="flex items-center justify-between gap-1.5">
+                    {d.estLaMienne ? (
+                      <Link
+                        href={`/sales/demo/${d.id}`}
+                        className="block text-sm font-semibold text-gray-900 dark:text-white truncate hover:underline"
+                      >
+                        {d.businessName}
+                      </Link>
+                    ) : (
+                      <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {d.businessName}
+                      </span>
+                    )}
+                    {!d.estLaMienne && d.ownerInitiales && (
+                      <span
+                        className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-[9px] font-bold text-white dark:text-gray-900 inline-flex items-center justify-center"
+                        title={`Démo de ${d.ownerNom ?? 'un autre commercial'}`}
+                      >
+                        {d.ownerInitiales}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-gray-400">
                     <span
                       className={`inline-flex items-center gap-1 ${
@@ -462,12 +485,14 @@ function SalesDemoPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 mt-3">
-                    <Link
-                      href={`/sales/demo/${d.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-semibold hover:opacity-90"
-                    >
-                      <Pencil className="w-3 h-3" /> Modifier
-                    </Link>
+                    {d.estLaMienne && (
+                      <Link
+                        href={`/sales/demo/${d.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-semibold hover:opacity-90"
+                      >
+                        <Pencil className="w-3 h-3" /> Modifier
+                      </Link>
+                    )}
                     <a
                       href={d.url}
                       target="_blank"

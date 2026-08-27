@@ -39,6 +39,7 @@ interface LeadLeger {
   id: string;
   businessName: string;
   contactName: string | null;
+  email: string | null;
   city: string | null;
   isTeam: boolean;
   source: string | null;
@@ -46,6 +47,16 @@ interface LeadLeger {
   currentPlatform: string | null;
   currentPriceEuros: number | null;
 }
+
+const PROBLEMES_COURANTS = [
+  'Rendez-vous manqués (lapins) à répétition',
+  'Agenda papier / DM Instagram chronophage',
+  'Commissions de la marketplace trop chères',
+  'Sa plateforme actuelle coûte trop cher',
+  'Pas assez de nouvelles clientes / visibilité',
+  'Pas de site ou une image en ligne datée',
+  'Acomptes impossibles à encaisser',
+] as const;
 
 const SOURCES_CLIENTES = [
   ['instagram', 'Instagram / réseaux'],
@@ -113,7 +124,9 @@ function ModeRendezVous() {
 
   // ── Le brief (six questions) ──
   const [carteId, setCarteId] = useState<string>(searchParams.get('carte') ?? 'aucun');
-  const [probleme, setProbleme] = useState('');
+  const [problemeChoisi, setProblemeChoisi] = useState('');
+  const [problemeLibre, setProblemeLibre] = useState('');
+  const probleme = problemeChoisi === 'autre' ? problemeLibre : problemeChoisi;
   const [prix, setPrix] = useState('');
   const [equipe, setEquipe] = useState(false);
   const [sourceClientes, setSourceClientes] = useState('autre');
@@ -129,6 +142,14 @@ function ModeRendezVous() {
 
   const [lead, setLead] = useState<LeadLeger | null>(null);
 
+  // Modale d'envoi du récapitulatif — un e-mail simple, pas une redirection
+  // opaque vers la page Offres.
+  const [envoiOuvert, setEnvoiOuvert] = useState(false);
+  const [envoiEmail, setEnvoiEmail] = useState('');
+  const [envoiMessage, setEnvoiMessage] = useState('');
+  const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const [envoiFait, setEnvoiFait] = useState(false);
+
   useEffect(() => {
     if (!leadId) return;
     void (async () => {
@@ -142,7 +163,14 @@ function ModeRendezVous() {
       if (l.currentPlatform && BATTLECARDS.some((c) => c.id === l.currentPlatform)) {
         setCarteId(l.currentPlatform);
       }
-      if (l.mainPain) setProbleme(l.mainPain);
+      if (l.mainPain) {
+        if ((PROBLEMES_COURANTS as readonly string[]).includes(l.mainPain)) {
+          setProblemeChoisi(l.mainPain);
+        } else {
+          setProblemeChoisi('autre');
+          setProblemeLibre(l.mainPain);
+        }
+      }
       if (l.currentPriceEuros !== null) setPrix(String(l.currentPriceEuros));
       setEquipe(l.isTeam);
       if (l.source && /insta/i.test(l.source)) setSourceClientes('instagram');
@@ -187,11 +215,35 @@ function ModeRendezVous() {
     return lignes.join('\n');
   }, [lead, carte, prixValide, prixEuros, equipe, probleme, argumentsRetenus, economieAnnuelle, opatamMensuel, prochaineEtape]);
 
-  const envoyerParEmail = () => {
-    // Le récap part par le circuit existant (invitation attribuée + tracée) :
-    // la page Offres le pré-remplit comme message personnel.
-    sessionStorage.setItem('sales-message-prerempli', recap);
-    window.location.href = '/sales/offres';
+  const ouvrirEnvoi = () => {
+    setEnvoiEmail(lead?.email ?? '');
+    setEnvoiMessage(recap);
+    setEnvoiFait(false);
+    setEnvoiOuvert(true);
+  };
+
+  const envoyerRecap = async () => {
+    setEnvoiEnCours(true);
+    try {
+      // Circuit invitation existant : e-mail attribué + tracé, le récap en
+      // message personnel, le lien d'inscription part avec.
+      const res = await fetch('/api/sales/invitation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+        body: JSON.stringify({
+          email: envoiEmail.trim(),
+          message: envoiMessage.slice(0, 1200),
+          leadId: lead?.id ?? undefined,
+        }),
+      });
+      if (!res.ok) {
+        alert((await res.json()).error ?? 'Envoi impossible');
+        return;
+      }
+      setEnvoiFait(true);
+    } finally {
+      setEnvoiEnCours(false);
+    }
   };
 
   const enregistrer = async () => {
@@ -281,12 +333,25 @@ function ModeRendezVous() {
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
               Son problème principal
             </label>
-            <input
-              value={probleme}
-              onChange={(e) => setProbleme(e.target.value.slice(0, 200))}
-              placeholder="Ex. lapins à répétition, agenda papier illisible…"
+            <select
+              value={problemeChoisi}
+              onChange={(e) => setProblemeChoisi(e.target.value)}
               className={CHAMP}
-            />
+            >
+              <option value="">—</option>
+              {PROBLEMES_COURANTS.map((pb) => (
+                <option key={pb} value={pb}>{pb}</option>
+              ))}
+              <option value="autre">Autre…</option>
+            </select>
+            {problemeChoisi === 'autre' && (
+              <input
+                value={problemeLibre}
+                onChange={(e) => setProblemeLibre(e.target.value.slice(0, 200))}
+                placeholder="Décrivez son problème…"
+                className={`${CHAMP} mt-1.5`}
+              />
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div>
@@ -477,7 +542,7 @@ function ModeRendezVous() {
                   <Clipboard className="w-3.5 h-3.5" /> Copier
                 </button>
                 <button
-                  onClick={envoyerParEmail}
+                  onClick={ouvrirEnvoi}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
                 >
                   <Mail className="w-3.5 h-3.5" /> Envoyer par e-mail
@@ -488,9 +553,8 @@ function ModeRendezVous() {
               {recap}
             </pre>
             <p className="text-[11px] text-gray-400">
-              « Envoyer » ouvre l&apos;invitation par e-mail avec ce récapitulatif en message —
-              le lien d&apos;inscription attribué part avec. La valeur démontrée ne doit pas
-              s&apos;évaporer après l&apos;appel.
+              L&apos;e-mail part avec ce récapitulatif et votre lien d&apos;inscription attribué —
+              la valeur démontrée ne doit pas s&apos;évaporer après l&apos;appel.
             </p>
           </div>
 
@@ -567,6 +631,76 @@ function ModeRendezVous() {
           </div>
         </div>
       </div>
+
+      {/* Modale d'envoi du récapitulatif */}
+      {envoiOuvert && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => !envoiEnCours && setEnvoiOuvert(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">
+              Envoyer le récapitulatif
+            </h2>
+            {envoiFait ? (
+              <>
+                <p className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle className="w-4 h-4" /> Envoyé à {envoiEmail} — avec votre lien
+                  d&apos;inscription attribué.
+                </p>
+                <div className="text-right">
+                  <button
+                    onClick={() => setEnvoiOuvert(false)}
+                    className="px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  type="email"
+                  value={envoiEmail}
+                  onChange={(e) => setEnvoiEmail(e.target.value)}
+                  placeholder="E-mail du prospect"
+                  className={CHAMP}
+                />
+                <textarea
+                  value={envoiMessage}
+                  onChange={(e) => setEnvoiMessage(e.target.value.slice(0, 1200))}
+                  rows={9}
+                  className={`${CHAMP} font-mono text-xs leading-relaxed`}
+                />
+                <p className="text-[11px] text-gray-400">
+                  Le message part en tête de l&apos;e-mail d&apos;invitation (1200 caractères max),
+                  suivi de l&apos;essai gratuit et de votre lien attribué.
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setEnvoiOuvert(false)}
+                    disabled={envoiEnCours}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => void envoyerRecap()}
+                    disabled={envoiEnCours || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(envoiEmail.trim())}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {envoiEnCours ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                    Envoyer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

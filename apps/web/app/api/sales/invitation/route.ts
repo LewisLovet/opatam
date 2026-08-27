@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   const { subject, html } = generateSalesInvitationEmail({
     url,
     fromName: fiche.data()?.displayName ?? null,
-    message: typeof message === 'string' ? message.slice(0, 600) : null,
+    message: typeof message === 'string' ? message.slice(0, 1200) : null,
   });
   try {
     const { Resend } = await import('resend');
