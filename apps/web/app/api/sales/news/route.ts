@@ -27,12 +27,16 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const db = getAdminFirestore();
+  // orderBy single-field (index automatiques) : sans lui, limit(N) rend un
+  // sous-ensemble arbitraire — le fil « dernières nouvelles » pouvait rater
+  // les vraies dernières. NB : un doc SANS le champ trié serait exclu par
+  // Firestore, mais tous ces champs sont posés à la création.
   const [staffSnap, leadsSnap, demosSnap, conversionsSnap, activitesSnap] = await Promise.all([
     db.collection('staffMembers').get(),
-    db.collection('salesLeads').limit(500).get(),
-    db.collection('salesDemoLinks').limit(500).get(),
-    db.collection('salesConversions').limit(500).get(),
-    db.collection('salesActivities').limit(1000).get(),
+    db.collection('salesLeads').orderBy('updatedAt', 'desc').limit(500).get(),
+    db.collection('salesDemoLinks').orderBy('createdAt', 'desc').limit(500).get(),
+    db.collection('salesConversions').orderBy('firstPaidAt', 'desc').limit(500).get(),
+    db.collection('salesActivities').orderBy('createdAt', 'desc').limit(1000).get(),
   ]);
 
   const fiches = new Map<string, string>();

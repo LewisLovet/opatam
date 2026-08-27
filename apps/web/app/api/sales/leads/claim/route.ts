@@ -32,19 +32,22 @@ export async function POST(request: NextRequest) {
       lastInteractionAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+    // Le journal DANS la même transaction : une prise en charge sans trace
+    // (ou pire, une erreur renvoyée alors que l'attribution a été écrite)
+    // ferait recliquer le commercial sur un « déjà pris » incompréhensible.
+    tx.set(db.collection('salesActivities').doc(), {
+      leadId: id,
+      authorUid: auth.identity.uid,
+      type: 'note',
+      stage: null,
+      body: 'Prospect pris en charge depuis le pool d’équipe',
+      createdAt: FieldValue.serverTimestamp(),
+    });
     return { status: 200 as const };
   });
 
   if (resultat.status !== 200) {
     return NextResponse.json({ error: resultat.error }, { status: resultat.status });
   }
-  await db.collection('salesActivities').add({
-    leadId: id,
-    authorUid: auth.identity.uid,
-    type: 'note',
-    stage: null,
-    body: 'Prospect pris en charge depuis le pool d’équipe',
-    createdAt: FieldValue.serverTimestamp(),
-  });
   return NextResponse.json({ success: true });
 }

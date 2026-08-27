@@ -114,7 +114,11 @@ export async function POST(request: NextRequest) {
   if (brut.forcerDoublon !== true) {
     const cible = nomNormalise(d.businessName);
     const villeCible = (d.city ?? '').trim().toLowerCase();
-    const existants = await db.collection('salesLeads').limit(500).get();
+    const existants = await db
+      .collection('salesLeads')
+      .orderBy('updatedAt', 'desc')
+      .limit(500)
+      .get();
     const doublon = existants.docs.find((doc) => {
       const x = doc.data();
       if (nomNormalise(x.businessName ?? '') !== cible) return false;
@@ -183,7 +187,14 @@ export async function GET(request: NextRequest) {
   // Égalité seule (pas d'orderBy) : aucune dépendance à un index composite —
   // un index oublié au déploiement a déjà produit des 500. Le tri se fait en
   // mémoire, un pipeline tient largement dans 500 documents.
-  const tousSnap = await db.collection('salesLeads').limit(500).get();
+  // orderBy single-field (index automatique — la règle du chantier n'interdit
+  // que les index COMPOSITES) : sans lui, le limit(500) rend un sous-ensemble
+  // arbitraire et des prospects récents peuvent disparaître du tableau.
+  const tousSnap = await db
+    .collection('salesLeads')
+    .orderBy('updatedAt', 'desc')
+    .limit(500)
+    .get();
   const equipe = await annuaireEquipe(
     db,
     tousSnap.docs.map((d) => d.data().ownerUid).filter((u): u is string => typeof u === 'string'),
@@ -275,17 +286,21 @@ export async function PATCH(request: NextRequest) {
       );
       const nomAvant = avant.ownerUid ? (equipe[avant.ownerUid]?.nom ?? avant.ownerUid) : 'le pool';
       const nomApres = cibleUid ? (equipe[cibleUid]?.nom ?? cibleUid) : 'le pool';
-      await acces.ref.update({
-        ownerUid: cibleUid,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      await db.collection('salesActivities').add({
-        leadId: id,
-        authorUid: auth.identity.uid,
-        type: 'note',
-        stage: null,
-        body: `Réattribué : ${nomAvant} → ${nomApres}`,
-        createdAt: FieldValue.serverTimestamp(),
+      // Attribution + journal dans la MÊME transaction : pas de réattribution
+      // silencieuse (écrite mais en erreur côté manager, absente du fil).
+      await db.runTransaction(async (tx) => {
+        tx.update(acces.ref, {
+          ownerUid: cibleUid,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.set(db.collection('salesActivities').doc(), {
+          leadId: id,
+          authorUid: auth.identity.uid,
+          type: 'note',
+          stage: null,
+          body: `Réattribué : ${nomAvant} → ${nomApres}`,
+          createdAt: FieldValue.serverTimestamp(),
+        });
       });
     }
     const rechargee = await acces.ref.get();
@@ -317,19 +332,22 @@ export async function PATCH(request: NextRequest) {
   }
 
   const db = getAdminFirestore();
-  await acces.ref.update(maj);
-
   // Le passage d'étape se journalise — c'est la matière première du tunnel.
-  if (typeof maj.stage === 'string' && maj.stage !== avant.stage) {
-    await db.collection('salesActivities').add({
-      leadId: id,
-      authorUid: auth.identity.uid,
-      type: 'changement_etape',
-      stage: maj.stage,
-      body: `${avant.stage} → ${maj.stage}`,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-  }
+  // Mise à jour + journal dans la même transaction (cohérence du fil).
+  const changementEtape = typeof maj.stage === 'string' && maj.stage !== avant.stage;
+  await db.runTransaction(async (tx) => {
+    tx.update(acces.ref, maj);
+    if (changementEtape) {
+      tx.set(db.collection('salesActivities').doc(), {
+        leadId: id,
+        authorUid: auth.identity.uid,
+        type: 'changement_etape',
+        stage: maj.stage,
+        body: `${avant.stage} → ${maj.stage}`,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
 
   const apres = await acces.ref.get();
   return NextResponse.json({ lead: serialise(id, apres.data()!) });
