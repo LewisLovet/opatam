@@ -24,6 +24,7 @@ import {
 import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
 import { STAGE_LABELS } from '@/lib/sales-leads';
 import { enTetesStaff } from '@/app/sales/entetes';
+import { BATTLECARDS } from '@/app/sales/bibliotheque/battlecards';
 
 /**
  * Tableau de bord commercial — la journée en un coup d'œil.
@@ -297,6 +298,23 @@ export default function SalesDashboardPage() {
   // secondes côté Stripe — sans état de chargement, on croit que rien ne se
   // passe et on re-clique (retour client).
   const [connectEnCours, setConnectEnCours] = useState(false);
+  // L'objection du jour — même pour toute l'équipe, change chaque jour.
+  const [reponseDevoilee, setReponseDevoilee] = useState(false);
+  const objectionDuJour = (() => {
+    const toutes = BATTLECARDS.flatMap((c) =>
+      c.objections.map((o) => ({ ...o, concurrent: c.nom, carteId: c.id })),
+    );
+    if (toutes.length === 0) return null;
+    const jour = Math.floor(Date.now() / 86_400_000);
+    return toutes[jour % toutes.length];
+  })();
+  const carteAReviser = (() => {
+    const triees = [...BATTLECARDS].sort(
+      (a, b) => new Date(a.verifieLe).getTime() - new Date(b.verifieLe).getTime(),
+    );
+    return triees[0] ?? null;
+  })();
+
   // Dernières nouvelles de l'équipe — le fil d'émulation.
   const [nouvelles, setNouvelles] = useState<Array<{
     type: 'prospect' | 'demo' | 'payant' | 'prise' | 'etape';
@@ -889,6 +907,60 @@ export default function SalesDashboardPage() {
           </div>
         </SectionCard>
       )}
+
+      {/* ── Pour progresser aujourd'hui — motivation sur la base existante :
+          une objection à travailler, une carte à réviser. Pas de simulation,
+          pas de quiz : le geste utile en trente secondes. ── */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        {objectionDuJour && (
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              L&apos;objection du jour · face à {objectionDuJour.concurrent}
+            </p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1.5">
+              « {objectionDuJour.objection} »
+            </p>
+            {reponseDevoilee ? (
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
+                {objectionDuJour.reponse}
+              </p>
+            ) : (
+              <button
+                onClick={() => setReponseDevoilee(true)}
+                className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+              >
+                Formulez votre réponse… puis comparez →
+              </button>
+            )}
+            <Link
+              href={`/sales/bibliotheque?carte=${objectionDuJour.carteId}`}
+              className="block mt-2 text-[11px] text-gray-400 hover:underline"
+            >
+              Revoir la battlecard {objectionDuJour.concurrent}
+            </Link>
+          </div>
+        )}
+        {carteAReviser && (
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              Battlecard à réviser
+            </p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1.5">
+              Opatam face à {carteAReviser.nom}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              La plus ancienne vérification ({new Date(carteAReviser.verifieLe).toLocaleDateString('fr-FR')}) —
+              cinq minutes pour la relire, ou signalez un chiffre périmé au manager.
+            </p>
+            <Link
+              href={`/sales/bibliotheque?carte=${carteAReviser.id}`}
+              className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Ouvrir la carte <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* ── À relancer aujourd'hui — les rappels posés sur les fiches ── */}
       {aRelancer.length > 0 && (

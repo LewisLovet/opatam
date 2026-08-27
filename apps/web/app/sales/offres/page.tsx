@@ -97,6 +97,14 @@ export default function OffresPage() {
   };
   useEffect(() => {
     void charger();
+    // Récapitulatif poussé par le mode rendez-vous (ou une phrase de la
+    // bibliothèque) : pré-rempli comme message personnel de l'invitation.
+    const prerempli = sessionStorage.getItem('sales-message-prerempli');
+    if (prerempli) {
+      sessionStorage.removeItem('sales-message-prerempli');
+      setMessagePerso(prerempli.slice(0, 600));
+      setOuverte('invitation');
+    }
   }, []);
 
   const generer = async (offerId: string) => {

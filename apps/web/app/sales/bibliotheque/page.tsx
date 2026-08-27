@@ -1,8 +1,9 @@
 'use client';
 
 import { Suspense, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BadgeCheck, BookOpen, Check, Loader2 } from 'lucide-react';
+import { BadgeCheck, BookOpen, Check, Loader2, Presentation } from 'lucide-react';
 import { BATTLECARDS, AVANTAGES_OPATAM } from './battlecards';
 import { CarteDetail } from './CarteDetail';
 
@@ -43,13 +44,21 @@ function BibliothequePage() {
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bibliothèque</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
           L&apos;argumentaire face à chaque concurrent — leurs vraies forces, nos avantages
           vérifiés, et ce qu&apos;il ne faut pas dire. La fiche d&apos;un prospect ouvre
           directement la bonne carte selon sa plateforme actuelle.
         </p>
+        </div>
+        <Link
+          href={`/sales/rdv?carte=${ouverte}`}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+        >
+          <Presentation className="w-3.5 h-3.5" /> Mode rendez-vous
+        </Link>
       </div>
 
       {/* Le socle : les avantages toujours défendables */}

@@ -37,6 +37,9 @@ export const leadCreateSchema = z.object({
   mainPain: texteCourt(200),
   currentPlatform: texteCourt(60),
   profileUrl: texteCourt(300),
+  /** Ce que le prospect paie AUJOURD'HUI (€/mois, son devis réel) — la
+   *  matière première de la comparaison chiffrée en mode rendez-vous. */
+  currentPriceEuros: z.number().min(0).max(2000).nullable().optional(),
   notes: texteCourt(2000),
   stage: z.enum(SALES_STAGES).optional().default('prospect'),
   /** ISO — date du prochain contact prévu. */

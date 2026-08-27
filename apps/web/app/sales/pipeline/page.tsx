@@ -61,6 +61,7 @@ interface Lead {
   source: string | null;
   mainPain: string | null;
   currentPlatform: string | null;
+  currentPriceEuros: number | null;
   notes: string | null;
   linkedProviderId: string | null;
   optOut: boolean;
@@ -1739,6 +1740,13 @@ function FicheProspect({
                 <X className="w-4 h-4" /> Marquer comme perdu
               </button>
             )}
+
+            <Link
+              href={`/sales/rdv?lead=${lead.id}`}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:opacity-90"
+            >
+              <Presentation className="w-4 h-4" /> Mode rendez-vous
+            </Link>
 
             {/* Attribution — MANAGER : changer le propriétaire (journalisé) */}
             {estManager && (
