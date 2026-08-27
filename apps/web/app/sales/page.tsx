@@ -188,6 +188,15 @@ function CompteRow({
   );
 }
 
+function tempsRelatif(iso: string): string {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 60) return `il y a ${Math.max(1, min)} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.round(h / 24);
+  return j === 1 ? 'hier' : `il y a ${j} j`;
+}
+
 function SectionCard({
   icone: Icone,
   ton,
@@ -288,6 +297,21 @@ export default function SalesDashboardPage() {
   // secondes côté Stripe — sans état de chargement, on croit que rien ne se
   // passe et on re-clique (retour client).
   const [connectEnCours, setConnectEnCours] = useState(false);
+  // Dernières nouvelles de l'équipe — le fil d'émulation.
+  const [nouvelles, setNouvelles] = useState<Array<{
+    type: 'prospect' | 'demo' | 'payant' | 'prise' | 'etape';
+    texte: string;
+    auteurNom: string;
+    auteurInitiales: string;
+    date: string;
+  }> | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch('/api/sales/news', { headers: await enTetesStaff() });
+      if (res.ok) setNouvelles((await res.json()).nouvelles);
+    })();
+  }, []);
+
   // Simulateur de revenus — X clients payants → commission. Quand le taux
   // réel n'est pas encore défini par le manager, on simule avec un taux
   // HYPOTHÉTIQUE réglable, marqué comme tel (rien n'est promis).
@@ -829,6 +853,42 @@ export default function SalesDashboardPage() {
           </div>
         )}
       </SectionCard>
+
+      {/* ── Dernières nouvelles — voir l'équipe avancer donne envie d'avancer ── */}
+      {nouvelles !== null && nouvelles.length > 0 && (
+        <SectionCard
+          icone={Megaphone}
+          ton="bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+          titre="Dernières nouvelles"
+          sousTitre="Ce qui bouge dans l'équipe — prospects, démos, conversions"
+        >
+          <div className="divide-y divide-gray-50 dark:divide-gray-800/60 max-h-[420px] overflow-y-auto">
+            {nouvelles.map((n, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-2.5">
+                <span
+                  className={`flex-shrink-0 w-7 h-7 rounded-full text-[10px] font-bold inline-flex items-center justify-center ${
+                    n.type === 'payant'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                      : n.type === 'demo'
+                        ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                  }`}
+                  title={n.auteurNom}
+                >
+                  {n.auteurInitiales}
+                </span>
+                <p className="flex-1 min-w-0 text-sm text-gray-700 dark:text-gray-300 truncate">
+                  <span className="font-semibold text-gray-900 dark:text-white">{n.auteurNom}</span>{' '}
+                  {n.texte}
+                </p>
+                <span className="flex-shrink-0 text-[11px] text-gray-400 whitespace-nowrap">
+                  {tempsRelatif(n.date)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── À relancer aujourd'hui — les rappels posés sur les fiches ── */}
       {aRelancer.length > 0 && (

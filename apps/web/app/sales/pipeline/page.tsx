@@ -91,6 +91,22 @@ interface Activity {
 
 const COLONNES = SALES_STAGES.filter((s) => s !== 'conserve_j90');
 
+/** Prospect d'un AUTRE commercial — lecture minimale (jamais son contact,
+ *  ses notes ni son téléphone) : assez pour ne pas attaquer le même salon. */
+interface LeadAutrui {
+  id: string;
+  businessName: string;
+  city: string | null;
+  sector: string;
+  stage: (typeof SALES_STAGES)[number];
+  lostReason: string | null;
+  ownerUid: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+type AnnuaireEquipe = Record<string, { nom: string; initiales: string }>;
+
 /**
  * Le tableau regroupe les 9 étapes en 6 COLONNES qui remplissent l'écran —
  * mêmes regroupements que le tunnel du tableau de bord. Neuf colonnes en
@@ -229,6 +245,10 @@ function PipelinePage() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [recherche, setRecherche] = useState('');
   const [voirPerdus, setVoirPerdus] = useState(false);
+  // Visibilité d'équipe : les prospects des autres, en lecture minimale.
+  const [autres, setAutres] = useState<LeadAutrui[]>([]);
+  const [equipe, setEquipe] = useState<AnnuaireEquipe>({});
+  const [vueEquipe, setVueEquipe] = useState(false);
   const [ouvertId, setOuvertId] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
   const [demos, setDemos] = useState<DemoLiee[]>([]);
@@ -268,7 +288,12 @@ function PipelinePage() {
 
   const charger = async () => {
     const res = await fetch('/api/sales/leads', { headers: await enTetesStaff() });
-    if (res.ok) setLeads((await res.json()).leads);
+    if (res.ok) {
+      const data = await res.json();
+      setLeads(data.leads);
+      setAutres(data.autres ?? []);
+      setEquipe(data.equipe ?? {});
+    }
   };
   const chargerDemos = async () => {
     const res = await fetch('/api/sales/demos', { headers: await enTetesStaff() });
@@ -328,6 +353,18 @@ function PipelinePage() {
     });
   }, [leads, recherche, voirPerdus]);
 
+  // Les prospects des confrères, dans les mêmes colonnes (vue équipe).
+  const autresVisibles = useMemo(() => {
+    if (!vueEquipe) return [];
+    const q = recherche.trim().toLowerCase();
+    return autres.filter((l) => {
+      if (!voirPerdus && l.lostReason) return false;
+      if (voirPerdus && !l.lostReason) return false;
+      if (!q) return true;
+      return l.businessName.toLowerCase().includes(q) || (l.city ?? '').toLowerCase().includes(q);
+    });
+  }, [autres, vueEquipe, recherche, voirPerdus]);
+
   const ouvert = leads?.find((l) => l.id === ouvertId) ?? null;
 
   return (
@@ -349,6 +386,19 @@ function PipelinePage() {
               className="w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-8 pr-3 py-2 text-xs text-gray-900 dark:text-white"
             />
           </div>
+          {moi?.role === 'sales' && autres.length > 0 && (
+            <button
+              onClick={() => setVueEquipe((v) => !v)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                vueEquipe
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-400'
+              }`}
+              title="Voir aussi les prospects des autres commerciaux (lecture seule) — pour ne pas attaquer le même salon"
+            >
+              Toute l&apos;équipe{vueEquipe ? '' : ` · ${autres.length}`}
+            </button>
+          )}
           <button
             onClick={() => setVoirPerdus((v) => !v)}
             className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
@@ -374,6 +424,7 @@ function PipelinePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-start">
           {GROUPES.map((groupe) => {
             const cartes = visibles.filter((l) => groupe.stages.includes(l.stage));
+            const cartesAutrui = autresVisibles.filter((l) => groupe.stages.includes(l.stage));
             return (
               <div
                 key={groupe.label}
@@ -411,6 +462,9 @@ function PipelinePage() {
                     </p>
                     <span className="min-w-[20px] text-center text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-full px-1.5 py-0.5">
                       {cartes.length}
+                      {cartesAutrui.length > 0 && (
+                        <span className="text-gray-300 dark:text-gray-600"> +{cartesAutrui.length}</span>
+                      )}
                     </span>
                   </div>
                   {aideColonne === groupe.label && (
@@ -420,7 +474,7 @@ function PipelinePage() {
                   )}
                 </div>
                 <div className="flex-1 px-2 pb-2 space-y-2">
-                  {cartes.length === 0 && (
+                  {cartes.length === 0 && cartesAutrui.length === 0 && (
                     <div className="h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center">
                       <p className="text-[11px] text-gray-300 dark:text-gray-600 text-center px-3">
                         {groupe.auto ? 'Se remplit automatiquement' : 'Déposez une carte ici'}
@@ -445,9 +499,19 @@ function PipelinePage() {
                             : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 cursor-grab active:cursor-grabbing'
                         }`}
                       >
-                        <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                          {l.businessName}
-                        </p>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                            {l.businessName}
+                          </p>
+                          {moi?.role !== 'sales' && l.ownerUid && equipe[l.ownerUid] && (
+                            <span
+                              className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 text-[9px] font-bold text-gray-600 dark:text-gray-300 inline-flex items-center justify-center"
+                              title={`Prospect de ${equipe[l.ownerUid].nom}`}
+                            >
+                              {equipe[l.ownerUid].initiales}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">
                           {[SECTOR_LABELS[l.sector], l.city].filter(Boolean).join(' · ')}
                         </p>
@@ -482,6 +546,31 @@ function PipelinePage() {
                           )}
                         </div>
                       </button>
+                    );
+                  })}
+                  {cartesAutrui.map((l) => {
+                    const proprio = equipe[l.ownerUid];
+                    return (
+                      <div
+                        key={l.id}
+                        className="w-full rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 px-3 py-2 select-none"
+                        title={`Prospecté par ${proprio?.nom ?? 'un autre commercial'} — déjà pris, ne pas démarcher`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 truncate">
+                            {l.businessName}
+                          </p>
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-[9px] font-bold text-white dark:text-gray-900 inline-flex items-center justify-center">
+                            {proprio?.initiales ?? '?'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                          {[SECTOR_LABELS[l.sector as keyof typeof SECTOR_LABELS], l.city]
+                            .filter(Boolean)
+                            .join(' · ')}
+                          {proprio ? ` · ${proprio.nom}` : ''}
+                        </p>
+                      </div>
                     );
                   })}
                 </div>
@@ -589,6 +678,8 @@ function PipelinePage() {
         <FicheProspect
           lead={ouvert}
           moiNom={moi?.displayName ?? null}
+          equipe={equipe}
+          estManager={moi !== null && moi.role !== 'sales'}
           demos={demos}
           onDemosChange={chargerDemos}
           onFerme={() => setOuvertId(null)}
@@ -628,18 +719,33 @@ function NouveauProspect({
   const [pourEquipe, setPourEquipe] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+  // Anti-doublon : le serveur refuse un salon déjà prospecté (409) — on
+  // montre QUI l'a, et on ne crée quand même que sur confirmation explicite.
+  const [doublon, setDoublon] = useState<{
+    businessName: string;
+    city: string | null;
+    ownerNom: string | null;
+    ownerInitiales: string | null;
+    estLeMien: boolean;
+    duPool: boolean;
+  } | null>(null);
 
-  const creer = async () => {
+  const creer = async (forcer = false) => {
     setEnvoi(true);
     setErreur(null);
+    if (!forcer) setDoublon(null);
     try {
       const res = await fetch('/api/sales/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-        body: JSON.stringify({ ...form, pourEquipe }),
+        body: JSON.stringify({ ...form, pourEquipe, forcerDoublon: forcer }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === 'DOUBLON') {
+          setDoublon(data.doublon);
+          return;
+        }
         setErreur(data.error ?? 'Erreur serveur');
         return;
       }
@@ -733,8 +839,30 @@ function NouveauProspect({
             </label>
           )}
           {erreur && <p className="text-sm text-red-600">{erreur}</p>}
+          {doublon && (
+            <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2.5 space-y-2">
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                <strong>« {doublon.businessName} »{doublon.city ? ` (${doublon.city})` : ''} est
+                déjà dans le pipeline</strong>
+                {doublon.estLeMien
+                  ? ' — c’est VOTRE prospect.'
+                  : doublon.duPool
+                    ? ' — dans le pool, à prendre en charge plutôt qu’à recréer.'
+                    : doublon.ownerNom
+                      ? ` — prospecté par ${doublon.ownerNom}. Ne le démarchez pas une deuxième fois.`
+                      : '.'}
+              </p>
+              <button
+                onClick={() => void creer(true)}
+                disabled={envoi}
+                className="text-xs font-semibold text-amber-800 dark:text-amber-300 underline hover:no-underline"
+              >
+                C&apos;est un autre salon (homonyme) — créer quand même
+              </button>
+            </div>
+          )}
           <button
-            onClick={creer}
+            onClick={() => void creer(false)}
             disabled={envoi || !form.businessName.trim()}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
           >
@@ -752,6 +880,8 @@ function NouveauProspect({
 function FicheProspect({
   lead,
   moiNom,
+  equipe,
+  estManager,
   demos,
   onDemosChange,
   onFerme,
@@ -760,6 +890,8 @@ function FicheProspect({
 }: {
   lead: Lead;
   moiNom: string | null;
+  equipe: AnnuaireEquipe;
+  estManager: boolean;
   demos: DemoLiee[];
   onDemosChange: () => void;
   onFerme: () => void;
@@ -1494,6 +1626,34 @@ function FicheProspect({
               >
                 <X className="w-4 h-4" /> Marquer comme perdu
               </button>
+            )}
+
+            {/* Attribution — MANAGER : changer le propriétaire (journalisé) */}
+            {estManager && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+                  Attribution
+                </p>
+                <select
+                  value={form.ownerUid ?? ''}
+                  onChange={async (e) => {
+                    const cible = e.target.value || null;
+                    const maj = await onPatch(lead.id, { reassignTo: cible });
+                    if (maj) setForm(maj);
+                  }}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-2.5 py-2 text-xs text-gray-900 dark:text-white"
+                >
+                  <option value="">Pool — à prendre en charge</option>
+                  {Object.entries(equipe).map(([uid, m]) => (
+                    <option key={uid} value={uid}>
+                      {m.nom}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Le changement est journalisé et visible dans les dernières nouvelles.
+                </p>
+              </div>
             )}
             <div className="text-center">
               <button onClick={supprimer} className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600">
