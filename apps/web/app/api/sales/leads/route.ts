@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { leadCreateSchema, leadUpdateSchema } from '@/lib/sales-leads';
+import { resolveStaffNames } from '@/lib/staff-names';
 
 /**
  * Prospects du pipeline commercial.
@@ -58,24 +59,17 @@ function nomNormalise(nom: string): string {
     .trim();
 }
 
-function initialesDe(displayName: string | null | undefined): string {
-  const mots = (displayName ?? '').trim().split(/\s+/).filter(Boolean);
-  if (mots.length === 0) return '?';
-  return mots
-    .slice(0, 2)
-    .map((m) => m[0]!.toUpperCase())
-    .join('');
-}
-
-/** Annuaire uid → { nom, initiales } pour les badges d'attribution. */
-async function annuaireEquipe(db: FirebaseFirestore.Firestore) {
+/** Annuaire uid → { nom, initiales } pour les badges d'attribution.
+ *  `uidsSupplementaires` : propriétaires SANS fiche staff (admin qui teste…)
+ *  résolus via Firebase Auth — un badge doit toujours avoir des initiales. */
+async function annuaireEquipe(
+  db: FirebaseFirestore.Firestore,
+  uidsSupplementaires: Iterable<string> = [],
+) {
   const snap = await db.collection('staffMembers').get();
-  const annuaire: Record<string, { nom: string; initiales: string }> = {};
-  snap.docs.forEach((d) => {
-    const nom = d.data().displayName ?? '—';
-    annuaire[d.id] = { nom, initiales: initialesDe(nom) };
-  });
-  return annuaire;
+  const fiches = new Map<string, string>();
+  snap.docs.forEach((d) => fiches.set(d.id, d.data().displayName ?? '—'));
+  return resolveStaffNames(fiches, [...fiches.keys(), ...uidsSupplementaires]);
 }
 
 async function leadAccessible(id: string, identity: { uid: string; role: string }) {
@@ -130,7 +124,7 @@ export async function POST(request: NextRequest) {
     });
     if (doublon) {
       const x = doublon.data();
-      const equipe = await annuaireEquipe(db);
+      const equipe = await annuaireEquipe(db, x.ownerUid ? [x.ownerUid] : []);
       const owner = x.ownerUid ? equipe[x.ownerUid] : null;
       return NextResponse.json(
         {
@@ -189,10 +183,11 @@ export async function GET(request: NextRequest) {
   // Égalité seule (pas d'orderBy) : aucune dépendance à un index composite —
   // un index oublié au déploiement a déjà produit des 500. Le tri se fait en
   // mémoire, un pipeline tient largement dans 500 documents.
-  const [tousSnap, equipe] = await Promise.all([
-    db.collection('salesLeads').limit(500).get(),
-    annuaireEquipe(db),
-  ]);
+  const tousSnap = await db.collection('salesLeads').limit(500).get();
+  const equipe = await annuaireEquipe(
+    db,
+    tousSnap.docs.map((d) => d.data().ownerUid).filter((u): u is string => typeof u === 'string'),
+  );
 
   let docs: FirebaseFirestore.QueryDocumentSnapshot[];
   // Les prospects des AUTRES commerciaux — visibilité d'équipe (système
@@ -269,7 +264,10 @@ export async function PATCH(request: NextRequest) {
     }
     if (cibleUid !== (avant.ownerUid ?? null)) {
       const db = getAdminFirestore();
-      const equipe = await annuaireEquipe(db);
+      const equipe = await annuaireEquipe(
+        db,
+        [avant.ownerUid, cibleUid].filter((u): u is string => typeof u === 'string'),
+      );
       const nomAvant = avant.ownerUid ? (equipe[avant.ownerUid]?.nom ?? avant.ownerUid) : 'le pool';
       const nomApres = cibleUid ? (equipe[cibleUid]?.nom ?? cibleUid) : 'le pool';
       await acces.ref.update({

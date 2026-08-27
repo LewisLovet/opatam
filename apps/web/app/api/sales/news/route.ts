@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { resolveStaffNames, initialesDe } from '@/lib/staff-names';
 
 /**
  * Dernières nouvelles de l'équipe — le fil d'émulation du tableau de bord
@@ -21,11 +22,6 @@ interface Nouvelle {
   date: string; // ISO
 }
 
-function initialesDe(nom: string): string {
-  const mots = nom.trim().split(/\s+/).filter(Boolean);
-  return mots.length === 0 ? '?' : mots.slice(0, 2).map((m) => m[0]!.toUpperCase()).join('');
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireStaff(request);
   if (!auth.ok) return auth.response;
@@ -39,9 +35,24 @@ export async function GET(request: NextRequest) {
     db.collection('salesActivities').limit(1000).get(),
   ]);
 
-  const noms = new Map<string, string>();
-  staffSnap.docs.forEach((d) => noms.set(d.id, d.data().displayName ?? '—'));
-  const nomDe = (uid: string | null | undefined) => (uid ? (noms.get(uid) ?? 'Un membre') : "L'équipe");
+  const fiches = new Map<string, string>();
+  staffSnap.docs.forEach((d) => fiches.set(d.id, d.data().displayName ?? '—'));
+  // Tous les uids qui apparaissent dans le fil — y compris les admins SANS
+  // fiche staff (repli Firebase Auth) : un nom, jamais « Un membre ».
+  const uidsVus = new Set<string>();
+  const noter = (uid: unknown) => {
+    if (typeof uid === 'string' && uid) uidsVus.add(uid);
+  };
+  leadsSnap.docs.forEach((d) => {
+    noter(d.data().ownerUid);
+    noter(d.data().pushedBy);
+  });
+  demosSnap.docs.forEach((d) => noter(d.data().staffUid));
+  conversionsSnap.docs.forEach((d) => noter(d.data().staffUid));
+  activitesSnap.docs.forEach((d) => noter(d.data().authorUid));
+  const annuaire = await resolveStaffNames(fiches, uidsVus);
+  const nomDe = (uid: string | null | undefined) =>
+    uid ? (annuaire[uid]?.nom ?? 'Un membre') : "L'équipe";
   const leadNom = new Map<string, string>();
   leadsSnap.docs.forEach((d) => leadNom.set(d.id, d.data().businessName ?? 'un prospect'));
 
