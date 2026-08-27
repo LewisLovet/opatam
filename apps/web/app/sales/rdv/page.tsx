@@ -438,10 +438,11 @@ function ModeRendezVous() {
               </Link>
             </div>
 
-            <div>
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1.5">
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 overflow-hidden">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900">
                 <Lightbulb className="w-3.5 h-3.5" /> Les trois arguments
               </p>
+              <div className="p-3.5">
               <ul className="space-y-1.5">
                 {argumentsRetenus.map((a) => (
                   <li key={a} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -463,14 +464,15 @@ function ModeRendezVous() {
                   </li>
                 )}
               </ul>
+              </div>
             </div>
 
             {carte.aNePasDire.length > 0 && (
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-500 mb-1.5">
+              <div className="rounded-xl border border-red-200 dark:border-red-900 overflow-hidden">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 px-3.5 py-2 bg-red-50 dark:bg-red-900/15 border-b border-red-100 dark:border-red-900">
                   <Ban className="w-3.5 h-3.5" /> À ne pas dire
                 </p>
-                <ul className="space-y-1">
+                <ul className="space-y-1 p-3.5">
                   {carte.aNePasDire.slice(0, 3).map((a) => (
                     <li key={a} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
                       <span className="text-red-400 flex-shrink-0">✕</span> {a}
@@ -480,12 +482,12 @@ function ModeRendezVous() {
               </div>
             )}
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-3.5 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
                   <MessageCircle className="w-3.5 h-3.5" /> Deux questions à poser
                 </p>
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5 p-3.5">
                   {carte.questions.slice(0, 2).map((q) => (
                     <li key={q} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
                       <span className="flex-1">{q}</span>
@@ -494,26 +496,29 @@ function ModeRendezVous() {
                   ))}
                 </ul>
               </div>
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                  <Presentation className="w-3.5 h-3.5" /> Démo recommandée
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-3.5 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                  <Presentation className="w-3.5 h-3.5" /> Démo &amp; offre recommandées
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300">{demoRecommandee(sourceClientes, carte)}</p>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5 mt-3">
-                  <Tag className="w-3.5 h-3.5" /> Offre suggérée
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300">
-                  {offreSuggeree([...objectionsCochees], prixValide ? prixEuros : null)}
-                </p>
+                <div className="p-3.5 space-y-2.5">
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    <strong className="text-gray-800 dark:text-gray-100">Démo :</strong>{' '}
+                    {demoRecommandee(sourceClientes, carte)}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    <strong className="text-gray-800 dark:text-gray-100">Offre :</strong>{' '}
+                    {offreSuggeree([...objectionsCochees], prixValide ? prixEuros : null)}
+                  </p>
+                </div>
               </div>
             </div>
 
             {objectionsAvecReponse.length > 0 && (
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1.5">
+              <div className="rounded-xl border border-blue-200 dark:border-blue-900 overflow-hidden">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/15 border-b border-blue-100 dark:border-blue-900">
                   <Quote className="w-3.5 h-3.5" /> Réponses aux objections exprimées
                 </p>
-                <ul className="space-y-2">
+                <ul className="space-y-2 p-3.5">
                   {objectionsAvecReponse.map((o) => (
                     <li key={o.objection} className="text-sm bg-blue-50/60 dark:bg-blue-900/20 rounded-xl px-3 py-2.5">
                       <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">{o.objection}</p>

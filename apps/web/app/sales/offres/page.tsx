@@ -216,7 +216,7 @@ export default function OffresPage() {
       </div>
 
       {/* Les deux plans */}
-      <div className="grid lg:grid-cols-2 gap-4 max-w-4xl">
+      <div className="grid lg:grid-cols-2 gap-4">
         {plans.map((p) => {
           const economie = p.mensuel * 12 - p.annuel;
           return (
@@ -263,7 +263,7 @@ export default function OffresPage() {
       </div>
 
       {/* Repères de conversation */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 max-w-4xl">
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
           Repères pour l&apos;entretien
         </h2>
@@ -294,7 +294,7 @@ export default function OffresPage() {
       </div>
 
       {/* ── Proposer une offre — codes uniques, 14 jours, tout est tracé ── */}
-      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden max-w-4xl">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
           <span className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 inline-flex items-center justify-center">
             <Ticket className="w-4 h-4" />
@@ -476,7 +476,7 @@ export default function OffresPage() {
 
       {/* ── Codes générés — la traçabilité ── */}
       {codes.length > 0 && (
-        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden max-w-4xl">
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
               Codes générés <span className="text-gray-400 font-normal">· {codes.length}</span>

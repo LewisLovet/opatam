@@ -324,11 +324,7 @@ export default function SalesDashboardPage() {
     })();
   }, []);
 
-  // Simulateur de revenus — X clients payants → commission. Quand le taux
-  // réel n'est pas encore défini par le manager, on simule avec un taux
-  // HYPOTHÉTIQUE réglable, marqué comme tel (rien n'est promis).
-  const [simClients, setSimClients] = useState(10);
-  const [simTaux, setSimTaux] = useState(10);
+
   const configurerVersements = async () => {
     if (connectEnCours) return;
     setConnectEnCours(true);
@@ -704,17 +700,22 @@ export default function SalesDashboardPage() {
         );
       })()}
 
-      {/* ── Simulateur de revenus — pour se projeter : X clients → commission ── */}
+      {/* ── Paliers de revenus — se projeter d'un coup d'œil : où j'en suis,
+          ce que rapporte le palier suivant. Taux du manager, sinon 20 % par
+          défaut (affiché comme tel). ── */}
       {moi && (() => {
-        const tauxReel = moi.tauxCommissionPct;
-        const tauxEffectif = tauxReel ?? simTaux;
-        // Base HORS TAXES : le tarif catalogue est TTC (TVA 20 %), la
-        // commission ne porte jamais sur la TVA collectée — même règle que
-        // les virements réels.
-        const mensuelSoloTtc = SUBSCRIPTION_PLANS.solo.monthlyPrice; // centimes TTC
-        const mensuelSoloHt = Math.round(mensuelSoloTtc / 1.2);
-        const parMois = (simClients * mensuelSoloHt * tauxEffectif) / 100 / 100;
-        const parAn = parMois * 12;
+        const taux = moi.tauxCommissionPct ?? 20;
+        const tauxParDefaut = moi.tauxCommissionPct === null;
+        const mensuelHt = Math.round(SUBSCRIPTION_PLANS.solo.monthlyPrice / 1.2); // centimes
+        const parClientMois = (mensuelHt * taux) / 100 / 100; // €
+        const PALIERS = [5, 10, 20, 50, 100];
+        const il12Mois = new Date();
+        il12Mois.setMonth(il12Mois.getMonth() - 12);
+        const payantsActuels = (conversions ?? []).filter(
+          (c) => c.firstPaidAt && new Date(c.firstPaidAt) >= il12Mois,
+        ).length;
+        const maxPalier = PALIERS[PALIERS.length - 1];
+        const progression = Math.min(100, (payantsActuels / maxPalier) * 100);
         return (
           <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
@@ -722,73 +723,72 @@ export default function SalesDashboardPage() {
                 <Calculator className="w-4 h-4" />
               </span>
               <div>
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Simulateur de revenus</h2>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Vos paliers de revenus</h2>
                 <p className="text-[11px] text-gray-400">
-                  {tauxReel !== null
-                    ? `Votre commission (${tauxReel} % du MRR hors taxes pendant 12 mois) selon le nombre de clients payants actifs.`
-                    : 'Simulation à titre indicatif — votre taux réel sera défini par votre manager.'}
+                  {tauxParDefaut
+                    ? 'Taux par défaut 20 % (le vôtre sera fixé par votre manager)'
+                    : `Votre taux : ${taux} %`}{' '}
+                  — {parClientMois.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €/mois par
+                  client payant (Pro, hors taxes), pendant 12 mois.
                 </p>
               </div>
             </div>
-            <div className="p-5 flex flex-wrap items-center gap-6">
-              <div className="flex-1 min-w-[220px]">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                    Clients payants
-                  </label>
-                  <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                    {simClients}
-                  </span>
+            <div className="p-5 space-y-4">
+              {/* Barre de progression avec repères */}
+              <div>
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <strong className="text-gray-900 dark:text-white text-sm tabular-nums">{payantsActuels}</strong>{' '}
+                    client{payantsActuels > 1 ? 's' : ''} payant{payantsActuels > 1 ? 's' : ''} sur 12 mois
+                  </p>
+                  <p className="text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    ≈ {(payantsActuels * parClientMois).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €/mois
+                  </p>
                 </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={100}
-                  value={simClients}
-                  onChange={(e) => setSimClients(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                />
-                {tauxReel === null && (
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                        Taux de commission (hypothèse)
-                      </label>
-                      <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                        {simTaux} %
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1}
-                      max={40}
-                      value={simTaux}
-                      onChange={(e) => setSimTaux(Number(e.target.value))}
-                      className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-500"
+                <div className="relative h-2.5 rounded-full bg-gray-100 dark:bg-gray-800">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${progression}%` }}
+                  />
+                  {PALIERS.map((n) => (
+                    <span
+                      key={n}
+                      className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3.5 rounded bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-600"
+                      style={{ left: `${(n / maxPalier) * 100}%` }}
                     />
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-8">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Par mois</p>
-                  <p className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {parMois.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Sur 12 mois</p>
-                  <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-white mt-0.5">
-                    {parAn.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
-                  </p>
+                  ))}
                 </div>
               </div>
-              <p className="w-full text-[11px] text-gray-400">
-                Base : abonnement Solo mensuel {(mensuelSoloTtc / 100).toLocaleString('fr-FR')} € TTC,
-                soit {(mensuelSoloHt / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € HT
-                (la commission ne porte jamais sur la TVA collectée) — clients conservés 12 mois,
-                hors remises. Le réel dépend des plans souscrits et des offres appliquées.
-                {tauxReel === null && ' Le taux affiché est une hypothèse — rien n\'est promis tant que votre taux n\'est pas défini.'}
+              {/* Les paliers et ce qu'ils rapportent */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {PALIERS.map((n) => {
+                  const atteint = payantsActuels >= n;
+                  return (
+                    <div
+                      key={n}
+                      className={`rounded-xl border px-3 py-2.5 text-center ${
+                        atteint
+                          ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20'
+                          : 'border-gray-200 dark:border-gray-800'
+                      }`}
+                    >
+                      <p className={`text-[11px] font-semibold ${atteint ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-400'}`}>
+                        {atteint ? '✓ ' : ''}{n} clients
+                      </p>
+                      <p className="text-base font-bold tabular-nums text-gray-900 dark:text-white mt-0.5">
+                        {Math.round(n * parClientMois).toLocaleString('fr-FR')} €<span className="text-[10px] font-medium text-gray-400">/mois</span>
+                      </p>
+                      <p className="text-[10px] text-gray-400 tabular-nums">
+                        {Math.round(n * parClientMois * 12).toLocaleString('fr-FR')} €/an
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Base : Pro mensuel {(SUBSCRIPTION_PLANS.solo.monthlyPrice / 100).toLocaleString('fr-FR')} € TTC
+                ({(mensuelHt / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € HT — la commission ne
+                porte jamais sur la TVA), clients conservés 12 mois, hors remises. Le réel est dans « Mes versements ».
               </p>
             </div>
           </section>

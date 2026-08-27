@@ -17,6 +17,8 @@ import {
   Pencil,
   Search,
   Wand2,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { enTetesStaff } from '@/app/sales/entetes';
 import { DEMO_PROMPT, parseDemoConfig, configEnEuros, type DemoConfig } from '@/lib/sales-demo';
@@ -82,6 +84,9 @@ function SalesDemoPage() {
   const [lienCopie, setLienCopie] = useState<string | null>(null);
   const [recherche, setRecherche] = useState('');
   const [filtre, setFiltre] = useState<'toutes' | 'jamais' | 'vues' | 'converties' | 'expirees'>('toutes');
+  // Portée : ses démos d'abord (filtrage rapide), l'équipe en un clic.
+  const [portee, setPortee] = useState<'miennes' | 'equipe'>('miennes');
+  const [vue, setVue] = useState<'grille' | 'liste'>('grille');
   // Arrivée depuis une fiche prospect (?lead=) : la démo créée lui sera reliée.
   const searchParams = useSearchParams();
   const leadCibleId = searchParams.get('lead');
@@ -349,6 +354,21 @@ function SalesDemoPage() {
                 className="w-56 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-8 pr-3 text-xs text-gray-900 dark:text-white"
               />
             </div>
+            <div className="flex h-8 rounded-full border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {([['miennes', 'Les miennes'], ['equipe', "Toute l'équipe"]] as const).map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => setPortee(v)}
+                  className={`px-3 text-[11px] font-semibold transition-colors ${
+                    portee === v
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
             {(
               [
                 ['toutes', 'Toutes'],
@@ -370,6 +390,22 @@ function SalesDemoPage() {
                 {l}
               </button>
             ))}
+            <div className="flex h-8 rounded-full border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {([['grille', LayoutGrid], ['liste', List]] as const).map(([v, Icone]) => (
+                <button
+                  key={v}
+                  onClick={() => setVue(v)}
+                  aria-label={v === 'grille' ? 'Vue grille' : 'Vue liste'}
+                  className={`px-2.5 transition-colors ${
+                    vue === v
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <Icone className="w-3.5 h-3.5" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         {demos === null ? (
@@ -381,6 +417,7 @@ function SalesDemoPage() {
         ) : (() => {
           const q = recherche.trim().toLowerCase();
           const visibles = demos.filter((d) => {
+            if (portee === 'miennes' && !d.estLaMienne) return false;
             if (filtre === 'jamais' && (d.views > 0 || d.expired)) return false;
             if (filtre === 'vues' && d.views === 0) return false;
             if (filtre === 'converties' && !d.claimedProviderName) return false;
@@ -400,6 +437,73 @@ function SalesDemoPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 p-6 text-center">
                 Aucune démo ne correspond{q ? ` à « ${recherche.trim()} »` : ' à ce filtre'}.
               </p>
+            );
+          }
+          if (vue === 'liste') {
+            return (
+              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-50 dark:divide-gray-800/60 overflow-hidden">
+                {visibles.map((d) => (
+                  <div key={d.id} className={`flex items-center gap-3 px-4 py-2.5 ${d.expired ? 'opacity-60' : ''}`}>
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex-shrink-0">
+                      {d.coverUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={d.coverUrl} alt="" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {d.businessName}
+                        {d.claimedProviderName && (
+                          <span className="ml-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">compte créé ✓</span>
+                        )}
+                        {d.expired && <span className="ml-1.5 text-[10px] text-gray-400">expirée</span>}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        {d.views > 0
+                          ? `${d.views} vue${d.views > 1 ? 's' : ''}${d.lastViewedAt ? ` · ${depuis(d.lastViewedAt)}` : ''}`
+                          : 'jamais ouverte'}
+                        {d.estLaMienne && d.sentTo.length > 0 && ` · ${d.sentTo[d.sentTo.length - 1]}`}
+                        {!d.estLaMienne && d.ownerNom && ` · ${d.ownerNom}`}
+                      </p>
+                    </div>
+                    {!d.estLaMienne && d.ownerInitiales && (
+                      <span
+                        className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-[9px] font-bold text-white dark:text-gray-900 inline-flex items-center justify-center"
+                        title={`Démo de ${d.ownerNom ?? 'un autre commercial'}`}
+                      >
+                        {d.ownerInitiales}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {d.estLaMienne && (
+                        <Link
+                          href={`/sales/demo/${d.id}`}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          title="Modifier"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                      <a
+                        href={d.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        title="Ouvrir"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        onClick={() => copierLien(d.url)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        title="Copier le lien"
+                      >
+                        {lienCopie === d.url ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Clipboard className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             );
           }
           return (
