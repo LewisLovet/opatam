@@ -214,6 +214,11 @@ export async function GET(request: NextRequest) {
           stage: x.stage,
           lostReason: x.lostReason ?? null,
           ownerUid: x.ownerUid,
+          // Contexte NON personnel — jamais le contact, le téléphone ni les
+          // notes d'un confrère.
+          isTeam: !!x.isTeam,
+          currentPlatform: x.currentPlatform ?? null,
+          source: x.source ?? null,
           createdAt: x.createdAt?.toDate?.()?.toISOString() ?? null,
           updatedAt: x.updatedAt?.toDate?.()?.toISOString() ?? null,
         };

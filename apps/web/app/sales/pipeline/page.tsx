@@ -101,6 +101,9 @@ interface LeadAutrui {
   stage: (typeof SALES_STAGES)[number];
   lostReason: string | null;
   ownerUid: string;
+  isTeam: boolean;
+  currentPlatform: string | null;
+  source: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -248,7 +251,12 @@ function PipelinePage() {
   // Visibilité d'équipe : les prospects des autres, en lecture minimale.
   const [autres, setAutres] = useState<LeadAutrui[]>([]);
   const [equipe, setEquipe] = useState<AnnuaireEquipe>({});
-  const [vueEquipe, setVueEquipe] = useState(false);
+  // Vue équipe PAR DÉFAUT (demande client) : voir le terrain déjà couvert
+  // avant d'attaquer — se replie sur « Mon pipeline » d'un clic.
+  const [vueEquipe, setVueEquipe] = useState(true);
+  const [ouvertAutrui, setOuvertAutrui] = useState<LeadAutrui | null>(null);
+  // Colonnes dépliées au-delà des 10 premières cartes.
+  const [depliees, setDepliees] = useState<Set<string>>(new Set());
   const [ouvertId, setOuvertId] = useState<string | null>(null);
   const [creation, setCreation] = useState(false);
   const [demos, setDemos] = useState<DemoLiee[]>([]);
@@ -387,17 +395,29 @@ function PipelinePage() {
             />
           </div>
           {moi?.role === 'sales' && autres.length > 0 && (
-            <button
-              onClick={() => setVueEquipe((v) => !v)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                vueEquipe
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-400'
-              }`}
-              title="Voir aussi les prospects des autres commerciaux (lecture seule) — pour ne pas attaquer le même salon"
-            >
-              Toute l&apos;équipe{vueEquipe ? '' : ` · ${autres.length}`}
-            </button>
+            <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {([
+                ['equipe', `Toute l'équipe · ${autres.length}`],
+                ['moi', 'Mon pipeline'],
+              ] as const).map(([mode, libelle]) => (
+                <button
+                  key={mode}
+                  onClick={() => setVueEquipe(mode === 'equipe')}
+                  className={`px-3 py-2 text-xs font-semibold transition-colors ${
+                    (mode === 'equipe') === vueEquipe
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                  title={
+                    mode === 'equipe'
+                      ? 'Vos prospects + ceux des autres commerciaux (lecture seule)'
+                      : 'Uniquement vos prospects et le pool'
+                  }
+                >
+                  {libelle}
+                </button>
+              ))}
+            </div>
           )}
           <button
             onClick={() => setVoirPerdus((v) => !v)}
@@ -423,8 +443,17 @@ function PipelinePage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-start">
           {GROUPES.map((groupe) => {
-            const cartes = visibles.filter((l) => groupe.stages.includes(l.stage));
-            const cartesAutrui = autresVisibles.filter((l) => groupe.stages.includes(l.stage));
+            const toutesCartes = visibles.filter((l) => groupe.stages.includes(l.stage));
+            const toutesAutrui = autresVisibles.filter((l) => groupe.stages.includes(l.stage));
+            // 10 cartes max par colonne (les vôtres d'abord) — au-delà,
+            // « Voir plus » déplie la colonne.
+            const total = toutesCartes.length + toutesAutrui.length;
+            const depliee = depliees.has(groupe.label);
+            const cartes = depliee ? toutesCartes : toutesCartes.slice(0, 10);
+            const cartesAutrui = depliee
+              ? toutesAutrui
+              : toutesAutrui.slice(0, Math.max(0, 10 - cartes.length));
+            const masquees = total - cartes.length - cartesAutrui.length;
             return (
               <div
                 key={groupe.label}
@@ -461,9 +490,9 @@ function PipelinePage() {
                       </button>
                     </p>
                     <span className="min-w-[20px] text-center text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-full px-1.5 py-0.5">
-                      {cartes.length}
-                      {cartesAutrui.length > 0 && (
-                        <span className="text-gray-300 dark:text-gray-600"> +{cartesAutrui.length}</span>
+                      {toutesCartes.length}
+                      {toutesAutrui.length > 0 && (
+                        <span className="text-gray-300 dark:text-gray-600"> +{toutesAutrui.length}</span>
                       )}
                     </span>
                   </div>
@@ -474,7 +503,7 @@ function PipelinePage() {
                   )}
                 </div>
                 <div className="flex-1 px-2 pb-2 space-y-2">
-                  {cartes.length === 0 && cartesAutrui.length === 0 && (
+                  {total === 0 && (
                     <div className="h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800 flex items-center justify-center">
                       <p className="text-[11px] text-gray-300 dark:text-gray-600 text-center px-3">
                         {groupe.auto ? 'Se remplit automatiquement' : 'Déposez une carte ici'}
@@ -551,10 +580,11 @@ function PipelinePage() {
                   {cartesAutrui.map((l) => {
                     const proprio = equipe[l.ownerUid];
                     return (
-                      <div
+                      <button
                         key={l.id}
-                        className="w-full rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 px-3 py-2 select-none"
-                        title={`Prospecté par ${proprio?.nom ?? 'un autre commercial'} — déjà pris, ne pas démarcher`}
+                        onClick={() => setOuvertAutrui(l)}
+                        className="w-full text-left rounded-xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40 px-3 py-2 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+                        title={`Prospecté par ${proprio?.nom ?? 'un autre commercial'} — cliquer pour le détail`}
                       >
                         <div className="flex items-center justify-between gap-1.5">
                           <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 truncate">
@@ -570,9 +600,24 @@ function PipelinePage() {
                             .join(' · ')}
                           {proprio ? ` · ${proprio.nom}` : ''}
                         </p>
-                      </div>
+                      </button>
                     );
                   })}
+                  {(masquees > 0 || (depliee && total > 10)) && (
+                    <button
+                      onClick={() =>
+                        setDepliees((prev) => {
+                          const suiv = new Set(prev);
+                          if (suiv.has(groupe.label)) suiv.delete(groupe.label);
+                          else suiv.add(groupe.label);
+                          return suiv;
+                        })
+                      }
+                      className="w-full py-2 rounded-xl text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    >
+                      {depliee ? 'Réduire' : `Voir les ${masquees} autres`}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -591,6 +636,73 @@ function PipelinePage() {
           }}
         />
       )}
+
+      {/* Détail d'un prospect d'un CONFRÈRE — lecture seule, sans le contact */}
+      {ouvertAutrui && (() => {
+        const proprio = equipe[ouvertAutrui.ownerUid];
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+            onClick={() => setOuvertAutrui(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    Prospect de {proprio?.nom ?? 'un autre commercial'}
+                  </p>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                    {ouvertAutrui.businessName}
+                  </h2>
+                </div>
+                <span className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-900 dark:bg-white text-xs font-bold text-white dark:text-gray-900 inline-flex items-center justify-center">
+                  {proprio?.initiales ?? '?'}
+                </span>
+              </div>
+              <dl className="space-y-1.5 text-sm">
+                {([
+                  ['Secteur', SECTOR_LABELS[ouvertAutrui.sector as keyof typeof SECTOR_LABELS] ?? ouvertAutrui.sector],
+                  ['Ville', ouvertAutrui.city],
+                  ['Étape', STAGE_LABELS[ouvertAutrui.stage]],
+                  ['Équipe', ouvertAutrui.isTeam ? 'Oui — plusieurs membres' : null],
+                  [
+                    'Plateforme actuelle',
+                    ouvertAutrui.currentPlatform
+                      ? (PLATFORM_LABELS[ouvertAutrui.currentPlatform] ?? ouvertAutrui.currentPlatform)
+                      : null,
+                  ],
+                  ['Source', ouvertAutrui.source],
+                  ['Ajouté', ouvertAutrui.createdAt ? depuis(ouvertAutrui.createdAt) : null],
+                  ['Dernière activité', ouvertAutrui.updatedAt ? depuis(ouvertAutrui.updatedAt) : null],
+                ] as Array<[string, string | null]>)
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k} className="flex gap-2">
+                      <dt className="w-36 flex-shrink-0 text-gray-400">{k}</dt>
+                      <dd className="text-gray-900 dark:text-white">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+              <p className="text-[11px] text-gray-400 rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2">
+                Ce salon est déjà travaillé{proprio ? ` par ${proprio.nom}` : ''} — ne le
+                démarchez pas. Contact et notes restent dans sa fiche ; besoin d&apos;un
+                arbitrage ? Voyez votre manager (réattribution possible).
+              </p>
+              <div className="text-right">
+                <button
+                  onClick={() => setOuvertAutrui(null)}
+                  className="px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold hover:opacity-90"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Prise en charge — la fiche AVANT l'engagement, pas un confirm() nu */}
       {aPrendre && (
