@@ -122,14 +122,14 @@ export const BATTLECARDS: Battlecard[] = [
     nom: 'Planity',
     priorite: 1,
     argumentPrincipal:
-      'Prix affiché et transparent (19,90 € TTC, sans devis ni conseiller), mise en route autonome en 30 jours sans carte, et une vitrine qui appartient au professionnel — réservable sans compte client.',
+      'Prix affiché et transparent (19,90 € TTC, sans devis ni conseiller), mise en route autonome en 30 jours sans carte, et une vitrine à son image, qu’il personnalise et maîtrise — réservable sans compte client.',
     forces: [
       'Notoriété considérable : plus de 60 000 professionnels annoncés, 15 millions d’utilisateurs, forte audience marketplace',
       'Suite très complète : agenda, 300 SMS mensuels, fichier client, prépaiement, caisse NF525, stocks',
       'Sans commission, comme Opatam',
     ],
     avantages: [
-      'Prix immédiatement transparent : 19,90 € TTC affichés — Planity ne publie aucun montant sur sa page tarifaire (prix constaté autour de 100 €/mois minimum, à confirmer sur le devis du prospect)',
+      'Prix immédiatement transparent : 19,90 € TTC affichés — Planity ne publie pas ses tarifs. Comparez Opatam au devis réellement reçu par le prospect.',
       'Mise en route autonome : 30 jours sans carte, contre un parcours Planity centré sur la demande de démonstration et l’accompagnement par un conseiller',
       'Identité indépendante : couleurs, couverture, QR code, widget intégrable au site existant — chez Planity, l’offre de base est une page sur planity.com, le site sur mesure est une option',
       'Moins de friction : aucun compte client chez Opatam ; Planity fait créer un compte à la première réservation, avec validation par SMS',
@@ -197,7 +197,7 @@ export const BATTLECARDS: Battlecard[] = [
     ],
     phrases: [
       'Treatwell peut vous apporter de la visibilité, mais cette visibilité se paie sur les nouveaux clients. Si votre clientèle arrive déjà par Instagram, Google ou le bouche-à-oreille, Opatam transforme directement cette audience en réservations sans prélever 25 % sur la première prestation.',
-      'Vos avis, votre fichier client, votre lien : chez Opatam, tout reste à vous — y compris si vous partez.',
+      'Votre fichier client, vos réservations, votre lien : chez Opatam, tout est exportable — y compris si vous partez.',
       'Faisons le calcul ensemble : votre ticket moyen fois vos nouveaux clients marketplace fois 25 % — comparez ce montant à 19,90 €.',
     ],
     objections: [

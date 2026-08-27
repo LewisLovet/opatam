@@ -12,11 +12,14 @@ import {
   MessageCircle,
   Quote,
   Shield,
+  Clipboard,
 } from 'lucide-react';
 import { OPATAM_PRIX, type Battlecard } from './battlecards';
 
 function euros(n: number): string {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  // Toujours deux décimales : « 19,90 € », jamais « 19,9 € » — un prix
+  // tronqué fait amateur dans un outil qui vend la rigueur.
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /**
@@ -97,7 +100,10 @@ function CalculateurFresha() {
   const [fidelite, setFidelite] = useState(false);
   const [donnees, setDonnees] = useState(false);
   const n = Math.max(1, parseInt(membres, 10) || 1);
-  const total = n * 9.95 + (fidelite ? 59.95 : 0) + (donnees ? n * 9.95 : 0);
+  // Grille Fresha : plan indépendant 14,95 €/mois pour UNE personne ;
+  // au-delà, 9,95 € par membre réservable.
+  const base = n === 1 ? 14.95 : n * 9.95;
+  const total = base + (fidelite ? 59.95 : 0) + (donnees ? n * 9.95 : 0);
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
@@ -163,12 +169,20 @@ function Bloc({
 }
 
 export function CarteDetail({ carte }: { carte: Battlecard }) {
+  const [phraseCopiee, setPhraseCopiee] = useState<string | null>(null);
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
       <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Opatam face à {carte.nom}</h2>
-          <span className="text-[10px] text-gray-400">vérifié le {new Date(carte.verifieLe).toLocaleDateString('fr-FR')}</span>
+          <span className="text-[10px] text-gray-400">
+            vérifié le {new Date(carte.verifieLe).toLocaleDateString('fr-FR')}
+            {Date.now() - new Date(carte.verifieLe).getTime() > 90 * 86_400_000 && (
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 font-semibold">
+                À revérifier
+              </span>
+            )}
+          </span>
         </div>
         {carte.badge && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 rounded-full px-3 py-1">
@@ -217,8 +231,27 @@ export function CarteDetail({ carte }: { carte: Battlecard }) {
         <Bloc icone={Quote} titre="Phrases prêtes à prononcer">
           <ul className="space-y-2">
             {carte.phrases.map((p) => (
-              <li key={p} className="text-sm text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3.5 py-2.5 leading-relaxed">
-                « {p} »
+              <li
+                key={p}
+                className="group text-sm text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3.5 py-2.5 leading-relaxed flex items-start gap-2"
+              >
+                <span className="flex-1">« {p} »</span>
+                <button
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(p);
+                    setPhraseCopiee(p);
+                    setTimeout(() => setPhraseCopiee((prev) => (prev === p ? null : prev)), 1500);
+                  }}
+                  className="flex-shrink-0 p-1 rounded-md text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  title="Copier la phrase"
+                  aria-label="Copier la phrase"
+                >
+                  {phraseCopiee === p ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : (
+                    <Clipboard className="w-3.5 h-3.5" />
+                  )}
+                </button>
               </li>
             ))}
           </ul>

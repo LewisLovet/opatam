@@ -31,6 +31,13 @@ function BibliothequePage() {
   );
   const [avantagesOuverts, setAvantagesOuverts] = useState(false);
 
+  // Changer de carte met l'URL à jour (partage/retour cohérents) sans
+  // recharger ni empiler l'historique.
+  const choisir = (id: string) => {
+    setOuverte(id);
+    window.history.replaceState(null, '', `/sales/bibliotheque?carte=${encodeURIComponent(id)}`);
+  };
+
   const carte = useMemo(() => BATTLECARDS.find((c) => c.id === ouverte) ?? BATTLECARDS[0], [ouverte]);
   const parPriorite = (p: 1 | 2 | 3) => BATTLECARDS.filter((c) => c.priorite === p);
 
@@ -49,6 +56,7 @@ function BibliothequePage() {
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <button
           onClick={() => setAvantagesOuverts((o) => !o)}
+          aria-expanded={avantagesOuverts}
           className="w-full flex items-center justify-between px-5 py-3.5 text-left"
         >
           <span className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
@@ -69,9 +77,30 @@ function BibliothequePage() {
         )}
       </div>
 
+      {/* Mobile : un sélecteur compact — dix concurrents empilés forçaient un
+          long défilement avant d'atteindre l'argumentaire (retour terrain). */}
+      <div className="lg:hidden">
+        <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+          Choisir le concurrent
+        </label>
+        <select
+          value={ouverte}
+          onChange={(e) => choisir(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-white"
+        >
+          {([1, 2, 3] as const).map((p) => (
+            <optgroup key={p} label={p === 1 ? 'Priorité 1' : p === 2 ? 'Priorité 2' : 'Autres situations'}>
+              {parPriorite(p).map((c) => (
+                <option key={c.id} value={c.id}>{c.nom}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
       <div className="grid lg:grid-cols-[240px_1fr] gap-5 items-start">
-        {/* Navigation des cartes */}
-        <nav className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-4 lg:sticky lg:top-6">
+        {/* Navigation des cartes — desktop seulement */}
+        <nav className="hidden lg:block rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 space-y-4 lg:sticky lg:top-6">
           {([1, 2, 3] as const).map((p) => (
             <div key={p}>
               <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
@@ -80,7 +109,7 @@ function BibliothequePage() {
               {parPriorite(p).map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setOuverte(c.id)}
+                  onClick={() => choisir(c.id)}
                   className={`w-full text-left px-2.5 py-2 rounded-xl text-sm transition-colors flex items-center gap-2 ${
                     ouverte === c.id
                       ? 'bg-red-600 text-white font-semibold'
