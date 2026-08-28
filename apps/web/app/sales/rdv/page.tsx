@@ -266,25 +266,25 @@ function ModeRendezVous() {
           objectionPrincipale,
           resultat: resultat || null,
           prochaineEtape: prochaineEtape.trim(),
+          // La fiche prospect absorbe ce qu'on a appris — écrit dans la MÊME
+          // transaction serveur que le compte rendu (pas d'échec silencieux).
+          ...(lead
+            ? {
+                leadPatch: {
+                  mainPain: probleme.trim() || null,
+                  currentPlatform: BATTLECARDS.some((c) => c.id === carteId)
+                    ? carteId
+                    : lead.currentPlatform,
+                  currentPriceEuros: prixValide ? prixEuros : null,
+                  isTeam: equipe,
+                },
+              }
+            : {}),
         }),
       });
       if (!res.ok) {
         alert((await res.json()).error ?? 'Enregistrement impossible');
         return;
-      }
-      // La fiche prospect absorbe ce qu'on a appris (source de vérité).
-      if (lead) {
-        await fetch('/api/sales/leads', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
-          body: JSON.stringify({
-            id: lead.id,
-            mainPain: probleme.trim() || null,
-            currentPlatform: BATTLECARDS.some((c) => c.id === carteId) ? carteId : lead.currentPlatform,
-            currentPriceEuros: prixValide ? prixEuros : null,
-            isTeam: equipe,
-          }),
-        }).catch(() => undefined);
       }
       setEnregistre(true);
     } finally {

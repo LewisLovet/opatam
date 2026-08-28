@@ -34,6 +34,16 @@ const meetingSchema = z.object({
   objectionPrincipale: z.string().max(200).optional().default(''),
   resultat: z.enum(['tres_interesse', 'a_relancer', 'hesitant', 'refus']).nullable().optional(),
   prochaineEtape: z.string().max(300).optional().default(''),
+  /** Ce que le rendez-vous a appris, RÉÉCRIT sur la fiche prospect dans la
+   *  même transaction — pas de second PATCH client qui échoue en silence. */
+  leadPatch: z
+    .object({
+      mainPain: z.string().max(200).nullable().optional(),
+      currentPlatform: z.string().max(60).nullable().optional(),
+      currentPriceEuros: z.number().min(0).max(2000).nullable().optional(),
+      isTeam: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const RESULTAT_LABELS: Record<string, string> = {
@@ -96,6 +106,14 @@ export async function POST(request: NextRequest) {
       tx.update(db.collection('salesLeads').doc(d.leadId), {
         lastInteractionAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
+        ...(d.leadPatch?.mainPain !== undefined ? { mainPain: d.leadPatch.mainPain } : {}),
+        ...(d.leadPatch?.currentPlatform !== undefined
+          ? { currentPlatform: d.leadPatch.currentPlatform }
+          : {}),
+        ...(d.leadPatch?.currentPriceEuros !== undefined
+          ? { currentPriceEuros: d.leadPatch.currentPriceEuros }
+          : {}),
+        ...(d.leadPatch?.isTeam !== undefined ? { isTeam: d.leadPatch.isTeam } : {}),
       });
     }
     return null;

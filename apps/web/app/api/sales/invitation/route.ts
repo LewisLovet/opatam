@@ -36,6 +36,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Cloisonnement (même règle que les offres) : on n'envoie pas d'invitation
+  // journalisée sur le prospect d'un AUTRE commercial.
+  const leadIdPropre = typeof leadId === 'string' && leadId ? leadId : null;
+  if (leadIdPropre) {
+    const leadSnap = await db.collection('salesLeads').doc(leadIdPropre).get();
+    if (!leadSnap.exists) {
+      return NextResponse.json({ error: 'Prospect introuvable' }, { status: 404 });
+    }
+    if (auth.identity.role === 'sales' && leadSnap.data()?.ownerUid !== auth.identity.uid) {
+      return NextResponse.json({ error: 'Ce prospect ne vous appartient pas' }, { status: 403 });
+    }
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const token = signSalesLink({
     staffUid: auth.identity.uid,
@@ -71,15 +84,15 @@ export async function POST(request: NextRequest) {
   await db.collection('salesInvitations').add({
     staffUid: auth.identity.uid,
     email: cleanEmail,
-    leadId: typeof leadId === 'string' && leadId ? leadId : null,
+    leadId: leadIdPropre,
     sentAt: FieldValue.serverTimestamp(),
   });
-  if (typeof leadId === 'string' && leadId) {
+  if (leadIdPropre) {
     // Journal du lead — collection racine, même forme que /leads/activities.
     await db
       .collection('salesActivities')
       .add({
-        leadId,
+        leadId: leadIdPropre,
         authorUid: auth.identity.uid,
         type: 'email',
         stage: null,

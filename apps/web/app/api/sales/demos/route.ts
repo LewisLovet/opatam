@@ -108,7 +108,8 @@ async function relierProspect(
   if (lead.ownerUid !== (demoData.staffUid ?? identity.uid)) {
     return { ok: false, error: 'Ce prospect n’appartient pas au commercial de la démo', status: 403 };
   }
-  await demoRef.update({ leadId });
+  // Liaison + avancement d'étape + journal dans la MÊME transaction : pas
+  // de démo reliée avec un fil incomplet (même règle que claim et rendez-vous).
   const idxActuel = SALES_STAGES.indexOf(lead.stage);
   const idxDemo = SALES_STAGES.indexOf('demo_realisee');
   const maj: Record<string, unknown> = {
@@ -116,14 +117,17 @@ async function relierProspect(
     updatedAt: FieldValue.serverTimestamp(),
   };
   if (idxActuel >= 0 && idxActuel < idxDemo) maj.stage = 'demo_realisee';
-  await leadSnap.ref.update(maj);
-  await db.collection('salesActivities').add({
-    leadId,
-    authorUid: identity.uid,
-    type: 'demo',
-    stage: null,
-    body: `Démo reliée : « ${demoData.businessName ?? demoRef.id} »`,
-    createdAt: FieldValue.serverTimestamp(),
+  await db.runTransaction(async (tx) => {
+    tx.update(demoRef, { leadId });
+    tx.update(leadSnap.ref, maj);
+    tx.set(db.collection('salesActivities').doc(), {
+      leadId,
+      authorUid: identity.uid,
+      type: 'demo',
+      stage: null,
+      body: `Démo reliée : « ${demoData.businessName ?? demoRef.id} »`,
+      createdAt: FieldValue.serverTimestamp(),
+    });
   });
   return { ok: true };
 }
@@ -180,7 +184,13 @@ export async function GET(request: NextRequest) {
   // démos — voir un confrère produire donne envie de produire. Mais les
   // données personnelles des prospects d'autrui (e-mails d'envoi) sont
   // masquées, et la modification reste réservée au propriétaire (PATCH).
-  const snap = await db.collection('salesDemoLinks').limit(300).get();
+  // orderBy single-field (index automatique) : sans lui, limit(300) rendrait
+  // un sous-ensemble arbitraire — les démos récentes pourraient disparaître.
+  const snap = await db
+    .collection('salesDemoLinks')
+    .orderBy('createdAt', 'desc')
+    .limit(300)
+    .get();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
   const { resolveStaffNames } = await import('@/lib/staff-names');
   const fichesSnap = await db.collection('staffMembers').get();
