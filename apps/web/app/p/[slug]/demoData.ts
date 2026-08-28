@@ -58,8 +58,8 @@ export const demoProvider = {
   ],
   socialLinks: {
     instagram: 'https://www.instagram.com/opatam_app',
-    facebook: 'https://facebook.com/opatam',
-    tiktok: 'https://tiktok.com/@kamerleontech',
+    facebook: null,
+    tiktok: 'https://www.tiktok.com/@opatam_app',
     website: 'https://opatam.com',
     paypal: null,
   },

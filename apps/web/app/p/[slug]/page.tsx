@@ -265,7 +265,7 @@ export default async function ProviderPage({ params }: PageProps) {
     const demo = await loadDemo(demoId);
     if (!demo) notFound(); // inexistante ou expirée (30 j)
     compterVueDemo(demoId); // signal commercial : le prospect a ouvert le lien
-    const d = buildDemoData(demo.config, demoId, demo.photos).page;
+    const d = buildDemoData(demo.config, demoId, demo.photos, demo.socials).page;
     // Le CTA d'inscription porte l'attribution du commercial : un prospect
     // qui s'inscrit depuis SA démo lui est crédité — la boucle démo →
     // inscription → attribution se referme ici.

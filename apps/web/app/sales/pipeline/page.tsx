@@ -23,6 +23,7 @@ import {
   Search,
   Trash2,
   X,
+  Clipboard,
 } from 'lucide-react';
 import { enTetesStaff } from '@/app/sales/entetes';
 import { SALES_STAGES, SALES_LOSS_REASONS, SALES_SECTORS, SALES_PLATFORMS } from '@booking-app/shared';
@@ -1367,7 +1368,25 @@ function FicheProspect({
                           <Eye className="w-2.5 h-2.5 inline mr-0.5 -mt-0.5" />
                           {d.expired ? 'expirée' : d.views === 0 ? 'jamais ouverte' : `${d.views} vue${d.views > 1 ? 's' : ''}`}
                         </p>
+                        {/* Le lien de la page démo, en clair — c'est LUI qu'on
+                            envoie au prospect, inutile de le cacher. */}
+                        <a
+                          href={d.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-[10px] text-blue-600 dark:text-blue-400 truncate hover:underline"
+                          title={d.url}
+                        >
+                          {d.url.replace(/^https?:\/\//, '')}
+                        </a>
                       </div>
+                      <button
+                        onClick={() => void navigator.clipboard?.writeText(d.url)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                        title="Copier le lien de la démo"
+                      >
+                        <Clipboard className="w-3.5 h-3.5" />
+                      </button>
                       <a href={d.url} target="_blank" rel="noreferrer" className="p-1 text-gray-400 hover:text-gray-600" title="Ouvrir la démo">
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>

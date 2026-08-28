@@ -141,6 +141,7 @@ export function buildDemoData(
   config: DemoConfig,
   demoId: string,
   photos: { logo?: string; cover?: string } = {},
+  socials: { instagram?: string; tiktok?: string } = {},
 ) {
   const slug = `demo-${demoId}`;
 
@@ -234,6 +235,13 @@ export function buildDemoData(
     // remplace le portrait, la couverture remplace celle du secteur.
     ...(photos.logo ? { photoURL: photos.logo } : {}),
     ...(photos.cover ? { coverPhotoURL: photos.cover } : {}),
+    // Les réseaux du prospect quand on les connaît, ceux d'Opatam sinon
+    // (défauts de demoProvider.socialLinks).
+    socialLinks: {
+      ...demoProvider.socialLinks,
+      ...(socials.instagram ? { instagram: socials.instagram } : {}),
+      ...(socials.tiktok ? { tiktok: socials.tiktok } : {}),
+    },
     rating: { average: 5, count: reviews.length, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: reviews.length } },
   };
 

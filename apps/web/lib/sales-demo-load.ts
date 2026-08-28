@@ -15,6 +15,8 @@ export interface LoadedDemo {
   staffUid: string;
   /** Photos téléversées par le commercial — priment sur les images de secteur. */
   photos: { logo?: string; cover?: string };
+  /** Réseaux du prospect lié (profileUrl de sa fiche) — défauts Opatam sinon. */
+  socials: { instagram?: string; tiktok?: string };
 }
 
 export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
@@ -27,6 +29,24 @@ export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
   // Schéma de LECTURE : les prix stockés sont DÉJÀ en centimes.
   const parsed = demoConfigStoredSchema.safeParse(data.config);
   if (!parsed.success) return null;
+  // Réseaux du PROSPECT quand on les connaît (profileUrl de la fiche liée) —
+  // sa démo doit pointer vers SON Instagram/TikTok, pas ceux d'Opatam.
+  // Sans fiche liée ou sans lien exploitable : les comptes Opatam (défauts).
+  let socials: { instagram?: string; tiktok?: string } = {};
+  const leadId = typeof data.leadId === 'string' ? data.leadId : null;
+  if (leadId) {
+    try {
+      const leadSnap = await getAdminFirestore().collection('salesLeads').doc(leadId).get();
+      const profileUrl = leadSnap.data()?.profileUrl;
+      if (typeof profileUrl === 'string' && /^https?:\/\//.test(profileUrl)) {
+        if (/instagram\.com/i.test(profileUrl)) socials = { instagram: profileUrl };
+        else if (/tiktok\.com/i.test(profileUrl)) socials = { tiktok: profileUrl };
+      }
+    } catch {
+      // best-effort : défauts Opatam
+    }
+  }
+
   return {
     config: parsed.data,
     staffUid: data.staffUid ?? '',
@@ -34,6 +54,7 @@ export async function loadDemo(demoId: string): Promise<LoadedDemo | null> {
       logo: typeof data.photos?.logo === 'string' ? data.photos.logo : undefined,
       cover: typeof data.photos?.cover === 'string' ? data.photos.cover : undefined,
     },
+    socials,
   };
 }
 
