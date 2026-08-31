@@ -8,6 +8,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { TrialExpiredBanner } from '@/components/auth/TrialExpiredBanner';
 import { Sidebar, MobileSidebar, MobileHeader } from './components/Sidebar';
 import { NotificationsBell } from './components/NotificationsBell';
+import { SupportChatWidget } from '@/components/support/SupportChatWidget';
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -68,6 +69,8 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
         {isAccessBlocked && <TrialExpiredBanner />}
       </div>
+      {/* Chat de support — la bulle flottante, sur tout l'espace pro */}
+      <SupportChatWidget />
     </AuthGuard>
   );
 }

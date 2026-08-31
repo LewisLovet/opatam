@@ -22,6 +22,13 @@ service cloud.firestore {
         isProviderAdmin(booking.providerId);
     }
 
+    // Le flag users.isAdmin ne s'écrit QUE par l'Admin SDK (voir /users) —
+    // on peut donc s'y fier ici. Coût : un get() par opération admin.
+    function isPlatformAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     // === USERS ===
 
     match /users/{userId} {
@@ -173,6 +180,37 @@ service cloud.firestore {
     }
 
     // === PROVIDERS ===
+
+    // === CHAT DE SUPPORT (pro ↔ admins) ===
+    // Une conversation par professionnel : supportChats/{providerId}.
+    // Les MESSAGES s'écrivent par les participants ; les COMPTEURS et le
+    // résumé (lastMessage*, unread) sont posés par la Cloud Function
+    // onSupportMessageCreate (Admin SDK) — la seule écriture cliente admise
+    // sur le document de chat est la remise à zéro de SON compteur de
+    // non-lus.
+    match /supportChats/{providerId} {
+      allow read: if isProviderAdmin(providerId) || isPlatformAdmin();
+      allow update: if (
+          (isProviderAdmin(providerId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proUnread']) &&
+            request.resource.data.proUnread == 0) ||
+          (isPlatformAdmin() &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adminUnread']) &&
+            request.resource.data.adminUnread == 0)
+        );
+
+      match /messages/{messageId} {
+        allow read: if isProviderAdmin(providerId) || isPlatformAdmin();
+        allow create: if request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.authorUid == request.auth.uid
+          && (
+            (isProviderAdmin(providerId) && request.resource.data.from == 'pro') ||
+            (isPlatformAdmin() && request.resource.data.from == 'admin')
+          );
+      }
+    }
 
     match /providers/{providerId} {
       // Lecture publique (fiches prestataires, recherche, booking flow)

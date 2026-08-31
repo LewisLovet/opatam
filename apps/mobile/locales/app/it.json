@@ -2077,7 +2077,8 @@
       "terms": "Termini di utilizzo",
       "privacy": "Informativa sulla privacy",
       "logout": "Esci",
-      "deleteAccount": "Elimina il mio account"
+      "deleteAccount": "Elimina il mio account",
+      "supportChat": "Messaggi Opatam"
     },
     "newBadge": "Novità",
     "logout": {
@@ -3264,5 +3265,12 @@
     "travel": "Spostamento",
     "imprevu": "Imprevisto",
     "other": "Altro"
+  },
+  "proSupport": {
+    "title": "Messaggi Opatam",
+    "subtitle": "Il team risponde di persona — di solito entro poche ore lavorative.",
+    "empty": "Fai la tua prima domanda — configurazione, prenotazioni, abbonamento… siamo qui per aiutarti.",
+    "placeholder": "Scrivi il tuo messaggio…",
+    "team": "Team Opatam"
   }
 }

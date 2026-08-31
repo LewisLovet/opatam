@@ -6,8 +6,10 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@booking-app/firebase';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -418,6 +420,18 @@ export default function MoreScreen() {
   // "Nouveau" badge state on menu items shipped recently — flips
   // to off as soon as the user taps the row, persisted on-device.
   const { isNew, markSeen } = useNewFeatures();
+
+  // Badge de la messagerie de support — réponses de l'équipe non lues.
+  const [supportNonLus, setSupportNonLus] = useState(0);
+  useEffect(() => {
+    const providerId = provider?.id;
+    if (!providerId) return;
+    return onSnapshot(
+      doc(db, 'supportChats', providerId),
+      (snap) => setSupportNonLus(snap.data()?.proUnread ?? 0),
+      () => setSupportNonLus(0),
+    );
+  }, [provider?.id]);
   // Same pattern but driven by article publication dates rather
   // than a hardcoded feature key, so the Tutoriels & guides entry
   // re-fires "Nouveau" whenever a fresh tutorial is published.
@@ -795,6 +809,14 @@ export default function MoreScreen() {
             {t('proMore.sections.support')}
           </Text>
           <Card padding="none" shadow="sm">
+            <MenuItem
+              icon="chatbubbles-outline"
+              label={t('proMore.menu.supportChat')}
+              badge={supportNonLus > 0 ? supportNonLus : null}
+              onPress={() => router.push('/(pro)/support' as never)}
+              colors={colors}
+            />
+            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
             <MenuItem
               icon="book-outline"
               label={t('proMore.menu.tutorials')}

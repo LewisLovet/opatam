@@ -87,6 +87,12 @@ export function useNotifications() {
     const bookingId = data.bookingId as string;
 
     // Pro notifications → pro booking detail
+    if (data.type === 'support_chat') {
+      // Réponse de l'équipe Opatam → la messagerie de support.
+      router.push('/(pro)/support' as never);
+      return;
+    }
+
     if (data.type === 'new_booking') {
       router.push(`/(pro)/booking-detail/${bookingId}`);
       return;

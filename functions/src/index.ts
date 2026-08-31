@@ -33,6 +33,7 @@ export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderSt
 export { onBlockedSlotWriteProviderStats } from './triggers/onBlockedSlotWriteProviderStats';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onAppNotificationPublish } from './triggers/onAppNotificationPublish';
+export { onSupportMessageCreate } from './triggers/onSupportMessageCreate';
 export { onReviewRatingUpdate } from './triggers/onReviewRatingUpdate';
 export { onAffiliateLogAggregate } from './triggers/onAffiliateLogAggregate';
 export { onProviderReferralAggregate } from './triggers/onProviderReferralAggregate';

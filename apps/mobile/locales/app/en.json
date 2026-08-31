@@ -2077,7 +2077,8 @@
       "terms": "Terms of use",
       "privacy": "Privacy policy",
       "logout": "Sign out",
-      "deleteAccount": "Delete my account"
+      "deleteAccount": "Delete my account",
+      "supportChat": "Opatam messages"
     },
     "newBadge": "New",
     "logout": {
@@ -3264,5 +3265,12 @@
     "travel": "Travel",
     "imprevu": "Unexpected",
     "other": "Other"
+  },
+  "proSupport": {
+    "title": "Opatam messages",
+    "subtitle": "The team replies in person — usually within a few business hours.",
+    "empty": "Ask your first question — setup, bookings, subscription… we're here to help.",
+    "placeholder": "Write your message…",
+    "team": "Opatam team"
   }
 }

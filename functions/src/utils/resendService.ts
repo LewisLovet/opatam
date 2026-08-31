@@ -26,7 +26,7 @@ const resendApiKey = defineString('RESEND_API_KEY');
 // Lazy singleton instance
 let resendInstance: Resend | null = null;
 
-function getResend(): Resend {
+export function getResend(): Resend {
   if (!resendInstance) {
     resendInstance = new Resend(resendApiKey.value());
   }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@booking-app/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -27,11 +29,36 @@ import {
   Images,
   Smartphone,
   Bell,
-  MailWarning, CreditCard, ChevronRight } from 'lucide-react';
+  MailWarning, CreditCard, ChevronRight,
+  MessageCircle,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { LogoWhite } from '@/components/ui';
 import { ChangeCodeModal } from './ChangeCodeModal';
+
+/** Pastille temps réel des conversations de support en attente de réponse. */
+function BadgeMessagesNonLus({ collapsed }: { collapsed: boolean }) {
+  const [nonLus, setNonLus] = useState(0);
+  useEffect(() => {
+    const q = query(collection(db, 'supportChats'), where('adminUnread', '>', 0));
+    return onSnapshot(
+      q,
+      (snap) => setNonLus(snap.docs.reduce((n, d) => n + (d.data().adminUnread ?? 0), 0)),
+      () => setNonLus(0),
+    );
+  }, []);
+  if (nonLus === 0) return null;
+  return (
+    <span
+      className={`min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center ${
+        collapsed ? 'absolute top-1 right-1' : ''
+      }`}
+    >
+      {nonLus > 9 ? '9+' : nonLus}
+    </span>
+  );
+}
 
 /** Entrées ayant une sous-page listée séparément dans le menu. */
 const EXACT_MATCH_ONLY = new Set(['/admin/marketing', '/admin/stripe']);
@@ -53,6 +80,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="w-5 h-5" /> },
+      { label: 'Messages', href: '/admin/messages', icon: <MessageCircle className="w-5 h-5" /> },
       { label: 'Utilisateurs', href: '/admin/users', icon: <Users className="w-5 h-5" /> },
       { label: 'Prestataires', href: '/admin/providers', icon: <Briefcase className="w-5 h-5" /> },
     ],
@@ -157,6 +185,7 @@ function NavEntry({
         >
           {item.icon}
           {!collapsed && <span className="flex-1">{item.label}</span>}
+          {item.href === '/admin/messages' && <BadgeMessagesNonLus collapsed={collapsed} />}
         </Link>
         {depliable && (
           <button

@@ -2077,7 +2077,8 @@
       "terms": "Nutzungsbedingungen",
       "privacy": "Datenschutzerklärung",
       "logout": "Abmelden",
-      "deleteAccount": "Mein Konto löschen"
+      "deleteAccount": "Mein Konto löschen",
+      "supportChat": "Opatam-Nachrichten"
     },
     "newBadge": "Neu",
     "logout": {
@@ -3264,5 +3265,12 @@
     "travel": "Fahrt",
     "imprevu": "Unvorhergesehenes",
     "other": "Sonstiges"
+  },
+  "proSupport": {
+    "title": "Opatam-Nachrichten",
+    "subtitle": "Das Team antwortet persönlich — in der Regel innerhalb weniger Geschäftsstunden.",
+    "empty": "Stellen Sie Ihre erste Frage — Einrichtung, Buchungen, Abo… wir helfen gern.",
+    "placeholder": "Schreiben Sie Ihre Nachricht…",
+    "team": "Opatam-Team"
   }
 }
