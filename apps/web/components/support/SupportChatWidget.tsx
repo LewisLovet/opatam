@@ -14,7 +14,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessageCircle, Send, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, MessageCircle, Send, X } from 'lucide-react';
+import { SUPPORT_FAQ } from '@booking-app/shared';
 
 /**
  * Chat de support pro ↔ équipe Opatam — la bulle flottante de l'espace pro.
@@ -45,6 +46,13 @@ export function SupportChatWidget() {
   const providerId = user?.id ?? null;
 
   const [ouvert, setOuvert] = useState(false);
+  // Pré-chat : la FAQ oriente AVANT la mise en relation. Un pro qui a déjà
+  // une conversation retombe directement sur son fil.
+  const [vue, setVue] = useState<'accueil' | 'theme' | 'chat'>('accueil');
+  const [themeId, setThemeId] = useState<string | null>(null);
+  const [questionOuverte, setQuestionOuverte] = useState<string | null>(null);
+  const [aDejaEchange, setADejaEchange] = useState(false);
+  const [topicEnAttente, setTopicEnAttente] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageChat[]>([]);
   const [nonLus, setNonLus] = useState(0);
   const [texte, setTexte] = useState('');
@@ -56,14 +64,23 @@ export function SupportChatWidget() {
     if (!providerId) return;
     return onSnapshot(
       doc(db, 'supportChats', providerId),
-      (snap) => setNonLus(snap.data()?.proUnread ?? 0),
+      (snap) => {
+        setNonLus(snap.data()?.proUnread ?? 0);
+        setADejaEchange(snap.exists());
+      },
       () => setNonLus(0),
     );
   }, [providerId]);
 
+  // Ouverture : conversation en cours → le fil ; sinon → l'accueil FAQ.
+  useEffect(() => {
+    if (ouvert) setVue(aDejaEchange ? 'chat' : 'accueil');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ouvert]);
+
   // Les messages — abonnés seulement quand le panneau est ouvert.
   useEffect(() => {
-    if (!providerId || !ouvert) return;
+    if (!providerId || !ouvert || vue !== 'chat') return;
     const q = query(
       collection(db, 'supportChats', providerId, 'messages'),
       orderBy('createdAt', 'asc'),
@@ -83,15 +100,15 @@ export function SupportChatWidget() {
         }),
       );
     });
-  }, [providerId, ouvert]);
+  }, [providerId, ouvert, vue]);
 
   // Ouverture → lu (les règles n'autorisent que { proUnread: 0 }).
   useEffect(() => {
-    if (!providerId || !ouvert || nonLus === 0) return;
+    if (!providerId || !ouvert || vue !== 'chat' || nonLus === 0) return;
     void setDoc(doc(db, 'supportChats', providerId), { proUnread: 0 }, { merge: true }).catch(
       () => undefined,
     );
-  }, [providerId, ouvert, nonLus]);
+  }, [providerId, ouvert, vue, nonLus]);
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,8 +123,12 @@ export function SupportChatWidget() {
         from: 'pro',
         authorUid: providerId,
         text: contenu.slice(0, 2000),
+        // Le thème choisi dans le pré-chat — la Cloud Function le recopie
+        // sur la conversation, l'admin le voit avant de lire.
+        ...(topicEnAttente ? { topic: topicEnAttente } : {}),
         createdAt: serverTimestamp(),
       });
+      setTopicEnAttente(null);
       setTexte('');
     } finally {
       setEnvoi(false);
@@ -135,14 +156,131 @@ export function SupportChatWidget() {
       {/* Le panneau */}
       {ouvert && (
         <div className="fixed bottom-20 right-5 z-40 w-[min(92vw,380px)] h-[min(70vh,520px)] rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col overflow-hidden">
-          <div className="px-4 py-3 bg-gray-900 dark:bg-gray-950 text-white">
-            <p className="text-sm font-semibold">L&apos;équipe Opatam</p>
-            <p className="text-[11px] text-gray-300">
-              Une question, un doute ? Nous répondons en personne — en général sous quelques
-              heures ouvrées.
-            </p>
+          <div className="px-4 py-3 bg-gray-900 dark:bg-gray-950 text-white flex items-center gap-2.5">
+            {vue !== 'accueil' && !(vue === 'chat' && aDejaEchange) && (
+              <button
+                onClick={() => setVue(vue === 'chat' ? (themeId ? 'theme' : 'accueil') : 'accueil')}
+                aria-label="Retour"
+                className="p-1 -ml-1 rounded-lg hover:bg-white/10"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">L&apos;équipe Opatam</p>
+              <p className="text-[11px] text-gray-300 truncate">
+                {vue === 'chat'
+                  ? 'Nous répondons en personne — en général sous quelques heures ouvrées.'
+                  : 'Une réponse tout de suite, ou un humain juste derrière.'}
+              </p>
+            </div>
+            {vue === 'chat' && !aDejaEchange && (
+              <button
+                onClick={() => setVue('accueil')}
+                className="text-[10px] font-semibold text-gray-300 hover:text-white whitespace-nowrap"
+              >
+                Questions fréquentes
+              </button>
+            )}
           </div>
 
+          {/* ── Accueil : les thèmes ── */}
+          {vue === 'accueil' && (
+            <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 dark:bg-gray-950/40">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                Bonjour 👋
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Comment pouvons-nous aider ? Choisissez un thème — ou écrivez-nous directement.
+              </p>
+              <div className="space-y-2">
+                {SUPPORT_FAQ.map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => {
+                      setThemeId(theme.id);
+                      setQuestionOuverte(null);
+                      setVue('theme');
+                    }}
+                    className="w-full flex items-center justify-between gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2.5 text-sm font-medium text-gray-900 dark:text-white hover:border-gray-400 dark:hover:border-gray-500 transition-colors text-left"
+                  >
+                    {theme.titre}
+                    <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  setTopicEnAttente(null);
+                  setVue('chat');
+                }}
+                className="w-full mt-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2.5 text-sm font-semibold hover:opacity-90"
+              >
+                Écrire à l&apos;équipe
+              </button>
+            </div>
+          )}
+
+          {/* ── Thème : les questions fréquentes ── */}
+          {vue === 'theme' && (() => {
+            const theme = SUPPORT_FAQ.find((t) => t.id === themeId);
+            if (!theme) return null;
+            return (
+              <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 dark:bg-gray-950/40">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  {theme.titre}
+                </p>
+                <div className="space-y-2">
+                  {theme.entrees.map((e) => (
+                    <div
+                      key={e.question}
+                      className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+                    >
+                      <button
+                        onClick={() =>
+                          setQuestionOuverte(questionOuverte === e.question ? null : e.question)
+                        }
+                        aria-expanded={questionOuverte === e.question}
+                        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left text-sm font-medium text-gray-900 dark:text-white"
+                      >
+                        {e.question}
+                        <ChevronDown
+                          className={`w-4 h-4 text-gray-300 flex-shrink-0 transition-transform ${
+                            questionOuverte === e.question ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+                      {questionOuverte === e.question && (
+                        <div className="px-3.5 pb-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                          {e.reponse}
+                          {e.lienWeb && (
+                            <a
+                              href={e.lienWeb.href}
+                              className="block mt-1.5 font-semibold text-red-600 dark:text-red-400 hover:underline"
+                            >
+                              {e.lienWeb.label} →
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    setTopicEnAttente(theme.id);
+                    setVue('chat');
+                  }}
+                  className="w-full mt-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2.5 text-sm font-semibold hover:opacity-90"
+                >
+                  Ça ne répond pas à ma question — écrire à l&apos;équipe
+                </button>
+              </div>
+            );
+          })()}
+
+          {vue === 'chat' && (
+          <>
           <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5 bg-gray-50 dark:bg-gray-950/40">
             {messages.length === 0 && (
               <p className="text-xs text-gray-400 text-center pt-8 px-6 leading-relaxed">
@@ -201,6 +339,8 @@ export function SupportChatWidget() {
               <Send className="w-4 h-4" />
             </button>
           </div>
+          </>
+          )}
         </div>
       )}
     </>

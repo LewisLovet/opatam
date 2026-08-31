@@ -3271,6 +3271,12 @@
     "subtitle": "A equipa responde pessoalmente — normalmente em poucas horas úteis.",
     "empty": "Faça a sua primeira pergunta — configuração, reservas, subscrição… estamos aqui para ajudar.",
     "placeholder": "Escreva a sua mensagem…",
-    "team": "Equipa Opatam"
+    "team": "Equipa Opatam",
+    "faq": {
+      "greeting": "Olá 👋",
+      "choose": "Como podemos ajudar? Escolha um tema — ou escreva-nos diretamente.",
+      "writeUs": "Escrever à equipa",
+      "notAnswered": "Não responde à minha pergunta — escrever à equipa"
+    }
   }
 }

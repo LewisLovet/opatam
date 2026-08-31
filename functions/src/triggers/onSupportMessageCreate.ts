@@ -65,6 +65,11 @@ export const onSupportMessageCreate = onDocumentCreated(
           lastMessageFrom: from,
           lastMessageAt: message.createdAt ?? FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
+          // Le thème choisi dans le pré-chat (FAQ) — pré-qualifie la
+          // conversation côté admin.
+          ...(typeof message.topic === 'string' && message.topic
+            ? { topic: message.topic.slice(0, 40) }
+            : {}),
           ...compteurs,
         },
         { merge: true },

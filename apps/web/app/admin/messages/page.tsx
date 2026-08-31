@@ -15,6 +15,7 @@ import {
 import { db } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, MessageCircle, Send } from 'lucide-react';
+import { supportTopicTag } from '@booking-app/shared';
 
 /**
  * Messages — le chat de support côté ADMIN : toutes les conversations des
@@ -29,6 +30,7 @@ import { Loader2, MessageCircle, Send } from 'lucide-react';
 interface ChatRow {
   id: string;
   businessName: string;
+  topic: string | null;
   lastMessageText: string;
   lastMessageFrom: 'pro' | 'admin';
   lastMessageAt: Date | null;
@@ -71,6 +73,7 @@ export default function AdminMessagesPage() {
           return {
             id: d.id,
             businessName: x.businessName ?? 'Professionnel',
+            topic: typeof x.topic === 'string' ? x.topic : null,
             lastMessageText: x.lastMessageText ?? '',
             lastMessageFrom: x.lastMessageFrom === 'admin' ? 'admin' : 'pro',
             lastMessageAt: x.lastMessageAt?.toDate?.() ?? x.updatedAt?.toDate?.() ?? null,
@@ -172,6 +175,11 @@ export default function AdminMessagesPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                     {c.businessName}
+                    {supportTopicTag(c.topic) && (
+                      <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 rounded-full px-1.5 py-0.5">
+                        {supportTopicTag(c.topic)}
+                      </span>
+                    )}
                   </p>
                   <span className="flex-shrink-0 text-[10px] text-gray-400">
                     {depuis(c.lastMessageAt)}
@@ -198,6 +206,11 @@ export default function AdminMessagesPage() {
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   {ouvert.businessName}
+                  {supportTopicTag(ouvert.topic) && (
+                    <span className="ml-2 text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 rounded-full px-1.5 py-0.5">
+                      {supportTopicTag(ouvert.topic)}
+                    </span>
+                  )}
                 </p>
                 <a
                   href={`/admin/providers/${ouvert.id}`}

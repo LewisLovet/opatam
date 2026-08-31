@@ -37,6 +37,7 @@ import { db } from '@booking-app/firebase';
 import { useTheme } from '../../theme';
 import { Text } from '../../components';
 import { useProvider } from '../../contexts';
+import { SUPPORT_FAQ } from '@booking-app/shared';
 
 interface MessageChat {
   id: string;
@@ -55,6 +56,12 @@ export default function SupportScreen() {
   const providerId = provider?.id ?? null;
 
   const [messages, setMessages] = useState<MessageChat[] | null>(null);
+  // Pré-chat : FAQ d'orientation avant la mise en relation. 'auto' = on
+  // attend le premier snapshot pour router (fil existant → chat direct).
+  const [vue, setVue] = useState<'auto' | 'accueil' | 'theme' | 'chat'>('auto');
+  const [themeId, setThemeId] = useState<string | null>(null);
+  const [questionOuverte, setQuestionOuverte] = useState<string | null>(null);
+  const [topicEnAttente, setTopicEnAttente] = useState<string | null>(null);
   const [texte, setTexte] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const listeRef = useRef<FlatList>(null);
@@ -67,6 +74,7 @@ export default function SupportScreen() {
       limitToLast(200),
     );
     return onSnapshot(q, (snap) => {
+      setVue((v) => (v === 'auto' ? (snap.docs.length > 0 ? 'chat' : 'accueil') : v));
       setMessages(
         snap.docs.map((d) => {
           const x = d.data();
@@ -84,11 +92,11 @@ export default function SupportScreen() {
 
   // Écran ouvert → messages lus (les règles n'admettent que { proUnread: 0 }).
   useEffect(() => {
-    if (!providerId) return;
+    if (!providerId || vue !== 'chat') return;
     void setDoc(doc(db, 'supportChats', providerId), { proUnread: 0 }, { merge: true }).catch(
       () => undefined,
     );
-  }, [providerId, messages?.length]);
+  }, [providerId, vue, messages?.length]);
 
   const envoyer = async () => {
     const contenu = texte.trim();
@@ -99,8 +107,11 @@ export default function SupportScreen() {
         from: 'pro',
         authorUid: providerId,
         text: contenu.slice(0, 2000),
+        // Thème du pré-chat — recopié sur la conversation par la Cloud Function.
+        ...(topicEnAttente ? { topic: topicEnAttente } : {}),
         createdAt: serverTimestamp(),
       });
+      setTopicEnAttente(null);
       setTexte('');
     } finally {
       setEnvoi(false);
@@ -125,7 +136,15 @@ export default function SupportScreen() {
           },
         ]}
       >
-        <Pressable onPress={() => router.back()} hitSlop={12} style={{ marginRight: spacing.md }}>
+        <Pressable
+          onPress={() => {
+            if (vue === 'theme') setVue('accueil');
+            else if (vue === 'chat' && (messages?.length ?? 0) === 0) setVue(themeId ? 'theme' : 'accueil');
+            else router.back();
+          }}
+          hitSlop={12}
+          style={{ marginRight: spacing.md }}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1 }}>
@@ -136,8 +155,115 @@ export default function SupportScreen() {
         </View>
       </View>
 
+      {/* Pré-chat : accueil (thèmes) et questions fréquentes */}
+      {(vue === 'accueil' || vue === 'theme') && (
+        <FlatList
+          data={vue === 'accueil' ? SUPPORT_FAQ : SUPPORT_FAQ.filter((th) => th.id === themeId)}
+          keyExtractor={(th) => th.id}
+          contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+          ListHeaderComponent={
+            vue === 'accueil' ? (
+              <View style={{ marginBottom: spacing.sm }}>
+                <Text variant="h3">{t('proSupport.faq.greeting')}</Text>
+                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                  {t('proSupport.faq.choose')}
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item: th }) =>
+            vue === 'accueil' ? (
+              <Pressable
+                onPress={() => {
+                  setThemeId(th.id);
+                  setQuestionOuverte(null);
+                  setVue('theme');
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: radius.lg,
+                  backgroundColor: colors.surface,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.md,
+                }}
+              >
+                <Text variant="body" style={{ fontWeight: '600' }}>{th.titre}</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </Pressable>
+            ) : (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="body" style={{ fontWeight: '700', marginBottom: 2 }}>{th.titre}</Text>
+                {th.entrees.map((e) => (
+                  <View
+                    key={e.question}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: radius.lg,
+                      backgroundColor: colors.surface,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Pressable
+                      onPress={() => setQuestionOuverte(questionOuverte === e.question ? null : e.question)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: spacing.md,
+                        gap: spacing.sm,
+                      }}
+                    >
+                      <Text variant="bodySmall" style={{ fontWeight: '600', flex: 1 }}>{e.question}</Text>
+                      <Ionicons
+                        name={questionOuverte === e.question ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color={colors.textMuted}
+                      />
+                    </Pressable>
+                    {questionOuverte === e.question && (
+                      <Text
+                        variant="bodySmall"
+                        color="textSecondary"
+                        style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, lineHeight: 20 }}
+                      >
+                        {e.reponse}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )
+          }
+          ListFooterComponent={
+            <Pressable
+              onPress={() => {
+                setTopicEnAttente(vue === 'theme' ? themeId : null);
+                setVue('chat');
+              }}
+              style={{
+                marginTop: spacing.md,
+                borderRadius: radius.lg,
+                backgroundColor: colors.primary,
+                paddingVertical: spacing.md,
+                alignItems: 'center',
+              }}
+            >
+              <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
+                {vue === 'theme' ? t('proSupport.faq.notAnswered') : t('proSupport.faq.writeUs')}
+              </Text>
+            </Pressable>
+          }
+        />
+      )}
+
       {/* Fil */}
-      {messages === null ? (
+      {vue === 'chat' && (messages === null ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -197,9 +323,10 @@ export default function SupportScreen() {
             </View>
           )}
         />
-      )}
+      ))}
 
       {/* Saisie */}
+      {vue === 'chat' && (
       <View
         style={[
           s.saisie,
@@ -239,6 +366,7 @@ export default function SupportScreen() {
           <Ionicons name="send" size={18} color="#fff" />
         </Pressable>
       </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

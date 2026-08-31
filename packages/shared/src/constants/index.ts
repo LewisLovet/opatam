@@ -1,3 +1,4 @@
+export * from './supportFaq';
 // Regions
 export * from './regions';
 

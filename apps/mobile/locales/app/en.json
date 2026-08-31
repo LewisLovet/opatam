@@ -3271,6 +3271,12 @@
     "subtitle": "The team replies in person — usually within a few business hours.",
     "empty": "Ask your first question — setup, bookings, subscription… we're here to help.",
     "placeholder": "Write your message…",
-    "team": "Opatam team"
+    "team": "Opatam team",
+    "faq": {
+      "greeting": "Hello 👋",
+      "choose": "How can we help? Pick a topic — or write to us directly.",
+      "writeUs": "Write to the team",
+      "notAnswered": "This doesn't answer my question — write to the team"
+    }
   }
 }

@@ -3271,6 +3271,12 @@
     "subtitle": "Das Team antwortet persönlich — in der Regel innerhalb weniger Geschäftsstunden.",
     "empty": "Stellen Sie Ihre erste Frage — Einrichtung, Buchungen, Abo… wir helfen gern.",
     "placeholder": "Schreiben Sie Ihre Nachricht…",
-    "team": "Opatam-Team"
+    "team": "Opatam-Team",
+    "faq": {
+      "greeting": "Hallo 👋",
+      "choose": "Wie können wir helfen? Wählen Sie ein Thema — oder schreiben Sie uns direkt.",
+      "writeUs": "Dem Team schreiben",
+      "notAnswered": "Das beantwortet meine Frage nicht — dem Team schreiben"
+    }
   }
 }
