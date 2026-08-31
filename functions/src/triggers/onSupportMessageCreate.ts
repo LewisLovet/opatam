@@ -20,7 +20,6 @@ export const onSupportMessageCreate = onDocumentCreated(
   {
     document: 'supportChats/{providerId}/messages/{messageId}',
     region: 'europe-west1',
-    secrets: ['RESEND_API_KEY'],
   },
   async (event) => {
     const message = event.data?.data();
