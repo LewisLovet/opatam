@@ -89,7 +89,7 @@ export const SUPPORT_FAQ: SupportFaqTheme[] = [
       {
         question: 'Opatam prend-il une commission sur mes réservations ?',
         reponse:
-          '0 % de commission, jamais. Vous payez un abonnement fixe, et tout ce que vos clientes règlent vous revient (hors frais bancaires Stripe sur les acomptes, comme pour tout paiement par carte).',
+          'Non : votre abonnement couvre le service, et Opatam ne prélève aucune commission sur vos réservations. Seuls les frais bancaires de Stripe s’appliquent sur les acomptes encaissés en ligne, comme pour tout paiement par carte.',
       },
     ],
   },
