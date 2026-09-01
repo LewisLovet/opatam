@@ -60,9 +60,9 @@ export const SUPPORT_FAQ: SupportFaqTheme[] = [
           'Trois vérifications qui règlent presque tous les cas : 1) les horaires d’ouverture du membre concerné sont bien renseignés ; 2) la prestation est bien affectée à ce membre et à ce lieu ; 3) la durée de la prestation (plus son temps de battement) tient dans les horaires restants de la journée. Si tout est bon et que ça coince encore, écrivez-nous.',
       },
       {
-        question: 'Puis-je valider chaque réservation à la main ?',
+        question: 'Une cliente peut-elle annuler sa réservation elle-même ?',
         reponse:
-          'Oui : activez la confirmation manuelle dans vos réglages de réservation. Chaque demande arrive « en attente » et vous la confirmez ou la refusez. Sans cette option, les réservations sont confirmées automatiquement.',
+          'Oui — chaque confirmation contient un lien d’annulation. Vous êtes prévenu immédiatement, le créneau se libère, et si un acompte avait été versé, c’est votre politique de remboursement qui s’applique automatiquement.',
       },
       {
         question: 'Les rappels aux clientes sont-ils automatiques ?',

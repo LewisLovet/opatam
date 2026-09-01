@@ -209,15 +209,6 @@ export function SupportChatWidget() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => {
-                  setTopicEnAttente(null);
-                  setVue('chat');
-                }}
-                className="w-full mt-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2.5 text-sm font-semibold hover:opacity-90"
-              >
-                Écrire à l&apos;équipe
-              </button>
             </div>
           )}
 
@@ -266,18 +257,26 @@ export function SupportChatWidget() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => {
-                    setTopicEnAttente(theme.id);
-                    setVue('chat');
-                  }}
-                  className="w-full mt-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2.5 text-sm font-semibold hover:opacity-90"
-                >
-                  Ça ne répond pas à ma question — écrire à l&apos;équipe
-                </button>
               </div>
             );
           })()}
+
+          {/* ── Pied sticky : l'humain toujours à un clic ── */}
+          {(vue === 'accueil' || vue === 'theme') && (
+            <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+              <button
+                onClick={() => {
+                  setTopicEnAttente(vue === 'theme' ? themeId : null);
+                  setVue('chat');
+                }}
+                className="w-full rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2.5 text-sm font-semibold hover:opacity-90"
+              >
+                {vue === 'theme'
+                  ? 'Ça ne répond pas à ma question — écrire à l\u2019équipe'
+                  : 'Écrire à l\u2019équipe'}
+              </button>
+            </div>
+          )}
 
           {vue === 'chat' && (
           <>

@@ -240,26 +240,38 @@ export default function SupportScreen() {
               </View>
             )
           }
-          ListFooterComponent={
-            <Pressable
-              onPress={() => {
-                setTopicEnAttente(vue === 'theme' ? themeId : null);
-                setVue('chat');
-              }}
-              style={{
-                marginTop: spacing.md,
-                borderRadius: radius.lg,
-                backgroundColor: colors.primary,
-                paddingVertical: spacing.md,
-                alignItems: 'center',
-              }}
-            >
-              <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
-                {vue === 'theme' ? t('proSupport.faq.notAnswered') : t('proSupport.faq.writeUs')}
-              </Text>
-            </Pressable>
-          }
         />
+      )}
+
+      {/* Pied sticky du pré-chat : l'humain toujours à un tap */}
+      {(vue === 'accueil' || vue === 'theme') && (
+        <View
+          style={{
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
+            paddingBottom: insets.bottom + spacing.sm,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              setTopicEnAttente(vue === 'theme' ? themeId : null);
+              setVue('chat');
+            }}
+            style={{
+              borderRadius: radius.lg,
+              backgroundColor: colors.primary,
+              paddingVertical: spacing.md,
+              alignItems: 'center',
+            }}
+          >
+            <Text variant="body" style={{ color: '#fff', fontWeight: '700' }}>
+              {vue === 'theme' ? t('proSupport.faq.notAnswered') : t('proSupport.faq.writeUs')}
+            </Text>
+          </Pressable>
+        </View>
       )}
 
       {/* Fil */}
