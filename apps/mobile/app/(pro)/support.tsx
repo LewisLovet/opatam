@@ -37,6 +37,7 @@ import { db } from '@booking-app/firebase';
 import { useTheme } from '../../theme';
 import { Text } from '../../components';
 import { useProvider } from '../../contexts';
+import { useSupportChatEnabled } from '../../hooks';
 import { SUPPORT_FAQ } from '@booking-app/shared';
 
 interface MessageChat {
@@ -65,6 +66,14 @@ export default function SupportScreen() {
   const [texte, setTexte] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const listeRef = useRef<FlatList>(null);
+
+  // Interrupteur Firebase (config/supportChat) — l'entrée de menu est déjà
+  // masquée, ceci couvre les arrivées par notification ou lien direct.
+  // `null` = config pas encore chargée : on attend avant de conclure.
+  const chatActif = useSupportChatEnabled(providerId);
+  useEffect(() => {
+    if (chatActif === false) router.back();
+  }, [chatActif, router]);
 
   useEffect(() => {
     if (!providerId) return;

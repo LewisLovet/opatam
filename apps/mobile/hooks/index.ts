@@ -114,3 +114,5 @@ export type {
   ProviderNotificationItem,
   UseProviderNotificationsResult,
 } from './useProviderNotifications';
+
+export { useSupportChatEnabled } from './useSupportChatEnabled';

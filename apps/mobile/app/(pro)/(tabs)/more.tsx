@@ -31,6 +31,7 @@ import {
   useNewArticles,
   useNewFeatures,
   useProviderClientsCount,
+  useSupportChatEnabled,
 } from '../../../hooks';
 import i18n from '../../../lib/i18n';
 import { LanguageSettingRow } from '../../../components/LanguageSettingRow';
@@ -421,6 +422,10 @@ export default function MoreScreen() {
   // to off as soon as the user taps the row, persisted on-device.
   const { isNew, markSeen } = useNewFeatures();
 
+  // Interrupteur Firebase (config/supportChat) — l'entrée « Messagerie
+  // Opatam » n'apparaît que pour les comptes autorisés (ou pour tous quand
+  // l'équipe active enabledForAll).
+  const supportChatActif = useSupportChatEnabled(providerId ?? null);
   // Badge de la messagerie de support — réponses de l'équipe non lues.
   const [supportNonLus, setSupportNonLus] = useState(0);
   useEffect(() => {
@@ -809,14 +814,18 @@ export default function MoreScreen() {
             {t('proMore.sections.support')}
           </Text>
           <Card padding="none" shadow="sm">
-            <MenuItem
-              icon="chatbubbles-outline"
-              label={t('proMore.menu.supportChat')}
-              badge={supportNonLus > 0 ? supportNonLus : null}
-              onPress={() => router.push('/(pro)/support' as never)}
-              colors={colors}
-            />
-            <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
+            {supportChatActif === true && (
+              <>
+                <MenuItem
+                  icon="chatbubbles-outline"
+                  label={t('proMore.menu.supportChat')}
+                  badge={supportNonLus > 0 ? supportNonLus : null}
+                  onPress={() => router.push('/(pro)/support' as never)}
+                  colors={colors}
+                />
+                <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
+              </>
+            )}
             <MenuItem
               icon="book-outline"
               label={t('proMore.menu.tutorials')}

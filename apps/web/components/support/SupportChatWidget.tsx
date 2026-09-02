@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSupportChatEnabled } from '@/hooks/useSupportChatEnabled';
 import { ArrowLeft, ChevronDown, ChevronRight, MessageCircle, Send, X } from 'lucide-react';
 import { SUPPORT_FAQ } from '@booking-app/shared';
 
@@ -42,8 +43,11 @@ function heure(d: Date | null): string {
 }
 
 export function SupportChatWidget() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const providerId = user?.id ?? null;
+  // Interrupteur Firebase (config/supportChat) — bulle masquée tant que le
+  // chat n'est pas ouvert à ce compte. Les admins le voient toujours.
+  const chatActif = useSupportChatEnabled(providerId, isAdmin);
 
   const [ouvert, setOuvert] = useState(false);
   // Pré-chat : la FAQ oriente AVANT la mise en relation. Un pro qui a déjà
@@ -135,7 +139,7 @@ export function SupportChatWidget() {
     }
   };
 
-  if (!providerId) return null;
+  if (!providerId || chatActif !== true) return null;
 
   return (
     <>
