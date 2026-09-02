@@ -2778,7 +2778,8 @@
       "locationRequired": "Select a location",
       "updated": "Member updated",
       "added": "Member added",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "parallelWarning": "Each member has their own schedule, bookable in parallel: two members can receive two appointments in the same slot. Only add a member for an additional person — to separate your services, use categories."
     },
     "deactivate": {
       "confirmTitle": "Deactivate {{name}}?",
@@ -2787,7 +2788,8 @@
       "noNewBookings": "Clients will <b>no longer be able to book</b> with this member",
       "hiddenFromBooking": "The member will <b>no longer appear on your booking page</b>",
       "canReactivate": "You can <b>reactivate</b> the member at any time",
-      "confirmButton": "Deactivate"
+      "confirmButton": "Deactivate",
+      "futureWarning": "{{count}} upcoming appointments are on this member. Once deactivated, they will no longer block your other members' slots — reassign them from the calendar first."
     },
     "toggle": {
       "deactivated": "{{name}} deactivated",

@@ -2778,7 +2778,8 @@
       "locationRequired": "Seleziona una sede",
       "updated": "Membro modificato",
       "added": "Membro aggiunto",
-      "saving": "Salvataggio..."
+      "saving": "Salvataggio...",
+      "parallelWarning": "Ogni membro ha la propria agenda, prenotabile in parallelo: due membri possono ricevere due appuntamenti nello stesso orario. Aggiungi un membro solo per una persona in più — per separare i servizi, usa le categorie."
     },
     "deactivate": {
       "confirmTitle": "Disattivare {{name}}?",
@@ -2787,7 +2788,8 @@
       "noNewBookings": "I clienti non potranno <b>più prenotare appuntamenti</b> con questo membro",
       "hiddenFromBooking": "Il membro non apparirà <b>più sulla tua pagina di prenotazione</b>",
       "canReactivate": "Puoi <b>riattivare</b> il membro in qualsiasi momento",
-      "confirmButton": "Disattiva"
+      "confirmButton": "Disattiva",
+      "futureWarning": "{{count}} appuntamenti futuri sono su questo membro. Una volta disattivato, non bloccheranno più le fasce degli altri membri — riassegnali prima dal calendario."
     },
     "toggle": {
       "deactivated": "{{name}} disattivato",

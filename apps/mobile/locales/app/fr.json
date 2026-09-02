@@ -2778,7 +2778,8 @@
       "locationRequired": "Sélectionnez un lieu",
       "updated": "Membre modifié",
       "added": "Membre ajouté",
-      "saving": "Enregistrement..."
+      "saving": "Enregistrement...",
+      "parallelWarning": "Chaque membre a son propre agenda, réservable en parallèle des autres : deux membres peuvent recevoir deux rendez-vous au même créneau. N'ajoutez un membre que pour une personne supplémentaire — pour séparer vos prestations, utilisez les catégories."
     },
     "deactivate": {
       "confirmTitle": "Désactiver {{name}} ?",
@@ -2787,7 +2788,8 @@
       "noNewBookings": "Les clients ne pourront <b>plus prendre de rendez-vous</b> avec ce membre",
       "hiddenFromBooking": "Le membre n'apparaîtra <b>plus sur votre page de réservation</b>",
       "canReactivate": "Vous pouvez <b>réactiver</b> le membre à tout moment",
-      "confirmButton": "Désactiver"
+      "confirmButton": "Désactiver",
+      "futureWarning": "{{count}} rendez-vous à venir sont sur ce membre. Désactivé, ils ne bloqueront plus les créneaux de vos autres membres — réattribuez-les d'abord depuis le planning."
     },
     "toggle": {
       "deactivated": "{{name}} désactivé",

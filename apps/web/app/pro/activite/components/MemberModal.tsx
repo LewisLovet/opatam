@@ -32,6 +32,10 @@ interface MemberModalProps {
   onRegenerateCode?: (memberId: string) => Promise<string>;
   onSendCode?: (memberId: string) => Promise<void>;
   upcomingBookingsCount?: number;
+  /** Il existe déjà au moins un membre : avertir qu'un membre = un agenda
+   *  réservable EN PARALLÈLE (cas Coiffeuse Masquée : deux membres pour une
+   *  seule personne → doubles réservations). */
+  estMembreSupplementaire?: boolean;
 }
 
 export interface MemberFormData {
@@ -58,6 +62,7 @@ export function MemberModal({
   onRegenerateCode,
   onSendCode,
   upcomingBookingsCount = 0,
+  estMembreSupplementaire = false,
 }: MemberModalProps) {
   const toast = useToast();
   const { provider } = useAuth();
@@ -780,6 +785,19 @@ export function MemberModal({
         />
 
         <ModalBody>
+          {!isEditing && estMembreSupplementaire && (
+            <div className="mb-4 p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Chaque membre a son propre agenda, réservable en parallèle des
+                autres.</strong>{' '}
+                Deux membres peuvent donc recevoir deux rendez-vous au même créneau.
+                N&apos;ajoutez un membre que pour une personne supplémentaire qui travaille
+                avec vous — pour séparer vos prestations (homme/femme…), utilisez plutôt
+                les catégories de prestations.
+              </span>
+            </div>
+          )}
           {renderContent()}
 
           {/* Error message */}

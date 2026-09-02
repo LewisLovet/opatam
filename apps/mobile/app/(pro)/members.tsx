@@ -32,8 +32,7 @@ import {
   locationRepository,
   uploadFile,
   storagePaths,
-  type WithId,
-} from '@booking-app/firebase';
+  type WithId, bookingRepository } from '@booking-app/firebase';
 import type { Member, Location } from '@booking-app/shared/types';
 import { MEMBER_COLORS, APP_CONFIG } from '@booking-app/shared/constants';
 
@@ -306,11 +305,29 @@ export default function MembersScreen() {
   };
 
   // Toggle active/inactive
+  const [deactivateFutures, setDeactivateFutures] = useState(0);
   const handleToggleActive = (member: WithId<Member>) => {
     if (!providerId || member.isDefault) return;
     if (member.isActive) {
-      // Show confirmation modal before deactivating
+      // Show confirmation modal before deactivating — avec le compte des
+      // rendez-vous futurs : désactivés, ils ne bloquent plus les créneaux
+      // des autres membres (recette des doubles réservations).
+      setDeactivateFutures(0);
       setDeactivateTarget(member);
+      void bookingRepository
+        .getByProvider(providerId)
+        .then((resas) => {
+          const maintenant = new Date();
+          setDeactivateFutures(
+            resas.filter(
+              (b) =>
+                b.memberId === member.id &&
+                ['confirmed', 'pending', 'pending_payment'].includes(b.status) &&
+                b.datetime > maintenant,
+            ).length,
+          );
+        })
+        .catch(() => undefined);
     } else {
       confirmToggle(member);
     }
@@ -440,6 +457,14 @@ export default function MembersScreen() {
             <Text variant="bodySmall" color="textMuted" style={{ textAlign: 'center', marginTop: spacing.xs }}>
               {t('proMembers.deactivate.intro')}
             </Text>
+
+            {deactivateFutures > 0 && (
+              <View style={{ marginTop: spacing.sm, backgroundColor: '#FEF3C7', borderRadius: 12, padding: spacing.md }}>
+                <Text variant="bodySmall" style={{ color: '#92400E', fontWeight: '600', textAlign: 'center' }}>
+                  {t('proMembers.deactivate.futureWarning', { count: deactivateFutures })}
+                </Text>
+              </View>
+            )}
 
             {/* Info items */}
             <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
@@ -795,6 +820,14 @@ export default function MembersScreen() {
 
             <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['3xl'] }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={{ gap: spacing.md }}>
+                {!editingId && members.length >= 1 && (
+                  <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: spacing.md, flexDirection: 'row', gap: spacing.sm }}>
+                    <Ionicons name="warning-outline" size={20} color="#D97706" />
+                    <Text variant="bodySmall" style={{ color: '#92400E', flex: 1 }}>
+                      {t('proMembers.form.parallelWarning')}
+                    </Text>
+                  </View>
+                )}
                 {/* Avatar picker */}
                 <View style={{ alignItems: 'center', marginBottom: spacing.sm }}>
                   <Pressable onPress={handlePickPhoto} disabled={uploadingPhoto} style={{ alignItems: 'center' }}>

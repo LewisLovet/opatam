@@ -2778,7 +2778,8 @@
       "locationRequired": "Wählen Sie einen Ort",
       "updated": "Mitglied geändert",
       "added": "Mitglied hinzugefügt",
-      "saving": "Wird gespeichert …"
+      "saving": "Wird gespeichert …",
+      "parallelWarning": "Jedes Mitglied hat einen eigenen, parallel buchbaren Kalender: zwei Mitglieder können Termine im selben Zeitfenster erhalten. Fügen Sie ein Mitglied nur für eine zusätzliche Person hinzu — zum Trennen von Leistungen nutzen Sie Kategorien."
     },
     "deactivate": {
       "confirmTitle": "{{name}} deaktivieren?",
@@ -2787,7 +2788,8 @@
       "noNewBookings": "Kunden können bei diesem Mitglied <b>keine Termine mehr buchen</b>",
       "hiddenFromBooking": "Das Mitglied erscheint <b>nicht mehr auf Ihrer Buchungsseite</b>",
       "canReactivate": "Sie können das Mitglied jederzeit wieder <b>aktivieren</b>",
-      "confirmButton": "Deaktivieren"
+      "confirmButton": "Deaktivieren",
+      "futureWarning": "{{count}} kommende Termine liegen auf diesem Mitglied. Nach der Deaktivierung blockieren sie die Zeitfenster der anderen Mitglieder nicht mehr — weisen Sie sie zuerst im Kalender neu zu."
     },
     "toggle": {
       "deactivated": "{{name}} deaktiviert",

@@ -2778,7 +2778,8 @@
       "locationRequired": "Selecione um local",
       "updated": "Membro editado",
       "added": "Membro adicionado",
-      "saving": "A guardar..."
+      "saving": "A guardar...",
+      "parallelWarning": "Cada membro tem a sua própria agenda, reservável em paralelo: dois membros podem receber duas marcações no mesmo horário. Adicione um membro apenas para uma pessoa adicional — para separar os serviços, use as categorias."
     },
     "deactivate": {
       "confirmTitle": "Desativar {{name}}?",
@@ -2787,7 +2788,8 @@
       "noNewBookings": "Os clientes <b>deixam de poder fazer marcações</b> com este membro",
       "hiddenFromBooking": "O membro <b>deixa de aparecer na sua página de reservas</b>",
       "canReactivate": "Pode <b>reativar</b> o membro a qualquer momento",
-      "confirmButton": "Desativar"
+      "confirmButton": "Desativar",
+      "futureWarning": "{{count}} marcações futuras estão neste membro. Depois de desativado, deixarão de bloquear os horários dos outros membros — reatribua-as primeiro no calendário."
     },
     "toggle": {
       "deactivated": "{{name}} desativado",

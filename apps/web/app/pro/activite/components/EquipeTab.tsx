@@ -251,6 +251,28 @@ export function EquipeTab() {
         await memberService.reactivateMember(provider.id, memberId);
         toast.success('Membre activé');
       } else {
+        // Garde-fou : un membre désactivé qui porte des rendez-vous futurs
+        // les rend INVISIBLES pour les créneaux des autres membres — la
+        // recette exacte des doubles réservations. On prévient, chiffres à
+        // l'appui, avant d'accepter.
+        const resas = await bookingRepository.getByProvider(provider.id);
+        const maintenant = new Date();
+        const futures = resas.filter(
+          (b) =>
+            b.memberId === memberId &&
+            ['confirmed', 'pending', 'pending_payment'].includes(b.status) &&
+            b.datetime > maintenant,
+        ).length;
+        if (futures > 0) {
+          const ok = window.confirm(
+            `${futures} rendez-vous à venir ${futures > 1 ? 'sont' : 'est'} sur ce membre.\n\n` +
+              'Une fois désactivé, ces rendez-vous resteront valides mais NE BLOQUERONT ' +
+              'PLUS les créneaux de vos autres membres — des clientes pourraient réserver ' +
+              'par-dessus.\n\nRéattribuez-les d\u2019abord depuis le planning, ou confirmez ' +
+              'en connaissance de cause.',
+          );
+          if (!ok) return;
+        }
         await memberService.deactivateMember(provider.id, memberId);
         toast.success('Membre désactivé');
       }
@@ -379,6 +401,7 @@ export function EquipeTab() {
         services={services}
         memberServiceIds={selectedMemberServiceIds}
         onSave={handleSave}
+        estMembreSupplementaire={!selectedMember && members.length >= 1}
         onDelete={handleDelete}
         onRegenerateCode={handleRegenerateCode}
         onSendCode={handleSendCode}
