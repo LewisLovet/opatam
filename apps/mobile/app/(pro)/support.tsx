@@ -132,35 +132,36 @@ export default function SupportScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* En-tête */}
-      <View
-        style={[
-          s.entete,
-          {
-            paddingTop: insets.top + spacing.sm,
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.md,
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={() => {
-            if (vue === 'theme') setVue('accueil');
-            else if (vue === 'chat' && (messages?.length ?? 0) === 0) setVue(themeId ? 'theme' : 'accueil');
-            else router.back();
-          }}
-          hitSlop={12}
-          style={{ marginRight: spacing.md }}
+      {/* En-tête — bandeau primary, même convention que les autres écrans
+          pro poussés (référence : members.tsx / availability.tsx). */}
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View
+          style={[
+            s.entete,
+            { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+          ]}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text variant="h3">{t('proSupport.title')}</Text>
-          <Text variant="caption" color="textSecondary">
-            {t('proSupport.subtitle')}
-          </Text>
+          <Pressable
+            onPress={() => {
+              if (vue === 'theme') setVue('accueil');
+              else if (vue === 'chat' && (messages?.length ?? 0) === 0) setVue(themeId ? 'theme' : 'accueil');
+              else router.back();
+            }}
+            hitSlop={12}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>
+              {t('proSupport.title')}
+            </Text>
+            <Text variant="caption" style={{ color: 'rgba(255,255,255,0.75)' }} numberOfLines={1}>
+              {t('proSupport.subtitle')}
+            </Text>
+          </View>
+          {/* Espaceur symétrique du chevron pour garder le titre centré */}
+          <View style={{ width: 24 }} />
         </View>
       </View>
 
@@ -393,7 +394,7 @@ export default function SupportScreen() {
 }
 
 const s = StyleSheet.create({
-  entete: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
+  entete: { flexDirection: 'row', alignItems: 'center' },
   saisie: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderTopWidth: 1 },
   champ: {
     flex: 1,

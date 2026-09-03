@@ -88,7 +88,10 @@ import {
   useProviderNotifications,
   useProviderStats,
   useReviews,
+  useSupportChatEnabled,
 } from '../../../hooks';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@booking-app/firebase';
 import {
   MORE_TAB_FEATURE_KEYS,
   useNewFeatures,
@@ -744,6 +747,19 @@ export default function ProDashboardScreen() {
   const router = useRouter();
   const { provider, providerId, refreshProvider } = useProvider();
 
+  // Messagerie Opatam — icône du hero (interrupteur config/supportChat) +
+  // badge des réponses de l'équipe non lues.
+  const supportChatActif = useSupportChatEnabled(providerId ?? null);
+  const [supportNonLus, setSupportNonLus] = useState(0);
+  useEffect(() => {
+    if (!providerId || supportChatActif !== true) return;
+    return onSnapshot(
+      doc(db, 'supportChats', providerId),
+      (snap) => setSupportNonLus(snap.data()?.proUnread ?? 0),
+      () => setSupportNonLus(0),
+    );
+  }, [providerId, supportChatActif]);
+
   // Welcome 🎉 overlay — shown once, right after a fresh registration.
   const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
@@ -1216,6 +1232,63 @@ export default function ProDashboardScreen() {
                 {formatDashboardDate(today)}
               </Text>
             </View>
+            {/* Messagerie Opatam — visible seulement pour les comptes
+                autorisés par l'interrupteur config/supportChat. */}
+            {supportChatActif === true && (
+              <Pressable
+                onPress={() => router.push('/(pro)/support' as never)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('proMore.menu.supportChat')}
+                style={({ pressed }) => [
+                  {
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: 'rgba(255,255,255,0.18)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.25)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: spacing.md,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="chatbubbles-outline" size={22} color="#FFFFFF" />
+                {supportNonLus > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      paddingHorizontal: supportNonLus > 9 ? 4 : 0,
+                      backgroundColor: '#EF4444',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 2,
+                      borderColor: '#FFFFFF',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#FFF',
+                        fontSize: 10,
+                        fontWeight: '800',
+                        lineHeight: 12,
+                        textAlign: 'center',
+                        includeFontPadding: false,
+                      }}
+                    >
+                      {supportNonLus > 9 ? '9+' : supportNonLus}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            )}
             {/* Header avatar doubles as the notification-center entry:
                 tap opens the drawer; a bell glyph signals it's clickable
                 and a red badge shows the unread count. */}
