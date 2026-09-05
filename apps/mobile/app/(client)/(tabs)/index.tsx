@@ -84,7 +84,8 @@ function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): 
 
   const isToday = date.toDateString() === now.toDateString();
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
-  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
+  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 
   if (isToday) return t('home.date.todayAt', { time: timeStr });
   if (isTomorrow) return t('home.date.tomorrowAt', { time: timeStr });

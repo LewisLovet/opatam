@@ -1250,6 +1250,7 @@ export function BookingFlow({
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',
+                          timeZone: 'Europe/Paris',
                         }),
                         time: state.slot.start,
                       })}

@@ -80,6 +80,9 @@ function fmtCurrency(cents: number, locale: string): string {
   }).format(cents / 100);
 }
 
+// Heure du SALON, jamais celle de l'appareil : une cliente qui réserve
+// depuis un autre fuseau (Guadeloupe…) doit revoir ici exactement l'heure
+// choisie dans le tunnel — sans timeZone, « 14:00 » devenait « 08:00 ».
 function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString(locale, {
@@ -87,6 +90,7 @@ function formatDate(dateStr: string, locale: string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -95,6 +99,7 @@ function formatTime(dateStr: string, locale: string): string {
   return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 

@@ -110,12 +110,15 @@ function fmtCurrency(cents: number, locale: string): string {
   }).format(cents / 100);
 }
 
+// Jour du créneau dans le fuseau du SALON — un appareil dans un autre
+// fuseau ferait sinon glisser les créneaux de fin/début de journée d'un jour.
 function formatDate(isoString: string, locale: string): string {
   const date = new Date(isoString);
   return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: 'Europe/Paris',
   });
 }
 

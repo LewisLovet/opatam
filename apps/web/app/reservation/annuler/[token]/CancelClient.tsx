@@ -70,6 +70,8 @@ function formatPrice(cents: number, locale: string): string {
   }).format(euros);
 }
 
+// Heure du SALON, jamais celle de l'appareil (cf. ConfirmationClient) —
+// sinon une cliente dans un autre fuseau annulerait « le mauvais » créneau.
 function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString(locale, {
@@ -77,6 +79,7 @@ function formatDate(dateStr: string, locale: string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   });
 }
 
@@ -85,6 +88,7 @@ function formatTime(dateStr: string, locale: string): string {
   return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 

@@ -52,9 +52,11 @@ function formatDate(datetime: Date | any): string {
 
 function formatTime(datetime: Date | any): string {
   const date = toDate(datetime);
+  // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
   return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 }
 

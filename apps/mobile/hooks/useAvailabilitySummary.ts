@@ -1,15 +1,21 @@
 /**
  * useAvailabilitySummary Hook
  *
- * Per-day availability for the booking calendar over a range, in ONE batched
- * call to the shared `schedulingService.getAvailabilitySummary` (3 grouped
- * Firestore reads instead of 1 fetch per tapped day). Returns each day's
- * status + realistic capacity + the selectable slots, so the calendar shows
- * day states before any tap and opens a day instantly.
+ * Per-day availability for the booking calendar over a range, in ONE call to
+ * `/api/availability-summary` (côté serveur, fuseau Europe/Paris forcé).
+ *
+ * POURQUOI le serveur et plus le calcul sur l'appareil : le moteur de
+ * créneaux matérialise les horaires du salon avec les composantes locales de
+ * la machine qui l'exécute. Sur le téléphone d'une cliente dans un autre
+ * fuseau (Guadeloupe, UTC−4…), « 14:00 » devenait 14:00 HEURE LOCALE — un
+ * instant décalé de plusieurs heures, envoyé tel quel à /api/bookings, donc
+ * une réservation à la mauvaise heure dans l'agenda du pro. Le serveur
+ * renvoie des instants absolus (ISO) + des libellés « HH:MM » en heure du
+ * salon, à afficher tels quels.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { schedulingService } from '@booking-app/firebase';
+import { API_URL } from '../lib/config';
 import type { TimeSlot } from './useAvailableSlots';
 import i18n from '../lib/i18n';
 
@@ -71,18 +77,40 @@ export function useAvailabilitySummary(
     try {
       setLoading(true);
       setError(null);
-      const days = await schedulingService.getAvailabilitySummary({
+      // Bornes en JOURS calendaires (YYYY-MM-DD locaux) — jamais des ISO,
+      // qui désigneraient le mauvais jour depuis un autre fuseau.
+      const toKey = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const params = new URLSearchParams({
         providerId,
         serviceId,
         memberId,
-        startDate,
-        endDate,
-        durationOverride,
-        extraServiceIds: extraServiceIdsKey ? extraServiceIdsKey.split(',') : undefined,
+        start: toKey(startDate),
+        end: toKey(endDate),
       });
+      if (durationOverride) params.set('duration', String(durationOverride));
+      if (extraServiceIdsKey) params.set('extraServiceIds', extraServiceIdsKey);
+      const res = await fetch(`${API_URL}/api/availability-summary?${params.toString()}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || i18n.t('errors.availability.loadFailed'));
       const map: Record<string, DayInfo> = {};
-      for (const d of days) {
-        map[d.date] = { status: d.status, capacity: d.capacity, slots: d.slots };
+      for (const d of body.days as Array<{
+        date: string;
+        status: DayStatus;
+        capacity: number;
+        slots: Array<{ date: string; start: string; end: string; datetime: string; endDatetime: string }>;
+      }>) {
+        map[d.date] = {
+          status: d.status,
+          capacity: d.capacity,
+          slots: d.slots.map((s) => ({
+            date: new Date(s.date),
+            start: s.start,
+            end: s.end,
+            datetime: new Date(s.datetime),
+            endDatetime: new Date(s.endDatetime),
+          })),
+        };
       }
       setSummary(map);
     } catch (err: any) {
