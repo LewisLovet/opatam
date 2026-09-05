@@ -395,9 +395,14 @@ export function resolveDeposit(
       return null;
     }
     const value = service.deposit.value ?? 0;
+    // Un acompte FIXE est plafonné au prix effectif de la ligne : avec une
+    // promotion, une récompense fidélité ou une prestation gratuite, le prix
+    // reçu ici est déjà réduit — sans plafond, l'acompte pouvait DÉPASSER le
+    // montant final dû (et une prestation offerte exigeait quand même un
+    // acompte plein). Les acomptes en % suivent le prix réduit d'eux-mêmes.
     const amount =
       service.deposit.type === 'fixed'
-        ? value
+        ? Math.min(value, Math.max(0, service.price))
         : Math.round((service.price * value) / 100);
     // A 0€ deposit is no deposit: it would show a pointless opt-in in
     // the booking UIs and, server-side, put the booking in

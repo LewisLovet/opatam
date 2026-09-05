@@ -14,6 +14,8 @@ import {
   normalizeCity,
   capitalizeWords,
   generateSearchTokens,
+  resolveDeposit,
+  combineResolvedDeposits,
 } from './index';
 
 // --- formatPrice ---
@@ -310,5 +312,67 @@ describe('generateSearchTokens', () => {
     const tokens = generateSearchTokens('Test Test');
     const uniqueTokens = [...new Set(tokens)];
     expect(tokens.length).toBe(uniqueTokens.length);
+  });
+});
+
+// --- resolveDeposit — plafond au prix effectif (promos / fidélité / gratuit) ---
+describe('resolveDeposit', () => {
+  const settings = { depositDefault: null };
+
+  it('acompte fixe ≤ prix effectif : inchangé', () => {
+    const r = resolveDeposit(
+      { price: 5000, deposit: { type: 'fixed', value: 2000, refundDeadlineHours: 24 } } as any,
+      settings,
+    );
+    expect(r?.amount).toBe(2000);
+  });
+
+  it('acompte fixe > prix réduit (promo) : plafonné au prix', () => {
+    // Prestation à 50 € avec acompte fixe 20 €, promo -80 % → prix effectif 10 €.
+    const r = resolveDeposit(
+      { price: 1000, deposit: { type: 'fixed', value: 2000, refundDeadlineHours: 24 } } as any,
+      settings,
+    );
+    expect(r?.amount).toBe(1000);
+  });
+
+  it('prestation offerte (fidélité 100 %) : aucun acompte', () => {
+    const r = resolveDeposit(
+      { price: 0, deposit: { type: 'fixed', value: 2000, refundDeadlineHours: 24 } } as any,
+      settings,
+    );
+    expect(r).toBeNull();
+  });
+
+  it('prestation gratuite : aucun acompte même avec défaut en %', () => {
+    const r = resolveDeposit(
+      { price: 0, deposit: null } as any,
+      { depositDefault: { percent: 30, refundDeadlineHours: 48 } },
+    );
+    expect(r).toBeNull();
+  });
+
+  it('acompte % : suit le prix réduit (déjà correct)', () => {
+    const r = resolveDeposit(
+      { price: 1000, deposit: { type: 'percent', value: 30, refundDeadlineHours: 24 } } as any,
+      settings,
+    );
+    expect(r?.amount).toBe(300);
+  });
+
+  it('multi-prestations : chaque ligne plafonnée, la somme reste ≤ total', () => {
+    const a = resolveDeposit(
+      { price: 500, deposit: { type: 'fixed', value: 2000, refundDeadlineHours: 0 } } as any,
+      settings,
+    );
+    const b = resolveDeposit(
+      { price: 3000, deposit: { type: 'fixed', value: 1000, refundDeadlineHours: 24 } } as any,
+      settings,
+    );
+    const combined = combineResolvedDeposits([a!, b!]);
+    expect(combined?.amount).toBe(500 + 1000);
+    expect(combined!.amount).toBeLessThanOrEqual(500 + 3000);
+    // Fenêtre la plus favorable à la cliente conservée.
+    expect(combined?.refundDeadlineHours).toBe(24);
   });
 });
