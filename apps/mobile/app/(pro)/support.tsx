@@ -43,7 +43,6 @@ import { SUPPORT_FAQ } from '@booking-app/shared';
 interface MessageChat {
   id: string;
   from: 'pro' | 'admin';
-  authorName?: string;
   text: string;
   createdAt: Date | null;
 }
@@ -90,7 +89,6 @@ export default function SupportScreen() {
           return {
             id: d.id,
             from: x.from === 'admin' ? 'admin' : 'pro',
-            authorName: typeof x.authorName === 'string' ? x.authorName : undefined,
             text: typeof x.text === 'string' ? x.text : '',
             createdAt: x.createdAt?.toDate?.() ?? null,
           };
@@ -319,7 +317,10 @@ export default function SupportScreen() {
               >
                 {m.from === 'admin' && (
                   <Text variant="caption" style={{ color: colors.primary, fontWeight: '700', marginBottom: 2 }}>
-                    {m.authorName ?? t('proSupport.team')}
+                    {/* Libellé neutre volontaire : le prénom/nom de l'agent
+                        (authorName, conservé en base pour l'admin) n'est pas
+                        montré aux professionnels. */}
+                    {t('proSupport.team')}
                   </Text>
                 )}
                 <Text

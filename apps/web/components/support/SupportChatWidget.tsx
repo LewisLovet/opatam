@@ -31,7 +31,6 @@ import { SUPPORT_FAQ } from '@booking-app/shared';
 interface MessageChat {
   id: string;
   from: 'pro' | 'admin';
-  authorName?: string;
   text: string;
   createdAt: Date | null;
 }
@@ -97,7 +96,6 @@ export function SupportChatWidget() {
           return {
             id: d.id,
             from: x.from === 'admin' ? 'admin' : 'pro',
-            authorName: typeof x.authorName === 'string' ? x.authorName : undefined,
             text: typeof x.text === 'string' ? x.text : '',
             createdAt: x.createdAt?.toDate?.() ?? null,
           };
@@ -302,7 +300,10 @@ export function SupportChatWidget() {
                 >
                   {m.from === 'admin' && (
                     <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">
-                      {m.authorName ?? 'Équipe Opatam'}
+                      {/* Libellé neutre volontaire : le prénom/nom de l'agent
+                          (authorName, conservé en base pour l'admin) n'est
+                          pas montré aux professionnels. */}
+                      Support Opatam
                     </p>
                   )}
                   <p className="whitespace-pre-wrap break-words">{m.text}</p>
