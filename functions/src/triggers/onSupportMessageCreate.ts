@@ -27,6 +27,10 @@ export const onSupportMessageCreate = onDocumentCreated(
     const providerId = event.params.providerId;
     const from: 'pro' | 'admin' = message.from === 'admin' ? 'admin' : 'pro';
     const texte = typeof message.text === 'string' ? message.text : '';
+    // `silent: true` — messages d'accueil / campagnes : les compteurs et le
+    // résumé bougent (le badge apparaît chez le pro), mais ni push ni e-mail
+    // ne partent. Réservé aux écritures Admin SDK (seed), pas aux clients.
+    const silencieux = message.silent === true;
 
     const db = admin.firestore();
     const chatRef = db.collection('supportChats').doc(providerId);
@@ -78,7 +82,7 @@ export const onSupportMessageCreate = onDocumentCreated(
 
     if (from === 'pro') {
       // ── E-mail aux admins — seulement la PREMIÈRE question sans réponse ──
-      if (!premierNonLuAdmin) return;
+      if (!premierNonLuAdmin || silencieux) return;
       try {
         const adminsSnap = await db.collection('users').where('isAdmin', '==', true).get();
         const emails = adminsSnap.docs
@@ -110,6 +114,7 @@ export const onSupportMessageCreate = onDocumentCreated(
     }
 
     // ── Message d'un ADMIN → push au professionnel ──
+    if (silencieux) return;
     try {
       const userSnap = await db.collection('users').doc(providerId).get();
       const tokens: string[] = userSnap.data()?.pushTokens || [];

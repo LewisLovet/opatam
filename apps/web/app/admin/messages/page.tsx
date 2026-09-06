@@ -5,16 +5,19 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
+  limit,
   limitToLast,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, MessageCircle, Send } from 'lucide-react';
+import { Loader2, MessageCircle, PenSquare, Search, Send, X } from 'lucide-react';
 import { supportTopicTag } from '@booking-app/shared';
 
 /**
@@ -63,6 +66,43 @@ export default function AdminMessagesPage() {
   const [envoi, setEnvoi] = useState(false);
   const finRef = useRef<HTMLDivElement>(null);
 
+  // ── Nouveau message : le chat s'initie aussi de NOTRE côté ──
+  // On cherche un prestataire (searchTokens, comme la recherche publique) et
+  // on lui écrit en premier — le doc supportChats est créé par la Cloud
+  // Function au premier message, le pro reçoit badge + push.
+  const [nouveauOuvert, setNouveauOuvert] = useState(false);
+  const [recherche, setRecherche] = useState('');
+  const [resultats, setResultats] = useState<Array<{ id: string; businessName: string }>>([]);
+  const [cible, setCible] = useState<{ id: string; businessName: string } | null>(null);
+
+  useEffect(() => {
+    const terme = recherche.trim().toLowerCase();
+    if (terme.length < 2) {
+      setResultats([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const snap = await getDocs(
+          query(
+            collection(db, 'providers'),
+            where('searchTokens', 'array-contains', terme),
+            limit(8),
+          ),
+        );
+        setResultats(
+          snap.docs.map((d) => ({
+            id: d.id,
+            businessName: (d.data().businessName as string) ?? 'Professionnel',
+          })),
+        );
+      } catch {
+        setResultats([]);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [recherche]);
+
   // Toutes les conversations, les plus récentes d'abord.
   useEffect(() => {
     const q = query(collection(db, 'supportChats'), orderBy('updatedAt', 'desc'));
@@ -108,8 +148,24 @@ export default function AdminMessagesPage() {
     });
   }, [ouvertId]);
 
-  // Ouverture d'un fil → lu.
-  const ouvert = useMemo(() => chats?.find((c) => c.id === ouvertId) ?? null, [chats, ouvertId]);
+  // Ouverture d'un fil → lu. Un fil tout neuf (initié par nous, aucun
+  // message encore) n'a pas de doc supportChats : la cible fait l'en-tête.
+  const ouvert = useMemo(() => {
+    const existant = chats?.find((c) => c.id === ouvertId) ?? null;
+    if (existant) return existant;
+    if (cible && cible.id === ouvertId) {
+      return {
+        id: cible.id,
+        businessName: cible.businessName,
+        topic: null,
+        lastMessageText: '',
+        lastMessageFrom: 'admin' as const,
+        lastMessageAt: null,
+        adminUnread: 0,
+      };
+    }
+    return null;
+  }, [chats, ouvertId, cible]);
   useEffect(() => {
     if (!ouvertId || !ouvert || ouvert.adminUnread === 0) return;
     void setDoc(doc(db, 'supportChats', ouvertId), { adminUnread: 0 }, { merge: true }).catch(
@@ -141,16 +197,67 @@ export default function AdminMessagesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Le chat de support des professionnels — répondez vite, c&apos;est ce qui rassure.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Le chat de support des professionnels — répondez vite, c&apos;est ce qui rassure.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setNouveauOuvert((v) => !v);
+            setRecherche('');
+            setResultats([]);
+          }}
+          className="inline-flex items-center gap-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3.5 py-2 text-sm font-semibold hover:opacity-90"
+        >
+          {nouveauOuvert ? <X className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
+          {nouveauOuvert ? 'Fermer' : 'Nouveau message'}
+        </button>
       </div>
+
+      {/* Recherche d'un prestataire pour initier une conversation */}
+      {nouveauOuvert && (
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 max-w-md">
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              autoFocus
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              placeholder="Nom du prestataire…"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 pl-9 pr-3 py-2 text-sm text-gray-900 dark:text-white"
+            />
+          </div>
+          {resultats.length > 0 && (
+            <div className="mt-2 divide-y divide-gray-50 dark:divide-gray-800/60">
+              {resultats.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setCible(r);
+                    setOuvertId(r.id);
+                    setNouveauOuvert(false);
+                    setRecherche('');
+                    setResultats([]);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg"
+                >
+                  {r.businessName}
+                </button>
+              ))}
+            </div>
+          )}
+          {recherche.trim().length >= 2 && resultats.length === 0 && (
+            <p className="mt-2 px-3 text-xs text-gray-400">Aucun prestataire trouvé.</p>
+          )}
+        </div>
+      )}
 
       {chats === null ? (
         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-      ) : chats.length === 0 ? (
+      ) : chats.length === 0 && !ouvert ? (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 p-10 text-center">
           <MessageCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
