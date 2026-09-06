@@ -1158,7 +1158,11 @@ async function handleSerenitySubscriptionEvent(
   // is set, the pro keeps access until period end.
   const fullSub = await stripe.subscriptions.retrieve(subscription.id);
   const status = fullSub.status; // active | trialing | past_due | canceled | …
-  const isAccessGranted = status === 'active' || status === 'trialing';
+  // `past_due` garde les acomptes actifs : Stripe réessaie le prélèvement
+  // (~2 semaines) et couper au premier échec punissait un simple plafond de
+  // carte (même règle que l'abonnement principal). Le terminus est la
+  // résiliation — cas `deleted` ci-dessus — qui coupe le flag pour de bon.
+  const isAccessGranted = status === 'active' || status === 'trialing' || status === 'past_due';
 
   const rawEnd = getSubscriptionPeriodEnd(fullSub);
   const currentPeriodEnd = rawEnd ? new Date(rawEnd * 1000) : null;

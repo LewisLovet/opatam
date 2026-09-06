@@ -88,6 +88,28 @@ describe('hasDepositAccess', () => {
     expect(hasDepositAccess(null)).toBe(false);
     expect(hasDepositAccess(undefined)).toBe(false);
   });
+
+  // Tolérance retry : un prélèvement Sérénité raté (past_due) ne coupe PAS
+  // les acomptes — Stripe réessaie ~2 semaines (cas FmLashes 2026-09-06).
+  it('keeps deposits during Sérénité past_due (Stripe retries)', () => {
+    expect(
+      hasDepositAccess({
+        depositsAddonActive: false, // le webhook a pu couper le flag avant le fix
+        subscription: { status: 'cancelled' },
+        serenity: { status: 'past_due' },
+      }),
+    ).toBe(true);
+  });
+
+  it('denies once Sérénité is cancelled (retries exhausted / resiliation)', () => {
+    expect(
+      hasDepositAccess({
+        depositsAddonActive: false,
+        subscription: { status: 'cancelled' },
+        serenity: { status: 'cancelled' },
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('isAccessOverrideActive (régression après refactor toDate)', () => {

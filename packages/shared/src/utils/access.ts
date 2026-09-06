@@ -182,8 +182,15 @@ export function computeEntitlements(
   ];
   const effectivePlan = tiers.includes('team') ? 'team' : tiers.includes('solo') ? 'solo' : null;
 
+  // `past_due` compte — même règle que `paidUnderneath` sur l'abonnement
+  // principal : Stripe réessaie le prélèvement pendant ~2 semaines, et un
+  // simple plafond de carte ne doit pas couper les acomptes en silence dès
+  // le premier échec (cas FmLashes 2026-09-06). Le vrai terminus reste la
+  // résiliation : le webhook `deleted` écrit `cancelled` + coupe le flag.
   const serenityPaid =
-    provider.serenity?.status === 'active' || provider.serenity?.status === 'trialing';
+    provider.serenity?.status === 'active' ||
+    provider.serenity?.status === 'trialing' ||
+    provider.serenity?.status === 'past_due';
 
   // `depositsAddonActive` est un flag matérialisé : fiable quand il vient du
   // webhook de paiement, suspect quand il est l'empreinte d'un ancien comp
