@@ -11,6 +11,7 @@ import {
   SignupsByMonthChart,
   PeakHoursChart,
   CategoryBreakdownTable,
+  AcquisitionBreakdownTable,
 } from './components';
 
 export default function AnalyticsPage() {
@@ -77,6 +78,9 @@ export default function AnalyticsPage() {
 
       {/* Category breakdown */}
       <CategoryBreakdownTable data={data.categoryBreakdown} />
+
+      {/* D'où viennent les prestataires */}
+      <AcquisitionBreakdownTable data={data.acquisitionBreakdown ?? []} />
     </div>
   );
 }

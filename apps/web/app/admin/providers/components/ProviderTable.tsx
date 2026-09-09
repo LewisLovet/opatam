@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, CheckCircle, XCircle, Star, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui';
+import { acquisitionChannelLabel } from '@booking-app/shared';
 
 interface ProviderItem {
   id: string;
@@ -18,6 +19,8 @@ interface ProviderItem {
   region: string | null;
   countryCode: string | null;
   createdAt: string | null;
+  /** « Comment avez-vous connu Opatam ? » — absent pour les comptes d'avant la question. */
+  acquisitionSource?: { channel: string; detail?: string | null } | null;
 }
 
 interface ProviderTableProps {
@@ -70,6 +73,9 @@ export function ProviderTable({ items }: ProviderTableProps) {
               </th>
               <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Plan
+              </th>
+              <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Source
               </th>
               <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Note
@@ -130,6 +136,18 @@ export function ProviderTable({ items }: ProviderTableProps) {
                   <Badge variant={planBadgeVariant[provider.plan] || 'primary'} size="sm">
                     {planLabels[provider.plan] || provider.plan}
                   </Badge>
+                </td>
+                <td className="px-5 py-3 text-xs text-gray-600 dark:text-gray-300 max-w-[180px]">
+                  {provider.acquisitionSource ? (
+                    <span title={provider.acquisitionSource.detail || undefined}>
+                      {acquisitionChannelLabel(provider.acquisitionSource.channel)}
+                      {provider.acquisitionSource.detail && (
+                        <span className="text-gray-400"> — {provider.acquisitionSource.detail}</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-600">—</span>
+                  )}
                 </td>
                 <td className="px-5 py-3">
                   {provider.rating.count > 0 ? (

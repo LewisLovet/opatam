@@ -162,6 +162,8 @@ export interface AnalyticsData {
   signupsByMonth: { month: string; clients: number; providers: number }[];
   peakHours: { hour: number; count: number }[];
   categoryBreakdown: { category: string; label: string; providers: number; bookings: number }[];
+  /** « Comment avez-vous connu Opatam ? » — prestataires par canal. */
+  acquisitionBreakdown: { channel: string; label: string; providers: number }[];
 }
 
 export interface ActivityEvent {

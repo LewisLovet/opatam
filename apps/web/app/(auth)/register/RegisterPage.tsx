@@ -34,8 +34,8 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
-import type { ServiceVariation, ServiceOption, ServiceInfoField } from '@booking-app/shared';
+import { ACQUISITION_CHANNELS, CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
+import type { ServiceVariation, ServiceOption, ServiceInfoField, AcquisitionChannel } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
 import { VariationsListEditor } from '@/app/pro/activite/prestations/components/VariationsListEditor';
@@ -535,13 +535,7 @@ export default function RegisterPage() {
       description: data.description,
       acquisitionSource: data.acquisitionChannel
         ? {
-            channel: data.acquisitionChannel as
-              | 'equipe'
-              | 'instagram'
-              | 'tiktok'
-              | 'google'
-              | 'recommandation'
-              | 'autre',
+            channel: data.acquisitionChannel as AcquisitionChannel,
             detail: data.acquisitionDetail.trim() || null,
           }
         : undefined,
@@ -1786,12 +1780,11 @@ export default function RegisterPage() {
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white"
           >
             <option value="">Choisissez…</option>
-            <option value="equipe">Un membre de l&apos;équipe Opatam</option>
-            <option value="instagram">Instagram</option>
-            <option value="tiktok">TikTok</option>
-            <option value="google">Recherche Google</option>
-            <option value="recommandation">Recommandation d&apos;un·e autre professionnel·le</option>
-            <option value="autre">Autre…</option>
+            {ACQUISITION_CHANNELS.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
           </select>
           {data.acquisitionChannel === 'autre' && (
             <Input

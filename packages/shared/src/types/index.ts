@@ -1,4 +1,4 @@
-import type { ServiceUnavailableReason } from '../constants';
+import type { ServiceUnavailableReason, AcquisitionChannel } from '../constants';
 
 // Notification settings (shared by clients via User)
 export interface NotificationSettings {
@@ -93,7 +93,8 @@ export interface Provider {
    *  `equipe` = amené par un commercial (libellé public : « un membre de
    *  l'équipe »). Sert au marketing ET au recoupement des attributions. */
   acquisitionSource?: {
-    channel: 'equipe' | 'instagram' | 'tiktok' | 'google' | 'recommandation' | 'autre';
+    /** Liste unique : `ACQUISITION_CHANNELS` (constants/acquisition). */
+    channel: AcquisitionChannel;
     detail?: string | null;
   } | null;
   userId: string;

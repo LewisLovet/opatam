@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { getStripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import { ACQUISITION_CHANNELS } from '@booking-app/shared';
 import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent } from '@/services/admin/types';
 
 /** Return JSON with Cache-Control header to avoid redundant Firestore reads */
@@ -458,7 +459,7 @@ async function getAnalyticsData(db: FirebaseFirestore.Firestore): Promise<Analyt
 
   // Parallel queries — all use select() for minimal data transfer
   const [providersSnap, bookingsSnap, usersSnap, statsDoc] = await Promise.all([
-    db.collection('providers').select('businessName', 'photoURL', 'category', 'cities', 'rating').get(),
+    db.collection('providers').select('businessName', 'photoURL', 'category', 'cities', 'rating', 'acquisitionSource').get(),
     db.collection('bookings').where('createdAt', '>=', threeMonthsAgo).select('providerId', 'datetime', 'status', 'category').get(),
     db.collection('users').where('createdAt', '>=', twelveMonthsAgo).select('role', 'createdAt').get(),
     db.doc('stats/dashboard').get(),
@@ -580,12 +581,32 @@ async function getAnalyticsData(db: FirebaseFirestore.Firestore): Promise<Analyt
     .filter((c) => c.providers > 0 || c.bookings > 0)
     .sort((a, b) => b.bookings - a.bookings);
 
+  // ── D'où viennent les prestataires (« Comment avez-vous connu Opatam ? ») ──
+  // Ordre de la liste partagée, puis « Non renseigné » (comptes d'avant la
+  // question) en dernier — les canaux à zéro restent visibles.
+  const providersByChannel: Record<string, number> = {};
+  let sansReponse = 0;
+  providersSnap.docs.forEach((doc) => {
+    const ch = doc.data().acquisitionSource?.channel;
+    if (typeof ch === 'string' && ch) providersByChannel[ch] = (providersByChannel[ch] || 0) + 1;
+    else sansReponse++;
+  });
+  const acquisitionBreakdown = [
+    ...ACQUISITION_CHANNELS.map((c) => ({
+      channel: c.id as string,
+      label: c.label,
+      providers: providersByChannel[c.id] || 0,
+    })).sort((a, b) => b.providers - a.providers),
+    ...(sansReponse > 0 ? [{ channel: 'inconnu', label: 'Non renseigné (inscrit avant la question)', providers: sansReponse }] : []),
+  ];
+
   return {
     topCities,
     topProviders,
     signupsByMonth,
     peakHours,
     categoryBreakdown,
+    acquisitionBreakdown,
   };
 }
 

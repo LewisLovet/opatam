@@ -63,6 +63,7 @@ export async function GET(
       cities: providerData.cities || [],
       region: providerData.region || null,
       countryCode: providerData.countryCode || 'FR',
+      acquisitionSource: providerData.acquisitionSource || null,
       // Page views (for the admin debug/analytics view).
       pageViews: providerData.stats?.pageViews
         ? {

@@ -58,6 +58,8 @@ import {
   formatPrice,
   SERVICE_BASE_DURATION_MIN,
   SERVICE_BASE_DURATION_MAX,
+  ACQUISITION_CHANNELS,
+  type AcquisitionChannel,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
@@ -129,6 +131,9 @@ interface WizardData {
   password: string;
   confirmPassword: string;
   confirmEmail: string;
+  // « Comment avez-vous connu Opatam ? » — obligatoire, comme sur le web.
+  acquisitionChannel: AcquisitionChannel | '';
+  acquisitionDetail: string;
 }
 
 const DEFAULT_AVAILABILITY: Record<number, DayAvailability> = {
@@ -165,6 +170,8 @@ const DEFAULT_DATA: WizardData = {
   password: '',
   confirmPassword: '',
   confirmEmail: '',
+  acquisitionChannel: '',
+  acquisitionDetail: '',
 };
 
 // Labels/subtitles resolved at render via t(`auth.pro.steps.${key}.label|subtitle`).
@@ -473,6 +480,7 @@ export default function ProRegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showAcquisitionModal, setShowAcquisitionModal] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [customCategoryText, setCustomCategoryText] = useState('');
   const [copyFromDay, setCopyFromDay] = useState<number | null>(null);
@@ -770,6 +778,9 @@ export default function ProRegisterScreen() {
           return t('auth.pro.validation.phoneInvalid');
         if (!data.password || data.password.length < 6) return t('auth.pro.validation.passwordTooShort');
         if (data.password !== data.confirmPassword) return t('auth.pro.validation.passwordMismatch');
+        if (!data.acquisitionChannel) return t('auth.pro.validation.acquisitionRequired');
+        if (data.acquisitionChannel === 'autre' && !data.acquisitionDetail.trim())
+          return t('auth.pro.validation.acquisitionDetailRequired');
         return null;
       default:
         return null;
@@ -986,6 +997,10 @@ export default function ProRegisterScreen() {
         businessName: data.businessName.trim(),
         category: data.category,
         description: data.description.trim(),
+        // Déclaré dans createProviderSchema — sinon zod le retirerait en silence.
+        acquisitionSource: data.acquisitionChannel
+          ? { channel: data.acquisitionChannel, detail: data.acquisitionDetail.trim() || null }
+          : undefined,
       });
 
       // Link the referral code if one was validated (discount applies at the
@@ -2300,6 +2315,46 @@ export default function ProRegisterScreen() {
         secureTextEntry={!showPassword}
         autoCapitalize="none"
       />
+
+      {/* « Comment avez-vous connu Opatam ? » — obligatoire. Même liste
+          que le web (ACQUISITION_CHANNELS) ; « autre » ouvre un champ libre. */}
+      <View>
+        <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+          {t('auth.pro.step6.acquisitionLabel')}
+        </Text>
+        <Pressable
+          onPress={() => setShowAcquisitionModal(true)}
+          style={({ pressed }) => [
+            styles.selectButton,
+            {
+              borderColor: data.acquisitionChannel ? colors.primary : colors.border,
+              borderRadius: radius.lg,
+              padding: spacing.md,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          {data.acquisitionChannel ? (
+            <Text variant="body" style={{ flex: 1 }}>
+              {t(`auth.pro.acquisitionChannels.${data.acquisitionChannel}`)}
+            </Text>
+          ) : (
+            <Text variant="body" color="textMuted">{t('auth.pro.step6.acquisitionPlaceholder')}</Text>
+          )}
+          <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+        </Pressable>
+        {data.acquisitionChannel === 'autre' && (
+          <View style={{ marginTop: spacing.sm }}>
+            <Input
+              placeholder={t('auth.pro.step6.acquisitionDetailPlaceholder')}
+              value={data.acquisitionDetail}
+              onChangeText={(v) => updateField('acquisitionDetail', v.slice(0, 120))}
+              autoCapitalize="sentences"
+            />
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -2513,6 +2568,60 @@ export default function ProRegisterScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── « Comment avez-vous connu Opatam ? » — même feuille que la catégorie ── */}
+      <Modal visible={showAcquisitionModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF', borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3">{t('auth.pro.step6.acquisitionLabel')}</Text>
+              <Pressable onPress={() => setShowAcquisitionModal(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={ACQUISITION_CHANNELS}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const choisi = data.acquisitionChannel === item.id;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      updateFields({
+                        acquisitionChannel: item.id,
+                        acquisitionDetail: item.id === 'autre' ? data.acquisitionDetail : '',
+                      });
+                      setShowAcquisitionModal(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.listItem,
+                      {
+                        padding: spacing.md,
+                        paddingHorizontal: spacing.lg,
+                        backgroundColor: choisi
+                          ? colors.primaryLight
+                          : pressed
+                            ? 'rgba(0,0,0,0.03)'
+                            : 'transparent',
+                      },
+                    ]}
+                  >
+                    <Text
+                      variant="body"
+                      style={{ flex: 1, fontWeight: choisi ? '600' : '400' }}
+                      color={choisi ? 'primary' : 'text'}
+                    >
+                      {t(`auth.pro.acquisitionChannels.${item.id}`)}
+                    </Text>
+                    {choisi && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+              style={{ maxHeight: 440 }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Category Modal ── */}
       <Modal visible={showCategoryModal} transparent animationType="slide">

@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         region: data.region || null,
         countryCode: data.countryCode || null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+        acquisitionSource: data.acquisitionSource || null,
       };
     });
 

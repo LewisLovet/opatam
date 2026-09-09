@@ -296,7 +296,9 @@
         "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
         "passwordMismatch": "Les mots de passe ne correspondent pas",
         "emailMismatch": "Les adresses email ne correspondent pas",
-        "serviceDurationInvalid": "Indiquez une durée comprise entre 5 minutes et 24 heures."
+        "serviceDurationInvalid": "Indiquez une durée comprise entre 5 minutes et 24 heures.",
+        "acquisitionRequired": "Dites-nous comment vous avez connu Opatam",
+        "acquisitionDetailRequired": "Précisez comment vous avez connu Opatam"
       },
       "registerError": "Erreur lors de l'inscription",
       "finalizing": "Création de votre espace…",
@@ -382,14 +384,27 @@
         "passwordPlaceholder": "Min. 6 caractères",
         "confirmPasswordLabel": "Confirmer le mot de passe",
         "confirmPasswordPlaceholder": "Confirmez votre mot de passe",
-        "confirmEmailLabel": "Confirmez votre email"
+        "confirmEmailLabel": "Confirmez votre email",
+        "acquisitionLabel": "Comment avez-vous connu Opatam ?",
+        "acquisitionPlaceholder": "Choisissez…",
+        "acquisitionDetailPlaceholder": "Dites-nous en plus…"
       },
       "legal": "En créant un compte, vous acceptez nos CGU et notre Politique de confidentialité.",
       "alreadyAccount": "Déjà un compte ?",
       "signIn": "Se connecter",
       "submitting": "Création en cours...",
       "createAccount": "Créer mon compte",
-      "continueBtn": "Continuer"
+      "continueBtn": "Continuer",
+      "acquisitionChannels": {
+        "equipe": "Un membre de l'équipe Opatam",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "tiktok": "TikTok",
+        "google": "Recherche Google",
+        "siteweb": "Le site opatam.com",
+        "recommandation": "Bouche-à-oreille / recommandation",
+        "autre": "Autre…"
+      }
     }
   },
   "providerScreen": {

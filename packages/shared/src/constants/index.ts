@@ -1,4 +1,5 @@
 export * from './supportFaq';
+export * from './acquisition';
 // Regions
 export * from './regions';
 

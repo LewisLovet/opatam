@@ -26,7 +26,9 @@ import {
   Copy,
   Eye,
   Search,
+  Megaphone,
 } from 'lucide-react';
+import { acquisitionChannelLabel } from '@booking-app/shared';
 
 const categoryLabels: Record<string, string> = {
   coiffure: 'Coiffure',
@@ -366,6 +368,18 @@ export default function AdminProviderDetailPage() {
               >
                 <Copy className="w-3 h-3" />
               </button>
+            </div>
+
+            {/* « Comment avez-vous connu Opatam ? » — réponse d'inscription */}
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <Megaphone className="w-3.5 h-3.5 text-red-500" />
+              <span>
+                Source :{' '}
+                <strong className="text-gray-700 dark:text-gray-200">
+                  {acquisitionChannelLabel(provider.acquisitionSource?.channel)}
+                </strong>
+                {provider.acquisitionSource?.detail ? ` — ${provider.acquisitionSource.detail}` : ''}
+              </span>
             </div>
 
             {/* Page views */}

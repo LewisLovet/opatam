@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { serviceDiscountSchema } from './service.schema';
 import { PROVIDER_THEMES } from '../constants/themes';
+import { ACQUISITION_CHANNEL_IDS } from '../constants/acquisition';
 
 // Social links schema
 export const socialLinksSchema = z.object({
@@ -140,7 +141,7 @@ export const createProviderSchema = z.object({
    */
   acquisitionSource: z
     .object({
-      channel: z.enum(['equipe', 'instagram', 'tiktok', 'google', 'recommandation', 'autre']),
+      channel: z.enum(ACQUISITION_CHANNEL_IDS),
       detail: z.string().max(120).nullable().optional(),
     })
     .optional(),
