@@ -6,10 +6,8 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@booking-app/firebase';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -32,6 +30,7 @@ import {
   useNewFeatures,
   useProviderClientsCount,
   useSupportChatEnabled,
+  useSupportUnread,
 } from '../../../hooks';
 import i18n from '../../../lib/i18n';
 import { LanguageSettingRow } from '../../../components/LanguageSettingRow';
@@ -427,16 +426,7 @@ export default function MoreScreen() {
   // l'équipe active enabledForAll).
   const supportChatActif = useSupportChatEnabled(providerId ?? null);
   // Badge de la messagerie de support — réponses de l'équipe non lues.
-  const [supportNonLus, setSupportNonLus] = useState(0);
-  useEffect(() => {
-    const providerId = provider?.id;
-    if (!providerId) return;
-    return onSnapshot(
-      doc(db, 'supportChats', providerId),
-      (snap) => setSupportNonLus(snap.data()?.proUnread ?? 0),
-      () => setSupportNonLus(0),
-    );
-  }, [provider?.id]);
+  const supportNonLus = useSupportUnread(providerId, supportChatActif);
   // Same pattern but driven by article publication dates rather
   // than a hardcoded feature key, so the Tutoriels & guides entry
   // re-fires "Nouveau" whenever a fresh tutorial is published.

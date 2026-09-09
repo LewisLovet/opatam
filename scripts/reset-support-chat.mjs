@@ -35,7 +35,8 @@ const backup = {
   chat: chatSnap.exists ? chatSnap.data() : null,
   messages: msgs.docs.map((d) => ({ id: d.id, ...d.data() })),
 };
-const file = `scripts/.backup-supportChat-${pid}-${new Date().toISOString().slice(0, 10)}.json`;
+// Horodatage complet : deux remises à zéro le même jour ne s'écrasent pas.
+const file = `scripts/.backup-supportChat-${pid}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 writeFileSync(file, JSON.stringify(backup, (k, v) => iso(v), 2));
 console.log(`sauvegarde : ${file} (${msgs.size} messages)`);
 

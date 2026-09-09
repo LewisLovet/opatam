@@ -116,3 +116,4 @@ export type {
 } from './useProviderNotifications';
 
 export { useSupportChatEnabled } from './useSupportChatEnabled';
+export { useSupportUnread } from './useSupportUnread';

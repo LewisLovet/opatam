@@ -89,9 +89,8 @@ import {
   useProviderStats,
   useReviews,
   useSupportChatEnabled,
+  useSupportUnread,
 } from '../../../hooks';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@booking-app/firebase';
 import {
   MORE_TAB_FEATURE_KEYS,
   useNewFeatures,
@@ -750,15 +749,7 @@ export default function ProDashboardScreen() {
   // Messagerie Opatam — icône du hero (interrupteur config/supportChat) +
   // badge des réponses de l'équipe non lues.
   const supportChatActif = useSupportChatEnabled(providerId ?? null);
-  const [supportNonLus, setSupportNonLus] = useState(0);
-  useEffect(() => {
-    if (!providerId || supportChatActif !== true) return;
-    return onSnapshot(
-      doc(db, 'supportChats', providerId),
-      (snap) => setSupportNonLus(snap.data()?.proUnread ?? 0),
-      () => setSupportNonLus(0),
-    );
-  }, [providerId, supportChatActif]);
+  const supportNonLus = useSupportUnread(providerId, supportChatActif);
 
   // Welcome 🎉 overlay — shown once, right after a fresh registration.
   const [showWelcome, setShowWelcome] = useState(false);

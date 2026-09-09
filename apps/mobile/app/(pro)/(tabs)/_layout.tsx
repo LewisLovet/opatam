@@ -11,7 +11,7 @@ import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
 import { useProvider } from '../../../contexts';
-import { useProBookingBadges } from '../../../hooks';
+import { useProBookingBadges, useSupportChatEnabled, useSupportUnread } from '../../../hooks';
 import {
   MORE_TAB_FEATURE_KEYS,
   useNewFeatures,
@@ -28,6 +28,11 @@ export default function ProTabsLayout() {
   // entry behind that tab hasn't been opened yet.
   const { hasAnyUnseen } = useNewFeatures();
   const moreHasNew = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
+  // Réponses de l'équipe non lues (messagerie Opatam) — badge chiffré sur
+  // l'onglet « Plus », visible depuis n'importe quel onglet, sans avoir à
+  // ouvrir le menu. Même convention que Réservations en attente.
+  const supportChatActif = useSupportChatEnabled(provider?.id ?? null);
+  const supportNonLus = useSupportUnread(provider?.id, supportChatActif);
 
   // Pulse the dot continuously while there's something new — the
   // previous static 9px dot was easy to miss. Same pattern as the
@@ -162,6 +167,8 @@ export default function ProTabsLayout() {
         name="more"
         options={{
           title: t('proTabs.more'),
+          tabBarBadge: supportNonLus > 0 ? (supportNonLus > 9 ? '9+' : supportNonLus) : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#EF4444', fontSize: 10 },
           tabBarIcon: ({ color, size }) => (
             <View>
               <Ionicons name="ellipsis-horizontal" size={size} color={color} />
