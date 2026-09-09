@@ -193,6 +193,8 @@ export interface RecentProvider {
   plan: string;
   city: string | null;
   createdAt: string | null;
+  /** « Comment avez-vous connu Opatam ? » — null pour les inscrits d'avant la question. */
+  acquisitionSource: { channel: string; detail?: string | null } | null;
 }
 
 export interface RecentBookingRow {

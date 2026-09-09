@@ -711,7 +711,7 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
     db.collection('providers')
       .orderBy('createdAt', 'desc')
       .limit(10)
-      .select('businessName', 'category', 'photoURL', 'subscription', 'cities', 'createdAt')
+      .select('businessName', 'category', 'photoURL', 'subscription', 'cities', 'createdAt', 'acquisitionSource')
       .get(),
     db.collection('users')
       .orderBy('createdAt', 'desc')
@@ -735,6 +735,7 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
       plan: d.subscription?.plan || 'trial',
       city: d.cities?.[0] || null,
       createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+      acquisitionSource: d.acquisitionSource || null,
     };
   });
 

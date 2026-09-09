@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '@booking-app/firebase';
+import { acquisitionChannelLabel } from '@booking-app/shared';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminStatsService } from '@/services/admin';
 import type { DashboardStats, TrendData, CategoryData, RecentSignups } from '@/services/admin/types';
@@ -302,13 +303,31 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.businessName}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {p.city || p.category}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''}
-                    </span>
+                    <div className="flex-shrink-0 text-right">
+                      <span className="block text-xs text-gray-400">
+                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''}
+                      </span>
+                      {/* D'où vient l'inscrit — réponse à « Comment avez-vous connu Opatam ? » */}
+                      {p.acquisitionSource ? (
+                        <span
+                          title={p.acquisitionSource.detail || undefined}
+                          className="inline-block mt-0.5 max-w-[150px] truncate rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-0.5 text-[10px] font-medium"
+                        >
+                          {acquisitionChannelLabel(p.acquisitionSource.channel)}
+                          {p.acquisitionSource.channel === 'autre' && p.acquisitionSource.detail
+                            ? ` · ${p.acquisitionSource.detail}`
+                            : ''}
+                        </span>
+                      ) : (
+                        <span className="inline-block mt-0.5 text-[10px] text-gray-300 dark:text-gray-600">
+                          source inconnue
+                        </span>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>
