@@ -33,6 +33,8 @@ interface MessageChat {
   from: 'pro' | 'admin';
   text: string;
   createdAt: Date | null;
+  /** Message d'accueil / campagne (seed Admin SDK) : ne vaut pas un échange. */
+  silent: boolean;
 }
 
 function heure(d: Date | null): string {
@@ -50,11 +52,11 @@ export function SupportChatWidget() {
 
   const [ouvert, setOuvert] = useState(false);
   // Pré-chat : la FAQ oriente AVANT la mise en relation. Un pro qui a déjà
-  // une conversation retombe directement sur son fil.
-  const [vue, setVue] = useState<'accueil' | 'theme' | 'chat'>('accueil');
+  // un vrai échange retombe directement sur son fil. 'auto' = on attend le
+  // premier snapshot des messages pour router.
+  const [vue, setVue] = useState<'auto' | 'accueil' | 'theme' | 'chat'>('auto');
   const [themeId, setThemeId] = useState<string | null>(null);
   const [questionOuverte, setQuestionOuverte] = useState<string | null>(null);
-  const [aDejaEchange, setADejaEchange] = useState(false);
   const [topicEnAttente, setTopicEnAttente] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageChat[]>([]);
   const [nonLus, setNonLus] = useState(0);
@@ -67,29 +69,30 @@ export function SupportChatWidget() {
     if (!providerId) return;
     return onSnapshot(
       doc(db, 'supportChats', providerId),
-      (snap) => {
-        setNonLus(snap.data()?.proUnread ?? 0);
-        setADejaEchange(snap.exists());
-      },
+      (snap) => setNonLus(snap.data()?.proUnread ?? 0),
       () => setNonLus(0),
     );
   }, [providerId]);
 
-  // Ouverture : conversation en cours → le fil ; sinon → l'accueil FAQ.
+  // Ouverture : on laisse le premier snapshot des messages router.
   useEffect(() => {
-    if (ouvert) setVue(aDejaEchange ? 'chat' : 'accueil');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (ouvert) setVue('auto');
   }, [ouvert]);
 
   // Les messages — abonnés seulement quand le panneau est ouvert.
   useEffect(() => {
-    if (!providerId || !ouvert || vue !== 'chat') return;
+    if (!providerId || !ouvert) return;
     const q = query(
       collection(db, 'supportChats', providerId, 'messages'),
       orderBy('createdAt', 'asc'),
       limitToLast(200),
     );
     return onSnapshot(q, (snap) => {
+      // Routage initial : un vrai échange (message non silencieux — le pro a
+      // écrit, ou l'équipe l'a contacté) → le fil ; sinon (rien, ou seulement
+      // le mot d'accueil silencieux) → le pré-chat FAQ, qui reste l'entrée.
+      const dejaUnEchange = snap.docs.some((d) => d.data().silent !== true);
+      setVue((v) => (v === 'auto' ? (dejaUnEchange ? 'chat' : 'accueil') : v));
       setMessages(
         snap.docs.map((d) => {
           const x = d.data();
@@ -98,19 +101,56 @@ export function SupportChatWidget() {
             from: x.from === 'admin' ? 'admin' : 'pro',
             text: typeof x.text === 'string' ? x.text : '',
             createdAt: x.createdAt?.toDate?.() ?? null,
+            silent: x.silent === true,
           };
         }),
       );
     });
-  }, [providerId, ouvert, vue]);
+  }, [providerId, ouvert]);
 
-  // Ouverture → lu (les règles n'autorisent que { proUnread: 0 }).
+  const echangeReel = messages.some((m) => !m.silent);
+  // Mots d'accueil de l'équipe (silencieux) — montrés en tête du pré-chat,
+  // pour que le badge mène à quelque chose sans court-circuiter la FAQ.
+  const accueils = messages.filter((m) => m.from === 'admin' && m.silent);
+
+  // Lu dès qu'affiché : le fil, ou le pré-chat quand il montre le mot
+  // d'accueil (les règles n'autorisent que { proUnread: 0 }).
   useEffect(() => {
-    if (!providerId || !ouvert || vue !== 'chat' || nonLus === 0) return;
+    if (!providerId || !ouvert || nonLus === 0) return;
+    if (vue !== 'chat' && !(vue === 'accueil' && accueils.length > 0)) return;
     void setDoc(doc(db, 'supportChats', providerId), { proUnread: 0 }, { merge: true }).catch(
       () => undefined,
     );
-  }, [providerId, ouvert, vue, nonLus]);
+  }, [providerId, ouvert, vue, nonLus, accueils.length]);
+
+  const bulle = (m: MessageChat) => (
+    <div key={m.id} className={`flex ${m.from === 'pro' ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+          m.from === 'pro'
+            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-md'
+            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-md'
+        }`}
+      >
+        {m.from === 'admin' && (
+          <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">
+            {/* Libellé neutre volontaire : le prénom/nom de l'agent
+                (authorName, conservé en base pour l'admin) n'est
+                pas montré aux professionnels. */}
+            Support Opatam
+          </p>
+        )}
+        <p className="whitespace-pre-wrap break-words">{m.text}</p>
+        <p
+          className={`text-[10px] mt-0.5 text-right ${
+            m.from === 'pro' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400'
+          }`}
+        >
+          {heure(m.createdAt)}
+        </p>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -159,9 +199,15 @@ export function SupportChatWidget() {
       {ouvert && (
         <div className="fixed bottom-20 right-5 z-40 w-[min(92vw,380px)] h-[min(70vh,520px)] rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col overflow-hidden">
           <div className="px-4 py-3 bg-gray-900 dark:bg-gray-950 text-white flex items-center gap-2.5">
-            {vue !== 'accueil' && !(vue === 'chat' && aDejaEchange) && (
+            {(vue === 'theme' ||
+              (vue === 'chat' && !echangeReel) ||
+              (vue === 'accueil' && echangeReel)) && (
               <button
-                onClick={() => setVue(vue === 'chat' ? (themeId ? 'theme' : 'accueil') : 'accueil')}
+                onClick={() =>
+                  setVue(
+                    vue === 'chat' ? (themeId ? 'theme' : 'accueil') : vue === 'accueil' ? 'chat' : 'accueil',
+                  )
+                }
                 aria-label="Retour"
                 className="p-1 -ml-1 rounded-lg hover:bg-white/10"
               >
@@ -176,7 +222,8 @@ export function SupportChatWidget() {
                   : 'Une réponse tout de suite, ou un humain juste derrière.'}
               </p>
             </div>
-            {vue === 'chat' && !aDejaEchange && (
+            {/* Depuis le fil, les questions fréquentes restent à un clic. */}
+            {vue === 'chat' && (
               <button
                 onClick={() => setVue('accueil')}
                 className="text-[10px] font-semibold text-gray-300 hover:text-white whitespace-nowrap"
@@ -189,9 +236,13 @@ export function SupportChatWidget() {
           {/* ── Accueil : les thèmes ── */}
           {vue === 'accueil' && (
             <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 dark:bg-gray-950/40">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                Bonjour 👋
-              </p>
+              {/* Le mot d'accueil de l'équipe, lisible sans quitter le pré-chat */}
+              {accueils.length > 0 && <div className="space-y-2.5 mb-3">{accueils.map(bulle)}</div>}
+              {accueils.length === 0 && (
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                  Bonjour 👋
+                </p>
+              )}
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Comment pouvons-nous aider ? Choisissez un thème — ou écrivez-nous directement.
               </p>
@@ -289,34 +340,7 @@ export function SupportChatWidget() {
                 sommes là pour vous aider à réussir.
               </p>
             )}
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.from === 'pro' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-                    m.from === 'pro'
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-br-md'
-                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-md'
-                  }`}
-                >
-                  {m.from === 'admin' && (
-                    <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-0.5">
-                      {/* Libellé neutre volontaire : le prénom/nom de l'agent
-                          (authorName, conservé en base pour l'admin) n'est
-                          pas montré aux professionnels. */}
-                      Support Opatam
-                    </p>
-                  )}
-                  <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                  <p
-                    className={`text-[10px] mt-0.5 text-right ${
-                      m.from === 'pro' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400'
-                    }`}
-                  >
-                    {heure(m.createdAt)}
-                  </p>
-                </div>
-              </div>
-            ))}
+            {messages.map(bulle)}
             <div ref={finRef} />
           </div>
 

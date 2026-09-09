@@ -3275,6 +3275,7 @@
     "placeholder": "Écrivez votre message…",
     "team": "Support Opatam",
     "faq": {
+      "title": "Questions fréquentes",
       "greeting": "Bonjour 👋",
       "choose": "Comment pouvons-nous aider ? Choisissez un thème — ou écrivez-nous directement.",
       "writeUs": "Écrire à l'équipe",

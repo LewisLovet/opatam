@@ -45,6 +45,8 @@ interface MessageChat {
   from: 'pro' | 'admin';
   text: string;
   createdAt: Date | null;
+  /** Message d'accueil / campagne (seed Admin SDK) : ne vaut pas un échange. */
+  silent: boolean;
 }
 
 export default function SupportScreen() {
@@ -82,7 +84,11 @@ export default function SupportScreen() {
       limitToLast(200),
     );
     return onSnapshot(q, (snap) => {
-      setVue((v) => (v === 'auto' ? (snap.docs.length > 0 ? 'chat' : 'accueil') : v));
+      // Routage initial : un vrai échange (message non silencieux — le pro a
+      // écrit, ou l'équipe l'a contacté) → le fil ; sinon (rien, ou seulement
+      // le mot d'accueil silencieux) → le pré-chat FAQ, qui reste l'entrée.
+      const dejaUnEchange = snap.docs.some((d) => d.data().silent !== true);
+      setVue((v) => (v === 'auto' ? (dejaUnEchange ? 'chat' : 'accueil') : v));
       setMessages(
         snap.docs.map((d) => {
           const x = d.data();
@@ -91,19 +97,71 @@ export default function SupportScreen() {
             from: x.from === 'admin' ? 'admin' : 'pro',
             text: typeof x.text === 'string' ? x.text : '',
             createdAt: x.createdAt?.toDate?.() ?? null,
+            silent: x.silent === true,
           };
         }),
       );
     });
   }, [providerId]);
 
-  // Écran ouvert → messages lus (les règles n'admettent que { proUnread: 0 }).
+  const echangeReel = (messages ?? []).some((m) => !m.silent);
+  // Mots d'accueil de l'équipe (silencieux) — montrés en tête du pré-chat,
+  // pour que le badge mène à quelque chose sans court-circuiter la FAQ.
+  const accueils = (messages ?? []).filter((m) => m.from === 'admin' && m.silent);
+
+  // Messages lus dès qu'ils sont affichés : le fil, ou le pré-chat quand il
+  // montre le mot d'accueil (les règles n'admettent que { proUnread: 0 }).
   useEffect(() => {
-    if (!providerId || vue !== 'chat') return;
+    if (!providerId) return;
+    if (vue !== 'chat' && !(vue === 'accueil' && accueils.length > 0)) return;
     void setDoc(doc(db, 'supportChats', providerId), { proUnread: 0 }, { merge: true }).catch(
       () => undefined,
     );
-  }, [providerId, vue, messages?.length]);
+  }, [providerId, vue, messages?.length, accueils.length]);
+
+  const renderBulle = (m: MessageChat) => (
+    <View style={{ alignItems: m.from === 'pro' ? 'flex-end' : 'flex-start' }}>
+      <View
+        style={{
+          maxWidth: '82%',
+          borderRadius: radius.lg,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          backgroundColor: m.from === 'pro' ? colors.primary : colors.surface,
+          borderWidth: m.from === 'pro' ? 0 : 1,
+          borderColor: colors.border,
+        }}
+      >
+        {m.from === 'admin' && (
+          <Text variant="caption" style={{ color: colors.primary, fontWeight: '700', marginBottom: 2 }}>
+            {/* Libellé neutre volontaire : le prénom/nom de l'agent
+                (authorName, conservé en base pour l'admin) n'est pas
+                montré aux professionnels. */}
+            {t('proSupport.team')}
+          </Text>
+        )}
+        <Text
+          variant="body"
+          style={{ color: m.from === 'pro' ? '#fff' : colors.text }}
+        >
+          {m.text}
+        </Text>
+        {m.createdAt && (
+          <Text
+            variant="caption"
+            style={{
+              color: m.from === 'pro' ? 'rgba(255,255,255,0.6)' : colors.textMuted,
+              textAlign: 'right',
+              marginTop: 2,
+              fontSize: 10,
+            }}
+          >
+            {m.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
 
   const envoyer = async () => {
     const contenu = texte.trim();
@@ -142,7 +200,8 @@ export default function SupportScreen() {
           <Pressable
             onPress={() => {
               if (vue === 'theme') setVue('accueil');
-              else if (vue === 'chat' && (messages?.length ?? 0) === 0) setVue(themeId ? 'theme' : 'accueil');
+              else if (vue === 'chat' && !echangeReel) setVue(themeId ? 'theme' : 'accueil');
+              else if (vue === 'accueil' && echangeReel) setVue('chat');
               else router.back();
             }}
             hitSlop={12}
@@ -158,8 +217,20 @@ export default function SupportScreen() {
               {t('proSupport.subtitle')}
             </Text>
           </View>
-          {/* Espaceur symétrique du chevron pour garder le titre centré */}
-          <View style={{ width: 24 }} />
+          {/* Depuis le fil, les questions fréquentes restent à un tap ;
+              sinon espaceur symétrique du chevron (titre centré). */}
+          {vue === 'chat' ? (
+            <Pressable
+              onPress={() => setVue('accueil')}
+              hitSlop={12}
+              accessibilityLabel={t('proSupport.faq.title')}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Ionicons name="help-circle-outline" size={24} color="#FFFFFF" />
+            </Pressable>
+          ) : (
+            <View style={{ width: 24 }} />
+          )}
         </View>
       </View>
 
@@ -171,11 +242,17 @@ export default function SupportScreen() {
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
           ListHeaderComponent={
             vue === 'accueil' ? (
-              <View style={{ marginBottom: spacing.sm }}>
-                <Text variant="h3">{t('proSupport.faq.greeting')}</Text>
-                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  {t('proSupport.faq.choose')}
-                </Text>
+              <View style={{ marginBottom: spacing.sm, gap: spacing.sm }}>
+                {/* Le mot d'accueil de l'équipe, lisible sans quitter le pré-chat */}
+                {accueils.map((m) => (
+                  <React.Fragment key={m.id}>{renderBulle(m)}</React.Fragment>
+                ))}
+                <View>
+                  {accueils.length === 0 && <Text variant="h3">{t('proSupport.faq.greeting')}</Text>}
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                    {t('proSupport.faq.choose')}
+                  </Text>
+                </View>
               </View>
             ) : null
           }
@@ -302,49 +379,7 @@ export default function SupportScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item: m }) => (
-            <View style={{ alignItems: m.from === 'pro' ? 'flex-end' : 'flex-start' }}>
-              <View
-                style={{
-                  maxWidth: '82%',
-                  borderRadius: radius.lg,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  backgroundColor: m.from === 'pro' ? colors.primary : colors.surface,
-                  borderWidth: m.from === 'pro' ? 0 : 1,
-                  borderColor: colors.border,
-                }}
-              >
-                {m.from === 'admin' && (
-                  <Text variant="caption" style={{ color: colors.primary, fontWeight: '700', marginBottom: 2 }}>
-                    {/* Libellé neutre volontaire : le prénom/nom de l'agent
-                        (authorName, conservé en base pour l'admin) n'est pas
-                        montré aux professionnels. */}
-                    {t('proSupport.team')}
-                  </Text>
-                )}
-                <Text
-                  variant="body"
-                  style={{ color: m.from === 'pro' ? '#fff' : colors.text }}
-                >
-                  {m.text}
-                </Text>
-                {m.createdAt && (
-                  <Text
-                    variant="caption"
-                    style={{
-                      color: m.from === 'pro' ? 'rgba(255,255,255,0.6)' : colors.textMuted,
-                      textAlign: 'right',
-                      marginTop: 2,
-                      fontSize: 10,
-                    }}
-                  >
-                    {m.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
+          renderItem={({ item: m }) => renderBulle(m)}
         />
       ))}
 
