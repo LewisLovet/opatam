@@ -19,18 +19,22 @@ export interface StaffWelcomeArgs {
   name: string;
   role: 'sales' | 'sales_manager';
   mode: 'new' | 'existing';
-  /** Requis quand mode === 'new'. */
+  /** Requis quand mode === 'new' — lien d'invitation valable 7 jours. */
   resetLink?: string;
+  /** Renvoi d'une invitation déjà envoyée (lien précédent expiré ou perdu). */
+  renvoi?: boolean;
 }
 
 export function generateStaffWelcomeEmail(args: StaffWelcomeArgs): { subject: string; html: string } {
   const roleLabel = args.role === 'sales_manager' ? 'responsable commercial' : 'commercial';
-  const subject = `Votre espace commercial Opatam est prêt`;
+  const subject = args.renvoi
+    ? `Votre nouveau lien d'accès à l'espace commercial Opatam`
+    : `Votre espace commercial Opatam est prêt`;
 
   const cta =
     args.mode === 'new'
       ? `<a href="${args.resetLink}" style="display:inline-block;background:#c81e3a;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 28px;border-radius:10px;">Définir mon mot de passe</a>
-         <p style="margin:14px 0 0;font-size:13px;color:#71717a;">Ce lien est personnel et expire — si c'est le cas, utilisez « Mot de passe oublié » sur la page de connexion.</p>`
+         <p style="margin:14px 0 0;font-size:13px;color:#71717a;"><strong>Ce lien est personnel et valable 7 jours.</strong> Passé ce délai, utilisez « Mot de passe oublié » sur la page de connexion (<a href="${APP_URL}/forgot-password" style="color:#c81e3a;">opatam.com/forgot-password</a>) : un nouveau lien vous sera envoyé.</p>`
       : `<a href="${APP_URL}/sales" style="display:inline-block;background:#c81e3a;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 28px;border-radius:10px;">Ouvrir mon espace</a>
          <p style="margin:14px 0 0;font-size:13px;color:#71717a;">Connectez-vous avec vos identifiants Opatam habituels.</p>`;
 
@@ -45,10 +49,17 @@ export function generateStaffWelcomeEmail(args: StaffWelcomeArgs): { subject: st
       </div>
       <div style="padding:16px 32px 8px;font-size:15px;line-height:1.6;color:#3f3f46;">
         <p style="margin:0 0 14px;">Bonjour ${args.name},</p>
-        <p style="margin:0 0 14px;">
+        ${
+          args.renvoi
+            ? `<p style="margin:0 0 14px;">
+          Voici un nouveau lien pour définir votre mot de passe et ouvrir votre accès
+          ${roleLabel} à Opatam — le précédent a expiré ou ne vous est pas parvenu.
+        </p>`
+            : `<p style="margin:0 0 14px;">
           Votre accès ${roleLabel} à Opatam vient d'être ouvert. Votre espace regroupe vos
           prospects, votre pipeline et vos outils de démonstration.
-        </p>
+        </p>`
+        }
         <div style="margin:22px 0;">${cta}</div>
         <p style="margin:0 0 24px;color:#18181b;">L'équipe Opatam</p>
       </div>

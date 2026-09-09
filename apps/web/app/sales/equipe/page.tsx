@@ -140,6 +140,49 @@ export default function EquipePage() {
   } | null>(null);
   const [lienCopie, setLienCopie] = useState(false);
 
+  // Renvoi d'invitation (lien précédent expiré — 7 jours — ou perdu).
+  const [renvoiEnCours, setRenvoiEnCours] = useState<string | null>(null);
+  const [renvoiResultat, setRenvoiResultat] = useState<{
+    uid: string;
+    emailSent: boolean;
+    inviteLink: string | null;
+    erreur: string | null;
+  } | null>(null);
+  const [renvoiCopie, setRenvoiCopie] = useState(false);
+
+  const renvoyerInvitation = async (m: Membre) => {
+    setRenvoiEnCours(m.uid);
+    setRenvoiResultat(null);
+    try {
+      const res = await fetch('/api/admin/staff/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await enTetesStaff()) },
+        body: JSON.stringify({ uid: m.uid }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRenvoiResultat({
+          uid: m.uid,
+          emailSent: false,
+          inviteLink: null,
+          erreur:
+            res.status === 403
+              ? 'Le renvoi d’invitation est réservé aux administrateurs.'
+              : (data.error ?? 'Erreur serveur'),
+        });
+        return;
+      }
+      setRenvoiResultat({
+        uid: m.uid,
+        emailSent: data.emailSent === true,
+        inviteLink: data.inviteLink ?? null,
+        erreur: null,
+      });
+    } finally {
+      setRenvoiEnCours(null);
+    }
+  };
+
   const charger = async () => {
     const res = await fetch('/api/sales/team', { headers: await enTetesStaff() });
     if (res.status === 403) {
@@ -263,7 +306,8 @@ export default function EquipePage() {
         </div>
         <p className="text-[11px] text-gray-400 mt-2">
           Le compte est créé immédiatement, l&apos;invitation part par e-mail avec un lien de
-          définition du mot de passe qui atterrit sur l&apos;espace commercial.
+          définition du mot de passe, valable 7 jours, qui atterrit sur l&apos;espace commercial.
+          Lien expiré ou perdu : « Renvoyer l&apos;invitation » dans la liste ci-dessous.
         </p>
         {inviteErreur && <p className="text-sm text-red-600 mt-2">{inviteErreur}</p>}
         {inviteResultat && (
@@ -285,7 +329,7 @@ export default function EquipePage() {
                 className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium hover:underline"
               >
                 <Clipboard className="w-3 h-3" />
-                {lienCopie ? 'Lien copié !' : 'Copier le lien de définition du mot de passe'}
+                {lienCopie ? 'Lien copié !' : 'Copier le lien d’invitation (valable 7 jours)'}
               </button>
             )}
           </div>
@@ -403,6 +447,45 @@ export default function EquipePage() {
                       >
                         {m.active ? 'Actif' : 'Désactivé'}
                       </button>
+                      {m.active && (
+                        <div className="mt-1.5">
+                          <button
+                            onClick={() => void renvoyerInvitation(m)}
+                            disabled={renvoiEnCours === m.uid}
+                            className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50"
+                            title="Renvoie l’e-mail de bienvenue avec un nouveau lien de définition du mot de passe, valable 7 jours"
+                          >
+                            {renvoiEnCours === m.uid ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Mail className="w-3 h-3" />
+                            )}
+                            Renvoyer l&apos;invitation
+                          </button>
+                          {renvoiResultat?.uid === m.uid && (
+                            <p className={`mt-1 text-[10px] ${renvoiResultat.erreur ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                              {renvoiResultat.erreur
+                                ? renvoiResultat.erreur
+                                : renvoiResultat.emailSent
+                                  ? 'Invitation renvoyée (lien valable 7 jours).'
+                                  : 'E-mail non parti — transmettez le lien.'}
+                              {renvoiResultat.inviteLink && (
+                                <button
+                                  onClick={async () => {
+                                    await navigator.clipboard.writeText(renvoiResultat.inviteLink!);
+                                    setRenvoiCopie(true);
+                                    setTimeout(() => setRenvoiCopie(false), 2000);
+                                  }}
+                                  className="ml-1 inline-flex items-center gap-0.5 font-medium hover:underline"
+                                >
+                                  <Clipboard className="w-2.5 h-2.5" />
+                                  {renvoiCopie ? 'Copié !' : 'Copier le lien'}
+                                </button>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateStaffWelcomeEmail } from '@/lib/emails/staffWelcome';
+import { buildStaffInviteUrl } from '@/lib/staff-invite';
 
 /**
  * Gestion de l'équipe commerciale — réservée aux administrateurs.
@@ -101,13 +102,11 @@ export async function POST(request: NextRequest) {
     { merge: true },
   );
 
-  // Lien de définition du mot de passe (nouveaux comptes), atterrissage /sales.
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
+  // Lien d'invitation (nouveaux comptes) — le NÔTRE, valable 7 jours ; il
+  // fabrique le lien Firebase de mot de passe au clic (voir lib/staff-invite).
   let inviteLink: string | null = null;
   if (mode === 'new') {
-    inviteLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
-      url: `${baseUrl}/sales`,
-    });
+    inviteLink = buildStaffInviteUrl(uid);
   }
 
   // E-mail de bienvenue — best-effort : le lien est AUSSI retourné à l'admin,

@@ -4,7 +4,7 @@ import { Button, Input } from '@/components/ui';
 import { callRequestPasswordReset } from '@booking-app/firebase';
 import { ArrowLeft, CheckCircle, Mail } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Map Firebase errors to user-friendly messages
 function getErrorMessage(error: unknown): string {
@@ -29,6 +29,18 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  // Arrivée depuis un lien d'invitation de l'équipe expiré ou invalide
+  // (/api/admin/staff/invite) : on le dit, et le formulaire ci-dessous est
+  // la voie de secours. Lu sur window plutôt que useSearchParams pour ne pas
+  // imposer de Suspense à une page statique.
+  const [invitationExpiree, setInvitationExpiree] = useState(false);
+  useEffect(() => {
+    try {
+      setInvitationExpiree(new URLSearchParams(window.location.search).has('invitation'));
+    } catch {
+      /* SSR / environnement sans window */
+    }
+  }, []);
 
   const validateForm = (): boolean => {
     if (!email.trim()) {
@@ -109,6 +121,17 @@ export default function ForgotPasswordPage() {
           Entrez votre email, nous vous enverrons un lien de réinitialisation
         </p>
       </div>
+
+      {/* Lien d'invitation de l'équipe expiré → même formulaire, mot d'explication */}
+      {invitationExpiree && !error && (
+        <div className="mb-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            Votre lien d&apos;invitation a expiré ou n&apos;est plus valide. Saisissez votre
+            adresse e-mail ci-dessous : vous recevrez un nouveau lien pour définir votre mot de
+            passe et ouvrir votre espace.
+          </p>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (
