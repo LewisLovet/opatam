@@ -17,8 +17,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@booking-app/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, MessageCircle, PenSquare, Search, Send, X } from 'lucide-react';
-import { supportTopicTag } from '@booking-app/shared';
+import { EyeOff, Loader2, MessageCircle, PenSquare, Search, Send, X } from 'lucide-react';
+import { acquisitionChannelLabel, supportTopicTag } from '@booking-app/shared';
 
 /**
  * Messages — le chat de support côté ADMIN : toutes les conversations des
@@ -48,6 +48,20 @@ interface MessageChat {
   createdAt: Date | null;
 }
 
+/** Prestataire dont la page n'est pas publiée — à relancer depuis ce chat. */
+interface NonPublie {
+  id: string;
+  businessName: string;
+  category: string | null;
+  city: string | null;
+  createdAt: Date | null;
+  plan: string | null;
+  subscriptionStatus: string | null;
+  acquisitionChannel: string | null;
+  /** Dernier e-mail automatique « votre page n'est pas publiée » (cron). */
+  relanceAutoLe: Date | null;
+}
+
 function depuis(d: Date | null): string {
   if (!d) return '';
   const min = Math.max(0, Math.round((Date.now() - d.getTime()) / 60_000));
@@ -74,6 +88,43 @@ export default function AdminMessagesPage() {
   const [recherche, setRecherche] = useState('');
   const [resultats, setResultats] = useState<Array<{ id: string; businessName: string }>>([]);
   const [cible, setCible] = useState<{ id: string; businessName: string } | null>(null);
+
+  // ── Pages non publiées : la liste de relance ──
+  // Égalité seule + tri en mémoire (pas d'index composite à déployer) ;
+  // les comptes de test sont écartés. Un clic « Écrire » ouvre le fil en
+  // haut de page, exactement comme « Nouveau message ».
+  const [nonPublies, setNonPublies] = useState<NonPublie[] | null>(null);
+  useEffect(() => {
+    getDocs(query(collection(db, 'providers'), where('isPublished', '==', false)))
+      .then((snap) => {
+        const rows: NonPublie[] = snap.docs
+          .filter((d) => d.data().isTest !== true)
+          .map((d) => {
+            const x = d.data();
+            return {
+              id: d.id,
+              businessName: (x.businessName as string) || 'Professionnel',
+              category: typeof x.category === 'string' ? x.category : null,
+              city: Array.isArray(x.cities) && typeof x.cities[0] === 'string' ? x.cities[0] : null,
+              createdAt: x.createdAt?.toDate?.() ?? null,
+              plan: x.subscription?.plan ?? x.plan ?? null,
+              subscriptionStatus: x.subscription?.status ?? null,
+              acquisitionChannel: x.acquisitionSource?.channel ?? null,
+              relanceAutoLe: x.unpublishedReminderLastSent?.toDate?.() ?? null,
+            };
+          })
+          .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+        setNonPublies(rows);
+      })
+      .catch(() => setNonPublies([]));
+  }, []);
+
+  const ecrireA = (p: { id: string; businessName: string }) => {
+    setCible(p);
+    setOuvertId(p.id);
+    setNouveauOuvert(false);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const terme = recherche.trim().toLowerCase();
@@ -386,6 +437,116 @@ export default function AdminMessagesPage() {
           )}
         </div>
       )}
+
+      {/* ── Pages non publiées — à relancer ── */}
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <EyeOff className="w-4 h-4 text-amber-500" />
+              Pages non publiées
+              {nonPublies && (
+                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 rounded-full px-2 py-0.5">
+                  {nonPublies.length}
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Inscrits sans page en ligne : écrivez-leur ici pour comprendre ce qui bloque et les
+              relancer. Les plus récents d&apos;abord.
+            </p>
+          </div>
+        </div>
+
+        {nonPublies === null ? (
+          <div className="px-5 py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+          </div>
+        ) : nonPublies.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">
+            Toutes les pages sont publiées.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                  <th className="px-5 py-2.5 font-semibold">Prestataire</th>
+                  <th className="px-3 py-2.5 font-semibold">Inscrit</th>
+                  <th className="px-3 py-2.5 font-semibold">Abonnement</th>
+                  <th className="px-3 py-2.5 font-semibold">Source</th>
+                  <th className="px-3 py-2.5 font-semibold">Relance auto</th>
+                  <th className="px-3 py-2.5 font-semibold">Chat</th>
+                  <th className="px-5 py-2.5 font-semibold text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {nonPublies.map((p) => {
+                  const conversation = chats?.find((c) => c.id === p.id) ?? null;
+                  // Le mot d'accueil silencieux ne compte pas comme un échange.
+                  const echange = conversation && conversation.lastMessageFrom === 'pro';
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40">
+                      <td className="px-5 py-3">
+                        <a
+                          href={`/admin/providers/${p.id}`}
+                          className="font-semibold text-gray-900 dark:text-white hover:underline"
+                        >
+                          {p.businessName}
+                        </a>
+                        <p className="text-[11px] text-gray-400">
+                          {[p.category, p.city].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {p.createdAt
+                          ? `il y a ${depuis(p.createdAt)} · ${p.createdAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {p.plan ?? '—'}
+                        {p.subscriptionStatus && (
+                          <span className="text-gray-400"> · {p.subscriptionStatus}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-300">
+                        {p.acquisitionChannel ? (
+                          acquisitionChannelLabel(p.acquisitionChannel)
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {p.relanceAutoLe ? `il y a ${depuis(p.relanceAutoLe)}` : <span className="text-gray-300 dark:text-gray-600">jamais</span>}
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        {echange ? (
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                            a répondu · {depuis(conversation!.lastMessageAt)}
+                          </span>
+                        ) : conversation && conversation.lastMessageFrom === 'admin' && conversation.lastMessageText && !conversation.lastMessageText.startsWith('Bienvenue sur votre messagerie') ? (
+                          <span className="text-gray-500">relancé · {depuis(conversation.lastMessageAt)}</span>
+                        ) : (
+                          <span className="text-gray-300 dark:text-gray-600">aucun échange</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => ecrireA({ id: p.id, businessName: p.businessName })}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-3 py-1.5 text-xs font-semibold hover:opacity-90"
+                        >
+                          <PenSquare className="w-3.5 h-3.5" />
+                          Écrire
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
