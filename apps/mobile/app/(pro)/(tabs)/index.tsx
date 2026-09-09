@@ -714,14 +714,8 @@ function LoyaltyCompactCard({ subtitle, onPress }: { subtitle: string; onPress: 
 // the discovery banner ("Découvrez Clients, Statistiques et
 // Paiements"). Add the matching key here whenever a new one ships.
 const FEATURE_LABEL_KEYS: Record<NewFeatureKey, string> = {
-  'clients-2026-05': 'proHome.features.clients',
-  'stats-2026-05': 'proHome.features.stats',
-  'payments-2026-05': 'proHome.features.payments',
-  // Story share lives on the home tab itself (FAB), not behind
-  // Plus — the home banner never references it, but the map still
-  // needs every key for type-completeness.
-  'story-share-2026-05': 'proHome.features.stories',
-  'auto-review-2026-05': 'proHome.features.autoReview',
+  // Vide depuis le 2026-09-09 (vague de mai retirée) — la bannière
+  // « Nouveautés » ne s'affiche plus tant qu'aucune clé n'est déclarée.
 };
 
 /** "A, B et C" / "A, B and C" — enumeration with the localized

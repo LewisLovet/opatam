@@ -1536,7 +1536,6 @@
     },
     "autoReview": {
       "title": "Pedido automático de avaliação",
-      "newBadge": "Novo",
       "description": "Email enviado 1 h após a marcação para pedir uma avaliação. Só funciona para as marcações confirmadas."
     },
     "about": {

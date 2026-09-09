@@ -52,7 +52,6 @@ import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt } from '@booking-app
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
-import { useNewFeatures } from '../../hooks/useNewFeatures';
 import { useProvider } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
 import { useServiceCategories } from '../../hooks/useServiceCategories';
@@ -273,11 +272,6 @@ export function StoryShareModal({
   const { provider } = useProvider();
   const { categories } = useServiceCategories(provider?.id);
   const viewRef = useRef<View>(null);
-  // "Nouveau" pill on the Dispos toggle — visible until the pro
-  // taps it once. Mirrors the FAB indicator and is the canonical
-  // "this feature has been seen" event.
-  const { isNew, markSeen } = useNewFeatures();
-  const showDisposNew = isNew('story-share-2026-05');
   const [sharing, setSharing] = useState<string | null>(null);
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
@@ -959,9 +953,6 @@ export function StoryShareModal({
                   onPress={() => {
                     setDisplayMode(mode.key);
                     setStep('edit');
-                    if (mode.key === 'availabilities' && showDisposNew) {
-                      markSeen('story-share-2026-05');
-                    }
                   }}
                   style={({ pressed }) => [
                     styles.chooserRow,

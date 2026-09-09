@@ -40,11 +40,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Keys are arbitrary strings — they're never shown to the user.
  */
 export const NEW_FEATURE_KEYS = [
-  'stats-2026-05',         // [retire-après: 2026-07-01]
-  'payments-2026-05',      // [retire-après: 2026-07-01]
-  'clients-2026-05',       // [retire-après: 2026-07-08]
-  'story-share-2026-05',   // [retire-après: 2026-07-15]
-  'auto-review-2026-05',   // [retire-après: 2026-07-15]
+  // Vague de mai 2026 (stats, paiements, clients, stories, relance
+  // d'avis) retirée le 2026-09-09 — plus rien de « nouveau » à signaler.
 ] as const;
 
 export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];
@@ -54,15 +51,7 @@ export type NewFeatureKey = (typeof NEW_FEATURE_KEYS)[number];
  * Used by the tabs layout to decide whether to render a discovery
  * dot on that tab — if any of these is still unseen, the dot shows.
  */
-export const MORE_TAB_FEATURE_KEYS: NewFeatureKey[] = [
-  'stats-2026-05',
-  'payments-2026-05',
-  'clients-2026-05',
-  // Auto-review toggle lives inside booking-settings, which is
-  // itself accessed from the Plus tab — so the discovery dot on
-  // the Plus tab should fire for this key too.
-  'auto-review-2026-05',
-];
+export const MORE_TAB_FEATURE_KEYS: NewFeatureKey[] = [];
 
 const STORAGE_KEY = '@opatam/new-features-seen-v1';
 

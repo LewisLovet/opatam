@@ -57,18 +57,8 @@ const navGroups: NavGroup[] = [
       { label: 'Tableau de bord', href: '/pro', icon: <Home className="w-5 h-5" /> },
       { label: 'Calendrier', href: '/pro/calendrier', icon: <Calendar className="w-5 h-5" /> },
       { label: 'Réservations', href: '/pro/reservations', icon: <List className="w-5 h-5" /> },
-      {
-        label: 'Clients',
-        href: '/pro/clients',
-        icon: <Users className="w-5 h-5" />,
-        newFeatureKey: 'clients-2026-05',
-      },
-      {
-        label: 'Statistiques',
-        href: '/pro/statistiques',
-        icon: <BarChart3 className="w-5 h-5" />,
-        newFeatureKey: 'stats-2026-05',
-      },
+      { label: 'Clients', href: '/pro/clients', icon: <Users className="w-5 h-5" /> },
+      { label: 'Statistiques', href: '/pro/statistiques', icon: <BarChart3 className="w-5 h-5" /> },
     ],
   },
   // Groupe 2: Configuration et feedback
@@ -88,12 +78,7 @@ const navGroups: NavGroup[] = [
         href: '/pro/abonnement',
         icon: <CreditCard className="w-5 h-5" />,
       },
-      {
-        label: 'Paiements',
-        href: '/pro/paiements',
-        icon: <Wallet className="w-5 h-5" />,
-        newFeatureKey: 'payments-2026-05',
-      },
+      { label: 'Paiements', href: '/pro/paiements', icon: <Wallet className="w-5 h-5" /> },
       { label: 'Paramètres', href: '/pro/parametres', icon: <Settings className="w-5 h-5" /> },
     ],
   },
@@ -101,15 +86,7 @@ const navGroups: NavGroup[] = [
   // doesn't conflate operational settings with educational content.
   {
     items: [
-      {
-        label: 'Tutoriels & guides',
-        href: '/pro/tutoriels',
-        icon: <BookOpen className="w-5 h-5" />,
-        // "Nouveau" pill until the pro clicks the entry — same
-        // discovery pattern the mobile app uses for its in-app
-        // help surface.
-        newFeatureKey: 'tutoriels-2026-05',
-      },
+      { label: 'Tutoriels & guides', href: '/pro/tutoriels', icon: <BookOpen className="w-5 h-5" /> },
     ],
   },
 ];

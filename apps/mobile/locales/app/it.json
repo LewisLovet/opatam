@@ -1536,7 +1536,6 @@
     },
     "autoReview": {
       "title": "Richiesta automatica di recensioni",
-      "newBadge": "Novità",
       "description": "Email inviata 1 ora dopo l'appuntamento per chiedere una recensione. Funziona solo per gli appuntamenti confermati."
     },
     "about": {

@@ -27,7 +27,6 @@ import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
 import {
   useBlockedSlots,
   useNewArticles,
-  useNewFeatures,
   useProviderClientsCount,
   useSupportChatEnabled,
   useSupportUnread,
@@ -417,10 +416,6 @@ export default function MoreScreen() {
   // "Avis clients" and "Créneaux bloqués".
   const clientsCount = useProviderClientsCount(providerId ?? undefined);
   const sub = useSubscriptionStatus();
-  // "Nouveau" badge state on menu items shipped recently — flips
-  // to off as soon as the user taps the row, persisted on-device.
-  const { isNew, markSeen } = useNewFeatures();
-
   // Interrupteur Firebase (config/supportChat) — l'entrée « Messagerie
   // Opatam » n'apparaît que pour les comptes autorisés (ou pour tous quand
   // l'équipe active enabledForAll).
@@ -700,11 +695,7 @@ export default function MoreScreen() {
               icon="people-outline"
               label={t('proMore.menu.clients')}
               badge={clientsCount && clientsCount > 0 ? clientsCount : null}
-              isNew={isNew('clients-2026-05')}
-              onPress={() => {
-                markSeen('clients-2026-05');
-                router.push('/(pro)/clients');
-              }}
+              onPress={() => router.push('/(pro)/clients')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
@@ -727,11 +718,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="stats-chart-outline"
               label={t('proMore.menu.stats')}
-              isNew={isNew('stats-2026-05')}
-              onPress={() => {
-                markSeen('stats-2026-05');
-                router.push('/(pro)/stats');
-              }}
+              onPress={() => router.push('/(pro)/stats')}
               colors={colors}
             />
           </Card>
@@ -746,17 +733,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="calendar-outline"
               label={t('proMore.menu.bookingSettings')}
-              // Surface the auto-review "Nouveau" indicator on the
-              // entry point so the Plus-tab dot has a visible
-              // counterpart in the menu. Mark seen on tap — making
-              // the user actually flip the toggle just to clear the
-              // pill is too much friction (and confusing when they
-              // don't realise the pill is gated on the toggle).
-              isNew={isNew('auto-review-2026-05')}
-              onPress={() => {
-                markSeen('auto-review-2026-05');
-                router.push('/(pro)/booking-settings');
-              }}
+              onPress={() => router.push('/(pro)/booking-settings')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />
@@ -770,11 +747,7 @@ export default function MoreScreen() {
             <MenuItem
               icon="card-outline"
               label={t('proMore.menu.payments')}
-              isNew={isNew('payments-2026-05')}
-              onPress={() => {
-                markSeen('payments-2026-05');
-                router.push('/(pro)/payments');
-              }}
+              onPress={() => router.push('/(pro)/payments')}
               colors={colors}
             />
             <View style={[s.menuDivider, { backgroundColor: colors.border }]} />

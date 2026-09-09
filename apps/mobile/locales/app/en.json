@@ -1536,7 +1536,6 @@
     },
     "autoReview": {
       "title": "Automatic review reminder",
-      "newBadge": "New",
       "description": "Email sent 1h after the appointment to request a review. Only applies to confirmed appointments."
     },
     "about": {

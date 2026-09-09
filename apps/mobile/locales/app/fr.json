@@ -1536,7 +1536,6 @@
     },
     "autoReview": {
       "title": "Relance automatique des avis",
-      "newBadge": "Nouveau",
       "description": "Email envoyé 1h après le RDV pour demander un avis. Ne fonctionne que pour les RDV confirmés."
     },
     "about": {

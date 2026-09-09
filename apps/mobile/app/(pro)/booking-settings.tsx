@@ -24,7 +24,6 @@ import { Text, Button, Card, Input, useToast } from '../../components';
 import { Switch as RNSwitch, TextInput } from 'react-native';
 import { useProvider } from '../../contexts';
 import { providerService } from '@booking-app/firebase';
-import { useNewFeatures } from '../../hooks/useNewFeatures';
 
 // ---------------------------------------------------------------------------
 // Options (mirrors web ReservationSettingsForm)
@@ -135,12 +134,6 @@ export default function BookingSettingsScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { provider, providerId, refreshProvider } = useProvider();
-  // Surfaces a "Nouveau" pill next to the auto-review toggle until
-  // the pro has touched it once. Marked seen on first toggle change
-  // (see onValueChange below) — just landing on the page isn't
-  // engagement enough to clear the discovery flag.
-  const { isNew, markSeen } = useNewFeatures();
-  const showAutoReviewNew = isNew('auto-review-2026-05');
 
   const [settings, setSettings] = useState<SettingsData>({
     minBookingNotice: 2,
@@ -340,33 +333,9 @@ export default function BookingSettingsScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
               <Ionicons name="star-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
-                    {t('proBookingSettings.autoReview.title')}
-                  </Text>
-                  {showAutoReviewNew && (
-                    <View
-                      style={{
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 999,
-                        backgroundColor: '#E1306C',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: '#FFFFFF',
-                          fontSize: 9,
-                          fontWeight: '800',
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.4,
-                        }}
-                      >
-                        {t('proBookingSettings.autoReview.newBadge')}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                <Text variant="bodySmall" style={{ fontWeight: '600', color: colors.text }}>
+                  {t('proBookingSettings.autoReview.title')}
+                </Text>
                 <Text variant="caption" color="textMuted">
                   {t('proBookingSettings.autoReview.description')}
                 </Text>
@@ -376,7 +345,6 @@ export default function BookingSettingsScreen() {
               value={settings.autoReviewReminder}
               onValueChange={(v) => {
                 setSettings((p) => ({ ...p, autoReviewReminder: v }));
-                if (showAutoReviewNew) markSeen('auto-review-2026-05');
               }}
               trackColor={{ false: colors.border, true: colors.primary }}
             />

@@ -1536,7 +1536,6 @@
     },
     "autoReview": {
       "title": "Automatische Bewertungsanfrage",
-      "newBadge": "Neu",
       "description": "E-Mail, die 1 Std. nach dem Termin um eine Bewertung bittet. Nur bei bestätigten Terminen."
     },
     "about": {

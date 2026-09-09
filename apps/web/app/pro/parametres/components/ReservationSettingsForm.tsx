@@ -12,9 +12,7 @@ import {
   Timer,
   MessageSquareWarning,
   Star,
-  Megaphone,
 } from 'lucide-react';
-import { useNewFeatures } from '@/hooks/useNewFeatures';
 
 interface ReservationSettingsFormProps {
   onSuccess?: () => void;
@@ -59,8 +57,6 @@ const MAX_BOOKING_ADVANCE_OPTIONS = [
 
 export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormProps) {
   const { provider, refreshProvider } = useAuth();
-  const { isNew, markSeen } = useNewFeatures();
-  const showAutoReviewNew = isNew('auto-review-2026-05');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -214,17 +210,9 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
           <div className="flex items-start gap-2 flex-1 min-w-0">
             <Star className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Relance automatique des avis
-                </label>
-                {showAutoReviewNew && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-primary-500 text-white shadow-sm">
-                    <Megaphone className="w-3 h-3" />
-                    Nouveau
-                  </span>
-                )}
-              </div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Relance automatique des avis
+              </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Email envoyé 1h après le RDV pour demander un avis.
                 Ne fonctionne que pour les RDV confirmés.
@@ -238,7 +226,6 @@ export function ReservationSettingsForm({ onSuccess }: ReservationSettingsFormPr
               setFormData((p) => ({ ...p, autoReviewReminder: next }));
               setError(null);
               setSuccess(false);
-              if (showAutoReviewNew) markSeen('auto-review-2026-05');
             }}
           />
         </div>
