@@ -2413,7 +2413,9 @@
       "availabilities": "Freie Zeiten",
       "none": "QR-Code",
       "review": "Bewertung",
-      "loyalty": "Treue"
+      "loyalty": "Treue",
+      "realisation": "Ergebnis",
+      "avantApres": "Vorher / Nachher"
     },
     "errorTitle": "Fehler",
     "shareUnavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
@@ -2433,7 +2435,9 @@
       "service": "Leistung",
       "theme": "Design",
       "servicesShown": "Angezeigte Leistungen (max. 5)",
-      "shareOn": "Teilen auf"
+      "shareOn": "Teilen auf",
+      "photo": "Foto",
+      "photos": "Fotos"
     },
     "allMembers": "Alle Mitglieder",
     "thisWeek": "Diese Woche",
@@ -2501,10 +2505,39 @@
         "availabilities": "Ihre freien Termine der nächsten Tage. Das führt am schnellsten zu Buchungen.",
         "review": "Die Worte einer Kundin, ansprechend gesetzt. Der überzeugendste Beweis kommt von ihnen.",
         "loyalty": "Ihr Treueprogramm. Gibt einen Grund wiederzukommen, statt es woanders zu versuchen.",
-        "none": "Nur Ihr QR-Code. Zum Aushängen im Salon oder für eine Story."
+        "none": "Nur Ihr QR-Code. Zum Aushängen im Salon oder für eine Story.",
+        "realisation": "Ein Foto Ihrer Arbeit, mit der Leistung, ihrer Dauer und auf Wunsch dem Preis. Am wirksamsten, um Lust zu machen.",
+        "avantApres": "Zwei Fotos nebeneinander, vorher und nachher. Das Ergebnis spricht für sich."
       },
       "intro": "Eine Story pro Woche genügt, um Ihre Seite lebendig zu halten. Wählen Sie, was Sie zeigen möchten.",
       "configure": "Einrichten"
+    },
+    "realisation": {
+      "badge": "ERGEBNIS",
+      "badgeAvantApres": "VORHER / NACHHER",
+      "before": "Vorher",
+      "after": "Nachher",
+      "addPhoto": "Foto hinzufügen",
+      "gallery": "Galerie",
+      "portfolio": "Portfolio",
+      "changePhoto": "Ändern",
+      "fromPrice": "ab {{price}}",
+      "noService": "Ohne Leistung",
+      "showPrice": "Preis anzeigen",
+      "bannerPosition": "Banner",
+      "bannerTop": "Oben",
+      "bannerBottom": "Unten",
+      "addToPortfolio": "Foto zu meinem Portfolio hinzufügen",
+      "addToPortfolioHint": "Es erscheint nach dem Teilen auf Ihrer Seite.",
+      "portfolioFull": "Portfolio voll ({{max}} Fotos)",
+      "consentTitle": "Ein Hinweis vor dem Posten",
+      "consentBody": "Wenn eine Kundin auf dem Foto zu sehen ist, holen Sie vor dem Teilen ihr Einverständnis ein.",
+      "consentOk": "Verstanden",
+      "photoMissing": "Fügen Sie ein Foto hinzu, um zu teilen",
+      "frame": "Ausrichten",
+      "frameTitle": "Foto ausrichten",
+      "frameHint": "Mit einem Finger verschieben, mit zwei zoomen. Der Rahmen ist genau der sichtbare Bereich in der Story.",
+      "frameReset": "Zurücksetzen"
     }
   },
   "proServices": {

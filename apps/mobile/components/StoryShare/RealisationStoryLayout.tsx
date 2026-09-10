@@ -24,6 +24,17 @@ import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../lib/i18n';
 import { Text } from '../Text';
 import { getCategoryLabel } from '@booking-app/shared/constants';
+import { CADRAGE_DEFAUT, PhotoCadree, type Cadrage } from './PhotoCadree';
+
+/** Dimensions de la toile (voir StoryCard) et de ses zones photo. */
+export const STORY_W = 360;
+export const STORY_H = 640;
+const DIVIDER_W = 2;
+/** Largeur d'une moitié en avant / après. */
+export const HALF_W = (STORY_W - DIVIDER_W) / 2;
+/** Formats des zones photo, pour l'éditeur de cadrage. */
+export const RATIO_PLEIN = STORY_W / STORY_H;
+export const RATIO_MOITIE = HALF_W / STORY_H;
 
 /** Ce que la story affiche — déjà mis en forme par l'appelant. */
 export interface StoryRealisation {
@@ -31,6 +42,9 @@ export interface StoryRealisation {
   photoUri: string | null;
   /** Photo « avant » (mode avant / après uniquement). */
   beforePhotoUri?: string | null;
+  /** Cadrage choisi pour chaque photo (position + zoom). */
+  photoCadrage?: Cadrage;
+  beforeCadrage?: Cadrage;
   /** Prestation illustrée ; `null` = story sans prestation. */
   serviceName: string | null;
   /** « 1h30 » — déjà formaté. */
@@ -56,9 +70,25 @@ const OPATAM_BLEU = '#133b8f';
 const OPATAM_OR = '#f6c445';
 const LOGO_BLANC = require('../../assets/splash-icon-white.png');
 
-function PhotoOrPlaceholder({ uri, hint }: { uri: string | null; hint: string }) {
+function PhotoOrPlaceholder({
+  uri,
+  hint,
+  width,
+  height,
+  cadrage,
+}: {
+  uri: string | null;
+  hint: string;
+  width: number;
+  height: number;
+  cadrage?: Cadrage;
+}) {
   if (uri) {
-    return <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />;
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <PhotoCadree uri={uri} width={width} height={height} cadrage={cadrage ?? CADRAGE_DEFAUT} />
+      </View>
+    );
   }
   return (
     <LinearGradient
@@ -130,15 +160,33 @@ export function RealisationStoryLayout({
       {avantApres ? (
         <View style={s.split}>
           <View style={s.half}>
-            <PhotoOrPlaceholder uri={realisation.beforePhotoUri ?? null} hint={addPhoto} />
+            <PhotoOrPlaceholder
+              uri={realisation.beforePhotoUri ?? null}
+              hint={addPhoto}
+              width={HALF_W}
+              height={STORY_H}
+              cadrage={realisation.beforeCadrage}
+            />
           </View>
           <View style={s.splitDivider} />
           <View style={s.half}>
-            <PhotoOrPlaceholder uri={realisation.photoUri} hint={addPhoto} />
+            <PhotoOrPlaceholder
+              uri={realisation.photoUri}
+              hint={addPhoto}
+              width={HALF_W}
+              height={STORY_H}
+              cadrage={realisation.photoCadrage}
+            />
           </View>
         </View>
       ) : (
-        <PhotoOrPlaceholder uri={realisation.photoUri} hint={addPhoto} />
+        <PhotoOrPlaceholder
+          uri={realisation.photoUri}
+          hint={addPhoto}
+          width={STORY_W}
+          height={STORY_H}
+          cadrage={realisation.photoCadrage}
+        />
       )}
 
       {/* Voiles : lisibilité de l'en-tête et du pied, quelle que soit la photo */}
@@ -208,8 +256,8 @@ const s = StyleSheet.create({
   placeholderText: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' },
 
   split: { ...StyleSheet.absoluteFillObject, flexDirection: 'row' },
-  half: { flex: 1, overflow: 'hidden' },
-  splitDivider: { width: 2, backgroundColor: 'rgba(255,255,255,0.9)' },
+  half: { width: HALF_W, height: STORY_H, overflow: 'hidden' },
+  splitDivider: { width: DIVIDER_W, backgroundColor: 'rgba(255,255,255,0.9)' },
   splitLabels: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 14 },
   splitLabelPill: {
     backgroundColor: 'rgba(0,0,0,0.45)',

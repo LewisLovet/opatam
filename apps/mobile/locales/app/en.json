@@ -2413,7 +2413,9 @@
       "availabilities": "Availability",
       "none": "QR code",
       "review": "Review",
-      "loyalty": "Loyalty"
+      "loyalty": "Loyalty",
+      "realisation": "Showcase",
+      "avantApres": "Before / after"
     },
     "errorTitle": "Error",
     "shareUnavailable": "Sharing is not available on this device.",
@@ -2433,7 +2435,9 @@
       "service": "Service",
       "theme": "Theme",
       "servicesShown": "Displayed services (5 max)",
-      "shareOn": "Share on"
+      "shareOn": "Share on",
+      "photo": "Photo",
+      "photos": "Photos"
     },
     "allMembers": "All members",
     "thisWeek": "This week",
@@ -2501,10 +2505,39 @@
         "availabilities": "Your free slots for the coming days. This is what gets you booked fastest.",
         "review": "A client's own words, beautifully laid out. The most convincing proof comes from them.",
         "loyalty": "Your loyalty programme. Gives a reason to come back rather than try elsewhere.",
-        "none": "Your QR code alone. To display in your shop or drop into a story."
+        "none": "Your QR code alone. To display in your shop or drop into a story.",
+        "realisation": "A photo of your work, with the service, its duration and its price if you wish. The most effective way to make people want it.",
+        "avantApres": "Two photos side by side, before and after. The result speaks for itself."
       },
       "intro": "One story a week is enough to keep your page alive. Pick what you want to show.",
       "configure": "Set up"
+    },
+    "realisation": {
+      "badge": "SHOWCASE",
+      "badgeAvantApres": "BEFORE / AFTER",
+      "before": "Before",
+      "after": "After",
+      "addPhoto": "Add a photo",
+      "gallery": "Gallery",
+      "portfolio": "Portfolio",
+      "changePhoto": "Change",
+      "fromPrice": "from {{price}}",
+      "noService": "No service",
+      "showPrice": "Show the price",
+      "bannerPosition": "Banner",
+      "bannerTop": "Top",
+      "bannerBottom": "Bottom",
+      "addToPortfolio": "Add the photo to my portfolio",
+      "addToPortfolioHint": "It will appear on your page after sharing.",
+      "portfolioFull": "Portfolio full ({{max}} photos)",
+      "consentTitle": "One thing before you post",
+      "consentBody": "If a client appears in the photo, make sure you have their consent before sharing it.",
+      "consentOk": "Got it",
+      "photoMissing": "Add a photo to share",
+      "frame": "Frame",
+      "frameTitle": "Frame your photo",
+      "frameHint": "Drag with one finger, pinch to zoom. The frame is exactly what will be visible in the story.",
+      "frameReset": "Reset"
     }
   },
   "proServices": {

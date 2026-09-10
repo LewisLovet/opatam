@@ -2413,7 +2413,9 @@
       "availabilities": "Disponibilidades",
       "none": "QR Code",
       "review": "Avaliação",
-      "loyalty": "Fidelidade"
+      "loyalty": "Fidelidade",
+      "realisation": "Realização",
+      "avantApres": "Antes / depois"
     },
     "errorTitle": "Erro",
     "shareUnavailable": "A partilha não está disponível neste dispositivo.",
@@ -2433,7 +2435,9 @@
       "service": "Serviço",
       "theme": "Tema",
       "servicesShown": "Serviços apresentados (máx. 5)",
-      "shareOn": "Partilhar em"
+      "shareOn": "Partilhar em",
+      "photo": "Foto",
+      "photos": "Fotos"
     },
     "allMembers": "Todos os membros",
     "thisWeek": "Esta semana",
@@ -2501,10 +2505,39 @@
         "availabilities": "Os seus horários livres dos próximos dias. É o que faz reservar mais depressa.",
         "review": "As palavras de uma cliente, bem apresentadas. A prova mais convincente vem delas.",
         "loyalty": "O seu programa de fidelidade. Dá uma razão para voltar em vez de experimentar noutro sítio.",
-        "none": "Apenas o seu código QR. Para expor na loja ou colocar numa story."
+        "none": "Apenas o seu código QR. Para expor na loja ou colocar numa story.",
+        "realisation": "Uma foto do seu trabalho, com o serviço, a duração e o preço se desejar. A forma mais eficaz de despertar vontade.",
+        "avantApres": "Duas fotos lado a lado, antes e depois. O resultado fala por si."
       },
       "intro": "Uma story por semana chega para manter a sua página viva. Escolha o que quer mostrar.",
       "configure": "Configurar"
+    },
+    "realisation": {
+      "badge": "REALIZAÇÃO",
+      "badgeAvantApres": "ANTES / DEPOIS",
+      "before": "Antes",
+      "after": "Depois",
+      "addPhoto": "Adicione uma foto",
+      "gallery": "Galeria",
+      "portfolio": "Portfólio",
+      "changePhoto": "Alterar",
+      "fromPrice": "a partir de {{price}}",
+      "noService": "Sem serviço",
+      "showPrice": "Mostrar o preço",
+      "bannerPosition": "Faixa",
+      "bannerTop": "Em cima",
+      "bannerBottom": "Em baixo",
+      "addToPortfolio": "Adicionar a foto ao meu portfólio",
+      "addToPortfolioHint": "Aparecerá na sua página após a partilha.",
+      "portfolioFull": "Portfólio completo ({{max}} fotos)",
+      "consentTitle": "Uma palavra antes de publicar",
+      "consentBody": "Se uma cliente aparecer na foto, certifique-se de ter o seu consentimento antes de a partilhar.",
+      "consentOk": "Entendido",
+      "photoMissing": "Adicione uma foto para partilhar",
+      "frame": "Enquadrar",
+      "frameTitle": "Enquadre a sua foto",
+      "frameHint": "Arraste com um dedo, aperte para ampliar. A moldura é exatamente a zona visível na story.",
+      "frameReset": "Recentrar"
     }
   },
   "proServices": {

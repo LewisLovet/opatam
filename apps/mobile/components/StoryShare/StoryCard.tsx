@@ -42,6 +42,9 @@ try {
 }
 import { Ionicons } from '@expo/vector-icons';
 import { APP_CONFIG, getCategoryLabel } from '@booking-app/shared/constants';
+import { RealisationStoryLayout, type StoryRealisation } from './RealisationStoryLayout';
+
+export type { StoryRealisation };
 
 /** A single day in the "Disponibilités" story mode (computed from real
  *  bookings + opening hours, see useUpcomingAvailabilities). */
@@ -73,7 +76,14 @@ export interface StoryCardProps {
   photoURL?: string | null;
   services: Array<{ name: string; price: number; duration: number }>;
   bookingUrl: string;
-  displayMode?: 'services' | 'availabilities' | 'none' | 'review' | 'loyalty';
+  displayMode?:
+    | 'services'
+    | 'availabilities'
+    | 'none'
+    | 'review'
+    | 'loyalty'
+    | 'realisation'
+    | 'avantApres';
   availabilityGrid?: AvailabilityGrid;
   /** Month availability grid (per-day status) — used when availabilityScope
    *  is 'month'. Adapts to the chosen prestation (or the general view). */
@@ -98,6 +108,8 @@ export interface StoryCardProps {
   ratingCount?: number;
   /** Programme de fidélité, pour la story du même nom. */
   loyalty?: StoryLoyalty | null;
+  /** Photo(s) et bandeau des stories « réalisation » / « avant / après ». */
+  realisation?: StoryRealisation | null;
 }
 
 /** Le programme de fidélité, tel que la story l'affiche. */
@@ -2190,6 +2202,7 @@ export function StoryCard({
   ratingAverage,
   ratingCount,
   loyalty,
+  realisation,
 }: StoryCardProps) {
   const topServices = services.slice(0, 5);
   const subtitle = [category, city].filter(Boolean).join(' • ').toUpperCase();
@@ -2201,6 +2214,33 @@ export function StoryCard({
 
   // QR code only shown in 'none' mode (renamed "QR Code")
   const showQR = displayMode === 'none';
+
+  // Photo plein cadre : la coque et le thème clair/sombre n'ont pas de sens
+  // ici, les voiles sont toujours sombres et le texte toujours blanc.
+  if (displayMode === 'realisation' || displayMode === 'avantApres') {
+    return (
+      <View style={styles.container}>
+        <RealisationStoryLayout
+          mode={displayMode}
+          businessName={businessName}
+          category={category}
+          city={city}
+          photoURL={photoURL}
+          bookingUrl={bookingUrl}
+          realisation={
+            realisation ?? {
+              photoUri: null,
+              beforePhotoUri: null,
+              serviceName: null,
+              durationLabel: null,
+              priceLabel: null,
+              bannerPosition: 'bottom',
+            }
+          }
+        />
+      </View>
+    );
+  }
 
   if (displayMode === 'loyalty' && loyalty) {
     return (

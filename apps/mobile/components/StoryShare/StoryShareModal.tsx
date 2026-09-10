@@ -20,8 +20,10 @@ import {
   ActivityIndicator,
   ScrollView,
   FlatList,
+  Switch,
   Image as RNImage,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,7 +48,17 @@ import {
   schedulingService,
   reviewService,
   storyTrackingService,
+  providerService,
+  uploadFile,
+  storagePaths,
 } from '@booking-app/firebase';
+import {
+  formatDuration,
+  formatPrice,
+  getDiscountedMinPrice,
+  getServiceMinDuration,
+} from '@booking-app/shared';
+import { hasSeenStoryConsent, setStoryConsentSeen } from '../../utils/storage';
 import type { Service, Member } from '@booking-app/shared';
 import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt } from '@booking-app/shared';
 import i18n from '../../lib/i18n';
@@ -57,7 +69,16 @@ import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities
 import { useServiceCategories } from '../../hooks/useServiceCategories';
 import { ServicePickerModal } from '../business';
 import { StatusBar } from 'expo-status-bar';
-import { StoryCard, type MonthAvailabilityGrid, type MonthAvailabilityDay, type StoryReview } from './StoryCard';
+import {
+  StoryCard,
+  type MonthAvailabilityGrid,
+  type MonthAvailabilityDay,
+  type StoryReview,
+  type StoryRealisation,
+} from './StoryCard';
+import { RATIO_MOITIE, RATIO_PLEIN } from './RealisationStoryLayout';
+import { CADRAGE_DEFAUT, PhotoCadree, type Cadrage } from './PhotoCadree';
+import { FramingEditor } from './FramingEditor';
 
 // Try to import react-native-share (only available in dev client / production builds)
 let RNShare: typeof import('react-native-share').default | null = null;
@@ -141,7 +162,14 @@ function formatDayOffsetSubtitle(offset: number): string {
 
 type WithId<T> = { id: string } & T;
 
-type DisplayMode = 'services' | 'availabilities' | 'none' | 'review' | 'loyalty';
+type DisplayMode =
+  | 'services'
+  | 'availabilities'
+  | 'none'
+  | 'review'
+  | 'loyalty'
+  | 'realisation'
+  | 'avantApres';
 /**
  * Sub-toggle inside the "Dispos" mode — week-grid (the historical
  * heatmap) vs the new today-only list of free time slots. Picked
@@ -187,6 +215,9 @@ const NETWORKS: SocialNetwork[] = [
 
 // Labels resolved at render time via t(`storyShare.modes.${key}`).
 const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
+  // La photo d'abord : c'est la story qui donne le plus envie (client, 2026-09-10).
+  { key: 'realisation', icon: 'image-outline' },
+  { key: 'avantApres', icon: 'swap-horizontal-outline' },
   { key: 'services', icon: 'pricetags-outline' },
   { key: 'availabilities', icon: 'calendar-outline' },
   { key: 'review', icon: 'star-outline' },
@@ -269,7 +300,7 @@ export function StoryShareModal({
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { provider } = useProvider();
+  const { provider, refreshProvider } = useProvider();
   const { categories } = useServiceCategories(provider?.id);
   const viewRef = useRef<View>(null);
   const [sharing, setSharing] = useState<string | null>(null);
@@ -348,6 +379,160 @@ export function StoryShareModal({
   // the historical look of the existing share output.
   const [storyTheme, setStoryTheme] =
     useState<'light' | 'dark'>('light');
+
+  // ── Stories photo : « réalisation » et « avant / après » ──
+  // La photo reste sur le téléphone (ou vient du portfolio) ; rien n'est
+  // envoyé au serveur, sauf si le professionnel demande explicitement
+  // l'ajout au portfolio — et seulement après un partage réussi.
+  const estPhotoMode = displayMode === 'realisation' || displayMode === 'avantApres';
+  const [realPhoto, setRealPhoto] = useState<string | null>(null);
+  const [realBefore, setRealBefore] = useState<string | null>(null);
+  // Cadrage (position + zoom) de chaque photo — remis à zéro quand la photo change.
+  const [realPhotoCadrage, setRealPhotoCadrage] = useState<Cadrage>(CADRAGE_DEFAUT);
+  const [realBeforeCadrage, setRealBeforeCadrage] = useState<Cadrage>(CADRAGE_DEFAUT);
+  const [cadrageOuvertPour, setCadrageOuvertPour] = useState<'photo' | 'before' | null>(null);
+  const poserPhoto = useCallback((cible: 'photo' | 'before', uri: string) => {
+    if (cible === 'before') {
+      setRealBefore(uri);
+      setRealBeforeCadrage(CADRAGE_DEFAUT);
+    } else {
+      setRealPhoto(uri);
+      setRealPhotoCadrage(CADRAGE_DEFAUT);
+    }
+  }, []);
+  const [realServiceId, setRealServiceId] = useState<string | null>(null);
+  const [realPickerOpen, setRealPickerOpen] = useState(false);
+  const [realShowPrice, setRealShowPrice] = useState(true);
+  const [realBanner, setRealBanner] = useState<'top' | 'bottom'>('bottom');
+  const [realAddToPortfolio, setRealAddToPortfolio] = useState(false);
+  /** Feuille « choisir dans le portfolio », et pour quelle photo. */
+  const [portfolioPickerFor, setPortfolioPickerFor] = useState<'photo' | 'before' | null>(null);
+  const [consentOpen, setConsentOpen] = useState(false);
+  /** Photos déjà envoyées au portfolio dans cette session — pas de doublon. */
+  const photosDejaAjoutees = useRef<Set<string>>(new Set());
+
+  // Rappel de consentement, UNE fois, à la première entrée dans un mode photo.
+  useEffect(() => {
+    if (!visible || step !== 'edit' || !estPhotoMode) return;
+    let actif = true;
+    hasSeenStoryConsent().then((vu) => {
+      if (actif && !vu) setConsentOpen(true);
+    });
+    return () => {
+      actif = false;
+    };
+  }, [visible, step, estPhotoMode]);
+
+  const choisirPhoto = useCallback(
+    async (cible: 'photo' | 'before') => {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          i18n.t('proProfile.permissionRequiredTitle'),
+          i18n.t('proProfile.photoPermissionMessage'),
+        );
+        return;
+      }
+      // Pas de recadrage natif : sur iOS il est toujours carré, quoi qu'on
+      // demande. Le cadrage se fait dans l'app, au format exact de la zone
+      // (éditeur « Cadrer »), à partir de la photo entière.
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.9,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      poserPhoto(cible, result.assets[0].uri);
+    },
+    [poserPhoto],
+  );
+
+  const photosPortfolio = useMemo(() => {
+    const liste = [
+      ...(provider?.portfolioPhotos ?? []),
+      ...(provider?.coverPhotoURL ? [provider.coverPhotoURL] : []),
+    ];
+    return Array.from(new Set(liste));
+  }, [provider?.portfolioPhotos, provider?.coverPhotoURL]);
+
+  const realService = useMemo(
+    () => (realServiceId ? services.find((s) => s.id === realServiceId) ?? null : null),
+    [services, realServiceId],
+  );
+
+  const realisation: StoryRealisation | null = useMemo(() => {
+    if (!estPhotoMode) return null;
+    let priceLabel: string | null = null;
+    let priceStrikeLabel: string | null = null;
+    if (realService && realShowPrice) {
+      const remise = getDiscountedMinPrice(realService, provider?.settings?.globalDiscount ?? null);
+      const prix = formatPrice(remise.price, 'EUR', i18n.language);
+      // Variations ou fourchette → « à partir de », comme sur la page.
+      const aPartirDe =
+        (realService.variations?.length ?? 0) > 0 ||
+        (typeof realService.priceMax === 'number' && realService.priceMax > realService.price);
+      priceLabel = aPartirDe ? i18n.t('storyShare.realisation.fromPrice', { price: prix }) : prix;
+      if (remise.original > remise.price) {
+        priceStrikeLabel = formatPrice(remise.original, 'EUR', i18n.language);
+      }
+    }
+    return {
+      photoUri: realPhoto,
+      beforePhotoUri: realBefore,
+      photoCadrage: realPhotoCadrage,
+      beforeCadrage: realBeforeCadrage,
+      serviceName: realService?.name ?? null,
+      durationLabel: realService ? formatDuration(getServiceMinDuration(realService)) : null,
+      priceLabel,
+      priceStrikeLabel,
+      bannerPosition: realBanner,
+    };
+  }, [
+    estPhotoMode,
+    realService,
+    realShowPrice,
+    realPhoto,
+    realBefore,
+    realPhotoCadrage,
+    realBeforeCadrage,
+    realBanner,
+    provider?.settings?.globalDiscount,
+  ]);
+
+  const photoManquante =
+    estPhotoMode && (!realPhoto || (displayMode === 'avantApres' && !realBefore));
+
+  /**
+   * Ajout au portfolio, APRÈS un partage réussi et seulement sur demande.
+   * Les photos déjà dans le portfolio (choisies dedans) ne sont pas
+   * renvoyées ; la limite du portfolio est respectée sans bruit.
+   */
+  const ajouterAuPortfolio = useCallback(async () => {
+    if (!realAddToPortfolio || !provider?.id) return;
+    const candidates = [realBefore, realPhoto].filter(
+      (u): u is string => !!u && !/^https?:\/\//.test(u) && !photosDejaAjoutees.current.has(u),
+    );
+    if (candidates.length === 0) return;
+    try {
+      const existantes = provider.portfolioPhotos ?? [];
+      const place = Math.max(0, APP_CONFIG.maxPortfolioPhotos - existantes.length);
+      const aEnvoyer = candidates.slice(0, place);
+      if (aEnvoyer.length === 0) return;
+      const urls: string[] = [];
+      for (const uri of aEnvoyer) {
+        const blob = await (await fetch(uri)).blob();
+        const path = `${storagePaths.providerPortfolio(provider.id)}/story-${Date.now()}-${urls.length}.jpg`;
+        urls.push(await uploadFile(path, blob, { contentType: 'image/jpeg' }));
+        photosDejaAjoutees.current.add(uri);
+      }
+      await providerService.updateProvider(provider.id, {
+        portfolioPhotos: [...existantes, ...urls],
+      });
+      await refreshProvider();
+    } catch (e) {
+      console.warn('[StoryShare] ajout au portfolio impossible:', e);
+    }
+  }, [realAddToPortfolio, provider, realBefore, realPhoto, refreshProvider]);
 
   // Week offset (0 = this week, 1 = next, …). Capped at 4 to keep
   // the share UX focused on near-term planning.
@@ -561,9 +746,15 @@ export function StoryShareModal({
         l'ouverture rend cet appel quasi instantané dans les faits — il n'est
         là que pour le professionnel qui va plus vite que le réseau.
       */
-      if (provider?.photoURL) {
+      // Même précaution pour les photos des stories « réalisation » : une
+      // photo du portfolio vient du réseau, et une capture avant son
+      // arrivée publierait un cadre vide.
+      const aPrecharger = [provider?.photoURL, realPhoto, realBefore].filter(
+        (u): u is string => !!u,
+      );
+      if (aPrecharger.length > 0) {
         await Promise.race([
-          RNImage.prefetch(provider.photoURL).catch(() => undefined),
+          Promise.all(aPrecharger.map((u) => RNImage.prefetch(u).catch(() => undefined))),
           // Un Storage injoignable ne doit pas empêcher de partager : passé
           // deux secondes, on capture avec l'initiale plutôt que rien.
           new Promise((r) => setTimeout(r, 2000)),
@@ -583,7 +774,7 @@ export function StoryShareModal({
       console.error('[StoryShare] Capture error:', err);
       return null;
     }
-  }, [provider?.photoURL]);
+  }, [provider?.photoURL, realPhoto, realBefore]);
 
   // Fallback share via expo-sharing
   const fallbackShare = useCallback(async (fileUri: string) => {
@@ -665,6 +856,7 @@ export function StoryShareModal({
       // avorté n'est pas un partage, et gonflerait un compteur censé
       // servir un jour à décerner des récompenses.
       void storyTrackingService.shared(provider!.id, displayMode, 'instagram');
+      void ajouterAuPortfolio();
     } catch (error: any) {
       if (error?.message?.includes?.('User did not share')) return;
       if (error?.code === 'ECANCELLED' || error?.code === 'ERR_SHARING_ABORTED') return;
@@ -673,7 +865,7 @@ export function StoryShareModal({
     } finally {
       setSharing(null);
     }
-  }, [captureStory, fallbackShare, checkAppInstalled, provider, displayMode]);
+  }, [captureStory, fallbackShare, checkAppInstalled, provider, displayMode, ajouterAuPortfolio]);
 
   // Generic share — opens system share sheet
   const handleGenericShare = useCallback(async () => {
@@ -683,12 +875,13 @@ export function StoryShareModal({
       if (!fileUri) { Alert.alert(i18n.t('storyShare.errorTitle'), i18n.t('storyShare.captureFailed')); return; }
       await fallbackShare(fileUri);
       void storyTrackingService.shared(provider!.id, displayMode, 'system');
+      void ajouterAuPortfolio();
     } catch {
       // Ignore
     } finally {
       setSharing(null);
     }
-  }, [captureStory, fallbackShare, provider, displayMode]);
+  }, [captureStory, fallbackShare, provider, displayMode, ajouterAuPortfolio]);
 
   const networkHandlers: Record<string, () => void> = {
     instagram: handleShareInstagram,
@@ -874,6 +1067,7 @@ export function StoryShareModal({
     ratingAverage: provider.rating?.average,
     ratingCount: provider.rating?.count,
     loyalty: loyaltyStory,
+    realisation,
   };
 
   return (
@@ -1429,6 +1623,189 @@ export function StoryShareModal({
               Y COMPRIS les stories de marque : elles ont désormais leurs
               deux ambiances, la toile et les textes basculant autour d'une
               carte blanche qui, elle, ne change pas. */}
+          {/* ── Stories photo : la ou les photos, la prestation, le bandeau ── */}
+          {estPhotoMode && (
+            <>
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  {t(displayMode === 'avantApres' ? 'storyShare.sections.photos' : 'storyShare.sections.photo')}
+                </Text>
+                <View style={styles.photoSlotsRow}>
+                  {(displayMode === 'avantApres'
+                    ? ([
+                        { cible: 'before' as const, uri: realBefore, label: t('storyShare.realisation.before') },
+                        { cible: 'photo' as const, uri: realPhoto, label: t('storyShare.realisation.after') },
+                      ])
+                    : ([{ cible: 'photo' as const, uri: realPhoto, label: null }])
+                  ).map((slot) => (
+                    <View
+                      key={slot.cible}
+                      style={[styles.photoSlot, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      {slot.label ? (
+                        <Text style={[styles.photoSlotLabel, { color: colors.textSecondary }]}>{slot.label}</Text>
+                      ) : null}
+                      {/* Vignette au format EXACT de la zone dans la story, avec le
+                          cadrage choisi : ce qu'on voit ici est ce qui sera publié. */}
+                      <Pressable
+                        onPress={() => slot.uri && setCadrageOuvertPour(slot.cible)}
+                        style={[
+                          styles.photoThumbWrap,
+                          {
+                            backgroundColor: colors.surfaceSecondary,
+                            width: displayMode === 'avantApres' ? 56 : 90,
+                            height: 160,
+                          },
+                        ]}
+                      >
+                        {slot.uri ? (
+                          <PhotoCadree
+                            uri={slot.uri}
+                            width={displayMode === 'avantApres' ? 56 : 90}
+                            height={160}
+                            cadrage={slot.cible === 'before' ? realBeforeCadrage : realPhotoCadrage}
+                          />
+                        ) : (
+                          <Ionicons name="image-outline" size={26} color={colors.textMuted} />
+                        )}
+                      </Pressable>
+                      <View style={styles.photoSlotActions}>
+                        <Pressable
+                          onPress={() => void choisirPhoto(slot.cible)}
+                          style={[styles.photoSlotButton, { backgroundColor: colors.primary }]}
+                        >
+                          <Ionicons name="images-outline" size={15} color="#fff" />
+                          <Text style={styles.photoSlotButtonText}>
+                            {slot.uri ? t('storyShare.realisation.changePhoto') : t('storyShare.realisation.gallery')}
+                          </Text>
+                        </Pressable>
+                        {slot.uri && (
+                          <Pressable
+                            onPress={() => setCadrageOuvertPour(slot.cible)}
+                            style={[styles.photoSlotButton, { backgroundColor: colors.surfaceSecondary }]}
+                          >
+                            <Ionicons name="crop-outline" size={15} color={colors.primary} />
+                            <Text style={[styles.photoSlotButtonText, { color: colors.primary }]}>
+                              {t('storyShare.realisation.frame')}
+                            </Text>
+                          </Pressable>
+                        )}
+                        {photosPortfolio.length > 0 && (
+                          <Pressable
+                            onPress={() => setPortfolioPickerFor(slot.cible)}
+                            style={[styles.photoSlotButton, { backgroundColor: colors.surfaceSecondary }]}
+                          >
+                            <Ionicons name="albums-outline" size={15} color={colors.primary} />
+                            <Text style={[styles.photoSlotButtonText, { color: colors.primary }]}>
+                              {t('storyShare.realisation.portfolio')}
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                {photoManquante && (
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {t('storyShare.realisation.photoMissing')}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  {t('storyShare.sections.service')}
+                </Text>
+                <Pressable
+                  onPress={() => setRealPickerOpen(true)}
+                  style={({ pressed }) => [
+                    styles.customizeCard,
+                    styles.serviceCheckRow,
+                    { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+                  ]}
+                >
+                  <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.serviceCheckName, { color: colors.text }]} numberOfLines={1}>
+                    {realService ? realService.name : t('storyShare.realisation.noService')}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                </Pressable>
+                {realService && (
+                  <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.switchRow}>
+                      <Text style={[styles.switchLabel, { color: colors.text }]}>
+                        {t('storyShare.realisation.showPrice')}
+                      </Text>
+                      <Switch
+                        value={realShowPrice}
+                        onValueChange={setRealShowPrice}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  {t('storyShare.realisation.bannerPosition')}
+                </Text>
+                <View style={styles.modeRow}>
+                  {(['top', 'bottom'] as const).map((pos) => {
+                    const isActive = realBanner === pos;
+                    return (
+                      <Pressable
+                        key={pos}
+                        onPress={() => setRealBanner(pos)}
+                        style={[
+                          styles.modeButton,
+                          {
+                            backgroundColor: isActive ? colors.primary : colors.surface,
+                            borderWidth: 1,
+                            borderColor: isActive ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={pos === 'top' ? 'arrow-up-outline' : 'arrow-down-outline'}
+                          size={18}
+                          color={isActive ? '#fff' : colors.textSecondary}
+                        />
+                        <Text style={[styles.modeLabel, { color: isActive ? '#fff' : colors.text }]}>
+                          {t(pos === 'top' ? 'storyShare.realisation.bannerTop' : 'storyShare.realisation.bannerBottom')}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Ajout au portfolio — après le partage, jamais avant ; la story
+                  enrichit la page au passage. */}
+              <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.switchRow}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.switchLabel, { color: colors.text }]}>
+                      {t('storyShare.realisation.addToPortfolio')}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      {(provider.portfolioPhotos?.length ?? 0) >= APP_CONFIG.maxPortfolioPhotos
+                        ? t('storyShare.realisation.portfolioFull', { max: APP_CONFIG.maxPortfolioPhotos })
+                        : t('storyShare.realisation.addToPortfolioHint')}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={realAddToPortfolio}
+                    onValueChange={setRealAddToPortfolio}
+                    disabled={(provider.portfolioPhotos?.length ?? 0) >= APP_CONFIG.maxPortfolioPhotos}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+
+          {!estPhotoMode && (
           <View style={styles.sectionSpacing}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               {t('storyShare.sections.theme')}
@@ -1470,6 +1847,7 @@ export function StoryShareModal({
               })}
             </View>
           </View>
+          )}
 
           {/* Service selection (only when mode = services) */}
           {displayMode === 'services' && services.length > 0 && (
@@ -1545,9 +1923,10 @@ export function StoryShareModal({
                   <Pressable
                     key={network.key}
                     onPress={networkHandlers[network.key]}
-                    disabled={isSharing || isLoading}
+                    disabled={isSharing || isLoading || photoManquante}
                     style={({ pressed }) => [
                       styles.networkButton,
+                      photoManquante && styles.buttonDisabled,
                       {
                         backgroundColor: colors.surface,
                         borderWidth: 1,
@@ -1589,6 +1968,94 @@ export function StoryShareModal({
             setMonthPickerOpen(false);
           }}
         />
+
+        {/* Prestation illustrée par la story photo — même feuille que le mois */}
+        <ServicePickerModal
+          visible={realPickerOpen}
+          onClose={() => setRealPickerOpen(false)}
+          services={services}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+          currentServiceId={realServiceId}
+          onApply={(sid) => {
+            setRealServiceId(sid);
+            setRealPickerOpen(false);
+          }}
+        />
+
+        {/* Choisir une photo dans le portfolio (stories photo) */}
+        <Modal
+          visible={portfolioPickerFor !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPortfolioPickerFor(null)}
+        >
+          <Pressable style={styles.reminderOverlay} onPress={() => setPortfolioPickerFor(null)}>
+            <Pressable style={[styles.reminderCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
+              <Text style={[styles.reminderTitle, { color: colors.text }]}>
+                {t('storyShare.realisation.portfolio')}
+              </Text>
+              <FlatList
+                data={photosPortfolio}
+                keyExtractor={(u) => u}
+                numColumns={3}
+                style={{ maxHeight: 320, width: '100%' }}
+                columnWrapperStyle={{ gap: 8 }}
+                contentContainerStyle={{ gap: 8 }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => {
+                      poserPhoto(portfolioPickerFor === 'before' ? 'before' : 'photo', item);
+                      setPortfolioPickerFor(null);
+                    }}
+                    style={({ pressed }) => [styles.portfolioThumb, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <RNImage source={{ uri: item }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  </Pressable>
+                )}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Cadrage d'une photo — au format exact de sa zone dans la story */}
+        <FramingEditor
+          visible={cadrageOuvertPour !== null}
+          uri={cadrageOuvertPour === 'before' ? realBefore : realPhoto}
+          ratio={displayMode === 'avantApres' ? RATIO_MOITIE : RATIO_PLEIN}
+          cadrage={cadrageOuvertPour === 'before' ? realBeforeCadrage : realPhotoCadrage}
+          onClose={() => setCadrageOuvertPour(null)}
+          onApply={(c) => {
+            if (cadrageOuvertPour === 'before') setRealBeforeCadrage(c);
+            else setRealPhotoCadrage(c);
+            setCadrageOuvertPour(null);
+          }}
+        />
+
+        {/* Rappel de consentement — une fois, à la première story photo */}
+        <Modal visible={consentOpen} transparent animationType="fade" onRequestClose={() => {}}>
+          <View style={styles.reminderOverlay}>
+            <View style={[styles.reminderCard, { backgroundColor: colors.surface }]}>
+              <View style={[styles.reminderIconCircle, { backgroundColor: `${colors.primary}15` }]}>
+                <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
+              </View>
+              <Text style={[styles.reminderTitle, { color: colors.text }]}>
+                {t('storyShare.realisation.consentTitle')}
+              </Text>
+              <Text style={[styles.reminderDesc, { color: colors.textSecondary }]}>
+                {t('storyShare.realisation.consentBody')}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setConsentOpen(false);
+                  void setStoryConsentSeen();
+                }}
+                style={[styles.reminderContinueButton, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.reminderContinueText}>{t('storyShare.realisation.consentOk')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
 
         {/* Link reminder modal for Instagram */}
         <Modal
@@ -2099,6 +2566,30 @@ const styles = StyleSheet.create({
   },
 
   // Link reminder modal
+  // Stories photo
+  photoSlotsRow: { flexDirection: 'row', gap: 10 },
+  photoSlot: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 10, gap: 8 },
+  photoSlotLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  photoThumbWrap: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  photoSlotActions: { gap: 6 },
+  photoSlotButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  photoSlotButtonText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  switchLabel: { fontSize: 14, fontWeight: '600' },
+  portfolioThumb: { flex: 1, aspectRatio: 1, borderRadius: 10, overflow: 'hidden' },
   reminderOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

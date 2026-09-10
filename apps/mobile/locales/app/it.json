@@ -2413,7 +2413,9 @@
       "availabilities": "Disponibilità",
       "none": "QR Code",
       "review": "Recensione",
-      "loyalty": "Fedeltà"
+      "loyalty": "Fedeltà",
+      "realisation": "Realizzazione",
+      "avantApres": "Prima / dopo"
     },
     "errorTitle": "Errore",
     "shareUnavailable": "La condivisione non è disponibile su questo dispositivo.",
@@ -2433,7 +2435,9 @@
       "service": "Servizio",
       "theme": "Tema",
       "servicesShown": "Servizi mostrati (max 5)",
-      "shareOn": "Condividi su"
+      "shareOn": "Condividi su",
+      "photo": "Foto",
+      "photos": "Foto"
     },
     "allMembers": "Tutti i membri",
     "thisWeek": "Questa settimana",
@@ -2501,10 +2505,39 @@
         "availabilities": "I tuoi orari liberi dei prossimi giorni. È ciò che fa prenotare più in fretta.",
         "review": "Le parole di una cliente, impaginate. La prova più convincente la danno loro.",
         "loyalty": "Il tuo programma fedeltà. Dà un motivo per tornare invece di provare altrove.",
-        "none": "Solo il tuo codice QR. Da esporre in negozio o da mettere in una storia."
+        "none": "Solo il tuo codice QR. Da esporre in negozio o da mettere in una storia.",
+        "realisation": "Una foto del tuo lavoro, con il servizio, la durata e il prezzo se lo desideri. Il modo più efficace per far venire voglia.",
+        "avantApres": "Due foto affiancate, prima e dopo. Il risultato parla da sé."
       },
       "intro": "Una storia a settimana basta a far vivere la tua pagina. Scegli cosa mostrare.",
       "configure": "Configura"
+    },
+    "realisation": {
+      "badge": "REALIZZAZIONE",
+      "badgeAvantApres": "PRIMA / DOPO",
+      "before": "Prima",
+      "after": "Dopo",
+      "addPhoto": "Aggiungi una foto",
+      "gallery": "Galleria",
+      "portfolio": "Portfolio",
+      "changePhoto": "Cambia",
+      "fromPrice": "a partire da {{price}}",
+      "noService": "Senza servizio",
+      "showPrice": "Mostra il prezzo",
+      "bannerPosition": "Banner",
+      "bannerTop": "In alto",
+      "bannerBottom": "In basso",
+      "addToPortfolio": "Aggiungi la foto al mio portfolio",
+      "addToPortfolioHint": "Apparirà sulla tua pagina dopo la condivisione.",
+      "portfolioFull": "Portfolio completo ({{max}} foto)",
+      "consentTitle": "Una cosa prima di pubblicare",
+      "consentBody": "Se una cliente appare nella foto, assicurati di avere il suo consenso prima di condividerla.",
+      "consentOk": "Capito",
+      "photoMissing": "Aggiungi una foto per condividere",
+      "frame": "Inquadra",
+      "frameTitle": "Inquadra la tua foto",
+      "frameHint": "Sposta con un dito, pizzica per zoomare. La cornice è esattamente la zona visibile nella story.",
+      "frameReset": "Ricentra"
     }
   },
   "proServices": {
