@@ -876,7 +876,11 @@ function WeekView({
       weekDays.forEach((wd, dayIdx) => {
         const dayStart = startOfDay(wd);
         const dayEnd = endOfDay(wd);
-        if (bs.startDate <= dayEnd && bs.endDate >= dayStart) {
+        // Une activité qui finit à minuit pile (endDate = lendemain 00:00)
+        // n'occupe pas le lendemain : comparaison stricte pour les plages
+        // horaires, large pour les journées entières (fin à 23:59:59).
+        const finitAvantCeJour = bs.allDay ? bs.endDate < dayStart : bs.endDate <= dayStart;
+        if (bs.startDate <= dayEnd && !finitAvantCeJour) {
           map[dayIdx].push(bs);
         }
       });
@@ -1224,6 +1228,11 @@ function WeekView({
                       const [eh, em] = (bs.endTime || '23:59').split(':').map(Number);
                       bsStartMin = sh * 60 + sm;
                       bsEndMin = eh * 60 + em;
+                      // Fin « 00:00 » = minuit = 24 h, comme en vue Jour
+                      // (DaySchedule). Sans ça la hauteur est négative et
+                      // l'activité disparaît de la semaine — bug signalé
+                      // le 2026-09-10 (activité 17:00 → 00:00).
+                      if (bsEndMin <= bsStartMin) bsEndMin = 24 * 60;
                     }
                     const clampStart = Math.max(bsStartMin - startHour * 60, 0);
                     const clampEnd = Math.min(bsEndMin - startHour * 60, weekTotalHours * 60);
