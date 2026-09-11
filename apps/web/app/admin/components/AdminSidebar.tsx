@@ -31,6 +31,7 @@ import {
   Bell,
   MailWarning, CreditCard, ChevronRight,
   MessageCircle,
+  Share2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -112,6 +113,7 @@ const navGroups: NavGroup[] = [
         href: '/admin/marketing/promos-fidelite',
         icon: <MailWarning className="w-5 h-5" />,
       },
+      { label: 'Stories partagées', href: '/admin/marketing/stories', icon: <Share2 className="w-5 h-5" /> },
     ],
   },
   {
