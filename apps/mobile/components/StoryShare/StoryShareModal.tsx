@@ -1240,25 +1240,27 @@ export function StoryShareModal({
           </View>
         </View>
 
+        {/* Aperçu FIXE au-dessus des réglages : chaque changement (photo,
+            disposition, bandeau, thème…) se voit sans remonter. */}
+        <View style={[styles.previewWrapper, styles.previewSticky, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+          {isLoading ? (
+            <View style={[styles.loadingContainer, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <View style={[styles.previewClip, { backgroundColor: colors.surface }]}>
+              <View style={styles.previewScaler}>
+                <StoryCard {...storyCardProps} />
+              </View>
+            </View>
+          )}
+        </View>
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Preview (mini) */}
-          <View style={styles.previewWrapper}>
-            {isLoading ? (
-              <View style={[styles.loadingContainer, { backgroundColor: colors.surface }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
-              </View>
-            ) : (
-              <View style={[styles.previewClip, { backgroundColor: colors.surface }]}>
-                <View style={styles.previewScaler}>
-                  <StoryCard {...storyCardProps} />
-                </View>
-              </View>
-            )}
-          </View>
 
 
           {/* Mode « Avis » — un RÉSUMÉ de ce qui est retenu, et une porte
@@ -2359,7 +2361,9 @@ export function StoryShareModal({
   );
 }
 
-const PREVIEW_SCALE = 0.52;
+// Réduit depuis 0.52 : l'aperçu est désormais fixé au-dessus des réglages,
+// il doit laisser de la place pour les manipuler.
+const PREVIEW_SCALE = 0.42;
 const PREVIEW_W = Math.round(360 * PREVIEW_SCALE);
 const PREVIEW_H = Math.round(640 * PREVIEW_SCALE);
 
@@ -2399,6 +2403,11 @@ const styles = StyleSheet.create({
   },
   previewWrapper: {
     alignItems: 'center',
+  },
+  previewSticky: {
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
   },
   previewClip: {
     width: PREVIEW_W,

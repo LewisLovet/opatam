@@ -234,7 +234,7 @@ export function RealisationStoryLayout({
       />
       <LinearGradient
         colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.78)']}
-        style={s.scrimBottom}
+        style={[s.scrimBottom, empile ? s.scrimBottomCompact : null]}
         pointerEvents="none"
       />
 
@@ -265,7 +265,26 @@ export function RealisationStoryLayout({
         <View style={{ flex: 1 }} />
         {realisation.bannerPosition === 'bottom' ? bandeau : null}
 
-        {/* Pied : le salon et son adresse — en texte, rien n'est cliquable */}
+        {/* Pied : le salon et son adresse — en texte, rien n'est cliquable.
+            En avant / après empilé, le pied tombe au milieu de la photo du
+            bas : version compacte, sur une ligne. */}
+        {empile ? (
+          <View style={s.footerCompact}>
+            <View style={s.footerSalon}>
+              <View style={s.avatarSmall}>
+                <Text style={s.avatarInitialSmall}>{businessName.charAt(0).toUpperCase()}</Text>
+                {photoURL ? <Image source={{ uri: photoURL }} style={StyleSheet.absoluteFill} /> : null}
+              </View>
+              <Text style={s.footerNameSmall} numberOfLines={1}>
+                {i18n.t('storyShare.review.bookAt', { name: businessName })}
+              </Text>
+              <Text style={s.footerBrandSmall}>
+                OPATAM<Text style={s.footerBrandTld}>.COM</Text>
+              </Text>
+            </View>
+            <Text style={s.footerUrlSmall} numberOfLines={1}>{adresse}</Text>
+          </View>
+        ) : (
         <View style={s.footer}>
           <View style={s.footerSalon}>
             <View style={s.avatar}>
@@ -290,6 +309,7 @@ export function RealisationStoryLayout({
             {adresse}
           </Text>
         </View>
+        )}
       </View>
     </View>
   );
@@ -316,21 +336,24 @@ const s = StyleSheet.create({
   },
   splitLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
 
-  scrimTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 150 },
+  scrimTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 110 },
   scrimBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 300 },
+  scrimBottomCompact: { height: 170 },
 
   // Zones sûres Instagram : 64 en haut (barre + nom), 88 en bas (réponse).
   content: {
     ...StyleSheet.absoluteFillObject,
-    paddingTop: 64,
+    // Sous la barre de progression Instagram, mais sans manger la photo :
+    // l'en-tête est petit et collé en haut à gauche.
+    paddingTop: 46,
     paddingBottom: 88,
     paddingHorizontal: 22,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  brandMark: { width: 22, height: 22 },
-  brandName: { color: '#FFFFFF', fontSize: 13, fontWeight: '800', letterSpacing: 2.2 },
-  eyebrow: { color: OPATAM_OR, fontSize: 9, fontWeight: '800', letterSpacing: 2 },
+  brandMark: { width: 18, height: 18 },
+  brandName: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 2 },
+  eyebrow: { color: OPATAM_OR, fontSize: 8, fontWeight: '800', letterSpacing: 1.8 },
 
   banner: {
     backgroundColor: 'rgba(255,255,255,0.96)',
@@ -395,4 +418,20 @@ const s = StyleSheet.create({
   footerBrand: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 1.2 },
   footerBrandTld: { color: OPATAM_OR },
   footerUrl: { color: 'rgba(255,255,255,0.6)', fontSize: 10.5, letterSpacing: 0.3 },
+  footerCompact: { alignItems: 'center', gap: 2 },
+  avatarSmall: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    overflow: 'hidden',
+    backgroundColor: OPATAM_BLEU,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  avatarInitialSmall: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
+  footerNameSmall: { color: '#FFFFFF', fontSize: 10.5, fontWeight: '700', flexShrink: 1 },
+  footerBrandSmall: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginLeft: 4 },
+  footerUrlSmall: { color: 'rgba(255,255,255,0.55)', fontSize: 8.5, letterSpacing: 0.3 },
 });
