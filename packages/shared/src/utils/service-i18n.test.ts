@@ -8,6 +8,9 @@ import {
 } from './service-i18n';
 import { buildBookingSelections, emptyServiceSelections } from './service-pricing';
 import type { Service, ServiceTranslations } from '../types';
+// La copie JavaScript utilisée par les scripts de traduction — doit produire la même chaîne.
+// @ts-expect-error fichier .mjs sans types
+import { serviceChoicesSourceText as scriptChoicesSourceText } from '../../../../scripts/lib/choice-texts.mjs';
 
 /** Une prestation avec les trois sortes de choix, dont des imbriqués. */
 const base = {
@@ -87,6 +90,9 @@ describe('listChoiceTexts / serviceChoicesSourceText', () => {
   it('change quand une valeur de liste est réordonnée', () => {
     const swapped = { ...base, infoFields: [{ ...base.infoFields[0], values: ['Bouclée', 'Lisse'] }, base.infoFields[1]] };
     expect(serviceChoicesSourceText(swapped)).not.toBe(serviceChoicesSourceText(base));
+  });
+  it('donne la même chaîne que la copie JavaScript des scripts', () => {
+    expect(scriptChoicesSourceText(base)).toBe(serviceChoicesSourceText(base));
   });
   it('est stable pour une prestation identique', () => {
     expect(serviceChoicesSourceText(structuredClone(base))).toBe(serviceChoicesSourceText(base));

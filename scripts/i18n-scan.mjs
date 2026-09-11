@@ -30,6 +30,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
+import { categoryHash, choicesHash, hasChoiceTexts, listChoiceTexts } from './lib/choice-texts.mjs';
 
 const args = process.argv.slice(2);
 const argOf = (name) => {
@@ -70,6 +71,9 @@ const todo = [];
 const lines = [];
 let scanned = 0;
 let upToDate = 0;
+let choicesOnly = 0;
+let categoriesScanned = 0;
+let categoriesUpToDate = 0;
 
 for (const p of providers.docs) {
   const prov = p.data();
@@ -93,10 +97,19 @@ for (const p of providers.docs) {
     const hash = sourceHash(text.name, text.description);
     const i18n = d.i18n;
 
-    if (i18n?.sourceHash === hash) {
+    // Les CHOIX (variations, valeurs, options, champs) ont leur propre
+    // empreinte : une prestation au texte à jour peut avoir des choix
+    // jamais traduits, ou modifiés depuis.
+    const withChoices = hasChoiceTexts(d);
+    const cHash = withChoices ? choicesHash(d) : null;
+    const textUpToDate = i18n?.sourceHash === hash;
+    const choicesUpToDate = !withChoices || i18n?.choicesHash === cHash;
+
+    if (textUpToDate && choicesUpToDate) {
       upToDate++;
       continue;
     }
+    if (textUpToDate) choicesOnly++;
 
     const entry = {
       providerId: p.id,
@@ -105,9 +118,28 @@ for (const p of providers.docs) {
       // `incomplete` = traduite pour le texte actuel, mais pas dans toutes
       //                les langues (empreinte laissée à `null` à dessein).
       // `stale`      = le texte a changé depuis la traduction.
-      status: !i18n ? 'never' : i18n.sourceHash === null ? 'incomplete' : 'stale',
+      // `choices-only` = texte à jour, seuls les choix sont à traiter.
+      status: textUpToDate ? 'choices-only' : !i18n ? 'never' : i18n.sourceHash === null ? 'incomplete' : 'stale',
       current: text,
       hash,
+      // Les choix à traduire, à plat (kind/id/parentId/name/description/values).
+      // Absent quand la prestation n'en a pas, ou qu'ils sont à jour.
+      ...(withChoices && !choicesUpToDate
+        ? {
+            choices: {
+              hash: cHash,
+              status: !Object.values(i18n?.entries ?? {}).some((e) => e?.choices)
+                ? 'never'
+                : i18n?.choicesHash === null
+                  ? 'incomplete'
+                  : 'stale',
+              items: listChoiceTexts(d),
+              existingLocales: Object.entries(i18n?.entries ?? {})
+                .filter(([, e]) => e?.choices)
+                .map(([k]) => k),
+            },
+          }
+        : {}),
       // LANGUE DANS LAQUELLE LE PROFESSIONNEL A ÉCRIT, à renseigner en
       // traduisant. Elle ne se devine pas depuis le compte : un même
       // catalogue mélange les langues (Salon de Coiffure a des prestations
@@ -149,7 +181,30 @@ for (const p of providers.docs) {
     items.push(entry);
   }
 
-  if (items.length === 0) continue;
+  // Catégories de prestations créées par le pro (titres de sections de la
+  // page publique) — même logique d'empreinte, sur le seul nom.
+  const catSnap = await p.ref.collection('serviceCategories').get();
+  const categories = [];
+  for (const c of catSnap.docs) {
+    const cd = c.data();
+    if (cd.isActive === false || !cd.name) continue;
+    categoriesScanned++;
+    const h = categoryHash(cd.name);
+    if (cd.i18n?.sourceHash === h) {
+      categoriesUpToDate++;
+      continue;
+    }
+    categories.push({
+      categoryId: c.id,
+      status: !cd.i18n ? 'never' : cd.i18n.sourceHash === null ? 'incomplete' : 'stale',
+      current: { name: cd.name },
+      hash: h,
+      sourceLocale: cd.i18n?.sourceLocale ?? null,
+      existingLocales: Object.keys(cd.i18n?.entries ?? {}),
+    });
+  }
+
+  if (items.length === 0 && categories.length === 0) continue;
 
   todo.push({
     providerId: p.id,
@@ -159,15 +214,19 @@ for (const p of providers.docs) {
     // Contexte pour le traducteur, pas pour l'affichage.
     otherServices: siblings.slice(0, 20),
     services: items,
+    categories,
   });
 
   const never = items.filter((i) => i.status === 'never').length;
   const partial = items.filter((i) => i.status === 'incomplete').length;
-  const stale = items.length - never - partial;
+  const onlyChoices = items.filter((i) => i.status === 'choices-only').length;
+  const stale = items.length - never - partial - onlyChoices;
   const parts = [
     never ? `${never} jamais traduites` : null,
     partial ? `${partial} incomplètes` : null,
     stale ? `${stale} modifiées` : null,
+    onlyChoices ? `${onlyChoices} choix seulement` : null,
+    categories.length ? `${categories.length} catégorie(s)` : null,
   ].filter(Boolean);
   lines.push(
     `  ${(prov.businessName ?? '?').padEnd(24)} ${String(items.length).padStart(3)} à traiter` +
@@ -176,16 +235,35 @@ for (const p of providers.docs) {
 }
 
 const total = todo.reduce((n, p) => n + p.services.length, 0);
+const totalCats = todo.reduce((n, p) => n + p.categories.length, 0);
+const choiceChars = (s) =>
+  (s.choices?.items ?? []).reduce(
+    (m, t) => m + t.name.length + t.description.length + (t.values ?? []).join('').length,
+    0,
+  );
 const chars = todo.reduce(
-  (n, p) => n + p.services.reduce((m, s) => m + s.current.name.length + s.current.description.length, 0),
+  (n, p) =>
+    n +
+    p.services.reduce(
+      (m, s) =>
+        m +
+        (s.status === 'choices-only' ? 0 : s.current.name.length + s.current.description.length) +
+        choiceChars(s),
+      0,
+    ) +
+    p.categories.reduce((m, c) => m + c.current.name.length, 0),
   0,
 );
 
-console.log(`\n${scanned} prestations examinées · ${upToDate} à jour · ${total} à traiter\n`);
+console.log(
+  `\n${scanned} prestations examinées · ${upToDate} à jour · ${total} à traiter` +
+    `${choicesOnly ? ` (dont ${choicesOnly} pour les choix seulement)` : ''}` +
+    `\n${categoriesScanned} catégories examinées · ${categoriesUpToDate} à jour · ${totalCats} à traiter\n`,
+);
 if (lines.length) console.log(lines.join('\n'));
 else console.log('  Rien à faire : tout est à jour.');
 
-if (total > 0) {
+if (total > 0 || totalCats > 0) {
   writeFileSync(
     outPath,
     JSON.stringify(
@@ -199,6 +277,9 @@ if (total > 0) {
           'ajouter un bloc "translations" contenant les AUTRES langues de "locales".',
           'Ne pas fournir d\'entrée pour la langue source : elle ne serait jamais lue.',
           'Ne jamais modifier "current" ni "hash" : ils identifient le texte traduit.',
+          'CHOIX : quand "choices" est présent, ajouter "choicesTranslations" = { <langue>: { variations: { <id>: { name, description?, options: { <id>: { name, description? } } } }, options: { <id>: { name, description? } }, infoFields: { <id>: { name, description?, values?: [...] } } } }',
+          '— une entrée par id de "choices.items" (les valeurs de variation sous "variations.<groupe>.options.<id>"), les "values" de liste dans le MÊME ORDRE que l\'original.',
+          'CATÉGORIES : pour chaque entrée de "categories", renseigner "sourceLocale" et "translations" = { <langue>: { name } }.',
         ].join(' '),
         providers: todo,
       },

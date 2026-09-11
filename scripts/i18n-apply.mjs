@@ -24,6 +24,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 import { createHash } from 'crypto';
+import { categoryHash, choicesHash, listChoiceTexts } from './lib/choice-texts.mjs';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
@@ -73,10 +74,13 @@ let incomplete = 0;
 let skippedStale = 0;
 let skippedEdited = 0;
 let missing = 0;
+let choicesWritten = 0;
+let choicesStale = 0;
+let categoriesWritten = 0;
 
 for (const prov of payload.providers ?? []) {
   for (const svc of prov.services ?? []) {
-    if (!svc.translations) {
+    if (!svc.translations && !svc.choicesTranslations) {
       missing++;
       continue;
     }
@@ -134,6 +138,38 @@ for (const prov of payload.providers ?? []) {
     if (liveHash !== svc.hash) {
       console.log(`  ⚠ ${d.name} : texte modifié depuis le scan, ignoré`);
       skippedStale++;
+      continue;
+    }
+
+    // ── Choix (variations, valeurs, options, champs) ─────────────────────
+    // Écrits par langue dans `entries.<locale>.choices`, avec leur propre
+    // empreinte. Une prestation « choix seulement » ne touche ni au texte ni
+    // à `sourceHash`.
+    const choicesPatch = svc.choicesTranslations ? buildChoicesPatch(d, svc) : null;
+    if (svc.choicesTranslations && !choicesPatch) {
+      choicesStale++;
+      if (!svc.translations) continue;
+    }
+    if (!svc.translations) {
+      if (!d.i18n) {
+        console.log(`  ✗ ${d.name} : choix fournis mais texte jamais traduit — traduire d'abord nom/description`);
+        continue;
+      }
+      const entries = { ...(d.i18n.entries ?? {}) };
+      applyChoicesPatch(entries, choicesPatch, svc.sourceLocale ?? d.i18n.sourceLocale);
+      const targets = LOCALES.filter((l) => l !== (svc.sourceLocale ?? d.i18n.sourceLocale));
+      const allDone = targets.every((l) => entries[l]?.choicesHash === choicesPatch.hash);
+      if (dry) {
+        console.log(`  · ${d.name} → choix : ${Object.keys(choicesPatch.byLocale).join(', ')}${allDone ? '' : ' (incomplet)'}`);
+      } else {
+        await ref.update({
+          'i18n.entries': entries,
+          'i18n.choicesHash': allDone ? choicesPatch.hash : null,
+          'i18n.translatedAt': Timestamp.now(),
+        });
+        console.log(`  ✓ ${d.name} → choix : ${Object.keys(choicesPatch.byLocale).join(', ')}${allDone ? '' : ' (incomplet)'}`);
+      }
+      choicesWritten++;
       continue;
     }
 
@@ -213,6 +249,8 @@ for (const prov of payload.providers ?? []) {
     // la traduction anglaise corrigée à la main est protégée de l'écrasement,
     // mais son empreinte reste celle de l'ancien nom — donc la prestation
     // reste signalée jusqu'à ce qu'un humain tranche.
+    if (choicesPatch) applyChoicesPatch(entries, choicesPatch, svc.sourceLocale);
+
     const targets = LOCALES.filter((l) => l !== svc.sourceLocale);
     const pending = targets.filter((l) => entries[l]?.sourceHash !== liveHash);
     if (pending.length) {
@@ -220,9 +258,15 @@ for (const prov of payload.providers ?? []) {
       incomplete++;
     }
 
+    const choicesDone = choicesPatch
+      ? targets.every((l) => entries[l]?.choicesHash === choicesPatch.hash)
+      : false;
     const i18n = {
       sourceLocale: svc.sourceLocale,
       sourceHash: pending.length ? null : liveHash,
+      // Empreinte des choix : celle du patch si complet ; sinon on conserve
+      // l'état précédent (une passe texte ne périme pas des choix à jour).
+      choicesHash: choicesPatch ? (choicesDone ? choicesPatch.hash : null) : (d.i18n?.choicesHash ?? null),
       pendingLocales: pending,
       sourceText: { name: d.name ?? '', description: d.description ?? '' },
       entries,
@@ -239,6 +283,104 @@ for (const prov of payload.providers ?? []) {
       console.log(`  ✓ ${d.name} → ${Object.keys(entries).join(', ')}`);
     }
     written++;
+    if (choicesPatch) choicesWritten++;
+  }
+
+  // ── Catégories créées par le pro ──────────────────────────────────────
+  for (const cat of prov.categories ?? []) {
+    if (!cat.translations) continue;
+    if (badSourceLocale(cat.sourceLocale)) {
+      console.log(`  ✗ catégorie ${cat.current?.name ?? cat.categoryId} : sourceLocale manquante, ignorée`);
+      continue;
+    }
+    const ref = db.collection('providers').doc(prov.providerId).collection('serviceCategories').doc(cat.categoryId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      console.log(`  ✗ catégorie ${cat.categoryId} : supprimée depuis le scan`);
+      continue;
+    }
+    const cd = snap.data();
+    const live = categoryHash(cd.name);
+    if (live !== cat.hash) {
+      console.log(`  ⚠ catégorie ${cd.name} : renommée depuis le scan, ignorée`);
+      continue;
+    }
+    const entries = { ...(cd.i18n?.entries ?? {}) };
+    for (const [locale, entry] of Object.entries(cat.translations)) {
+      if (!LOCALES.includes(locale) || locale === cat.sourceLocale) continue;
+      const name = (entry?.name ?? '').trim();
+      if (!name) continue;
+      if (entries[locale]?.edited) continue;
+      entries[locale] = { name, sourceHash: live };
+    }
+    const targets = LOCALES.filter((l) => l !== cat.sourceLocale);
+    const done = targets.every((l) => entries[l]?.sourceHash === live);
+    const i18n = {
+      sourceLocale: cat.sourceLocale,
+      sourceHash: done ? live : null,
+      sourceText: { name: cd.name },
+      entries,
+      translatedAt: Timestamp.now(),
+    };
+    if (dry) console.log(`  · catégorie ${cd.name} → ${Object.keys(entries).join(', ')}`);
+    else {
+      await ref.update({ i18n });
+      console.log(`  ✓ catégorie ${cd.name} → ${Object.keys(entries).join(', ')}`);
+    }
+    categoriesWritten++;
+  }
+}
+
+/**
+ * Construit, par langue, le bloc `choices` à poser — ou `null` si les choix
+ * ont changé depuis le scan. Chaque champ de liste reçoit `sourceValues`
+ * (copie du tableau courant) : c'est ce que le lecteur compare avant de
+ * servir les valeurs traduites.
+ */
+function buildChoicesPatch(d, svc) {
+  const hash = choicesHash(d);
+  if (svc.choices?.hash && svc.choices.hash !== hash) {
+    console.log(`  ⚠ ${d.name} : choix modifiés depuis le scan, ignorés`);
+    return null;
+  }
+  const items = listChoiceTexts(d);
+  const fieldById = new Map(items.filter((t) => t.kind === 'infoField').map((t) => [t.id, t]));
+  const byLocale = {};
+  for (const [locale, block] of Object.entries(svc.choicesTranslations)) {
+    if (!LOCALES.includes(locale) || !block) continue;
+    const out = {};
+    if (block.variations && Object.keys(block.variations).length) out.variations = block.variations;
+    if (block.options && Object.keys(block.options).length) out.options = block.options;
+    if (block.infoFields && Object.keys(block.infoFields).length) {
+      out.infoFields = {};
+      for (const [id, f] of Object.entries(block.infoFields)) {
+        const src = fieldById.get(id);
+        const entry = { ...f };
+        if (Array.isArray(f?.values)) {
+          if (!src?.values || src.values.length !== f.values.length) {
+            console.log(`  · ${d.name} : valeurs « ${src?.name ?? id} » (${locale}) — nombre différent de l'original, valeurs ignorées`);
+            delete entry.values;
+          } else {
+            entry.sourceValues = [...src.values];
+          }
+        }
+        out.infoFields[id] = entry;
+      }
+    }
+    if (Object.keys(out).length) byLocale[locale] = out;
+  }
+  return Object.keys(byLocale).length ? { hash, byLocale } : null;
+}
+
+function applyChoicesPatch(entries, patch, sourceLocale) {
+  for (const [locale, choices] of Object.entries(patch.byLocale)) {
+    if (locale === sourceLocale) continue;
+    if (entries[locale]?.edited) continue;
+    entries[locale] = {
+      ...(entries[locale] ?? { name: '', description: '' }),
+      choices,
+      choicesHash: patch.hash,
+    };
   }
 }
 
@@ -248,6 +390,9 @@ console.log(
     `${skippedEdited ? ` · ${skippedEdited} entrée(s) éditée(s) préservée(s)` : ''}` +
     `${skippedNoSource ? ` · ${skippedNoSource} sans langue source` : ''}` +
     `${skippedPromo ? ` · ${skippedPromo} écartée(s) : promo notifiable` : ''}` +
+    `${choicesWritten ? ` · ${choicesWritten} avec choix` : ''}` +
+    `${choicesStale ? ` · ${choicesStale} choix modifiés depuis le scan` : ''}` +
+    `${categoriesWritten ? ` · ${categoriesWritten} catégorie(s)` : ''}` +
     `${incomplete ? ` · ${incomplete} incomplète(s), toujours signalée(s) au scan` : ''}` +
     `${droppedEntries ? ` · ${droppedEntries} entrée(s) inutilisable(s) écartée(s)` : ''}` +
     `${missing ? ` · ${missing} sans traduction fournie` : ''}`,

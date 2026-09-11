@@ -30,6 +30,18 @@ export const onServiceDiscountPromoEmail = onDocumentWritten(
   async (event) => {
     const after = event.data?.after?.data();
     if (!after) return; // suppression de presta
+    const before = event.data?.before?.data();
+
+    // N'agir que si ce qui FONDE la décision a changé : la promo elle-même
+    // (création, paramètres, retrait) ou la prestation qui redevient
+    // réservable. Toute autre écriture — traduction, réordonnancement,
+    // photo, prix — rejouait la décision et pouvait expédier une campagne
+    // au nom du pro sans qu'il ait rien demandé (constaté sur des
+    // traductions, 2026-08-16). Les promos programmées restent couvertes
+    // par le cron sendScheduledPromoEmails.
+    if (before && !promoInputsChanged(before, after)) {
+      return;
+    }
 
     const { providerId, serviceId } = event.params;
     const outcome = await runPromoEmailForService(providerId, serviceId, after);
@@ -38,3 +50,25 @@ export const onServiceDiscountPromoEmail = onDocumentWritten(
     }
   },
 );
+
+/** Vrai si la promo a changé, ou si la prestation vient de redevenir réservable. */
+export function promoInputsChanged(
+  before: FirebaseFirestore.DocumentData,
+  after: FirebaseFirestore.DocumentData,
+): boolean {
+  if (stableJson(before.discount ?? null) !== stableJson(after.discount ?? null)) return true;
+  const wasBookable = before.isAvailable !== false && before.isActive !== false;
+  const isBookable = after.isAvailable !== false && after.isActive !== false;
+  return !wasBookable && isBookable;
+}
+
+/** JSON à clés triées : deux objets égaux donnent la même chaîne, quel que soit l'ordre d'écriture. */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_k, v) => {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      if (typeof (v as { toMillis?: unknown }).toMillis === 'function') return (v as { toMillis: () => number }).toMillis();
+      return Object.keys(v as Record<string, unknown>).sort().reduce<Record<string, unknown>>((acc, k) => { acc[k] = (v as Record<string, unknown>)[k]; return acc; }, {});
+    }
+    return v;
+  });
+}
