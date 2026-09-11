@@ -24,6 +24,7 @@ import { Text } from './Text';
 import { useTheme } from '../theme';
 import { DetailImage, Thumb } from './NotificationsDrawer';
 import type { ProviderNotificationItem } from '../hooks/useProviderNotifications';
+import { isLaunchNoticeForced, subscribeDevPreview } from '../lib/devPreview';
 
 /** Au-delà, la nouveauté n'est plus « nouvelle » : plus de fenêtre. */
 export const LAUNCH_NOTICE_MAX_AGE_DAYS = 14;
@@ -34,6 +35,11 @@ export function pickLaunchNotice(
   now: number = Date.now(),
 ): ProviderNotificationItem | null {
   const limite = now - LAUNCH_NOTICE_MAX_AGE_DAYS * 86_400_000;
+  // Aperçu DEV forcé : la plus récente marquée « au démarrage », lue ou non,
+  // expirée ou non.
+  if (isLaunchNoticeForced()) {
+    return notifications.find((n) => n.showAtLaunch === true) ?? null;
+  }
   return (
     notifications.find(
       (n) => n.showAtLaunch === true && !n.isRead && n.publishedAtMs > 0 && n.publishedAtMs >= limite,
@@ -56,14 +62,26 @@ export function LaunchNoticeModal({ notice, enabled, onMarkRead }: Props) {
   const [ouvert, setOuvert] = useState<ProviderNotificationItem | null>(null);
   // Une seule fenêtre par lancement, même si la liste change ensuite.
   const dejaMontre = useRef(false);
+  // Aperçu DEV : forcée, elle se rouvre à chaque bascule de l'interrupteur
+  // et n'est jamais marquée lue.
+  const [force, setForce] = useState(isLaunchNoticeForced());
+  useEffect(
+    () =>
+      subscribeDevPreview(() => {
+        const f = isLaunchNoticeForced();
+        setForce(f);
+        if (f) dejaMontre.current = false;
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!enabled || !notice || dejaMontre.current) return;
     dejaMontre.current = true;
     setOuvert(notice);
     // Lue dès l'affichage : plus jamais imposée, sur aucun appareil.
-    onMarkRead(notice.id);
-  }, [enabled, notice, onMarkRead]);
+    if (!force) onMarkRead(notice.id);
+  }, [enabled, notice, onMarkRead, force]);
 
   if (!ouvert) return null;
   const n = ouvert;

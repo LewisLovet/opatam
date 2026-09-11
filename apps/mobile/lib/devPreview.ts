@@ -31,6 +31,23 @@ export function toggleStoryNudgePreview(): boolean {
   return forcerBandeauStory;
 }
 
+// ── Fenêtre « Nouveau » au démarrage ──
+// Elle ne s'impose qu'une fois par compte : impossible de la revoir pour en
+// juger la mise en page. Forcée, elle apparaît à CHAQUE affichage de
+// l'accueil pro, sans être marquée lue, et ignore l'expiration.
+let forcerFenetreNouveaute = false;
+
+export function isLaunchNoticeForced(): boolean {
+  return __DEV__ && forcerFenetreNouveaute;
+}
+
+export function toggleLaunchNoticePreview(): boolean {
+  if (!__DEV__) return false;
+  forcerFenetreNouveaute = !forcerFenetreNouveaute;
+  ecouteurs.forEach((f) => f());
+  return forcerFenetreNouveaute;
+}
+
 /** S'abonner aux changements. Renvoie la fonction de désabonnement. */
 export function subscribeDevPreview(f: Ecouteur): () => void {
   ecouteurs.add(f);

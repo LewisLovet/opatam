@@ -23,7 +23,12 @@ import { Text } from '../Text';
 import { ThemeConfigurator } from './ThemeConfigurator';
 import { APP_LOCALES, setAppLocale, type AppLocale } from '../../lib/i18n';
 import { previewOtaSplash } from '../OtaUpdateGate';
-import { toggleStoryNudgePreview, isStoryNudgeForced } from '../../lib/devPreview';
+import {
+  toggleStoryNudgePreview,
+  isStoryNudgeForced,
+  toggleLaunchNoticePreview,
+  isLaunchNoticeForced,
+} from '../../lib/devPreview';
 import {
   resetAllOpatamStorage,
   resetNewFeaturesSeen,
@@ -194,6 +199,16 @@ export function DevFAB() {
       action: () => {
         setIsMenuOpen(false);
         toggleStoryNudgePreview();
+      },
+    },
+    {
+      // Une fois par compte en réel : forcée, elle revient à chaque
+      // affichage de l'accueil pro, sans être marquée lue.
+      icon: 'rocket-outline',
+      label: `▶︎ Fenêtre « Nouveau » au démarrage ${isLaunchNoticeForced() ? '(activé)' : ''}`,
+      action: () => {
+        setIsMenuOpen(false);
+        toggleLaunchNoticePreview();
       },
     },
     {
