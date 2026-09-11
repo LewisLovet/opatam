@@ -19,7 +19,8 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
-import { getProviderText } from '@booking-app/shared';
+// Miroir local : les functions n'importent jamais @booking-app/shared à l'exécution.
+import { getProviderText } from '../lib/providerText';
 import { resolveRevealedAddress } from '../utils/addressReveal';
 import { resolveClientAddress } from '../utils/clientAddressReveal';
 import {
