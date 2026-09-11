@@ -30,6 +30,21 @@ import {
 import type { WithId } from '@booking-app/firebase';
 import type { AppNotification } from '@booking-app/shared';
 import { useAuth } from '../contexts';
+import * as Updates from 'expo-updates';
+
+/**
+ * Le bundle JS qui tourne est-il au moins aussi récent que `minUpdateAt` ?
+ * Garde contre l'annonce d'une fonction absente de l'app installée (OTA pas
+ * encore appliquée). En dev, Updates est désactivé : on laisse passer. En
+ * prod sans date de bundle (binaire embarqué, jamais mis à jour), on cache.
+ */
+function bundleAssezRecent(minUpdateAt: unknown): boolean {
+  const min = toMillis(minUpdateAt);
+  if (!min) return true;
+  if (__DEV__ || !Updates.isEnabled) return true;
+  const bundle = Updates.createdAt ? Updates.createdAt.getTime() : 0;
+  return bundle >= min;
+}
 
 function toMillis(v: any): number {
   if (!v) return 0;
@@ -80,6 +95,7 @@ export function useProviderNotifications(): UseProviderNotificationsResult {
           .map((d) => ({ id: d.id, ...(d.data() as AppNotification) }))
           .filter((n) => {
             if (n.audience === 'pros' || n.audience === 'all') return true;
+            if (!bundleAssezRecent((n as { minUpdateAt?: unknown }).minUpdateAt)) return false;
             if (n.audience === 'admins') return isAdmin;
             if (n.audience === 'specific') return !!uid && n.targetUserId === uid;
             return false;

@@ -89,6 +89,11 @@ export async function PUT(
       isPublished: willPublish,
       sendPush: !!body.sendPush,
       showAtLaunch: !!body.showAtLaunch,
+      minUpdateAt: (() => {
+        if (typeof body.minUpdateAt !== 'string' || !body.minUpdateAt.trim()) return null;
+        const d = new Date(body.minUpdateAt);
+        return isNaN(d.getTime()) ? null : d;
+      })(),
       scheduledAt,
       updatedAt: new Date(),
     };

@@ -1885,6 +1885,14 @@ export interface AppNotification {
    * publication. À utiliser rarement.
    */
   showAtLaunch?: boolean;
+  /**
+   * L'app mobile ne montre cette notification (fenêtre ET panneau) que si
+   * son bundle JS a été publié à cette date ou après — pour ne jamais
+   * annoncer une fonctionnalité que l'app installée n'a pas encore
+   * (OTA pas encore appliquée). Null = pas de contrainte. Ignoré sur le web,
+   * toujours à jour.
+   */
+  minUpdateAt?: Date | null;
   /** Set by the Cloud Function once the push has been dispatched
    *  (idempotency guard so re-publishing doesn't re-notify). */
   pushedAt?: Date | null;

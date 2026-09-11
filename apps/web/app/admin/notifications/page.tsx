@@ -47,12 +47,15 @@ interface NotifForm {
   isPublished: boolean;
   sendPush: boolean;
   showAtLaunch: boolean;
+  /** datetime-local : bundle mobile minimal requis ('' = aucune contrainte). */
+  minUpdateAt: string;
   /** datetime-local string ('' = envoi immédiat, sinon programmé). */
   scheduledAt: string;
 }
 
-interface NotifRow extends Omit<NotifForm, 'scheduledAt'> {
+interface NotifRow extends Omit<NotifForm, 'scheduledAt' | 'minUpdateAt'> {
   id: string;
+  minUpdateAt?: { _seconds: number } | string | null;
   pushedAt?: { _seconds: number } | string | null;
   publishedAt?: { _seconds: number } | string | null;
   scheduledAt?: { _seconds: number } | string | null;
@@ -82,6 +85,7 @@ const EMPTY: NotifForm = {
   isPublished: false,
   sendPush: false,
   showAtLaunch: false,
+  minUpdateAt: '',
   scheduledAt: '',
 };
 
@@ -429,6 +433,7 @@ export default function AdminNotificationsPage() {
       isPublished: !!row.isPublished,
       sendPush: !!row.sendPush,
       showAtLaunch: !!(row as any).showAtLaunch,
+      minUpdateAt: toDatetimeLocal(row.minUpdateAt),
       scheduledAt: toDatetimeLocal(row.scheduledAt),
     });
     setShowForm(true);
@@ -829,6 +834,26 @@ export default function AdminNotificationsPage() {
               </div>
             </div>
             <Switch checked={form.showAtLaunch} onChange={(e) => set('showAtLaunch', e.target.checked)} />
+          </div>
+          {/* Garde OTA : ne pas annoncer une fonction que l'app installée n'a pas encore */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <CalendarClock className="w-5 h-5 text-sky-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Nécessite la mise à jour mobile publiée le…</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Si la nouveauté vient d&apos;une mise à jour de l&apos;app (eas update), mettez ici sa
+                  date de publication : l&apos;app ne montrera la notification qu&apos;une fois cette
+                  version installée. Vide = pas de contrainte. Sans effet sur le web.
+                </p>
+              </div>
+            </div>
+            <input
+              type="datetime-local"
+              value={form.minUpdateAt}
+              onChange={(e) => set('minUpdateAt', e.target.value)}
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white"
+            />
           </div>
           {/* Rareté : rappeler quand la dernière fenêtre de ce type est partie */}
           <p className="-mt-2 pl-8 text-xs text-gray-500 dark:text-gray-400">

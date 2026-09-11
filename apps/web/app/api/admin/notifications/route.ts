@@ -81,6 +81,11 @@ function buildDoc(body: any) {
     isPublished: !!body.isPublished && !scheduledAt,
     sendPush: !!body.sendPush,
     showAtLaunch: !!body.showAtLaunch,
+    minUpdateAt: (() => {
+      if (typeof body.minUpdateAt !== 'string' || !body.minUpdateAt.trim()) return null;
+      const d = new Date(body.minUpdateAt);
+      return isNaN(d.getTime()) ? null : d;
+    })(),
     scheduledAt,
   };
 }
