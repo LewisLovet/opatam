@@ -57,6 +57,8 @@ export interface StoryRealisation {
   /** Prix barré quand une promotion est en cours. */
   priceStrikeLabel?: string | null;
   bannerPosition: 'top' | 'bottom';
+  /** Carte blanche (défaut réalisation), ligne discrète (défaut avant / après), ou rien. */
+  bannerStyle?: 'card' | 'compact' | 'none';
   /** Avant / après : côte à côte (défaut) ou empilé haut / bas. */
   splitLayout?: 'sideBySide' | 'stacked';
 }
@@ -123,7 +125,22 @@ export function RealisationStoryLayout({
   const empile = avantApres && realisation.splitLayout === 'stacked';
   const addPhoto = i18n.t('storyShare.realisation.addPhoto');
 
-  const bandeau = (
+  const styleBandeau = realisation.bannerStyle ?? (avantApres ? 'compact' : 'card');
+  const ligneCompacte = [
+    realisation.serviceName ?? businessName,
+    realisation.durationLabel,
+    realisation.priceLabel,
+  ].filter(Boolean).join('  ·  ');
+  const bandeau = styleBandeau === 'none' ? null : styleBandeau === 'compact' ? (
+    <View style={s.bannerCompactWrap}>
+      <View style={s.bannerCompact}>
+        {realisation.priceStrikeLabel ? (
+          <Text style={s.bannerCompactStrike}>{realisation.priceStrikeLabel}</Text>
+        ) : null}
+        <Text style={s.bannerCompactText} numberOfLines={1}>{ligneCompacte}</Text>
+      </View>
+    </View>
+  ) : (
     <View style={s.banner}>
       {realisation.serviceName ? (
         <>
@@ -265,7 +282,7 @@ export function RealisationStoryLayout({
           <View style={s.footerBrandRow}>
             <View style={s.footerBrandLine} />
             <Text style={s.footerBrand}>
-              opatam<Text style={s.footerBrandTld}>.com</Text>
+              OPATAM<Text style={s.footerBrandTld}>.COM</Text>
             </Text>
             <View style={s.footerBrandLine} />
           </View>
@@ -322,11 +339,25 @@ const s = StyleSheet.create({
     paddingVertical: 13,
     marginVertical: 14,
     gap: 6,
+    alignItems: 'center',
   },
-  bannerTitle: { color: OPATAM_BLEU, fontSize: 18, lineHeight: 22, fontWeight: '800' },
-  bannerMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  bannerTitle: { color: OPATAM_BLEU, fontSize: 18, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
+  bannerMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' },
   bannerMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  bannerMetaText: { color: '#7b8390', fontSize: 12, fontWeight: '600' },
+  bannerMetaText: { color: '#7b8390', fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  bannerCompactWrap: { alignItems: 'center', marginVertical: 10 },
+  bannerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    maxWidth: '100%',
+  },
+  bannerCompactText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '700', flexShrink: 1 },
+  bannerCompactStrike: { color: 'rgba(255,255,255,0.6)', fontSize: 11, textDecorationLine: 'line-through' },
   priceChip: {
     flexDirection: 'row',
     alignItems: 'center',

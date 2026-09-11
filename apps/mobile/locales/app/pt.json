@@ -2540,7 +2540,11 @@
       "frameReset": "Recentrar",
       "splitLayout": "Disposição",
       "splitSideBySide": "Lado a lado",
-      "splitStacked": "Cima / baixo"
+      "splitStacked": "Cima / baixo",
+      "bannerStyle": "Estilo da faixa",
+      "bannerCard": "Cartão",
+      "bannerCompact": "Discreto",
+      "bannerNone": "Nenhuma"
     }
   },
   "proServices": {

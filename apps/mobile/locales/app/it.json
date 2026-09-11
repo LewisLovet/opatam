@@ -2540,7 +2540,11 @@
       "frameReset": "Ricentra",
       "splitLayout": "Disposizione",
       "splitSideBySide": "Affiancate",
-      "splitStacked": "Sopra / sotto"
+      "splitStacked": "Sopra / sotto",
+      "bannerStyle": "Stile del banner",
+      "bannerCard": "Scheda",
+      "bannerCompact": "Discreto",
+      "bannerNone": "Nessuno"
     }
   },
   "proServices": {

@@ -2540,7 +2540,11 @@
       "frameReset": "Reset",
       "splitLayout": "Layout",
       "splitSideBySide": "Side by side",
-      "splitStacked": "Top / bottom"
+      "splitStacked": "Top / bottom",
+      "bannerStyle": "Banner style",
+      "bannerCard": "Card",
+      "bannerCompact": "Subtle",
+      "bannerNone": "None"
     }
   },
   "proServices": {

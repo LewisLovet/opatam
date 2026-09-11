@@ -2540,7 +2540,11 @@
       "frameReset": "Zurücksetzen",
       "splitLayout": "Anordnung",
       "splitSideBySide": "Nebeneinander",
-      "splitStacked": "Oben / unten"
+      "splitStacked": "Oben / unten",
+      "bannerStyle": "Bannerstil",
+      "bannerCard": "Karte",
+      "bannerCompact": "Dezent",
+      "bannerNone": "Keins"
     }
   },
   "proServices": {

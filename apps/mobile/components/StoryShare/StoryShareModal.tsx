@@ -407,6 +407,11 @@ export function StoryShareModal({
   // Avant / après : côte à côte ou empilé — le cadrage dépend du format de
   // la moitié, donc il est remis à zéro quand la disposition change.
   const [realSplit, setRealSplit] = useState<'sideBySide' | 'stacked'>('sideBySide');
+  // Style du bandeau : `null` = défaut du mode (carte en réalisation, ligne
+  // discrète en avant / après, où une carte cache trop de photo).
+  const [realBannerStyle, setRealBannerStyle] = useState<'card' | 'compact' | 'none' | null>(null);
+  const bannerStyleEffectif: 'card' | 'compact' | 'none' =
+    realBannerStyle ?? (displayMode === 'avantApres' ? 'compact' : 'card');
   const changerDisposition = (v: 'sideBySide' | 'stacked') => {
     if (v === realSplit) return;
     setRealSplit(v);
@@ -496,6 +501,7 @@ export function StoryShareModal({
       priceLabel,
       priceStrikeLabel,
       bannerPosition: realBanner,
+      bannerStyle: bannerStyleEffectif,
       splitLayout: realSplit,
     };
   }, [
@@ -508,6 +514,7 @@ export function StoryShareModal({
     realBeforeCadrage,
     realBanner,
     realSplit,
+    bannerStyleEffectif,
     provider?.settings?.globalDiscount,
   ]);
 
@@ -1793,6 +1800,39 @@ export function StoryShareModal({
 
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  {t('storyShare.realisation.bannerStyle')}
+                </Text>
+                <View style={styles.modeRow}>
+                  {([
+                    { key: 'card' as const, icon: 'card-outline', label: t('storyShare.realisation.bannerCard') },
+                    { key: 'compact' as const, icon: 'remove-outline', label: t('storyShare.realisation.bannerCompact') },
+                    { key: 'none' as const, icon: 'eye-off-outline', label: t('storyShare.realisation.bannerNone') },
+                  ]).map((opt) => {
+                    const isActive = bannerStyleEffectif === opt.key;
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        onPress={() => setRealBannerStyle(opt.key)}
+                        style={[
+                          styles.modeButton,
+                          {
+                            backgroundColor: isActive ? colors.primary : colors.surface,
+                            borderWidth: 1,
+                            borderColor: isActive ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons name={opt.icon as any} size={18} color={isActive ? '#fff' : colors.textSecondary} />
+                        <Text style={[styles.modeLabel, { color: isActive ? '#fff' : colors.text }]}>{opt.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {bannerStyleEffectif !== 'none' && (
+              <View style={styles.sectionSpacing}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                   {t('storyShare.realisation.bannerPosition')}
                 </Text>
                 <View style={styles.modeRow}>
@@ -1824,6 +1864,7 @@ export function StoryShareModal({
                   })}
                 </View>
               </View>
+              )}
 
               {/* Ajout au portfolio — après le partage, jamais avant ; la story
                   enrichit la page au passage. */}
