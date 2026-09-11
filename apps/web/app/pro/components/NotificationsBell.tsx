@@ -179,7 +179,7 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
           {/* Body */}
           <div className="overflow-y-auto">
             {selected ? (
-              <DetailView item={selected} onCta={openCta} />
+              <NotificationDetailView item={selected} onCta={openCta} />
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-12 px-6">
                 <div className="w-14 h-14 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
@@ -296,7 +296,7 @@ export function NotificationsBell({ variant = 'dark' }: { variant?: 'light' | 'd
   );
 }
 
-function DetailView({
+export function NotificationDetailView({
   item,
   onCta,
 }: {

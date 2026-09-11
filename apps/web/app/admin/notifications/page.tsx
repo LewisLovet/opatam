@@ -46,6 +46,7 @@ interface NotifForm {
   ctaIsVideo: boolean;
   isPublished: boolean;
   sendPush: boolean;
+  showAtLaunch: boolean;
   /** datetime-local string ('' = envoi immédiat, sinon programmé). */
   scheduledAt: string;
 }
@@ -79,6 +80,7 @@ const EMPTY: NotifForm = {
   ctaIsVideo: false,
   isPublished: false,
   sendPush: false,
+  showAtLaunch: false,
   scheduledAt: '',
 };
 
@@ -340,6 +342,7 @@ export default function AdminNotificationsPage() {
       ctaIsVideo: !!(row as any).ctaIsVideo || !!linkedTuto?.isVideo,
       isPublished: !!row.isPublished,
       sendPush: !!row.sendPush,
+      showAtLaunch: !!(row as any).showAtLaunch,
       scheduledAt: toDatetimeLocal(row.scheduledAt),
     });
     setShowForm(true);
@@ -725,6 +728,21 @@ export default function AdminNotificationsPage() {
               </div>
             </div>
             <Switch checked={form.sendPush} onChange={(e) => set('sendPush', e.target.checked)} />
+          </div>
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Megaphone className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Afficher au démarrage</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Mise à jour majeure : s&apos;impose en fenêtre à l&apos;ouverture de l&apos;app et de
+                  l&apos;espace pro, une seule fois par compte, pendant 14 jours. À réserver aux
+                  vraies nouveautés — rarement.
+                </p>
+              </div>
+            </div>
+            <Switch checked={form.showAtLaunch} onChange={(e) => set('showAtLaunch', e.target.checked)} />
           </div>
 
           <div className="flex items-start justify-between gap-4">

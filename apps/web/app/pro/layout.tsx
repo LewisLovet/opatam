@@ -8,6 +8,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { TrialExpiredBanner } from '@/components/auth/TrialExpiredBanner';
 import { Sidebar, MobileSidebar, MobileHeader } from './components/Sidebar';
 import { NotificationsBell } from './components/NotificationsBell';
+import { LaunchNoticeModal } from './components/LaunchNoticeModal';
 import { SupportChatWidget } from '@/components/support/SupportChatWidget';
 
 export default function ProLayout({ children }: { children: React.ReactNode }) {
@@ -68,6 +69,10 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {isAccessBlocked && <TrialExpiredBanner />}
+
+        {/* Fenêtre « Nouveau » — mises à jour majeures, une fois par compte,
+            jamais sur une page non publiée ni quand l'accès est bloqué. */}
+        <LaunchNoticeModal enabled={!!provider?.isPublished && !isAccessBlocked} />
       </div>
       {/* Chat de support — la bulle flottante, sur tout l'espace pro */}
       <SupportChatWidget />

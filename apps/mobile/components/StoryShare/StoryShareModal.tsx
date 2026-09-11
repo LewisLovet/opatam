@@ -215,6 +215,16 @@ const NETWORKS: SocialNetwork[] = [
 ];
 
 // Labels resolved at render time via t(`storyShare.modes.${key}`).
+/** Pastille « Nouveau » sur un mode jusqu'à cette date (ISO), puis plus rien. */
+const NEW_UNTIL: Partial<Record<DisplayMode, string>> = {
+  realisation: '2026-09-26',
+  avantApres: '2026-09-26',
+};
+const estNouveau = (key: DisplayMode) => {
+  const until = NEW_UNTIL[key];
+  return !!until && Date.now() < new Date(`${until}T23:59:59`).getTime();
+};
+
 const DISPLAY_MODES: { key: DisplayMode; icon: string }[] = [
   // La photo d'abord : c'est la story qui donne le plus envie (client, 2026-09-10).
   { key: 'realisation', icon: 'image-outline' },
@@ -1245,9 +1255,16 @@ export function StoryShareModal({
                   </LinearGradient>
 
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={[styles.chooserRowTitle, { color: colors.text }]}>
-                      {t(`storyShare.modes.${mode.key}`)}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={[styles.chooserRowTitle, { color: colors.text }]}>
+                        {t(`storyShare.modes.${mode.key}`)}
+                      </Text>
+                      {estNouveau(mode.key) && !eteint && (
+                        <View style={styles.newPill}>
+                          <Text style={styles.newPillText}>{t('proMore.newBadge')}</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={[styles.chooserRowBody, { color: colors.textSecondary }]}>
                       {t(`storyShare.chooser.why.${mode.key}`)}
                     </Text>
@@ -2544,6 +2561,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chooserRowTitle: { fontSize: 15.5, fontWeight: '700' },
+  newPill: { backgroundColor: '#F4C928', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  newPillText: { color: '#1B2F6E', fontSize: 9.5, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
   chooserRowBody: { fontSize: 12.5, lineHeight: 17 },
   chooserBlocked: {
     flexDirection: 'row',

@@ -1839,6 +1839,13 @@ export interface AppNotification {
   scheduledAt?: Date | null;
   /** Whether a system push was requested for this item. */
   sendPush?: boolean;
+  /**
+   * Mise à jour MAJEURE : s'impose en fenêtre au démarrage de l'app et au
+   * premier chargement de l'espace pro web — une fois par compte (marquée
+   * lue à l'affichage), et seulement dans les 14 jours suivant la
+   * publication. À utiliser rarement.
+   */
+  showAtLaunch?: boolean;
   /** Set by the Cloud Function once the push has been dispatched
    *  (idempotency guard so re-publishing doesn't re-notify). */
   pushedAt?: Date | null;

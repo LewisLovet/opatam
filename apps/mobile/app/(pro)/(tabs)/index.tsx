@@ -16,6 +16,7 @@ import {
   type TrendPoint, isTeamTier } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
+import { LaunchNoticeModal, pickLaunchNotice } from '../../../components/LaunchNoticeModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -2123,6 +2124,14 @@ export default function ProDashboardScreen() {
         visible={showWelcome}
         onDismiss={() => setShowWelcome(false)}
         businessName={provider?.businessName}
+      />
+
+      {/* ── Fenêtre « Nouveau » au démarrage — mises à jour majeures uniquement,
+          après l'accueil de bienvenue, jamais sur une page non publiée. ── */}
+      <LaunchNoticeModal
+        notice={pickLaunchNotice(appNotifications)}
+        enabled={!showWelcome && isPublished && !notifDrawerOpen}
+        onMarkRead={markNotifRead}
       />
 
       {/* ── Notification center (opened from the header avatar) ── */}

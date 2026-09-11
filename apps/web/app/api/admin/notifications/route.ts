@@ -80,6 +80,7 @@ function buildDoc(body: any) {
     ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
     isPublished: !!body.isPublished && !scheduledAt,
     sendPush: !!body.sendPush,
+    showAtLaunch: !!body.showAtLaunch,
     scheduledAt,
   };
 }

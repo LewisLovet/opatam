@@ -1054,6 +1054,11 @@
       "phrase1": "Nous préparons votre espace…",
       "phrase2": "Encore quelques instants…",
       "phrase3": "On peaufine les derniers détails…"
+    },
+    "launchNotice": {
+      "badge": "NOUVEAU",
+      "later": "Plus tard",
+      "gotIt": "C'est noté"
     }
   },
   "errors": {

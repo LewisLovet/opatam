@@ -68,7 +68,7 @@ function iconFor(name?: string | null): keyof typeof Ionicons.glyphMap {
 }
 
 /** Tutorial thumbnail with an optional play badge. */
-function Thumb({
+export function Thumb({
   uri,
   isVideo,
   onPress,
@@ -102,7 +102,7 @@ function Thumb({
  * recadrée) et ouvrable en plein écran d'un tap. Le recadrage à 160 px de
  * haut coupait l'essentiel des visuels (captures d'écran verticales).
  */
-function DetailImage({ uri }: { uri: string }) {
+export function DetailImage({ uri }: { uri: string }) {
   const insets = useSafeAreaInsets();
   const [ratio, setRatio] = useState<number | null>(null);
   const [ouverte, setOuverte] = useState(false);

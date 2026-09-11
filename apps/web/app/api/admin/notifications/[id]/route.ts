@@ -88,6 +88,7 @@ export async function PUT(
       ctaIsVideo: str(body.ctaArticleSlug) ? !!body.ctaIsVideo : false,
       isPublished: willPublish,
       sendPush: !!body.sendPush,
+      showAtLaunch: !!body.showAtLaunch,
       scheduledAt,
       updatedAt: new Date(),
     };

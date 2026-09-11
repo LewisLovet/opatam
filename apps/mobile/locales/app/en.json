@@ -1054,6 +1054,11 @@
       "phrase1": "Setting up your space…",
       "phrase2": "Just a few more moments…",
       "phrase3": "Polishing the final details…"
+    },
+    "launchNotice": {
+      "badge": "NEW",
+      "later": "Later",
+      "gotIt": "Got it"
     }
   },
   "errors": {
