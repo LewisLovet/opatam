@@ -31,6 +31,7 @@ export * from './markdown';
 // system. Used by the admin wizard preview, the booking picker, and
 // the public fiche's "À partir de" display.
 export * from './service-pricing';
+export * from './service-i18n';
 
 // Carte de fidélité (éligibilité, application, progression)
 export * from './loyalty';

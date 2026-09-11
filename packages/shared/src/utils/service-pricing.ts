@@ -29,10 +29,12 @@
  * `duration` follows the same shape with minutes instead of cents.
  * Options are always additive (+price / +duration on the total).
  */
+import { localizeServiceChoices } from './service-i18n';
 import type {
   Service,
   ServiceVariation,
   ServiceOption,
+  ServiceInfoField,
   ServiceDiscount,
   BookingSelectedVariation,
   BookingSelectedOption,
@@ -175,20 +177,63 @@ export function validateServiceSelections(
  * the pro later renames or deletes a variation.
  */
 export function buildBookingSelections(
-  service: Pick<Service, 'variations' | 'options' | 'infoFields'>,
+  service: Pick<Service, 'variations' | 'options' | 'infoFields'> & { i18n?: ServiceTranslations | null },
   selections: ServiceSelections,
+  /**
+   * Langue de la CLIENTE : quand elle est fournie et diffère de la langue
+   * d'origine, chaque libellé reçoit son double `localized` (voir les types).
+   * Les réponses libres ne sont jamais traduites.
+   */
+  opts?: { locale?: string | null },
 ): {
   selectedVariations: BookingSelectedVariation[];
   selectedOptions: BookingSelectedOption[];
   selectedInfoValues: Record<string, string>;
   selectedInfo: BookingSelectedInfo[];
 } {
+  // Version localisée de la prestation, pour les doubles libellés. `null`
+  // quand la langue de la cliente est celle du professionnel (ou inconnue) :
+  // aucun double n'est alors écrit, l'original suffit.
+  const loc =
+    opts?.locale && service.i18n && opts.locale !== service.i18n.sourceLocale
+      ? localizeServiceChoices(service, opts.locale)
+      : null;
+  const locVariation = (id: string, list?: ServiceVariation[]) => list?.find((v) => v.id === id);
+  const locOption = (id: string) => loc?.options.find((o) => o.id === id);
+  const localizedVariation = (
+    variation: ServiceVariation,
+    chosenId: string,
+    localizedList?: ServiceVariation[],
+  ): { variationName: string; optionName: string } | undefined => {
+    const lv = locVariation(variation.id, localizedList);
+    const lo = lv?.options.find((o) => o.id === chosenId);
+    if (!lv || !lo) return undefined;
+    return { variationName: lv.name, optionName: lo.name };
+  };
+  const localizedInfo = (
+    field: ServiceInfoField,
+    value: string,
+    localizedList?: ServiceInfoField[],
+  ): { label: string; value: string } | undefined => {
+    const lf = localizedList?.find((f) => f.id === field.id);
+    if (!lf) return undefined;
+    // Réponse d'une liste : on retrouve son rang dans les valeurs d'origine et
+    // on sert la valeur traduite de même rang. Réponse libre : inchangée.
+    let localizedValue = value;
+    if (field.type === 'select' && field.values && lf.values) {
+      const idx = field.values.indexOf(value);
+      if (idx >= 0 && lf.values[idx]) localizedValue = lf.values[idx];
+    }
+    return { label: lf.name, value: localizedValue };
+  };
+
   const selectedVariations: BookingSelectedVariation[] = [];
   for (const variation of service.variations ?? []) {
     const chosenId = selections.variations[variation.id];
     if (!chosenId) continue;
     const chosen = variation.options.find((o) => o.id === chosenId);
     if (!chosen) continue;
+    const localized = loc ? localizedVariation(variation, chosenId, loc.variations) : undefined;
     selectedVariations.push({
       variationId: variation.id,
       variationName: variation.name,
@@ -196,6 +241,7 @@ export function buildBookingSelections(
       optionName: chosen.name,
       price: chosen.price,
       duration: chosen.duration,
+      ...(localized ? { localized } : {}),
     });
   }
 
@@ -203,12 +249,14 @@ export function buildBookingSelections(
   for (const option of service.options ?? []) {
     const selOpt = selections.options[option.id];
     if (!selOpt) continue;
+    const lopt = locOption(option.id);
     const nested: BookingSelectedVariation[] = [];
     for (const variation of option.nestedVariations) {
       const chosenId = selOpt.nestedVariations[variation.id];
       if (!chosenId) continue;
       const chosen = variation.options.find((o) => o.id === chosenId);
       if (!chosen) continue;
+      const localized = lopt ? localizedVariation(variation, chosenId, lopt.nestedVariations) : undefined;
       nested.push({
         variationId: variation.id,
         variationName: variation.name,
@@ -216,6 +264,7 @@ export function buildBookingSelections(
         optionName: chosen.name,
         price: chosen.price,
         duration: chosen.duration,
+        ...(localized ? { localized } : {}),
       });
     }
     // Labelled nested info answers (question + answer) for this option.
@@ -223,13 +272,15 @@ export function buildBookingSelections(
     for (const field of option.nestedInfoFields) {
       const value = selOpt.infoValues[field.id];
       if (value !== undefined && value !== '') {
-        optionInfo.push({ fieldId: field.id, label: field.name, value });
+        const localized = lopt ? localizedInfo(field, value, lopt.nestedInfoFields) : undefined;
+        optionInfo.push({ fieldId: field.id, label: field.name, value, ...(localized ? { localized } : {}) });
       }
     }
 
     selectedOptions.push({
       optionId: option.id,
       optionName: option.name,
+      ...(lopt ? { localized: { optionName: lopt.name } } : {}),
       price: option.price,
       duration: option.duration,
       nestedVariations: nested,
@@ -247,7 +298,8 @@ export function buildBookingSelections(
     const value = selections.infoValues[field.id];
     if (value !== undefined && value !== '') {
       selectedInfoValues[field.id] = value;
-      selectedInfo.push({ fieldId: field.id, label: field.name, value });
+      const localized = loc ? localizedInfo(field, value, loc.infoFields) : undefined;
+      selectedInfo.push({ fieldId: field.id, label: field.name, value, ...(localized ? { localized } : {}) });
     }
   }
 

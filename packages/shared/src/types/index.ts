@@ -757,8 +757,24 @@ export interface Location {
 }
 
 // Service Category types
+/**
+ * Traductions d'une catégorie de prestations créée par le professionnel
+ * (« Poses complètes », « Épilations »…). Même principe que les prestations :
+ * écrit par les scripts côté serveur uniquement, jamais par les clients ;
+ * `sourceHash` = empreinte du nom traduit, `null` = incomplet.
+ */
+export interface ServiceCategoryTranslations {
+  sourceLocale: string;
+  sourceHash: string | null;
+  sourceText: { name: string };
+  entries: Partial<Record<ServiceLocale, { name: string; sourceHash?: string; edited?: boolean }>>;
+  translatedAt: Date;
+}
+
 export interface ServiceCategory {
   name: string;
+  /** Traductions, servies par `getServiceCategoryText`. */
+  i18n?: ServiceCategoryTranslations;
   sortOrder: number;
   isActive: boolean;
   createdAt: Date;
@@ -879,10 +895,50 @@ export interface ServiceDiscount {
 export const SERVICE_LOCALES = ['fr', 'en', 'it', 'pt', 'de'] as const;
 export type ServiceLocale = (typeof SERVICE_LOCALES)[number];
 
+/** Un libellé traduit avec, éventuellement, son texte d'aide. */
+export interface TranslatedLabel {
+  name?: string;
+  description?: string;
+}
+
+/**
+ * Les CHOIX d'une prestation dans une langue donnée : groupes de variations
+ * (et leurs valeurs), options, champs d'information — de premier niveau ET
+ * imbriqués dans une option, tous rangés à plat par identifiant (les ids
+ * sont des uuid uniques à l'échelle de la prestation).
+ *
+ * Les prix, durées et identifiants ne sont JAMAIS traduits : seul le texte
+ * l'est, et une entrée absente ou vide laisse l'original s'afficher.
+ */
+export interface ServiceChoicesTranslation {
+  /** Groupes de variations, par id ; `options` = leurs valeurs, par id. */
+  variations?: Record<string, TranslatedLabel & { options?: Record<string, TranslatedLabel> }>;
+  /** Options (suppléments), par id. */
+  options?: Record<string, TranslatedLabel>;
+  /**
+   * Champs d'information, par id. Les valeurs d'une liste n'ont pas
+   * d'identifiant : `values` est traduit DANS LE MÊME ORDRE que
+   * `sourceValues`, copie du tableau d'origine au moment de la traduction.
+   * Le lecteur ne sert `values` que si `sourceValues` est encore égal au
+   * tableau courant — une valeur ajoutée, retirée ou déplacée par le
+   * professionnel rend la traduction de la liste caduque, sans erreur.
+   */
+  infoFields?: Record<string, TranslatedLabel & { values?: string[]; sourceValues?: string[] }>;
+}
+
 /** Le nom et la description dans une langue donnée. */
 export interface ServiceTranslationEntry {
   name: string;
   description: string;
+  /** Traduction des choix (variations, options, champs). Absent = originaux. */
+  choices?: ServiceChoicesTranslation;
+  /**
+   * Empreinte des TEXTES DE CHOIX que `choices` traduit (voir
+   * `serviceChoicesHash`). Distincte de `sourceHash` : les noms/descriptions
+   * ont été traduits bien avant les choix, et lier les deux aurait rendu
+   * périmées 462 traductions saines le jour où les choix sont arrivés.
+   */
+  choicesHash?: string;
   /**
    * Vrai quand un humain a retouché cette entrée. Le traducteur automatique
    * ne la remplacera plus, même si le texte d'origine change ensuite : une
@@ -940,6 +996,11 @@ export interface ServiceTranslations {
    * texte, plutôt qu'un simple « à retraduire » sans contexte.
    */
   sourceText: { name: string; description: string };
+  /**
+   * Empreinte des textes de choix au moment de la traduction, même règle
+   * que `sourceHash` : `null` = choix pas (entièrement) traduits.
+   */
+  choicesHash?: string | null;
   /** Modèle utilisé — permet de retraduire un lot après un changement. */
   model: string;
   translatedAt: Date;
@@ -1340,8 +1401,13 @@ export interface Booking {
  *  `selectedInfoValues` (id→value) is kept alongside for back-compat. */
 export interface BookingSelectedInfo {
   fieldId: string;
-  label: string;                    // the question, e.g. "Allergies ?"
-  value: string;                    // the client's answer
+  label: string;                    // the question, e.g. "Allergies ?" — texte du professionnel
+  value: string;                    // the client's answer (original pro value for a list, free text as typed)
+  /**
+   * Question, et réponse quand elle vient d'une liste, dans la langue de la
+   * cliente. Une réponse LIBRE n'est jamais traduite : `value` y reste égal.
+   */
+  localized?: { label: string; value: string };
 }
 
 /** One prestation inside a multi-service booking. Fully denormalised so
@@ -1365,17 +1431,26 @@ export interface BookingServiceItem {
  *  edited / deleted on the Service. */
 export interface BookingSelectedVariation {
   variationId: string;
-  variationName: string;            // "Longueur"
+  variationName: string;            // "Longueur" — texte du professionnel
   optionId: string;
-  optionName: string;               // "Mi-dos"
+  optionName: string;               // "Mi-dos" — texte du professionnel
   price: number;                    // contribution to total, in cents
   duration: number;                 // contribution to total, in minutes
+  /**
+   * Les mêmes libellés dans la langue de la CLIENTE (`booking.clientLocale`)
+   * au moment de la réservation. Le professionnel lit toujours l'original ;
+   * la cliente retrouve ce qu'elle a choisi dans ses e-mails et son
+   * historique. Absent sur les réservations antérieures ou sans traduction.
+   */
+  localized?: { variationName: string; optionName: string };
 }
 
 /** One add-on captured at booking time, with its nested choices. */
 export interface BookingSelectedOption {
   optionId: string;
-  optionName: string;               // "Mèches incluses"
+  optionName: string;               // "Mèches incluses" — texte du professionnel
+  /** Libellé dans la langue de la cliente (voir BookingSelectedVariation). */
+  localized?: { optionName: string };
   price: number;                    // option's own price
   duration: number;                 // option's own duration
   /** Variation choices made WITHIN this option (only relevant when
