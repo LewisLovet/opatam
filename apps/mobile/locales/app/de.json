@@ -1058,7 +1058,8 @@
     "launchNotice": {
       "badge": "NEU",
       "later": "Später",
-      "gotIt": "Verstanden"
+      "gotIt": "Verstanden",
+      "videoTuto": "Video-Tutorial"
     }
   },
   "errors": {
