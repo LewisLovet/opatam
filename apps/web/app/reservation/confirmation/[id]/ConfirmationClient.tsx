@@ -383,6 +383,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
                           options={item.selectedOptions}
                           info={item.selectedInfo}
                           formatPrice={formatPrice}
+                          clientView
                         />
                       </div>
                     ))}
@@ -412,6 +413,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
                     options={booking.selectedOptions}
                     info={booking.selectedInfo}
                     formatPrice={formatPrice}
+                    clientView
                   />
                 </>
               )}

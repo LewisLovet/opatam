@@ -170,52 +170,74 @@ function hasSelections(s: EmailSelections): boolean {
 
 /** Render the client's choices as small muted HTML lines, indented under
  *  the prestation they belong to. Returns '' when there's nothing to show. */
-function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr'): string {
+/**
+ * Libellés d'un choix : l'original du professionnel, ou — pour un e-mail à
+ * la CLIENTE — sa version `localized` (sa langue au moment de la
+ * réservation) quand elle existe. Le pro lit toujours l'original.
+ */
+const choiceLabels = (forClient: boolean) => ({
+  variation: (v: BookingSelectedVariation) =>
+    forClient && v.localized ? v.localized : { variationName: v.variationName, optionName: v.optionName },
+  option: (o: BookingSelectedOption) => (forClient && o.localized ? o.localized.optionName : o.optionName),
+  info: (i: BookingSelectedInfo) => (forClient && i.localized ? i.localized : { label: i.label, value: i.value }),
+});
+
+function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false): string {
   const colon = EMAIL_TEXTS.common[locale].colon;
+  const L = choiceLabels(forClient);
   const lines: string[] = [];
   const muted = (html: string) =>
     `<div style="font-size: 13px; color: #71717a; margin-left: 12px;">${html}</div>`;
 
   for (const v of s.selectedVariations ?? []) {
-    lines.push(muted(`${v.variationName}${colon} <strong>${v.optionName}</strong>`));
+    const l = L.variation(v);
+    lines.push(muted(`${l.variationName}${colon} <strong>${l.optionName}</strong>`));
   }
   for (const o of s.selectedOptions ?? []) {
     const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
-    lines.push(muted(`+ <strong>${o.optionName}</strong>${extra}`));
+    lines.push(muted(`+ <strong>${L.option(o)}</strong>${extra}`));
     for (const nv of o.nestedVariations ?? []) {
-      lines.push(muted(`${nv.variationName}${colon} <strong>${nv.optionName}</strong>`));
+      const l = L.variation(nv);
+      lines.push(muted(`${l.variationName}${colon} <strong>${l.optionName}</strong>`));
     }
     for (const ni of o.info ?? []) {
-      lines.push(muted(`${ni.label}${colon} <strong>${ni.value}</strong>`));
+      const l = L.info(ni);
+      lines.push(muted(`${l.label}${colon} <strong>${l.value}</strong>`));
     }
   }
   for (const i of s.selectedInfo ?? []) {
-    lines.push(muted(`${i.label}${colon} <strong>${i.value}</strong>`));
+    const l = L.info(i);
+    lines.push(muted(`${l.label}${colon} <strong>${l.value}</strong>`));
   }
   return lines.join('');
 }
 
 /** Render the client's choices as indented plain-text lines, under the
  *  prestation they belong to. Returns '' when there's nothing to show. */
-function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr'): string {
+function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false): string {
   const colon = EMAIL_TEXTS.common[locale].colon;
+  const L = choiceLabels(forClient);
   const lines: string[] = [];
 
   for (const v of s.selectedVariations ?? []) {
-    lines.push(`  - ${v.variationName}${colon} ${v.optionName}`);
+    const l = L.variation(v);
+    lines.push(`  - ${l.variationName}${colon} ${l.optionName}`);
   }
   for (const o of s.selectedOptions ?? []) {
     const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
-    lines.push(`  - + ${o.optionName}${extra}`);
+    lines.push(`  - + ${L.option(o)}${extra}`);
     for (const nv of o.nestedVariations ?? []) {
-      lines.push(`    ${nv.variationName}${colon} ${nv.optionName}`);
+      const l = L.variation(nv);
+      lines.push(`    ${l.variationName}${colon} ${l.optionName}`);
     }
     for (const ni of o.info ?? []) {
-      lines.push(`    ${ni.label}${colon} ${ni.value}`);
+      const l = L.info(ni);
+      lines.push(`    ${l.label}${colon} ${l.value}`);
     }
   }
   for (const i of s.selectedInfo ?? []) {
-    lines.push(`  - ${i.label}${colon} ${i.value}`);
+    const l = L.info(i);
+    lines.push(`  - ${l.label}${colon} ${l.value}`);
   }
   return lines.join('\n');
 }
@@ -1424,13 +1446,13 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                               <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatEmailPrice(item.price, l)}${promoNoteHtml(item.price, item.originalPrice, l)}</td>
                             </tr></table>
                             <div style="font-size: 13px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
-                            ${hasSelections(item) ? renderSelectionsHtml(item, l) : ''}
+                            ${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}
                           </div>`).join('')}</div>`
                       : ''}
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
                         ? ''
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l) : ''}</td></tr>`}
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1493,8 +1515,8 @@ ${data.updateContext
 
 ${t.detailsHeading}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- ${c.labels.service}${c.colon} ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatEmailPrice(item.price, l)}${promoNoteText(item.price, item.originalPrice, l)}${hasSelections(item) ? `\n${renderSelectionsText(item, l)}` : ''}`).join('\n')
-  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l)}` : ''}`}
+  ? data.items.map((item) => `- ${c.labels.service}${c.colon} ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatEmailPrice(item.price, l)}${promoNoteText(item.price, item.originalPrice, l)}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedDate}
 - ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min

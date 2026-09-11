@@ -306,7 +306,9 @@
     },
     "services": {
       "title": "Scegli un servizio",
-      "others": "Altri servizi"
+      "others": "Altri servizi",
+      "choicesRequired": "Questo servizio prevede delle scelte (lunghezza, opzioni…).",
+      "openFull": "Prenota sulla pagina completa"
     },
     "success": {
       "emailSent": "Ti abbiamo appena inviato un'email di conferma.",

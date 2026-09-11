@@ -193,7 +193,9 @@ export class BookingService {
       // emails and revenue stats. `original` is snapshotted for "économie".
       const eff = computeDiscountedTotal(svc, sel, provider.settings?.globalDiscount, new Date());
       const effective = { price: eff.price, duration: eff.duration };
-      const denorm = buildBookingSelections(svc, sel);
+      // Libellés dans la langue de la cliente (`localized`), en plus de
+      // l'original que lit le professionnel.
+      const denorm = buildBookingSelections(svc, sel, { locale: validated.clientLocale ?? null });
       resolvedItems.push({ service: svc, effective, denorm, originalPrice: eff.original });
     }
 

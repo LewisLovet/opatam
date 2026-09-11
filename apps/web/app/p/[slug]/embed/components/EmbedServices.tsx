@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Clock, ChevronRight, ChevronDown } from 'lucide-react';
+import { Clock, ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { ServiceDaysBadge } from '@/components/booking/ServiceDaysBadge';
-import type { ServiceTranslations } from '@booking-app/shared';
-import { getServiceText } from '@booking-app/shared';
+import type { ServiceTranslations, ServiceCategoryTranslations } from '@booking-app/shared';
+import { getServiceText, getServiceCategoryText, APP_CONFIG } from '@booking-app/shared';
 
 interface EmbedService {
   id: string;
@@ -23,18 +23,29 @@ interface EmbedService {
   availableDays?: number[];
   /** Traductions automatiques (null = jamais traduit). */
   i18n?: ServiceTranslations | null;
+  /** Variations / options / champs OBLIGATOIRES : l'embed renvoie au tunnel complet. */
+  requiresChoices?: boolean;
 }
 
 interface EmbedServiceCategory {
   id: string;
   name: string;
   sortOrder: number;
+  i18n?: ServiceCategoryTranslations | null;
 }
 
 interface EmbedServicesProps {
   services: EmbedService[];
   categories: EmbedServiceCategory[];
+  /** Slug du pro — pour le lien vers le tunnel complet. */
+  providerSlug: string;
   onSelect: (serviceId: string) => void;
+}
+
+/** Le tunnel complet, dans la langue de l'embed, prestation présélectionnée. */
+function fullBookingUrl(slug: string, serviceId: string, locale: string): string {
+  const prefix = locale === 'fr' ? '' : `/${locale}`;
+  return `${APP_CONFIG.url}${prefix}/p/${slug}/reserver?service=${encodeURIComponent(serviceId)}`;
 }
 
 function formatDuration(minutes: number): string {
@@ -61,24 +72,37 @@ function formatPrice(cents: number, centsMax: number | null, locale: string, fre
  * Service card — compact layout that works at 320px+ width.
  * Photo (64px) | name + description + duration | price + chevron
  */
-function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (id: string) => void }) {
+function ServiceCard({
+  service,
+  providerSlug,
+  onSelect,
+}: {
+  service: EmbedService;
+  providerSlug: string;
+  onSelect: (id: string) => void;
+}) {
   const t = useTranslations('booking');
   const locale = useLocale();
   // Suspendue : la carte reste listée — le client doit savoir que la
   // prestation existe — mais le bouton est désactivé plutôt que de le
   // laisser traverser le tunnel pour se faire refuser à la validation.
   const unavailable = service.isAvailable === false;
+  // Choix obligatoires : la carte reste lisible mais ne sélectionne pas ;
+  // un vrai lien ouvre le tunnel complet dans l'onglet parent.
+  const needsChoices = !unavailable && service.requiresChoices === true;
   // Texte dans la langue de l'embed ; repli sur l'original si absent.
   const shown = getServiceText(service, locale);
   return (
     <button
       type="button"
       disabled={unavailable}
-      onClick={unavailable ? undefined : () => onSelect(service.id)}
+      onClick={unavailable || needsChoices ? undefined : () => onSelect(service.id)}
       className={`w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all overflow-hidden group ${
         unavailable
           ? 'opacity-60 cursor-default'
-          : 'hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99]'
+          : needsChoices
+            ? 'cursor-default'
+            : 'hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99]'
       }`}
     >
       <div className="flex items-start gap-3 p-3">
@@ -121,6 +145,21 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
             <Clock className="w-3 h-3" />
             <span>{formatDuration(service.duration)}</span>
           </div>
+          {needsChoices && (
+            <div className="mt-2">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('embed.services.choicesRequired')}</p>
+              <a
+                href={fullBookingUrl(providerSlug, service.id, locale)}
+                target="_top"
+                rel="noopener"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline pointer-events-auto"
+              >
+                {t('embed.services.openFull')}
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
         </div>
 
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
@@ -134,7 +173,8 @@ function ServiceCard({ service, onSelect }: { service: EmbedService; onSelect: (
   );
 }
 
-export function EmbedServices({ services, categories, onSelect }: EmbedServicesProps) {
+export function EmbedServices({ services, categories, providerSlug, onSelect }: EmbedServicesProps) {
+  const locale = useLocale();
   const t = useTranslations('booking');
   const hasCategories = categories.length > 0;
 
@@ -187,7 +227,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
         </h2>
         <div className="space-y-2.5">
           {services.map((s) => (
-            <ServiceCard key={s.id} service={s} onSelect={onSelect} />
+            <ServiceCard key={s.id} service={s} providerSlug={providerSlug} onSelect={onSelect} />
           ))}
         </div>
       </div>
@@ -212,7 +252,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
               >
                 <div className="w-0.5 h-4 bg-primary-500 rounded-full flex-shrink-0" />
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex-1 truncate">
-                  {category.name}
+                  {getServiceCategoryText(category, locale)}
                 </span>
                 <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
                   {catServices.length}
@@ -226,7 +266,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
               {!isCollapsed && (
                 <div className="space-y-2.5">
                   {catServices.map((s) => (
-                    <ServiceCard key={s.id} service={s} onSelect={onSelect} />
+                    <ServiceCard key={s.id} service={s} providerSlug={providerSlug} onSelect={onSelect} />
                   ))}
                 </div>
               )}
@@ -246,7 +286,7 @@ export function EmbedServices({ services, categories, onSelect }: EmbedServicesP
             )}
             <div className="space-y-2.5">
               {grouped.uncategorized.map((s) => (
-                <ServiceCard key={s.id} service={s} onSelect={onSelect} />
+                <ServiceCard key={s.id} service={s} providerSlug={providerSlug} onSelect={onSelect} />
               ))}
             </div>
           </div>

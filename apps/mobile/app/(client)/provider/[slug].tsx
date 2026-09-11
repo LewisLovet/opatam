@@ -74,6 +74,7 @@ import {
   LoyaltyActivationCard,
   LoyaltyActivationSheet,
 } from '../../../components/business/LoyaltyCardActivation';
+import i18n from '../../../lib/i18n';
 import type { Service, ServiceCategory as ServiceCategoryType, SocialLinks as SocialLinksType } from '@booking-app/shared';
 import { ASSETS } from '@booking-app/shared/constants';
 import {
@@ -86,7 +87,7 @@ import {
   hasLoyaltyAccess,
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
-  getServiceMinDuration, isTeamTier } from '@booking-app/shared';
+  getServiceMinDuration, isTeamTier, getServiceCategoryText } from '@booking-app/shared';
 import { analyticsService, type WithId } from '@booking-app/firebase';
 import { getServiceText } from '@booking-app/shared';
 import { ProviderAccent } from '../../../components/ProviderAccent';
@@ -122,7 +123,7 @@ function groupServices(
   for (const cat of categories) {
     const catServices = services.filter((s) => s.categoryId === cat.id);
     if (catServices.length > 0) {
-      groups.push({ id: cat.id, title: cat.name, services: catServices });
+      groups.push({ id: cat.id, title: getServiceCategoryText(cat, i18n.language), services: catServices });
     }
   }
 

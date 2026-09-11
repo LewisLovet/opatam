@@ -306,7 +306,9 @@
     },
     "services": {
       "title": "Choose a service",
-      "others": "Other services"
+      "others": "Other services",
+      "choicesRequired": "This service has choices to make (length, options…).",
+      "openFull": "Book on the full page"
     },
     "success": {
       "emailSent": "A confirmation email has just been sent to you.",

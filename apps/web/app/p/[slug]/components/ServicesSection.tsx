@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Briefcase, ChevronRight } from 'lucide-react';
-import type { ServiceDiscount } from '@booking-app/shared';
+import type { ServiceDiscount, ServiceCategoryTranslations } from '@booking-app/shared';
+import { getServiceCategoryText } from '@booking-app/shared';
 import { ServiceItem } from './ServiceItem';
 
 interface Service {
@@ -20,6 +21,8 @@ interface ServiceCategory {
   id: string;
   name: string;
   sortOrder: number;
+  /** Traductions du nom (null = jamais traduit). */
+  i18n?: ServiceCategoryTranslations | null;
 }
 
 interface ServicesSectionProps {
@@ -31,6 +34,7 @@ interface ServicesSectionProps {
 }
 
 export function ServicesSection({ services, categories = [], slug, globalDiscount, onBookingClick }: ServicesSectionProps) {
+  const locale = useLocale();
   const t = useTranslations('provider');
   const hasCategories = categories.length > 0;
 
@@ -138,7 +142,7 @@ export function ServicesSection({ services, categories = [], slug, globalDiscoun
               >
                 <div className="w-1 h-5 bg-primary-500 rounded-full flex-shrink-0" />
                 <h3 className="text-[17px] font-semibold text-gray-800 dark:text-gray-200 tracking-tight">
-                  {category.name}
+                  {getServiceCategoryText(category, locale)}
                 </h3>
                 <span className="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {catServices.length}

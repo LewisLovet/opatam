@@ -414,6 +414,8 @@ export default async function ProviderPage({ params }: PageProps) {
       id: c.id,
       name: c.name,
       sortOrder: c.sortOrder,
+      // Traductions du nom — sans ce champ, `getServiceCategoryText` n'aurait rien à lire.
+      i18n: c.i18n ?? null,
     }));
 
   const serializedLocations = locations.map((l) => ({

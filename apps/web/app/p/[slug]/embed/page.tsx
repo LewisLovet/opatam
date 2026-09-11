@@ -1,6 +1,12 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { PROVIDER_THEMES, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
+import {
+  PROVIDER_THEMES,
+  isTeamTier,
+  isPubliclyVisible,
+  validateServiceSelections,
+  emptyServiceSelections,
+} from '@booking-app/shared';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { NextIntlClientProvider } from 'next-intl';
@@ -195,6 +201,10 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     // Traductions automatiques. Sans ce champ, `getServiceText` n'aurait
     // rien à lire et servirait toujours l'original.
     i18n: s.i18n ?? null,
+    // L'embed ne sait pas (encore) faire choisir variations, options et
+    // champs obligatoires : ces prestations restent visibles mais renvoient
+    // vers le tunnel complet, au lieu d'échouer à la validation.
+    requiresChoices: !validateServiceSelections(s, emptyServiceSelections()).valid,
     // Jours autorisés — même vigilance que pour `isAvailable` : ces deux
     // sérialisations sont écrites champ par champ, un oubli et la
     // restriction n'atteint jamais le client.
@@ -203,7 +213,7 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
 
   const serializedCategories = serviceCategories
     .filter((c) => c.isActive)
-    .map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder }));
+    .map((c) => ({ id: c.id, name: c.name, sortOrder: c.sortOrder, i18n: c.i18n ?? null }));
 
   const serializedLocations = locations.map((l) => ({
     id: l.id,

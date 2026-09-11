@@ -306,7 +306,9 @@
     },
     "services": {
       "title": "Choisissez une prestation",
-      "others": "Autres prestations"
+      "others": "Autres prestations",
+      "choicesRequired": "Cette prestation propose des choix (longueur, options…) à préciser.",
+      "openFull": "Réserver sur la page complète"
     },
     "success": {
       "emailSent": "Un email de confirmation vient de vous être envoyé.",

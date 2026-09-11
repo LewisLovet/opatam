@@ -306,7 +306,9 @@
     },
     "services": {
       "title": "Wählen Sie eine Leistung",
-      "others": "Weitere Leistungen"
+      "others": "Weitere Leistungen",
+      "choicesRequired": "Diese Leistung erfordert Auswahlen (Länge, Optionen …).",
+      "openFull": "Auf der vollständigen Seite buchen"
     },
     "success": {
       "emailSent": "Eine Bestätigungs-E-Mail wurde soeben an Sie gesendet.",

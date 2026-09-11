@@ -393,6 +393,7 @@ export function EmbedBookingFlow({
         <EmbedServices
           services={services}
           categories={serviceCategories}
+          providerSlug={provider.slug}
           onSelect={handleServiceSelect}
         />
       )}

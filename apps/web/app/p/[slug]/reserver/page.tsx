@@ -229,6 +229,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
       id: c.id,
       name: c.name,
       sortOrder: c.sortOrder,
+      i18n: c.i18n ?? null,
     }));
 
   const serializedLocations = locations.map((l) => ({

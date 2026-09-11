@@ -27,6 +27,8 @@ import {
   type ServiceInfoField,
   getCommonAvailableDays,
   getServiceText,
+  localizeService,
+  localizeServiceChoices,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { StepService } from './StepService';
@@ -174,11 +176,13 @@ function fmtChoiceEuro(cents: number, locale: string): string {
 }
 
 function buildChoiceLabels(
-  service: Service | undefined,
+  rawService: Service | undefined,
   selections: ServiceSelections,
   locale: string,
 ): string[] {
-  if (!service) return [];
+  if (!rawService) return [];
+  // Libellés dans la langue du visiteur (ids, prix et durées inchangés).
+  const service = localizeService(rawService, locale);
   const labels: string[] = [];
   // Variations: "Longueur : Mi-dos"
   for (const v of service.variations ?? []) {
@@ -653,9 +657,11 @@ export function BookingFlow({
   const draftValidation = useMemo(
     () =>
       configuringService
-        ? validateServiceSelections(configuringService, state.selections)
+        // Sur la prestation LOCALISÉE : les noms manquants remontés au visiteur
+        // (et surlignés dans le sélecteur) sont ceux qu'il lit à l'écran.
+        ? validateServiceSelections(localizeService(configuringService, locale), state.selections)
         : { valid: true, missing: [] as string[] },
-    [configuringService, state.selections],
+    [configuringService, state.selections, locale],
   );
   const draftMissingSet = useMemo(
     () => new Set(draftValidation.missing),
@@ -1117,11 +1123,7 @@ export function BookingFlow({
                 </p>
 
                 <ServiceChoicesPicker
-                  service={{
-                    variations: configuringService.variations,
-                    options: configuringService.options,
-                    infoFields: configuringService.infoFields,
-                  }}
+                  service={localizeServiceChoices(configuringService, locale)}
                   selections={state.selections}
                   onChange={(sel) =>
                     setState((prev) => ({ ...prev, selections: sel }))

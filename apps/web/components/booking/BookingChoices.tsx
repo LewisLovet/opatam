@@ -22,12 +22,24 @@ export function BookingChoices({
   options,
   info,
   formatPrice,
+  clientView = false,
 }: {
   variations?: BookingSelectedVariation[] | null;
   options?: BookingSelectedOption[] | null;
   info?: BookingSelectedInfo[] | null;
   formatPrice: (cents: number) => string;
+  /**
+   * Vue de la CLIENTE : sert les libellés `localized` (sa langue au moment
+   * de la réservation) quand ils existent. Le pro et l'admin lisent
+   * toujours l'original.
+   */
+  clientView?: boolean;
 }) {
+  const vName = (v: BookingSelectedVariation) => (clientView && v.localized ? v.localized.variationName : v.variationName);
+  const vOpt = (v: BookingSelectedVariation) => (clientView && v.localized ? v.localized.optionName : v.optionName);
+  const oName = (o: BookingSelectedOption) => (clientView && o.localized ? o.localized.optionName : o.optionName);
+  const iLabel = (i: BookingSelectedInfo) => (clientView && i.localized ? i.localized.label : i.label);
+  const iValue = (i: BookingSelectedInfo) => (clientView && i.localized ? i.localized.value : i.value);
   const hasVariations = (variations?.length ?? 0) > 0;
   const hasOptions = (options?.length ?? 0) > 0;
   const hasInfo = (info?.length ?? 0) > 0;
@@ -39,9 +51,9 @@ export function BookingChoices({
       {/* Variations — "Longueur : Mi-dos" */}
       {variations?.map((v, i) => (
         <div key={`v-${i}`} className="text-gray-500 dark:text-gray-400">
-          {v.variationName} :{' '}
+          {vName(v)} :{' '}
           <span className="font-medium text-gray-700 dark:text-gray-300">
-            {v.optionName}
+            {vOpt(v)}
           </span>
         </div>
       ))}
@@ -51,7 +63,7 @@ export function BookingChoices({
         <div key={`o-${i}`} className="text-gray-500 dark:text-gray-400">
           <div>
             <span className="font-medium text-gray-700 dark:text-gray-300">
-              + {o.optionName}
+              + {oName(o)}
             </span>
             {o.price > 0 && (
               <span className="text-gray-500 dark:text-gray-400">
@@ -65,17 +77,17 @@ export function BookingChoices({
             <div className="ml-3 space-y-0.5">
               {o.nestedVariations?.map((nv, ni) => (
                 <div key={`nv-${ni}`} className="text-gray-500 dark:text-gray-400">
-                  {nv.variationName} :{' '}
+                  {vName(nv)} :{' '}
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {nv.optionName}
+                    {vOpt(nv)}
                   </span>
                 </div>
               ))}
               {o.info?.map((inf, ii) => (
                 <div key={`oi-${ii}`} className="text-gray-500 dark:text-gray-400">
-                  {inf.label} :{' '}
+                  {iLabel(inf)} :{' '}
                   <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {inf.value}
+                    {iValue(inf)}
                   </span>
                 </div>
               ))}
@@ -87,9 +99,9 @@ export function BookingChoices({
       {/* Top-level info answers — "Allergies ? : Non" */}
       {info?.map((inf, i) => (
         <div key={`i-${i}`} className="text-gray-500 dark:text-gray-400">
-          {inf.label} :{' '}
+          {iLabel(inf)} :{' '}
           <span className="font-medium text-gray-700 dark:text-gray-300">
-            {inf.value}
+            {iValue(inf)}
           </span>
         </div>
       ))}

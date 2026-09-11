@@ -40,7 +40,7 @@ import type { Member, Service } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../../../components/business/ServiceChoicesPreview';
 import { BookingStepHeader } from '../../../../components/business/BookingStepHeader';
-import { getServiceText } from '@booking-app/shared';
+import { getServiceText, getServiceCategoryText, localizeServiceChoices } from '@booking-app/shared';
 
 export default function MemberSelectionScreen() {
   const { colors, spacing, radius } = useTheme();
@@ -258,9 +258,9 @@ export default function MemberSelectionScreen() {
             price: pendingChoiceService.price,
             duration: pendingChoiceService.duration,
             photoURL: pendingChoiceService.photoURL,
-            variations: pendingChoiceService.variations ?? [],
-            options: pendingChoiceService.options ?? [],
-            infoFields: pendingChoiceService.infoFields ?? [],
+            // Choix dans la langue de l'app (ids, prix, durées inchangés) : les
+            // sélections restent valides sur la prestation d'origine.
+            ...localizeServiceChoices(pendingChoiceService, i18n.language),
           }}
         />
       </View>
@@ -495,7 +495,7 @@ export default function MemberSelectionScreen() {
               const groups: { id: string; title: string; items: WithId<Service>[] }[] = [];
               for (const cat of categories) {
                 const items = services.filter((s) => s.categoryId === cat.id);
-                if (items.length) groups.push({ id: cat.id, title: cat.name, items });
+                if (items.length) groups.push({ id: cat.id, title: getServiceCategoryText(cat, i18n.language), items });
               }
               const uncat = services.filter((s) => !s.categoryId || !known.has(s.categoryId));
               if (uncat.length) {

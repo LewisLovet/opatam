@@ -306,7 +306,9 @@
     },
     "services": {
       "title": "Escolha um serviço",
-      "others": "Outros serviços"
+      "others": "Outros serviços",
+      "choicesRequired": "Este serviço tem escolhas a fazer (comprimento, opções…).",
+      "openFull": "Reservar na página completa"
     },
     "success": {
       "emailSent": "Acabámos de lhe enviar um email de confirmação.",
