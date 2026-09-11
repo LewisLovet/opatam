@@ -367,15 +367,55 @@ function buildChoicesPatch(d, svc) {
         out.infoFields[id] = entry;
       }
     }
+    // Un lot qui oublie ne serait-ce qu'un id ne doit JAMAIS recevoir
+    // l'empreinte « à jour » : l'oubli deviendrait invisible au scan
+    // suivant. Langue incomplète = refusée en bloc, avec la liste.
+    const missing = missingChoiceIds(items, out);
+    if (missing.length) {
+      console.log(
+        `  ✗ ${d.name} (${locale}) : traduction de choix incomplète — manquant : ${missing.join(', ')} — langue ignorée`,
+      );
+      continue;
+    }
     if (Object.keys(out).length) byLocale[locale] = out;
   }
   return Object.keys(byLocale).length ? { hash, byLocale } : null;
 }
 
+/**
+ * Les ids de `items` (sortie de listChoiceTexts) sans traduction utilisable
+ * dans le bloc d'une langue. Le nom suffit (la description retombe sur
+ * l'original) ; les valeurs de liste doivent être là, au complet.
+ */
+function missingChoiceIds(items, block) {
+  const missing = [];
+  for (const t of items) {
+    if (!t.name) continue; // un élément sans nom n'a rien à traduire
+    let entry;
+    if (t.kind === 'variation') entry = block.variations?.[t.id];
+    else if (t.kind === 'variationOption') entry = block.variations?.[t.parentId]?.options?.[t.id];
+    else if (t.kind === 'option') entry = block.options?.[t.id];
+    else if (t.kind === 'infoField') entry = block.infoFields?.[t.id];
+    if (!entry?.name) {
+      missing.push(`${t.kind}:${t.id} (« ${t.name} »)`);
+      continue;
+    }
+    if (t.kind === 'infoField' && (t.values?.length ?? 0) > 0) {
+      if (!Array.isArray(entry.values) || entry.values.length !== t.values.length) {
+        missing.push(`${t.kind}:${t.id} — values (« ${t.name} »)`);
+      }
+    }
+  }
+  return missing;
+}
+
 function applyChoicesPatch(entries, patch, sourceLocale) {
   for (const [locale, choices] of Object.entries(patch.byLocale)) {
     if (locale === sourceLocale) continue;
-    if (entries[locale]?.edited) continue;
+    // `edited` protège le TEXTE retouché à la main ; les choix ont leur
+    // propre garde. Corriger un nom ne doit pas priver cette langue des
+    // traductions de variations à venir.
+    if (entries[locale]?.choicesEdited) continue;
     entries[locale] = {
       ...(entries[locale] ?? { name: '', description: '' }),
       choices,

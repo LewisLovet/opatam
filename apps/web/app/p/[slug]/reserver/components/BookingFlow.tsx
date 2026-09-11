@@ -27,6 +27,7 @@ import {
   type ServiceInfoField,
   getCommonAvailableDays,
   getServiceText,
+  localizeBooleanAnswer,
   localizeService,
   localizeServiceChoices,
 } from '@booking-app/shared';
@@ -200,13 +201,19 @@ function buildChoiceLabels(
     }
     for (const nf of o.nestedInfoFields ?? []) {
       const val = selOpt.infoValues[nf.id];
-      if (val) labels.push(`${nf.name} : ${val}`);
+      if (val)
+        labels.push(
+          `${nf.name} : ${nf.type === 'boolean' ? localizeBooleanAnswer(val, locale) : val}`,
+        );
     }
   }
   // Top-level info answers: "Allergies ? : Oui"
+  // Une réponse « Oui/Non » est stockée en français (contrat de données) :
+  // à l'écran, la cliente la lit dans sa langue.
   for (const f of service.infoFields ?? []) {
     const val = selections.infoValues[f.id];
-    if (val) labels.push(`${f.name} : ${val}`);
+    if (val)
+      labels.push(`${f.name} : ${f.type === 'boolean' ? localizeBooleanAnswer(val, locale) : val}`);
   }
   return labels;
 }

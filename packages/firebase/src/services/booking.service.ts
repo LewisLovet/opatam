@@ -15,6 +15,7 @@ import type {
   BookingServiceItem,
   LoyaltySettings,
   ServiceSelections,
+  ServiceTranslations,
 } from '@booking-app/shared';
 import {
   parseOrThrow,
@@ -24,6 +25,7 @@ import {
   computeServiceTotal,
   computeDiscountedTotal,
   buildBookingSelections,
+  getServiceText,
   validateServiceSelections,
   emptyServiceSelections,
   isAccessOverrideActive,
@@ -241,10 +243,25 @@ export class BookingService {
     const lastBuffer = resolvedItems[resolvedItems.length - 1].service.bufferTime || 0;
     const totalDuration = totalServiceDuration + lastBuffer;
 
+    // Nom de la prestation dans la langue de la cliente — même règle que les
+    // choix : rien n'est doublé quand sa langue est celle du pro ou que la
+    // traduction n'existe pas (le lecteur retombe alors sur l'original).
+    const localizedName = (svc: {
+      name: string;
+      description?: string | null;
+      i18n?: ServiceTranslations | null;
+    }): string | null => {
+      const clientLoc = validated.clientLocale ?? null;
+      if (!clientLoc || !svc.i18n || clientLoc === svc.i18n.sourceLocale) return null;
+      const name = getServiceText(svc, clientLoc).name;
+      return name !== svc.name ? name : null;
+    };
+
     // Denormalised per-item list (only persisted for true multi bookings).
     const bookingItems: BookingServiceItem[] = resolvedItems.map((r) => ({
       serviceId: r.service.id,
       serviceName: r.service.name,
+      ...(localizedName(r.service) ? { serviceNameLocalized: localizedName(r.service) } : {}),
       serviceColor: r.service.color ?? null,
       duration: r.effective.duration,
       price: r.effective.price,
@@ -261,6 +278,10 @@ export class BookingService {
     const aggregateServiceName = isMulti
       ? bookingItems.map((i) => i.serviceName).join(' + ')
       : firstService.name;
+    const anyLocalizedName = bookingItems.some((i) => i.serviceNameLocalized);
+    const aggregateServiceNameLocalized = anyLocalizedName
+      ? bookingItems.map((i) => i.serviceNameLocalized ?? i.serviceName).join(' + ')
+      : null;
 
     // Check slot availability for the whole contiguous block.
     const isAvailable = await schedulingService.isSlotAvailable({
@@ -371,6 +392,7 @@ export class BookingService {
       // Top-level = first prestation; aggregate name when multi.
       serviceId: firstService.id,
       serviceName: aggregateServiceName,
+      ...(aggregateServiceNameLocalized ? { serviceNameLocalized: aggregateServiceNameLocalized } : {}),
       serviceColor: firstService.color || null,
       // Aggregate effective values (sum across all prestations).
       duration: totalServiceDuration,
@@ -904,6 +926,7 @@ export class BookingService {
             {
               serviceId: booking.serviceId,
               serviceName: booking.serviceName,
+              serviceNameLocalized: booking.serviceNameLocalized ?? null,
               serviceColor: booking.serviceColor ?? null,
               duration: booking.duration,
               price: booking.price,
@@ -914,9 +937,18 @@ export class BookingService {
             },
           ];
 
+    // Langue de la cliente au moment de la résa d'origine — l'ajout suit.
+    const addedLoc = booking.clientLocale ?? null;
+    const addedLocalizedName = (() => {
+      if (!addedLoc || !service.i18n || addedLoc === service.i18n.sourceLocale) return null;
+      const name = getServiceText(service, addedLoc).name;
+      return name !== service.name ? name : null;
+    })();
+
     const newItem: BookingServiceItem = {
       serviceId: service.id,
       serviceName: service.name,
+      ...(addedLocalizedName ? { serviceNameLocalized: addedLocalizedName } : {}),
       serviceColor: service.color ?? null,
       duration: effective.duration,
       price: effective.price,
@@ -959,6 +991,9 @@ export class BookingService {
     await bookingRepository.update(bookingId, {
       items: newItems,
       serviceName: newItems.map((i) => i.serviceName).join(' + '),
+      serviceNameLocalized: newItems.some((i) => i.serviceNameLocalized)
+        ? newItems.map((i) => i.serviceNameLocalized ?? i.serviceName).join(' + ')
+        : null,
       duration: newServiceDuration,
       price: newPrice,
       priceMax: null,
@@ -1002,6 +1037,7 @@ export class BookingService {
             {
               serviceId: booking.serviceId,
               serviceName: booking.serviceName,
+              serviceNameLocalized: booking.serviceNameLocalized ?? null,
               serviceColor: booking.serviceColor ?? null,
               duration: booking.duration,
               price: booking.price,
@@ -1028,6 +1064,9 @@ export class BookingService {
       // fields already reflect the first/only prestation).
       items: remaining.length >= 2 ? remaining : [],
       serviceName: remaining.map((i) => i.serviceName).join(' + '),
+      serviceNameLocalized: remaining.some((i) => i.serviceNameLocalized)
+        ? remaining.map((i) => i.serviceNameLocalized ?? i.serviceName).join(' + ')
+        : null,
       duration: newDuration,
       price: newPrice,
       priceMax: null,

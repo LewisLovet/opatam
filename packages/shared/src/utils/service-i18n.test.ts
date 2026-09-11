@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getServiceCategoryText,
+  localizeBooleanAnswer,
   listChoiceTexts,
   localizeService,
   localizeServiceChoices,
@@ -9,7 +10,6 @@ import {
 import { buildBookingSelections, emptyServiceSelections } from './service-pricing';
 import type { Service, ServiceTranslations } from '../types';
 // La copie JavaScript utilisée par les scripts de traduction — doit produire la même chaîne.
-// @ts-expect-error fichier .mjs sans types
 import { serviceChoicesSourceText as scriptChoicesSourceText } from '../../../../scripts/lib/choice-texts.mjs';
 
 /** Une prestation avec les trois sortes de choix, dont des imbriqués. */
@@ -45,6 +45,7 @@ const base = {
   infoFields: [
     { id: 'f1', name: 'Texture', description: 'Pour préparer', type: 'select' as const, values: ['Lisse', 'Bouclée'], required: true },
     { id: 'f2', name: 'Allergies', description: null, type: 'text' as const, required: false },
+    { id: 'f3', name: 'Première visite ?', description: null, type: 'boolean' as const, required: false },
   ],
 } satisfies Partial<Service> & Pick<Service, 'name' | 'variations' | 'options' | 'infoFields'>;
 
@@ -69,6 +70,7 @@ const i18n: ServiceTranslations = {
         infoFields: {
           f1: { name: 'Texture', description: 'To prepare', values: ['Straight', 'Curly'], sourceValues: ['Lisse', 'Bouclée'] },
           nf1: { name: 'Preferred brand' },
+          f3: { name: 'First visit?' },
         },
       },
     },
@@ -84,7 +86,7 @@ describe('listChoiceTexts / serviceChoicesSourceText', () => {
     expect(kinds).toEqual([
       'variation:v1', 'variationOption:v1a', 'variationOption:v1b',
       'option:o1', 'variation:nv1', 'variationOption:nv1a', 'infoField:nf1',
-      'infoField:f1', 'infoField:f2',
+      'infoField:f1', 'infoField:f2', 'infoField:f3',
     ]);
   });
   it('change quand une valeur de liste est réordonnée', () => {
@@ -157,7 +159,7 @@ describe('buildBookingSelections — doubles libellés', () => {
     ...emptyServiceSelections(),
     variations: { v1: 'v1b' },
     options: { o1: { nestedVariations: { nv1: 'nv1a' }, infoValues: { nf1: 'Xpression' } } },
-    infoValues: { f1: 'Bouclée', f2: 'aucune' },
+    infoValues: { f1: 'Bouclée', f2: 'aucune', f3: 'Oui' },
   };
   it('écrit l’original ET la version localisée quand la cliente lit une autre langue', () => {
     const b = buildBookingSelections(service, sel, { locale: 'en' });
@@ -177,6 +179,14 @@ describe('buildBookingSelections — doubles libellés', () => {
     expect(buildBookingSelections(service, sel).selectedVariations[0].localized).toBeUndefined();
     expect(buildBookingSelections(base, sel, { locale: 'en' }).selectedVariations[0].localized).toBeUndefined();
   });
+  it('traduit la réponse Oui/Non d’un champ booléen, valeur stockée intacte', () => {
+    const b = buildBookingSelections(service, sel, { locale: 'en' });
+    expect(b.selectedInfo.find((i) => i.fieldId === 'f3')).toMatchObject({
+      value: 'Oui',
+      localized: { label: 'First visit?', value: 'Yes' },
+    });
+    expect(b.selectedInfoValues.f3).toBe('Oui');
+  });
   it('garde prix et durées identiques avec ou sans localisation', () => {
     const a = buildBookingSelections(service, sel);
     const b = buildBookingSelections(service, sel, { locale: 'en' });
@@ -195,5 +205,19 @@ describe('getServiceCategoryText', () => {
     expect(getServiceCategoryText(cat, 'fr')).toBe('Poses complètes');
     expect(getServiceCategoryText(cat, 'de')).toBe('Poses complètes');
     expect(getServiceCategoryText({ name: 'Épilations' }, 'en')).toBe('Épilations');
+  });
+});
+
+describe('localizeBooleanAnswer', () => {
+  it('traduit Oui/Non dans les cinq langues, et rien d’autre', () => {
+    expect(localizeBooleanAnswer('Oui', 'de')).toBe('Ja');
+    expect(localizeBooleanAnswer('Non', 'de')).toBe('Nein');
+    expect(localizeBooleanAnswer('Oui', 'en')).toBe('Yes');
+    expect(localizeBooleanAnswer('Non', 'pt')).toBe('Não');
+    expect(localizeBooleanAnswer('Oui', 'it')).toBe('Sì');
+    expect(localizeBooleanAnswer('Oui', 'fr')).toBe('Oui');
+    // Valeur libre ou langue inconnue : inchangées.
+    expect(localizeBooleanAnswer('Peut-être', 'de')).toBe('Peut-être');
+    expect(localizeBooleanAnswer('Oui', 'es')).toBe('Oui');
   });
 });

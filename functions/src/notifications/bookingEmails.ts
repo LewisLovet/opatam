@@ -38,6 +38,8 @@ interface BookingData {
   /** Snapshot serveur quand la récompense a réduit cette résa. */
   loyalty?: { rewardType: string; rewardValue: number; amountOff: number; threshold: number } | null;
   serviceName: string;
+  /** Nom dans la langue de la cliente (snapshot à la résa). */
+  serviceNameLocalized?: string | null;
   datetime: admin.firestore.Timestamp;
   duration?: number;
   price?: number;
@@ -45,6 +47,7 @@ interface BookingData {
   originalPrice?: number | null;
   items?: {
     serviceName: string;
+    serviceNameLocalized?: string | null;
     duration: number;
     price: number;
     originalPrice?: number | null;
@@ -262,14 +265,15 @@ async function toEmailData(
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
     locale: booking.clientLocale,
-    serviceName: booking.serviceName,
+    // toEmailData ne sert que les e-mails à la CLIENTE : nom dans sa langue.
+    serviceName: booking.serviceNameLocalized ?? booking.serviceName,
     datetime: booking.datetime.toDate(),
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
     originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
-      serviceName: i.serviceName,
+      serviceName: i.serviceNameLocalized ?? i.serviceName,
       duration: i.duration,
       price: i.price,
       originalPrice: i.originalPrice ?? null,
@@ -441,7 +445,7 @@ export async function emailClientBookingCancelled(
     clientEmail: booking.clientInfo.email,
     clientName: booking.clientInfo.name,
     locale: booking.clientLocale,
-    serviceName: booking.serviceName,
+    serviceName: booking.serviceNameLocalized ?? booking.serviceName,
     datetime: booking.datetime.toDate(),
     reason: booking.cancelReason,
     providerName: booking.providerName,
@@ -671,13 +675,12 @@ export async function handleBookingEmails(
       const added = afterCount > beforeCount;
       const beforeItems = Array.isArray(beforeData.items) ? beforeData.items : [];
       const afterItems = Array.isArray(afterData.items) ? afterData.items : [];
-      const changedName: string = added
-        ? afterItems.length
-          ? afterItems[afterItems.length - 1].serviceName
-          : afterData.serviceName
-        : beforeItems.length
-          ? beforeItems[beforeItems.length - 1].serviceName
-          : beforeData.serviceName;
+      // E-mail à la CLIENTE : nom de la prestation ajoutée/retirée dans sa
+      // langue quand le snapshot l'a.
+      const changedItem = added
+        ? afterItems.length ? afterItems[afterItems.length - 1] : afterData
+        : beforeItems.length ? beforeItems[beforeItems.length - 1] : beforeData;
+      const changedName: string = changedItem.serviceNameLocalized ?? changedItem.serviceName;
       console.log(`[EMAIL] Prestation ${added ? 'added' : 'removed'}, emailing updated booking to client`);
       await emailClientBookingConfirmed(booking, bookingId, {
         type: added ? 'added' : 'removed',

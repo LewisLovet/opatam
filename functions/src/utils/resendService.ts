@@ -1694,7 +1694,9 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${t.newSlotTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      ${data.items && data.items.length >= 2
+                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}</div>`).join('')}</td></tr>`
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedNewDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1746,7 +1748,9 @@ ${t.introText}
 ${t.oldSlotLineText(data.formattedOldDate, data.formattedOldTime)}
 
 ${t.newSlotHeadingText}
-- ${c.labels.service}${c.colon} ${data.serviceName}
+${data.items && data.items.length >= 2
+  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedNewDate}
 - ${c.labels.time}${c.colon} ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min
@@ -1810,7 +1814,9 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                   <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}</td></tr>
+                      ${data.items && data.items.length >= 2
+                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}</div>`).join('')}</td></tr>`
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1867,7 +1873,9 @@ ${c.greeting(data.clientName)}
 ${introText}
 
 ${t.detailsHeading}
-- ${c.labels.service}${c.colon} ${data.serviceName}
+${data.items && data.items.length >= 2
+  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedDate}
 - ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min

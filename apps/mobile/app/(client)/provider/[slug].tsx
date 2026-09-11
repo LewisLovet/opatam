@@ -1143,7 +1143,7 @@ function ProviderDetailScreen({
             {selectedService && (
               <View style={{ marginBottom: spacing.sm }}>
                 <Text variant="caption" color="textSecondary">
-                  {selectedService.name} - {selectedService.duration} min
+                  {getServiceText(selectedService, i18n.language).name} - {selectedService.duration} min
                 </Text>
                 {(() => {
                   const md = getDiscountedMinPrice(selectedService, globalDiscount);

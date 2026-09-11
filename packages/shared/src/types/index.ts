@@ -950,6 +950,13 @@ export interface ServiceTranslationEntry {
    */
   edited?: boolean;
   /**
+   * Pendant de `edited` pour les CHOIX : un humain a retouché `choices` dans
+   * cette langue. Indépendant de `edited` — corriger le nom d'une prestation
+   * ne doit pas geler les traductions futures de ses variations, ni
+   * l'inverse.
+   */
+  choicesEdited?: boolean;
+  /**
    * Empreinte du texte source QUE CETTE ENTRÉE traduit — pas celle de la
    * prestation. Les deux divergent dès qu'une langue n'est pas retraduite en
    * même temps que les autres : entrée reprise d'un lot partiel, ou entrée
@@ -1307,6 +1314,14 @@ export interface Booking {
   travel?: BookingTravel | null;
   serviceId: string;
   serviceName: string;
+  /**
+   * `serviceName` dans la langue de la CLIENTE (`clientLocale`) au moment de
+   * la réservation — agrégat « A + B » pour un multi. Le professionnel lit
+   * toujours `serviceName` ; les surfaces clientes (e-mails, confirmation,
+   * historique mobile) préfèrent ce champ. Absent quand la langue de la
+   * cliente est celle du pro, ou sans traduction disponible.
+   */
+  serviceNameLocalized?: string | null;
   /** Denormalised from Service.color at booking creation so the
    *  calendar can tint the cell without an extra fetch. */
   serviceColor?: string | null;
@@ -1419,6 +1434,8 @@ export interface BookingSelectedInfo {
 export interface BookingServiceItem {
   serviceId: string;
   serviceName: string;
+  /** Nom dans la langue de la cliente (voir Booking.serviceNameLocalized). */
+  serviceNameLocalized?: string | null;
   serviceColor?: string | null;
   duration: number;                 // effective minutes for this prestation
   price: number;                    // effective price in cents

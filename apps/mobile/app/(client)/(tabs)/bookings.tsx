@@ -102,7 +102,7 @@ function BookingCard({
           />
           <View style={styles.bookingInfo}>
             <Text variant="body" style={{ fontWeight: '600' }}>
-              {booking.serviceName}
+              {booking.serviceNameLocalized ?? booking.serviceName}
             </Text>
             <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
               {booking.providerName}

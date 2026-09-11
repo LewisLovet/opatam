@@ -388,7 +388,7 @@ export default function HomeScreen() {
                   />
                   <View style={styles.bookingInfo}>
                     <Text variant="body" style={{ fontWeight: '600' }}>
-                      {nextBooking.serviceName}
+                      {nextBooking.serviceNameLocalized ?? nextBooking.serviceName}
                     </Text>
                     <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                       {nextBooking.providerName}
@@ -505,7 +505,7 @@ export default function HomeScreen() {
                       />
                       <View style={styles.bookingInfo}>
                         <Text variant="body" style={{ fontWeight: '600' }}>
-                          {booking.serviceName}
+                          {booking.serviceNameLocalized ?? booking.serviceName}
                         </Text>
                         <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                           {booking.providerName} — {dateStr}

@@ -478,7 +478,7 @@ export default function BookingDetailScreen() {
 
       // Create event
       await Calendar.createEventAsync(defaultCalendar.id, {
-        title: booking.serviceName,
+        title: booking.serviceNameLocalized ?? booking.serviceName,
         startDate,
         endDate,
         location: calendarLocation,
@@ -672,7 +672,7 @@ export default function BookingDetailScreen() {
 
           {/* Service name */}
           <Text variant="h2" style={[styles.serviceName, { color: '#ffffff' }]}>
-            {booking.serviceName}
+            {booking.serviceNameLocalized ?? booking.serviceName}
           </Text>
 
           {/* Price and duration */}

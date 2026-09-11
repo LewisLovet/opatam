@@ -43,6 +43,8 @@ interface EmbedService {
   memberIds: string[] | null;
   /** Traductions automatiques (null = jamais traduit). */
   i18n?: ServiceTranslations | null;
+  /** Vrai quand des choix obligatoires empêchent la résa depuis l'embed. */
+  requiresChoices?: boolean;
 }
 
 interface EmbedServiceCategory {
@@ -123,7 +125,14 @@ export function EmbedBookingFlow({
 
   // ── State ────────────────────────────────────────────────────────────────
   const initialServiceId = useMemo(() => {
-    if (preselectedServiceId && services.some((s) => s.id === preselectedServiceId)) {
+    // Une prestation à choix obligatoires ne peut pas être présélectionnée :
+    // l'embed n'a pas de sélecteur, ?service= sauterait directement au
+    // créneau et le serveur refuserait à la validation. On retombe sur la
+    // liste, où sa carte affiche le lien vers le tunnel complet.
+    if (
+      preselectedServiceId &&
+      services.some((s) => s.id === preselectedServiceId && s.requiresChoices !== true)
+    ) {
       return preselectedServiceId;
     }
     return null;

@@ -29,7 +29,7 @@
  * `duration` follows the same shape with minutes instead of cents.
  * Options are always additive (+price / +duration on the total).
  */
-import { localizeServiceChoices } from './service-i18n';
+import { localizeBooleanAnswer, localizeServiceChoices } from './service-i18n';
 import type {
   Service,
   ServiceVariation,
@@ -223,6 +223,9 @@ export function buildBookingSelections(
     if (field.type === 'select' && field.values && lf.values) {
       const idx = field.values.indexOf(value);
       if (idx >= 0 && lf.values[idx]) localizedValue = lf.values[idx];
+    } else if (field.type === 'boolean' && opts?.locale) {
+      // La valeur stockée reste 'Oui'/'Non' ; seule la copie localisée change.
+      localizedValue = localizeBooleanAnswer(value, opts.locale);
     }
     return { label: lf.name, value: localizedValue };
   };

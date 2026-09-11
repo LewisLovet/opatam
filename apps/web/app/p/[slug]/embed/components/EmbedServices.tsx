@@ -92,19 +92,9 @@ function ServiceCard({
   const needsChoices = !unavailable && service.requiresChoices === true;
   // Texte dans la langue de l'embed ; repli sur l'original si absent.
   const shown = getServiceText(service, locale);
-  return (
-    <button
-      type="button"
-      disabled={unavailable}
-      onClick={unavailable || needsChoices ? undefined : () => onSelect(service.id)}
-      className={`w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all overflow-hidden group ${
-        unavailable
-          ? 'opacity-60 cursor-default'
-          : needsChoices
-            ? 'cursor-default'
-            : 'hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99]'
-      }`}
-    >
+  const baseClass =
+    'w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all overflow-hidden group';
+  const body = (
       <div className="flex items-start gap-3 p-3">
         {service.photoURL ? (
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative">
@@ -152,8 +142,7 @@ function ServiceCard({
                 href={fullBookingUrl(providerSlug, service.id, locale)}
                 target="_top"
                 rel="noopener"
-                onClick={(e) => e.stopPropagation()}
-                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline pointer-events-auto"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
               >
                 {t('embed.services.openFull')}
                 <ExternalLink className="w-3 h-3" />
@@ -166,9 +155,25 @@ function ServiceCard({
           <span className="font-bold text-gray-900 dark:text-white text-sm sm:text-[15px] whitespace-nowrap">
             {formatPrice(service.price, service.priceMax, locale, t('common.free'))}
           </span>
-          <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />
+          {!unavailable && !needsChoices && (
+            <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />
+          )}
         </div>
       </div>
+  );
+  // Carte non sélectionnable (suspendue, ou choix obligatoires) : un <div>,
+  // pas un <button> — le lien « ouvrir la page complète » doit rester un
+  // vrai lien, et un <a> dans un <button> est du HTML invalide.
+  if (unavailable || needsChoices) {
+    return <div className={`${baseClass} ${unavailable ? 'opacity-60' : ''}`}>{body}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(service.id)}
+      className={`${baseClass} hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md active:scale-[0.99]`}
+    >
+      {body}
     </button>
   );
 }

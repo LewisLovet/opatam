@@ -27,7 +27,8 @@ export default async function ConfirmationPage({ params }: PageProps) {
   const serializedBooking = {
     id: booking.id,
     providerName: booking.providerName,
-    serviceName: booking.serviceName,
+    // Page vue par la CLIENTE : nom dans sa langue quand le snapshot l'a.
+    serviceName: booking.serviceNameLocalized ?? booking.serviceName,
     memberName: booking.memberName,
     locationName: booking.locationName,
     locationAddress: booking.locationAddress,
@@ -39,7 +40,7 @@ export default async function ConfirmationPage({ params }: PageProps) {
     // Pre-discount total (only set when a promo was applied at booking time).
     originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
-      serviceName: i.serviceName,
+      serviceName: i.serviceNameLocalized ?? i.serviceName,
       duration: i.duration,
       price: i.price,
       originalPrice: i.originalPrice ?? null,

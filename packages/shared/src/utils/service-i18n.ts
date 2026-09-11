@@ -205,3 +205,24 @@ export function getServiceCategoryText(
   if (!i18n || locale === i18n.sourceLocale) return category.name;
   return i18n.entries?.[locale as ServiceLocale]?.name || category.name;
 }
+
+/**
+ * Réponse d'un champ « oui / non ». La valeur STOCKÉE est toujours
+ * 'Oui'/'Non' (contrat de données avec le pro) ; à l'écran et dans le
+ * snapshot de réservation, la cliente lit l'équivalent dans sa langue.
+ * Toute autre valeur (texte libre, données anciennes) est rendue telle
+ * quelle.
+ */
+const BOOLEAN_ANSWERS: Record<string, { Oui: string; Non: string }> = {
+  fr: { Oui: 'Oui', Non: 'Non' },
+  en: { Oui: 'Yes', Non: 'No' },
+  it: { Oui: 'Sì', Non: 'No' },
+  pt: { Oui: 'Sim', Non: 'Não' },
+  de: { Oui: 'Ja', Non: 'Nein' },
+};
+
+export function localizeBooleanAnswer(value: string, locale: string): string {
+  const map = BOOLEAN_ANSWERS[locale];
+  if (!map) return value;
+  return value === 'Oui' ? map.Oui : value === 'Non' ? map.Non : value;
+}
