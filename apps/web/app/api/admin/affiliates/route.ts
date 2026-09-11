@@ -17,12 +17,25 @@ export async function GET(request: NextRequest) {
     const adminUid = staff.identity.uid;
 
     const db = getAdminFirestore();
-    const snapshot = await db.collection('affiliates').orderBy('createdAt', 'desc').get();
+    const [snapshot, pendingSnap] = await Promise.all([
+      db.collection('affiliates').orderBy('createdAt', 'desc').get(),
+      // Commissions gagnées mais non versées (compte Stripe pas encore activé).
+      db.collection('affiliateCommissions').where('status', '==', 'pending').get(),
+    ]);
+    const pendingByAffiliate: Record<string, { count: number; cents: number }> = {};
+    pendingSnap.docs.forEach((d) => {
+      const x = d.data();
+      const cur = pendingByAffiliate[x.affiliateId] ?? { count: 0, cents: 0 };
+      cur.count += 1;
+      cur.cents += Number(x.commission) || 0;
+      pendingByAffiliate[x.affiliateId] = cur;
+    });
     const affiliates = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
         ...data,
+        pendingCommission: pendingByAffiliate[doc.id] ?? { count: 0, cents: 0 },
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || null,
       };

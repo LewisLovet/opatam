@@ -40,6 +40,8 @@ interface AffiliateItem {
   };
   isActive: boolean;
   createdAt: string | null;
+  /** Commissions gagnées mais non versées — compte Stripe pas encore activé. */
+  pendingCommission?: { count: number; cents: number };
 }
 
 const DURATION_LABELS: Record<string, string> = {
@@ -529,6 +531,15 @@ export default function AdminAffiliatesPage() {
                     <span className="text-sm font-semibold text-emerald-600">
                       {(a.stats.totalCommission / 100).toFixed(2)} €
                     </span>
+                    {(a.pendingCommission?.cents ?? 0) > 0 && (
+                      <p
+                        className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5"
+                        title="Versée automatiquement dès que le compte Stripe est activé"
+                      >
+                        + {((a.pendingCommission?.cents ?? 0) / 100).toFixed(2)} € en attente
+                        {(a.pendingCommission?.count ?? 0) > 1 ? ` (${a.pendingCommission?.count})` : ''}
+                      </p>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${

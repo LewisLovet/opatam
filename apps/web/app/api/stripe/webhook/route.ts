@@ -8,6 +8,7 @@ import {
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { enregistrerConversionCommerciale } from '@/lib/sales-conversion';
+import { commissionnerPaiement, verserCommissionsEnAttente } from '@/lib/affiliate-commission';
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
@@ -323,68 +324,28 @@ async function handleCheckoutCompleted(
 
   console.log(`[STRIPE-WEBHOOK] Provider ${providerId} subscription activated (${activeMemberCount} active members)`);
 
-  // Fire-and-forget: affiliate commission transfer
+  // Commission de l'ambassadeur — versée, ou mise en attente si son compte
+  // Stripe n'est pas encore activé (voir lib/affiliate-commission).
   try {
-    const affCode = session.metadata?.affiliateCode;
     const affId = session.metadata?.affiliateId;
-    const amountTotal = session.amount_total; // amount actually paid (after discount)
-
-    if (affId && amountTotal && amountTotal > 0) {
-      const affiliateDoc = await db.collection('affiliates').doc(affId).get();
-      if (affiliateDoc.exists) {
-        const affiliate = affiliateDoc.data()!;
-        if (affiliate.isActive && affiliate.stripeAccountId && affiliate.stripeAccountStatus === 'active') {
-          const commissionCents = Math.round(amountTotal * (affiliate.commission / 100));
-          if (commissionCents > 0) {
-            // Get the latest charge from the session
-            const chargeId = typeof session.payment_intent === 'string'
-              ? (await stripe.paymentIntents.retrieve(session.payment_intent)).latest_charge as string
-              : null;
-
-            if (chargeId) {
-              const transfer = await stripe.transfers.create({
-                amount: commissionCents,
-                currency: 'eur',
-                destination: affiliate.stripeAccountId,
-                source_transaction: chargeId,
-                metadata: {
-                  affiliateCode: affCode || '',
-                  affiliateId: affId,
-                  providerId,
-                },
-              });
-
-              // Update affiliate stats
-              await db.collection('affiliates').doc(affId).update({
-                'stats.activeReferrals': (affiliate.stats?.activeReferrals || 0) + 1,
-                'stats.totalRevenue': (affiliate.stats?.totalRevenue || 0) + amountTotal,
-                'stats.totalCommission': (affiliate.stats?.totalCommission || 0) + commissionCents,
-                updatedAt: new Date(),
-              });
-
-              // Log
-              await db.collection('_affiliateLogs').add({
-                type: 'payment',
-                affiliateId: affId,
-                affiliateCode: affCode,
-                providerId,
-                paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
-                transferId: transfer.id,
-                amount: amountTotal,
-                commission: commissionCents,
-                commissionRate: affiliate.commission,
-                source: 'checkout',
-                createdAt: new Date(),
-              });
-
-              console.log(`[STRIPE-WEBHOOK] Affiliate transfer: ${commissionCents} cents to ${affiliate.code} (${transfer.id})`);
-            }
-          }
-        }
-      }
+    if (affId && session.amount_total && session.amount_total > 0) {
+      const chargeId =
+        typeof session.payment_intent === 'string'
+          ? ((await stripe.paymentIntents.retrieve(session.payment_intent)).latest_charge as string | null)
+          : null;
+      await commissionnerPaiement(stripe, db, {
+        affiliateId: affId,
+        affiliateCode: session.metadata?.affiliateCode ?? null,
+        providerId,
+        amountPaid: session.amount_total,
+        chargeId,
+        paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+        paymentKey: session.id,
+        source: 'checkout',
+      });
     }
   } catch (affiliateErr) {
-    console.error('[STRIPE-WEBHOOK] Affiliate transfer error (non-blocking):', affiliateErr);
+    console.error('[STRIPE-WEBHOOK] Affiliate commission error (non-blocking):', affiliateErr);
   }
 
   // Fire-and-forget: send welcome email
@@ -694,64 +655,26 @@ async function handleInvoicePaid(
     }
   }
 
-  // Affiliate commission on recurring payment
+  // Commission de l'ambassadeur sur chaque facture payée (fin d'essai,
+  // renouvellement) — versée, ou mise en attente si son compte Stripe n'est
+  // pas encore activé (voir lib/affiliate-commission).
   try {
     const providerData = providerDoc.data();
     const affId = providerData?.affiliateId || stripeSubscription.metadata?.affiliateId;
-    const affCode = providerData?.affiliateCode || stripeSubscription.metadata?.affiliateCode;
-    const amountPaid = invoice.amount_paid; // actual amount paid (after discount)
-
-    if (affId && amountPaid && amountPaid > 0) {
-      const affiliateDoc = await db.collection('affiliates').doc(affId).get();
-      if (affiliateDoc.exists) {
-        const affiliate = affiliateDoc.data()!;
-        if (affiliate.isActive && affiliate.stripeAccountId && affiliate.stripeAccountStatus === 'active') {
-          const commissionCents = Math.round(amountPaid * (affiliate.commission / 100));
-          if (commissionCents > 0) {
-            // Get charge from invoice
-            const chargeId = extractId((invoice as any).charge);
-            if (chargeId) {
-              const transfer = await stripe.transfers.create({
-                amount: commissionCents,
-                currency: 'eur',
-                destination: affiliate.stripeAccountId,
-                source_transaction: chargeId,
-                metadata: {
-                  affiliateCode: affCode || '',
-                  affiliateId: affId,
-                  providerId,
-                  source: 'invoice',
-                },
-              });
-
-              await db.collection('affiliates').doc(affId).update({
-                'stats.totalRevenue': (affiliate.stats?.totalRevenue || 0) + amountPaid,
-                'stats.totalCommission': (affiliate.stats?.totalCommission || 0) + commissionCents,
-                updatedAt: new Date(),
-              });
-
-              await db.collection('_affiliateLogs').add({
-                type: 'payment',
-                affiliateId: affId,
-                affiliateCode: affCode,
-                providerId,
-                paymentIntentId: extractId((invoice as any).payment_intent),
-                transferId: transfer.id,
-                amount: amountPaid,
-                commission: commissionCents,
-                commissionRate: affiliate.commission,
-                source: 'invoice',
-                createdAt: new Date(),
-              });
-
-              console.log(`[STRIPE-WEBHOOK] Affiliate recurring transfer: ${commissionCents} cents to ${affiliate.code} (${transfer.id})`);
-            }
-          }
-        }
-      }
+    if (affId && invoice.amount_paid > 0) {
+      await commissionnerPaiement(stripe, db, {
+        affiliateId: affId,
+        affiliateCode: providerData?.affiliateCode || stripeSubscription.metadata?.affiliateCode || null,
+        providerId,
+        amountPaid: invoice.amount_paid,
+        chargeId: extractId((invoice as any).charge),
+        paymentIntentId: extractId((invoice as any).payment_intent),
+        paymentKey: String(invoice.id),
+        source: 'invoice',
+      });
     }
   } catch (affiliateErr) {
-    console.error('[STRIPE-WEBHOOK] Affiliate recurring transfer error (non-blocking):', affiliateErr);
+    console.error('[STRIPE-WEBHOOK] Affiliate commission error (non-blocking):', affiliateErr);
   }
 
   // Fire-and-forget: Meta CAPI Subscribe on the FIRST paid invoice
@@ -1366,6 +1289,15 @@ async function handleConnectAccountUpdated(
     console.log(
       `[STRIPE-WEBHOOK] affiliate ${affiliateSnap.docs[0].id}: ${previousStatus} → ${newStatus}`,
     );
+    // Compte enfin activé → les commissions accumulées pendant l'attente
+    // partent maintenant.
+    if (newStatus === 'active') {
+      try {
+        await verserCommissionsEnAttente(getStripe(), db, affiliateSnap.docs[0].id);
+      } catch (e) {
+        console.error('[STRIPE-WEBHOOK] versement des commissions en attente échoué:', e);
+      }
+    }
     return;
   }
 

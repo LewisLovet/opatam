@@ -449,6 +449,12 @@ service cloud.firestore {
       allow write: if false; // Admin SDK only
     }
 
+    // Commissions des ambassadeurs (versées ou en attente d'activation
+    // Stripe) — écrites et lues par le webhook / l'API admin uniquement.
+    match /affiliateCommissions/{commissionId} {
+      allow read, write: if false; // Admin SDK only
+    }
+
     // === ARTICLES (blog) ===
 
     match /articles/{articleId} {
