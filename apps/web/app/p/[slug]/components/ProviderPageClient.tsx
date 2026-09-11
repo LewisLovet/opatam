@@ -254,7 +254,7 @@ export function ProviderPageClient({
   const isTeam = provider.teamTier && members.length > 1;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 pb-24">
+    <div className="min-h-screen bg-white dark:bg-gray-900 pb-24 overflow-x-hidden">
       {/* Demo welcome modal */}
       {isDemo && <DemoBanner signupUrl={demoSignupUrl} />}
 

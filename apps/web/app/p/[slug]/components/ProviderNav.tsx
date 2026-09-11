@@ -31,13 +31,22 @@ export function ProviderNav({
   const t = useTranslations('provider.nav');
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      {/* Les libellés traduits (DE, PT…) sont plus longs que le français : la
+          rangée défile horizontalement au lieu d'élargir la page — un
+          débordement ici faisait apparaître une bande blanche à droite et
+          déformait toute la fiche sur mobile. */}
+      <div
+        className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => onTabClick(tab.id)}
             className={`
-              flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap
+              flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-medium whitespace-nowrap flex-shrink-0
               border-b-2 transition-colors -mb-px
               ${
                 activeTab === tab.id
