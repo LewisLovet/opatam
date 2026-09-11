@@ -22,6 +22,8 @@ import { app } from '../lib/config';
 
 /** Ce que la story montrait. Reprend les modes de la modale de partage. */
 export type StoryContent =
+  | 'realisation'
+  | 'avantApres'
   | 'services'
   | 'availabilities'
   | 'review'

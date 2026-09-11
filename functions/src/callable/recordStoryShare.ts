@@ -28,7 +28,7 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
   if (providerId !== uid) {
     throw new HttpsError('permission-denied', 'Un prestataire ne compte que ses propres partages');
   }
-  const CONTENTS = ['services', 'availabilities', 'review', 'loyalty', 'none'];
+  const CONTENTS = ['services', 'availabilities', 'review', 'loyalty', 'none', 'realisation', 'avantApres'];
   const CHANNELS = ['instagram', 'system'];
   if (!CONTENTS.includes(content ?? '') || !CHANNELS.includes(channel ?? '')) {
     throw new HttpsError('invalid-argument', 'content/channel invalide');

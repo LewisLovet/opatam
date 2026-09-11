@@ -14,9 +14,28 @@ const KEYS = {
   ONBOARDING_SEEN: '@opatam/onboarding_seen',
   NEW_FEATURES_SEEN: '@opatam/new-features-seen-v1',
   APP_LOCALE: '@opatam/app_locale',
+  /** Rappel « demandez l'accord de votre cliente » des stories photo, vu une fois. */
+  STORY_CONSENT_SEEN: '@opatam/story_consent_seen',
 } as const;
 
 const OPATAM_PREFIX = '@opatam/';
+
+/** Le rappel de consentement des stories photo a-t-il déjà été affiché ? */
+export async function hasSeenStoryConsent(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(KEYS.STORY_CONSENT_SEEN)) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function setStoryConsentSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.STORY_CONSENT_SEEN, 'true');
+  } catch (error) {
+    console.error('Error saving story consent state:', error);
+  }
+}
 
 /**
  * Check if user has seen the onboarding
