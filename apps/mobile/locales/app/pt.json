@@ -2537,7 +2537,10 @@
       "frame": "Enquadrar",
       "frameTitle": "Enquadre a sua foto",
       "frameHint": "Arraste com um dedo, aperte para ampliar. A moldura é exatamente a zona visível na story.",
-      "frameReset": "Recentrar"
+      "frameReset": "Recentrar",
+      "splitLayout": "Disposição",
+      "splitSideBySide": "Lado a lado",
+      "splitStacked": "Cima / baixo"
     }
   },
   "proServices": {

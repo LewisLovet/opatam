@@ -76,7 +76,7 @@ import {
   type StoryReview,
   type StoryRealisation,
 } from './StoryCard';
-import { RATIO_MOITIE, RATIO_PLEIN } from './RealisationStoryLayout';
+import { RATIO_MOITIE, RATIO_MOITIE_EMPILEE, RATIO_PLEIN } from './RealisationStoryLayout';
 import { CADRAGE_DEFAUT, PhotoCadree, type Cadrage } from './PhotoCadree';
 import { FramingEditor } from './FramingEditor';
 
@@ -404,6 +404,16 @@ export function StoryShareModal({
   const [realPickerOpen, setRealPickerOpen] = useState(false);
   const [realShowPrice, setRealShowPrice] = useState(true);
   const [realBanner, setRealBanner] = useState<'top' | 'bottom'>('bottom');
+  // Avant / après : côte à côte ou empilé — le cadrage dépend du format de
+  // la moitié, donc il est remis à zéro quand la disposition change.
+  const [realSplit, setRealSplit] = useState<'sideBySide' | 'stacked'>('sideBySide');
+  const changerDisposition = (v: 'sideBySide' | 'stacked') => {
+    if (v === realSplit) return;
+    setRealSplit(v);
+    setRealPhotoCadrage(CADRAGE_DEFAUT);
+    setRealBeforeCadrage(CADRAGE_DEFAUT);
+  };
+  const ratioMoitie = realSplit === 'stacked' ? RATIO_MOITIE_EMPILEE : RATIO_MOITIE;
   const [realAddToPortfolio, setRealAddToPortfolio] = useState(false);
   /** Feuille « choisir dans le portfolio », et pour quelle photo. */
   const [portfolioPickerFor, setPortfolioPickerFor] = useState<'photo' | 'before' | null>(null);
@@ -486,6 +496,7 @@ export function StoryShareModal({
       priceLabel,
       priceStrikeLabel,
       bannerPosition: realBanner,
+      splitLayout: realSplit,
     };
   }, [
     estPhotoMode,
@@ -496,6 +507,7 @@ export function StoryShareModal({
     realPhotoCadrage,
     realBeforeCadrage,
     realBanner,
+    realSplit,
     provider?.settings?.globalDiscount,
   ]);
 
@@ -1653,16 +1665,16 @@ export function StoryShareModal({
                           styles.photoThumbWrap,
                           {
                             backgroundColor: colors.surfaceSecondary,
-                            width: displayMode === 'avantApres' ? 56 : 90,
-                            height: 160,
+                            width: displayMode === 'avantApres' ? (realSplit === 'stacked' ? 120 : 56) : 90,
+                            height: displayMode === 'avantApres' && realSplit === 'stacked' ? 106 : 160,
                           },
                         ]}
                       >
                         {slot.uri ? (
                           <PhotoCadree
                             uri={slot.uri}
-                            width={displayMode === 'avantApres' ? 56 : 90}
-                            height={160}
+                            width={displayMode === 'avantApres' ? (realSplit === 'stacked' ? 120 : 56) : 90}
+                            height={displayMode === 'avantApres' && realSplit === 'stacked' ? 106 : 160}
                             cadrage={slot.cible === 'before' ? realBeforeCadrage : realPhotoCadrage}
                           />
                         ) : (
@@ -1745,6 +1757,39 @@ export function StoryShareModal({
                   </View>
                 )}
               </View>
+
+              {displayMode === 'avantApres' && (
+                <View style={styles.sectionSpacing}>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                    {t('storyShare.realisation.splitLayout')}
+                  </Text>
+                  <View style={styles.modeRow}>
+                    {([
+                      { key: 'sideBySide' as const, icon: 'tablet-portrait-outline', label: t('storyShare.realisation.splitSideBySide') },
+                      { key: 'stacked' as const, icon: 'tablet-landscape-outline', label: t('storyShare.realisation.splitStacked') },
+                    ]).map((opt) => {
+                      const isActive = realSplit === opt.key;
+                      return (
+                        <Pressable
+                          key={opt.key}
+                          onPress={() => changerDisposition(opt.key)}
+                          style={[
+                            styles.modeButton,
+                            {
+                              backgroundColor: isActive ? colors.primary : colors.surface,
+                              borderWidth: 1,
+                              borderColor: isActive ? colors.primary : colors.border,
+                            },
+                          ]}
+                        >
+                          <Ionicons name={opt.icon as any} size={18} color={isActive ? '#fff' : colors.textSecondary} />
+                          <Text style={[styles.modeLabel, { color: isActive ? '#fff' : colors.text }]}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -2021,7 +2066,7 @@ export function StoryShareModal({
         <FramingEditor
           visible={cadrageOuvertPour !== null}
           uri={cadrageOuvertPour === 'before' ? realBefore : realPhoto}
-          ratio={displayMode === 'avantApres' ? RATIO_MOITIE : RATIO_PLEIN}
+          ratio={displayMode === 'avantApres' ? ratioMoitie : RATIO_PLEIN}
           cadrage={cadrageOuvertPour === 'before' ? realBeforeCadrage : realPhotoCadrage}
           onClose={() => setCadrageOuvertPour(null)}
           onApply={(c) => {

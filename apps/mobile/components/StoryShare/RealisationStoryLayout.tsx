@@ -35,6 +35,9 @@ export const HALF_W = (STORY_W - DIVIDER_W) / 2;
 /** Formats des zones photo, pour l'éditeur de cadrage. */
 export const RATIO_PLEIN = STORY_W / STORY_H;
 export const RATIO_MOITIE = HALF_W / STORY_H;
+/** Hauteur d'une moitié quand l'avant / après est empilé (haut / bas). */
+export const HALF_H = (STORY_H - DIVIDER_W) / 2;
+export const RATIO_MOITIE_EMPILEE = STORY_W / HALF_H;
 
 /** Ce que la story affiche — déjà mis en forme par l'appelant. */
 export interface StoryRealisation {
@@ -54,6 +57,8 @@ export interface StoryRealisation {
   /** Prix barré quand une promotion est en cours. */
   priceStrikeLabel?: string | null;
   bannerPosition: 'top' | 'bottom';
+  /** Avant / après : côte à côte (défaut) ou empilé haut / bas. */
+  splitLayout?: 'sideBySide' | 'stacked';
 }
 
 interface RealisationStoryLayoutProps {
@@ -115,6 +120,7 @@ export function RealisationStoryLayout({
   const adresse = bookingUrl.replace(/^https?:\/\//, '');
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
   const avantApres = mode === 'avantApres';
+  const empile = avantApres && realisation.splitLayout === 'stacked';
   const addPhoto = i18n.t('storyShare.realisation.addPhoto');
 
   const bandeau = (
@@ -158,23 +164,37 @@ export function RealisationStoryLayout({
     <View style={s.canvas}>
       {/* La ou les photos, plein cadre */}
       {avantApres ? (
-        <View style={s.split}>
-          <View style={s.half}>
+        <View style={[s.split, empile ? s.splitEmpile : null]}>
+          <View style={empile ? s.halfEmpilee : s.half}>
             <PhotoOrPlaceholder
               uri={realisation.beforePhotoUri ?? null}
               hint={addPhoto}
-              width={HALF_W}
-              height={STORY_H}
+              width={empile ? STORY_W : HALF_W}
+              height={empile ? HALF_H : STORY_H}
               cadrage={realisation.beforeCadrage}
             />
           </View>
-          <View style={s.splitDivider} />
-          <View style={s.half}>
+          {empile && (
+            <View pointerEvents="none" style={[s.stackedLabel, { top: 10 }]}>
+              <View style={s.splitLabelPill}>
+                <Text style={s.splitLabelText}>{i18n.t('storyShare.realisation.before')}</Text>
+              </View>
+            </View>
+          )}
+          <View style={empile ? s.splitDividerEmpile : s.splitDivider} />
+          {empile && (
+            <View pointerEvents="none" style={[s.stackedLabel, { top: HALF_H + DIVIDER_W + 10 }]}>
+              <View style={s.splitLabelPill}>
+                <Text style={s.splitLabelText}>{i18n.t('storyShare.realisation.after')}</Text>
+              </View>
+            </View>
+          )}
+          <View style={empile ? s.halfEmpilee : s.half}>
             <PhotoOrPlaceholder
               uri={realisation.photoUri}
               hint={addPhoto}
-              width={HALF_W}
-              height={STORY_H}
+              width={empile ? STORY_W : HALF_W}
+              height={empile ? HALF_H : STORY_H}
               cadrage={realisation.photoCadrage}
             />
           </View>
@@ -213,7 +233,7 @@ export function RealisationStoryLayout({
           </Text>
         </View>
 
-        {avantApres && (
+        {avantApres && !empile && (
           <View style={s.splitLabels}>
             <View style={s.splitLabelPill}>
               <Text style={s.splitLabelText}>{i18n.t('storyShare.realisation.before')}</Text>
@@ -241,6 +261,14 @@ export function RealisationStoryLayout({
               {i18n.t('storyShare.review.bookAt', { name: businessName })}
             </Text>
           </View>
+          {/* La marque en grand, l'adresse exacte de la page en dessous, discrète */}
+          <View style={s.footerBrandRow}>
+            <View style={s.footerBrandLine} />
+            <Text style={s.footerBrand}>
+              opatam<Text style={s.footerBrandTld}>.com</Text>
+            </Text>
+            <View style={s.footerBrandLine} />
+          </View>
           <Text style={s.footerUrl} numberOfLines={1}>
             {adresse}
           </Text>
@@ -256,9 +284,13 @@ const s = StyleSheet.create({
   placeholderText: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600' },
 
   split: { ...StyleSheet.absoluteFillObject, flexDirection: 'row' },
+  splitEmpile: { flexDirection: 'column' },
   half: { width: HALF_W, height: STORY_H, overflow: 'hidden' },
+  halfEmpilee: { width: STORY_W, height: HALF_H, overflow: 'hidden' },
   splitDivider: { width: DIVIDER_W, backgroundColor: 'rgba(255,255,255,0.9)' },
+  splitDividerEmpile: { height: DIVIDER_W, backgroundColor: 'rgba(255,255,255,0.9)' },
   splitLabels: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 14 },
+  stackedLabel: { position: 'absolute', right: 12, zIndex: 2 },
   splitLabelPill: {
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderRadius: 999,
@@ -327,5 +359,9 @@ const s = StyleSheet.create({
   },
   avatarInitial: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   footerName: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', flexShrink: 1 },
-  footerUrl: { color: 'rgba(255,255,255,0.8)', fontSize: 11.5, letterSpacing: 0.3 },
+  footerBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  footerBrandLine: { width: 28, height: 1, backgroundColor: 'rgba(255,255,255,0.45)' },
+  footerBrand: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 1.2 },
+  footerBrandTld: { color: OPATAM_OR },
+  footerUrl: { color: 'rgba(255,255,255,0.6)', fontSize: 10.5, letterSpacing: 0.3 },
 });

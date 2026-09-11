@@ -2537,7 +2537,10 @@
       "frame": "Cadrer",
       "frameTitle": "Cadrez votre photo",
       "frameHint": "Déplacez la photo avec un doigt, zoomez avec deux. Le cadre est exactement la zone visible dans la story.",
-      "frameReset": "Recentrer"
+      "frameReset": "Recentrer",
+      "splitLayout": "Disposition",
+      "splitSideBySide": "Côte à côte",
+      "splitStacked": "Haut / bas"
     }
   },
   "proServices": {

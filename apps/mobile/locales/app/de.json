@@ -2537,7 +2537,10 @@
       "frame": "Ausrichten",
       "frameTitle": "Foto ausrichten",
       "frameHint": "Mit einem Finger verschieben, mit zwei zoomen. Der Rahmen ist genau der sichtbare Bereich in der Story.",
-      "frameReset": "Zurücksetzen"
+      "frameReset": "Zurücksetzen",
+      "splitLayout": "Anordnung",
+      "splitSideBySide": "Nebeneinander",
+      "splitStacked": "Oben / unten"
     }
   },
   "proServices": {

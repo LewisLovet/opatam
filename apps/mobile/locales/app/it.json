@@ -2537,7 +2537,10 @@
       "frame": "Inquadra",
       "frameTitle": "Inquadra la tua foto",
       "frameHint": "Sposta con un dito, pizzica per zoomare. La cornice è esattamente la zona visibile nella story.",
-      "frameReset": "Ricentra"
+      "frameReset": "Ricentra",
+      "splitLayout": "Disposizione",
+      "splitSideBySide": "Affiancate",
+      "splitStacked": "Sopra / sotto"
     }
   },
   "proServices": {

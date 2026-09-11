@@ -2537,7 +2537,10 @@
       "frame": "Frame",
       "frameTitle": "Frame your photo",
       "frameHint": "Drag with one finger, pinch to zoom. The frame is exactly what will be visible in the story.",
-      "frameReset": "Reset"
+      "frameReset": "Reset",
+      "splitLayout": "Layout",
+      "splitSideBySide": "Side by side",
+      "splitStacked": "Top / bottom"
     }
   },
   "proServices": {
