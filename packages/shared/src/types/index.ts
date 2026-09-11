@@ -219,10 +219,42 @@ export interface Provider {
   updatedAt: Date;
 }
 
-/** Compteur de stories partagées, dénormalisé sur Provider. */
+/**
+ * Compteurs de stories partagées, dénormalisés sur Provider et tenus par la
+ * callable `recordStoryShare` (un incrément par partage réussi).
+ *
+ * Les compteurs par période (`byWeek`, `byMonth`) permettent d'afficher au
+ * prestataire « 3 stories cette semaine » et de mesurer un objectif sans
+ * relire `storyEvents` ; `byContent` dit quel type il utilise. Les clés
+ * sont produites par `storyWeekKey` / `storyMonthKey` (utils/storyGoals).
+ */
 export interface StoryShareStats {
   shared: number;
   lastSharedAt: Date | null;
+  /** Partages par type de story (`realisation`, `review`, …). */
+  byContent?: Record<string, number>;
+  /** Partages par semaine ISO — clé « 2026-W37 ». */
+  byWeek?: Record<string, number>;
+  /** Partages par mois — clé « 2026-09 ». */
+  byMonth?: Record<string, number>;
+}
+
+/**
+ * Objectif de partage proposé aux prestataires — doc `config/storyGoals`,
+ * lisible par les apps, écrit par l'équipe (Admin SDK / console).
+ *
+ * `enabled: false` = les apps n'affichent rien (le système est en place,
+ * l'interface viendra après décision). Un prestataire peut recevoir un
+ * objectif propre via `settings.storyGoal` (même forme, prioritaire).
+ */
+export interface StoryGoalConfig {
+  enabled: boolean;
+  /** Stories par semaine visées (0 = pas d'objectif hebdomadaire). */
+  weeklyTarget: number;
+  /** Stories par mois visées (0 = pas d'objectif mensuel). */
+  monthlyTarget: number;
+  /** Libellé libre de la récompense promise, pour l'affichage futur. */
+  rewardLabel?: string | null;
 }
 
 // Page view stats (denormalized on Provider, updated nightly by Cloud Function)
@@ -600,6 +632,8 @@ export interface ProviderSettings {
   /** Carte de fidélité. null/absent = désactivée. Gated par
    *  hasLoyaltyAccess() (plan payant en cours ou carte enregistrée). */
   loyalty?: LoyaltySettings | null;
+  /** Objectif de partage propre à ce prestataire — prime sur `config/storyGoals`. */
+  storyGoal?: Partial<StoryGoalConfig> | null;
 }
 
 /**

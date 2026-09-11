@@ -42,6 +42,8 @@ export * from './reviewAuthor';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.
 export * from './articles';
+// Objectifs de partage de stories (compteurs par période, progression, série)
+export * from './storyGoals';
 
 /**
  * Format price from cents to display string

@@ -14,6 +14,17 @@ import * as admin from 'firebase-admin';
  * Auth : chaque prestataire n'inscrit que pour LUI-MÊME — même règle que la
  * règle Firestore de `storyEvents`.
  */
+/** Semaine ISO « 2026-W37 » — identique à storyWeekKey (packages/shared). */
+function weekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
 export const recordStoryShare = onCall({ region: 'europe-west1' }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Connexion requise');
@@ -45,6 +56,12 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
     db.collection('providers').doc(providerId).update({
       'stats.stories.shared': admin.firestore.FieldValue.increment(1),
       'stats.stories.lastSharedAt': admin.firestore.FieldValue.serverTimestamp(),
+      // Compteurs par type et par période — base des objectifs de partage
+      // (packages/shared utils/storyGoals). Mêmes clés que storyWeekKey /
+      // storyMonthKey, recopiées ici pour ne pas dépendre du build partagé.
+      [`stats.stories.byContent.${content}`]: admin.firestore.FieldValue.increment(1),
+      [`stats.stories.byWeek.${weekKey(new Date())}`]: admin.firestore.FieldValue.increment(1),
+      [`stats.stories.byMonth.${monthKey(new Date())}`]: admin.firestore.FieldValue.increment(1),
     }),
   ]);
 

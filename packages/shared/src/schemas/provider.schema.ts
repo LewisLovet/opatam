@@ -75,6 +75,17 @@ export const providerSettingsSchema = z.object({
   // ici pour la même raison que notificationPreferences : sans ça, zod le
   // retire en silence à la prochaine écriture de `settings`.
   depositsDeclined: z.boolean().optional(),
+  // Objectif de partage de stories propre au prestataire (posé par l'équipe ;
+  // déclaré ici pour survivre aux écritures complètes de `settings`).
+  storyGoal: z
+    .object({
+      enabled: z.boolean().optional(),
+      weeklyTarget: z.number().int().min(0).max(100).optional(),
+      monthlyTarget: z.number().int().min(0).max(400).optional(),
+      rewardLabel: z.string().max(120).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 
   // Client/booking notification toggles. Must be in the schema so that a
   // full-`settings` update via updateProvider (e.g. the reservation settings
