@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { adminHeaders } from '@/services/admin/adminFetch';
 import { storage } from '@booking-app/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -54,6 +54,7 @@ interface NotifForm {
 interface NotifRow extends Omit<NotifForm, 'scheduledAt'> {
   id: string;
   pushedAt?: { _seconds: number } | string | null;
+  publishedAt?: { _seconds: number } | string | null;
   scheduledAt?: { _seconds: number } | string | null;
 }
 
@@ -139,6 +140,74 @@ interface ProviderResult {
   photoURL?: string | null;
 }
 
+/**
+ * Aperçu de la FENÊTRE AU DÉMARRAGE telle que l'app la montre (en-tête de
+ * marque, pastille NOUVEAU, tutoriel vidéo, bouton plein, « Plus tard »).
+ * Affiché seulement quand « Afficher au démarrage » est coché.
+ */
+function LaunchNoticePreview({ form }: { form: NotifForm }) {
+  const Icon = ICON_OPTIONS.find((o) => o.value === form.iconName)?.Icon ?? Megaphone;
+  const title = form.title.trim() || 'Titre de la nouveauté';
+  const teaser = form.body.trim();
+  const detail = form.modalBody.trim() || teaser || 'Texte de présentation de la nouveauté.';
+  const ctaLabel = form.ctaLabel.trim() || (form.ctaIsVideo ? 'Voir la vidéo' : 'Voir le tutoriel');
+  return (
+    <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-3">
+        Aperçu de la fenêtre au démarrage (mobile)
+      </p>
+      <div className="mx-auto w-full max-w-[340px] rounded-[26px] overflow-hidden shadow-2xl bg-white dark:bg-gray-800">
+        <div className="relative overflow-hidden px-5 pt-4 pb-6 text-white" style={{ background: 'linear-gradient(135deg, #2A4AA5 0%, #1B2F6E 55%, #152551 100%)' }}>
+          <div className="absolute -top-16 -right-12 w-48 h-48 rounded-full" style={{ background: 'rgba(244,201,40,0.14)' }} />
+          <div className="absolute -bottom-24 -left-16 w-56 h-56 rounded-full bg-white/5" />
+          <div className="relative flex items-center justify-between mb-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-widest" style={{ background: '#F4C928', color: '#1B2F6E' }}>
+              <Rocket className="w-3 h-3" /> NOUVEAU
+            </span>
+            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center"><X className="w-4 h-4" /></span>
+          </div>
+          <div className="relative w-14 h-14 rounded-full bg-white flex items-center justify-center mb-3">
+            <Icon className="w-7 h-7" style={{ color: '#1B2F6E' }} />
+          </div>
+          <p className="relative text-[23px] leading-7 font-extrabold tracking-tight">{title}</p>
+          {teaser ? <p className="relative text-sm text-white/80 mt-2 leading-5">{teaser}</p> : null}
+        </div>
+        <div className="p-5 space-y-4">
+          {form.imageUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.imageUrl.trim()} alt="" className="w-full rounded-xl object-contain max-h-56" />
+          ) : null}
+          <p className="text-[15px] text-gray-800 dark:text-gray-200 whitespace-pre-line leading-6">{detail}</p>
+          {form.ctaArticleSlug ? (
+            <div className="space-y-2">
+              <p className="text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 text-[#1B2F6E] dark:text-blue-200">
+                <PlayCircle className="w-3.5 h-3.5" style={{ color: '#F4C928' }} /> {form.ctaIsVideo ? 'Tutoriel vidéo' : 'Tutoriel'}
+              </p>
+              {form.ctaThumbUrl ? (
+                <div className="relative rounded-xl overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.ctaThumbUrl} alt="" className="w-full h-40 object-cover" />
+                  {form.ctaIsVideo ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                      <div className="w-12 h-12 rounded-full bg-black/55 flex items-center justify-center"><PlayCircle className="w-7 h-7 text-white" /></div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="pt-1 space-y-1.5">
+            <div className="flex items-center justify-center gap-2 rounded-2xl py-3.5 text-white text-[15px] font-extrabold" style={{ background: 'linear-gradient(135deg, #2A4AA5, #1B2F6E)' }}>
+              {form.ctaArticleSlug ? (<><PlayCircle className="w-5 h-5" /> {ctaLabel}</>) : "C'est noté"}
+            </div>
+            <p className="text-center text-sm font-semibold text-gray-500 py-2">Plus tard</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Live preview mimicking how the notification renders in the mobile app
  *  (drawer row + detail). Updates as the admin types. */
 function NotifPreview({ form }: { form: NotifForm }) {
@@ -221,6 +290,23 @@ export default function AdminNotificationsPage() {
   const [saving, setSaving] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  // La dernière notification publiée avec « Afficher au démarrage » — pour
+  // garder ces fenêtres rares (l'écran s'en souvient, pas l'admin).
+  const derniereFenetre = useMemo(() => {
+    const toMs = (v: { _seconds: number } | string | null | undefined) =>
+      !v ? 0 : typeof v === 'string' ? new Date(v).getTime() : v._seconds * 1000;
+    const cand = rows
+      .filter((r) => r.showAtLaunch && r.isPublished && (!editingId || r.id !== editingId))
+      .map((r) => ({ r, ms: toMs(r.publishedAt) }))
+      .filter((x) => x.ms > 0)
+      .sort((a, b) => b.ms - a.ms)[0];
+    if (!cand) return null;
+    return {
+      title: cand.r.title,
+      date: new Date(cand.ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      days: Math.floor((Date.now() - cand.ms) / 86_400_000),
+    };
+  }, [rows, editingId]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<NotifForm>(EMPTY);
 
@@ -460,7 +546,7 @@ export default function AdminNotificationsPage() {
             {editingId ? 'Modifier la notification' : 'Nouvelle notification'}
           </h2>
 
-          <NotifPreview form={form} />
+          {form.showAtLaunch ? <LaunchNoticePreview form={form} /> : <NotifPreview form={form} />}
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Select
@@ -744,6 +830,12 @@ export default function AdminNotificationsPage() {
             </div>
             <Switch checked={form.showAtLaunch} onChange={(e) => set('showAtLaunch', e.target.checked)} />
           </div>
+          {/* Rareté : rappeler quand la dernière fenêtre de ce type est partie */}
+          <p className="-mt-2 pl-8 text-xs text-gray-500 dark:text-gray-400">
+            {derniereFenetre
+              ? `Dernière fenêtre au démarrage : ${derniereFenetre.date} — « ${derniereFenetre.title} »${derniereFenetre.days !== null ? ` (il y a ${derniereFenetre.days} j)` : ''}`
+              : 'Aucune fenêtre au démarrage envoyée jusqu’ici.'}
+          </p>
 
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
