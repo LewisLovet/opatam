@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, Circle, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, Circle, ArrowRight, Loader2 } from 'lucide-react';
 import type { Provider } from '@booking-app/shared';
+import { providerService } from '@booking-app/firebase';
 import { Button } from '@/components/ui';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ActivationHubProps {
-  provider: Provider;
+  provider: Provider & { id: string };
   hasService: boolean;
   hasLocation: boolean;
 }
@@ -21,6 +24,29 @@ interface ChecklistItem {
 }
 
 export function ActivationHub({ provider, hasService, hasLocation }: ActivationHubProps) {
+  const { refreshProvider } = useAuth();
+  const [depositsSaving, setDepositsSaving] = useState(false);
+
+  // « Je ne souhaite pas proposer d'acomptes » : l'étape est optionnelle,
+  // et un prestataire qui n'en veut pas ne doit pas rester à 86 % pour
+  // autant. Le choix est enregistré sur le compte (tous ses appareils),
+  // et reste réversible depuis la même ligne.
+  const depositsDeclined = provider.settings?.depositsDeclined === true;
+  const setDepositsDeclined = async (declined: boolean) => {
+    if (depositsSaving) return;
+    setDepositsSaving(true);
+    try {
+      await providerService.updateProvider(provider.id, {
+        settings: { ...provider.settings, depositsDeclined: declined },
+      });
+      await refreshProvider();
+    } catch (e) {
+      console.error('[ActivationHub] depositsDeclined:', e);
+    } finally {
+      setDepositsSaving(false);
+    }
+  };
+
   const items: ChecklistItem[] = [
     {
       id: 'profile',
@@ -54,9 +80,11 @@ export function ActivationHub({ provider, hasService, hasLocation }: ActivationH
     },
     {
       id: 'payments',
-      label: 'Activer les paiements & acomptes (optionnel)',
+      label: depositsDeclined
+        ? 'Acomptes : vous avez choisi de ne pas en proposer'
+        : 'Activer les paiements & acomptes (optionnel)',
       href: '/pro/parametres?tab=paiements',
-      done: provider.stripeConnectStatus === 'active',
+      done: provider.stripeConnectStatus === 'active' || depositsDeclined,
       optional: true,
     },
     {
@@ -137,6 +165,10 @@ export function ActivationHub({ provider, hasService, hasLocation }: ActivationH
               );
             }
 
+            // La ligne « acomptes » porte son propre choix : ne pas en
+            // proposer (l'étape est alors faite), ou revenir dessus.
+            const isPaymentsChoice = item.id === 'payments' && provider.stripeConnectStatus !== 'active';
+
             return (
               <li key={item.id}>
                 {item.done ? (
@@ -145,6 +177,39 @@ export function ActivationHub({ provider, hasService, hasLocation }: ActivationH
                     <span className="text-sm text-gray-500 dark:text-gray-400 line-through decoration-gray-300 dark:decoration-gray-600">
                       {item.label}
                     </span>
+                    {isPaymentsChoice && depositsDeclined && (
+                      <button
+                        type="button"
+                        onClick={() => void setDepositsDeclined(false)}
+                        disabled={depositsSaving}
+                        className="ml-auto text-xs text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:underline flex-shrink-0 disabled:opacity-50"
+                      >
+                        {depositsSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Changer d'avis"}
+                      </button>
+                    )}
+                  </div>
+                ) : isPaymentsChoice ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 py-2">
+                    <Link href={item.href} className="group flex items-center gap-3 flex-1 min-w-0">
+                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{item.label}</span>
+                      <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 group-hover:gap-1.5 transition-all flex-shrink-0">
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => void setDepositsDeclined(true)}
+                      disabled={depositsSaving}
+                      className="sm:flex-shrink-0 pl-8 sm:pl-0 text-left text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:underline disabled:opacity-50"
+                      title="L'étape sera considérée comme faite et ne vous sera plus proposée. Vous pourrez changer d'avis."
+                    >
+                      {depositsSaving ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
+                      ) : (
+                        "Je ne souhaite pas proposer d'acomptes"
+                      )}
+                    </button>
                   </div>
                 ) : (
                   <Link

@@ -71,6 +71,10 @@ export const providerSettingsSchema = z.object({
     .nullable()
     .optional(),
   autoReviewReminder: z.boolean().optional(),
+  // « Je ne souhaite pas proposer d'acomptes » (liste d'activation). Déclaré
+  // ici pour la même raison que notificationPreferences : sans ça, zod le
+  // retire en silence à la prochaine écriture de `settings`.
+  depositsDeclined: z.boolean().optional(),
 
   // Client/booking notification toggles. Must be in the schema so that a
   // full-`settings` update via updateProvider (e.g. the reservation settings

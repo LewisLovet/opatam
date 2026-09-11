@@ -574,6 +574,10 @@ export interface ProviderSettings {
   notificationPreferences?: ProviderNotificationPreferences;
   bookingNotice?: string | null;     // Texte libre affiche avant confirmation de reservation
   autoReviewReminder?: boolean;      // Envoyer automatiquement une demande d'avis apres chaque RDV (default: true)
+  /** Le prestataire a dit ne PAS vouloir proposer d'acomptes : l'étape
+   *  « paiements & acomptes » de la liste d'activation est considérée faite
+   *  et n'est plus proposée. Réversible depuis la même liste. */
+  depositsDeclined?: boolean;
 
   /**
    * Default deposit applied to every service unless the service has its own
