@@ -915,7 +915,9 @@ export class BookingService {
       );
     }
     const effective = computeServiceTotal(service, sel);
-    const denorm = buildBookingSelections(service, sel);
+    // La prestation ajoutée suit la langue de la réservation d'origine : sans
+    // elle, le nom serait localisé mais les choix resteraient en français.
+    const denorm = buildBookingSelections(service, sel, { locale: booking.clientLocale ?? null });
 
     // Existing items: the stored list, or a single synthesised item from the
     // current top-level fields (legacy / single-service bookings).
