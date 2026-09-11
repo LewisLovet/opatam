@@ -48,13 +48,14 @@ export function pickLaunchNotice(
 }
 
 interface Props {
-  notice: ProviderNotificationItem | null;
+  /** Toutes les notifications du compte : la fenêtre choisit elle-même. */
+  notifications: ProviderNotificationItem[];
   /** Autres fenêtres prioritaires ouvertes (bienvenue…) : on attend. */
   enabled: boolean;
   onMarkRead: (id: string) => void;
 }
 
-export function LaunchNoticeModal({ notice, enabled, onMarkRead }: Props) {
+export function LaunchNoticeModal({ notifications, enabled, onMarkRead }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -74,6 +75,10 @@ export function LaunchNoticeModal({ notice, enabled, onMarkRead }: Props) {
       }),
     [],
   );
+
+  // Recalculée à chaque rendu : la liste ET l'interrupteur dev sont dans
+  // ce composant, donc aucun parent à rafraîchir.
+  const notice = pickLaunchNotice(notifications);
 
   useEffect(() => {
     if (!enabled || !notice || dejaMontre.current) return;

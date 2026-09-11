@@ -212,30 +212,6 @@ export function DevFAB() {
       },
     },
     {
-      icon: 'color-palette-outline',
-      label: 'Design System',
-      action: () => {
-        setIsMenuOpen(false);
-        router.push('/design-system');
-      },
-    },
-    {
-      icon: 'cube-outline',
-      label: 'Composants Métier',
-      action: () => {
-        setIsMenuOpen(false);
-        router.push('/business-components');
-      },
-    },
-    {
-      icon: 'home-outline',
-      label: 'Accueil',
-      action: () => {
-        setIsMenuOpen(false);
-        router.push('/');
-      },
-    },
-    {
       icon: 'settings-outline',
       label: 'Thème',
       action: () => {
