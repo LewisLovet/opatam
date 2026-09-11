@@ -2536,7 +2536,7 @@
       "photoMissing": "Add a photo to share",
       "frame": "Frame",
       "frameTitle": "Frame your photo",
-      "frameHint": "Drag with one finger, pinch to zoom. The frame is exactly what will be visible in the story.",
+      "frameHint": "Drag with one finger, zoom with two fingers or the − / + buttons.",
       "frameReset": "Reset",
       "splitLayout": "Layout",
       "splitSideBySide": "Side by side",

@@ -63,6 +63,10 @@ export function FramingEditor({ visible, uri, ratio, cadrage, onClose, onApply }
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
+        // Le second doigt ne doit pas rendre le geste à la modale : sans ça
+        // le pincement était interrompu dès qu'il commençait.
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
         onPanResponderGrant: () => {
           depart.current = { cadrage: courantRef.current, distance: null };
         },
@@ -70,7 +74,8 @@ export function FramingEditor({ visible, uri, ratio, cadrage, onClose, onApply }
           const img = tailleRef.current;
           if (!img) return;
           const touches = evt.nativeEvent.touches;
-          if (touches.length >= 2) {
+          if (touches.length >= 2 || gesture.numberActiveTouches >= 2) {
+            if (touches.length < 2) return;
             // Pincement : le zoom suit l'écart entre les deux doigts.
             const dx = touches[0].pageX - touches[1].pageX;
             const dy = touches[0].pageY - touches[1].pageY;
@@ -84,6 +89,12 @@ export function FramingEditor({ visible, uri, ratio, cadrage, onClose, onApply }
               Math.max(1, depart.current.cadrage.zoom * (distance / depart.current.distance)),
             );
             setCourant({ ...courantRef.current, zoom });
+            return;
+          }
+          // Retour à un doigt après un pincement : on repart du cadrage courant
+          // pour que la photo ne saute pas.
+          if (depart.current.distance !== null) {
+            depart.current = { cadrage: courantRef.current, distance: null };
             return;
           }
           // Déplacement : la fenêtre glisse sur la photo, en fraction de ce
@@ -128,6 +139,30 @@ export function FramingEditor({ visible, uri, ratio, cadrage, onClose, onApply }
             <View pointerEvents="none" style={[s.tiersH, { top: '66.6%' }]} />
           </View>
 
+          {/* Zoom au bouton — fiable partout, en plus du pincement */}
+          <View style={s.zoomRow}>
+            <Pressable
+              onPress={() => setCourant((c) => ({ ...c, zoom: Math.max(1, +(c.zoom - 0.25).toFixed(2)) }))}
+              disabled={courant.zoom <= 1}
+              style={[s.zoomBtn, { borderColor: colors.border, opacity: courant.zoom <= 1 ? 0.4 : 1 }]}
+            >
+              <Ionicons name="remove" size={20} color={colors.text} />
+            </Pressable>
+            <View style={s.zoomTrack}>
+              <View style={[s.zoomFill, { width: `${((courant.zoom - 1) / (ZOOM_MAX - 1)) * 100}%`, backgroundColor: colors.primary }]} />
+            </View>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700', width: 38, textAlign: 'center' }}>
+              {courant.zoom.toFixed(1)}×
+            </Text>
+            <Pressable
+              onPress={() => setCourant((c) => ({ ...c, zoom: Math.min(ZOOM_MAX, +(c.zoom + 0.25).toFixed(2)) }))}
+              disabled={courant.zoom >= ZOOM_MAX}
+              style={[s.zoomBtn, { borderColor: colors.border, opacity: courant.zoom >= ZOOM_MAX ? 0.4 : 1 }]}
+            >
+              <Ionicons name="add" size={20} color={colors.text} />
+            </Pressable>
+          </View>
+
           <View style={s.actions}>
             <Pressable
               onPress={() => setCourant(CADRAGE_DEFAUT)}
@@ -166,6 +201,10 @@ const s = StyleSheet.create({
   frame: { borderWidth: 2, borderRadius: 8, overflow: 'hidden', backgroundColor: '#000', marginTop: 4 },
   tiers: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   tiersH: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
+  zoomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, alignSelf: 'stretch' },
+  zoomBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  zoomTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(127,127,127,0.25)', overflow: 'hidden' },
+  zoomFill: { height: '100%', borderRadius: 3 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' },
   secondary: {
     flexDirection: 'row',
