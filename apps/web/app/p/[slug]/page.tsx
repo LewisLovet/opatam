@@ -13,7 +13,7 @@ import {
 } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
-import { getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
+import { getProviderText, getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { loadDemo, demoIdFromSlug, compterVueDemo } from '@/lib/sales-demo-load';
 import { getAdminFirestore } from '@/lib/firebase-admin';
@@ -184,8 +184,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // The pro's own description (their content, kept verbatim in any locale);
   // the generated fallback sentence follows the page language.
-  const description = provider.description
-    ? provider.description.substring(0, 160)
+  // Bio dans la langue de la page (repli sur l'original si non traduite).
+  const localizedBio = getProviderText(provider, locale).description;
+  const description = localizedBio
+    ? localizedBio.substring(0, 160)
     : t('fallbackDescription', {
         businessName: provider.businessName,
         cityPart: city ? t('inCity', { city }) : '',
@@ -256,6 +258,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProviderPage({ params }: PageProps) {
   const { slug } = await params;
+  const locale = await getLocale();
 
   // Démo PERSONNALISÉE — la page du prospect, construite depuis la config
   // enregistrée par le commercial. Même moteur que la démo générique :
@@ -384,8 +387,15 @@ export default async function ProviderPage({ params }: PageProps) {
   }));
 
   // Serialize dates for client component
+  // Bio et consigne de réservation dans la langue de la page. Un compte
+  // jamais traduit (nouveau prestataire) sert son texte original tel quel :
+  // getProviderText retombe champ par champ, jamais de page vide.
+  const providerText = getProviderText(provider, locale);
+
   const serializedProvider = {
     ...provider,
+    description: providerText.description,
+    settings: { ...provider.settings, bookingNotice: providerText.bookingNotice },
     // Tier calculé ICI, où le document complet est disponible : le client ne
     // reçoit qu'un booléen — il n'a pas besoin des champs de droits, et le
     // comp `team` doit donner l'interface équipe sans que `plan` le dise.
@@ -464,7 +474,7 @@ export default async function ProviderPage({ params }: PageProps) {
         '@type': 'LocalBusiness',
         '@id': `https://opatam.com/p/${provider.slug}#business`,
         name: provider.businessName,
-        description: provider.description || `${provider.businessName} — ${categoryLabel}${primaryCity ? ` à ${primaryCity}` : ''}`,
+        description: providerText.description || `${provider.businessName} — ${categoryLabel}${primaryCity ? ` à ${primaryCity}` : ''}`,
         url: `https://opatam.com/p/${provider.slug}`,
         image: provider.coverPhotoURL || provider.photoURL || undefined,
         ...(location && {

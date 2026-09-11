@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getProviderText,
   getServiceCategoryText,
   localizeBooleanAnswer,
   listChoiceTexts,
@@ -219,5 +220,52 @@ describe('localizeBooleanAnswer', () => {
     // Valeur libre ou langue inconnue : inchangées.
     expect(localizeBooleanAnswer('Peut-être', 'de')).toBe('Peut-être');
     expect(localizeBooleanAnswer('Oui', 'es')).toBe('Oui');
+  });
+});
+
+describe('getProviderText — repli systématique sur l’original', () => {
+  const provider = {
+    description: 'Salon afro au cœur de Lyon.',
+    settings: { bookingNotice: 'Paiement en espèces uniquement' },
+    i18n: {
+      sourceLocale: 'fr',
+      entries: {
+        de: { description: 'Afro-Salon im Herzen von Lyon.', bookingNotice: 'Nur Barzahlung' },
+        en: { description: 'Afro salon in the heart of Lyon.' }, // consigne pas (encore) traduite
+        it: { description: '', bookingNotice: '' }, // entrée vide (lot raté) → original
+      },
+    },
+  };
+  it('sert la traduction quand elle existe', () => {
+    expect(getProviderText(provider, 'de')).toEqual({
+      description: 'Afro-Salon im Herzen von Lyon.',
+      bookingNotice: 'Nur Barzahlung',
+    });
+  });
+  it('NOUVEAU PRESTATAIRE sans i18n : l’original, jamais une erreur', () => {
+    const neuf = { description: 'Bio du nouveau', settings: { bookingNotice: null } };
+    expect(getProviderText(neuf, 'de')).toEqual({ description: 'Bio du nouveau', bookingNotice: null });
+    expect(getProviderText({ description: null, settings: null }, 'de')).toEqual({ description: '', bookingNotice: null });
+    expect(getProviderText({}, 'de')).toEqual({ description: '', bookingNotice: null });
+  });
+  it('langue source, langue inconnue, entrée absente → original', () => {
+    expect(getProviderText(provider, 'fr').description).toBe('Salon afro au cœur de Lyon.');
+    expect(getProviderText(provider, 'es').description).toBe('Salon afro au cœur de Lyon.');
+    expect(getProviderText(provider, 'pt').bookingNotice).toBe('Paiement en espèces uniquement');
+  });
+  it('champ manquant ou vide dans l’entrée → original, champ par champ', () => {
+    expect(getProviderText(provider, 'en')).toEqual({
+      description: 'Afro salon in the heart of Lyon.',
+      bookingNotice: 'Paiement en espèces uniquement',
+    });
+    expect(getProviderText(provider, 'it')).toEqual({
+      description: 'Salon afro au cœur de Lyon.',
+      bookingNotice: 'Paiement en espèces uniquement',
+    });
+  });
+  it('accepte la consigne déjà aplatie par un sérialiseur', () => {
+    const flat = { description: 'Bio', bookingNotice: 'Consigne', i18n: provider.i18n };
+    expect(getProviderText(flat, 'de').bookingNotice).toBe('Nur Barzahlung');
+    expect(getProviderText(flat, 'pt').bookingNotice).toBe('Consigne');
   });
 });

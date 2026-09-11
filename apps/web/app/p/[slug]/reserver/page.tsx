@@ -10,7 +10,7 @@ import {
   memberRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
-import { isTeamTier, isPubliclyVisible } from '@booking-app/shared';
+import { getProviderText, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
 import { loadDemo, demoIdFromSlug } from '@/lib/sales-demo-load';
@@ -97,6 +97,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const locale = await getLocale();
   const { service: preselectedServiceId } = await searchParams;
 
   // Tunnel de la démo PERSONNALISÉE : les prestations du prospect, le mode
@@ -186,7 +187,9 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     slug: provider.slug,
     photoURL: provider.photoURL,
     plan: provider.plan,
-    settings: provider.settings,
+    // Consigne de réservation dans la langue du visiteur (original si non
+    // traduite — getProviderText ne renvoie jamais autre chose qu'un texte).
+    settings: { ...provider.settings, bookingNotice: getProviderText(provider, locale).bookingNotice },
   };
 
   const serializedServices = services.map((s) => ({

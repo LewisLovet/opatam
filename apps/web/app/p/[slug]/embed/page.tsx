@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   PROVIDER_THEMES,
+  getProviderText,
   isTeamTier,
   isPubliclyVisible,
   validateServiceSelections,
@@ -178,7 +179,8 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
     settings: {
       maxBookingAdvance: provider.settings.maxBookingAdvance,
       requiresConfirmation: provider.settings.requiresConfirmation,
-      bookingNotice: provider.settings.bookingNotice ?? null,
+      // Dans la langue du widget ; original si non traduite.
+      bookingNotice: getProviderText(provider, embedLocale).bookingNotice,
     },
   };
 

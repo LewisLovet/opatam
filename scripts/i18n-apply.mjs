@@ -24,7 +24,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 import { createHash } from 'crypto';
-import { categoryHash, choicesHash, listChoiceTexts } from './lib/choice-texts.mjs';
+import { categoryHash, choicesHash, listChoiceTexts, textHash } from './lib/choice-texts.mjs';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
@@ -77,6 +77,7 @@ let missing = 0;
 let choicesWritten = 0;
 let choicesStale = 0;
 let categoriesWritten = 0;
+let profilesWritten = 0;
 
 for (const prov of payload.providers ?? []) {
   for (const svc of prov.services ?? []) {
@@ -329,6 +330,74 @@ for (const prov of payload.providers ?? []) {
     }
     categoriesWritten++;
   }
+
+  // ── Profil : bio + consigne de réservation → provider.i18n ─────────────
+  // Champ par champ, avec chacun sa propre empreinte : un champ réécrit par
+  // le pro entre le scan et l'application est ignoré (traduction périmée),
+  // l'autre passe quand même. Les textes originaux ne sont JAMAIS modifiés —
+  // le lecteur getProviderText retombe dessus pour tout ce qui manque.
+  const prof = prov.profile;
+  if (prof?.translations) {
+    if (badSourceLocale(prof.sourceLocale)) {
+      console.log(`  ✗ profil ${prov.businessName} : sourceLocale manquante, ignoré`);
+    } else {
+      const ref = db.collection('providers').doc(prov.providerId);
+      const snap = await ref.get();
+      const pd = snap.data();
+      if (!pd) {
+        console.log(`  ✗ profil ${prov.providerId} : prestataire introuvable`);
+      } else {
+        const liveBio = (pd.description ?? '').trim();
+        const liveNotice = (pd.settings?.bookingNotice ?? '').trim();
+        const liveBioHash = textHash(liveBio);
+        const liveNoticeHash = textHash(liveNotice);
+        // Un champ n'est appliqué que si le texte n'a pas bougé depuis le scan.
+        const bioOk = prof.description ? prof.description.hash === liveBioHash : false;
+        const noticeOk = prof.bookingNotice ? prof.bookingNotice.hash === liveNoticeHash : false;
+        if (prof.description && !bioOk) console.log(`  ⚠ ${prov.businessName} : bio modifiée depuis le scan, ignorée`);
+        if (prof.bookingNotice && !noticeOk) console.log(`  ⚠ ${prov.businessName} : consigne modifiée depuis le scan, ignorée`);
+        if (bioOk || noticeOk) {
+          const entries = { ...(pd.i18n?.entries ?? {}) };
+          for (const [locale, tr] of Object.entries(prof.translations)) {
+            if (!LOCALES.includes(locale) || locale === prof.sourceLocale || !tr) continue;
+            if (entries[locale]?.edited) continue;
+            const e = { ...(entries[locale] ?? {}) };
+            if (bioOk && (tr.description ?? '').trim()) {
+              e.description = tr.description.trim();
+              e.descriptionHash = liveBioHash;
+            }
+            if (noticeOk && (tr.bookingNotice ?? '').trim()) {
+              e.bookingNotice = tr.bookingNotice.trim();
+              e.noticeHash = liveNoticeHash;
+            }
+            entries[locale] = e;
+          }
+          const targets = LOCALES.filter((l) => l !== prof.sourceLocale);
+          // Empreinte globale par champ : posée seulement quand TOUTES les
+          // langues cibles portent la bonne — sinon null, et le champ
+          // ressortira « incomplete » au prochain scan.
+          const globalFor = (liveText, liveHash, key, previous) => {
+            if (!liveText) return previous ?? null; // rien à traduire
+            return targets.every((l) => entries[l]?.[key] === liveHash) ? liveHash : null;
+          };
+          const i18n = {
+            sourceLocale: prof.sourceLocale,
+            descriptionHash: globalFor(liveBio, liveBioHash, 'descriptionHash', pd.i18n?.descriptionHash),
+            noticeHash: globalFor(liveNotice, liveNoticeHash, 'noticeHash', pd.i18n?.noticeHash),
+            sourceText: { description: liveBio, bookingNotice: liveNotice },
+            entries,
+            translatedAt: Timestamp.now(),
+          };
+          if (dry) console.log(`  · profil ${prov.businessName} → ${Object.keys(prof.translations).join(', ')}`);
+          else {
+            await ref.update({ i18n });
+            console.log(`  ✓ profil ${prov.businessName} → ${Object.keys(prof.translations).join(', ')}`);
+          }
+          profilesWritten++;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -433,6 +502,7 @@ console.log(
     `${choicesWritten ? ` · ${choicesWritten} avec choix` : ''}` +
     `${choicesStale ? ` · ${choicesStale} choix modifiés depuis le scan` : ''}` +
     `${categoriesWritten ? ` · ${categoriesWritten} catégorie(s)` : ''}` +
+    `${profilesWritten ? ` · ${profilesWritten} profil(s)` : ''}` +
     `${incomplete ? ` · ${incomplete} incomplète(s), toujours signalée(s) au scan` : ''}` +
     `${droppedEntries ? ` · ${droppedEntries} entrée(s) inutilisable(s) écartée(s)` : ''}` +
     `${missing ? ` · ${missing} sans traduction fournie` : ''}`,

@@ -90,7 +90,7 @@ import {
   getServiceMinDuration, isTeamTier, getServiceCategoryText } from '@booking-app/shared';
 import { type WithId } from '@booking-app/firebase';
 import { API_URL } from '../../../lib/config';
-import { getServiceText } from '@booking-app/shared';
+import { getProviderText, getServiceText } from '@booking-app/shared';
 import { ProviderAccent } from '../../../components/ProviderAccent';
 
 type TabId = 'prestations' | 'avis' | 'infos';
@@ -608,7 +608,7 @@ function ProviderDetailScreen({
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
           {/* Description */}
           {provider.description && (
-            <ExpandableText text={provider.description} numberOfLines={3} />
+            <ExpandableText text={getProviderText(provider, i18n.language).description} numberOfLines={3} />
           )}
 
           {/* Next Available Date Badge + PayPal */}
@@ -1206,7 +1206,7 @@ function ProviderDetailScreen({
               {t('providerScreen.notice.title')}
             </Text>
             <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.lg }}>
-              {provider?.settings?.bookingNotice}
+              {provider ? getProviderText(provider, i18n.language).bookingNotice : null}
             </Text>
             <View style={{ gap: spacing.sm }}>
               <Button

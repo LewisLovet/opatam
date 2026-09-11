@@ -17,6 +17,7 @@
  */
 
 import type {
+  ProviderTranslations,
   Service,
   ServiceCategoryTranslations,
   ServiceChoicesTranslation,
@@ -225,4 +226,39 @@ export function localizeBooleanAnswer(value: string, locale: string): string {
   const map = BOOLEAN_ANSWERS[locale];
   if (!map) return value;
   return value === 'Oui' ? map.Oui : value === 'Non' ? map.Non : value;
+}
+
+/**
+ * Bio et consigne de réservation du prestataire dans une langue donnée.
+ *
+ * TOUJOURS un repli sûr : compte sans `i18n` (nouveau prestataire, jamais
+ * traduit), langue source, langue inconnue, entrée absente ou champ vide —
+ * dans tous ces cas la cliente lit le texte ORIGINAL du professionnel,
+ * jamais une chaîne vide ni une erreur. La signature est volontairement
+ * tolérante (mêmes raisons que `getServiceText`) : les surfaces sérialisent
+ * leurs prestataires à la main, avec `null` là où le modèle a `undefined`.
+ */
+export function getProviderText(
+  provider: {
+    description?: string | null;
+    settings?: { bookingNotice?: string | null } | null;
+    bookingNotice?: string | null;
+    i18n?: ProviderTranslations | null;
+  },
+  locale: string,
+): { description: string; bookingNotice: string | null } {
+  const original = {
+    description: provider.description ?? '',
+    // Selon la surface, la consigne arrive sous `settings.bookingNotice`
+    // (doc complet) ou déjà aplatie en `bookingNotice` (sérialiseurs).
+    bookingNotice: provider.settings?.bookingNotice ?? provider.bookingNotice ?? null,
+  };
+  const i18n = provider.i18n;
+  if (!i18n || locale === i18n.sourceLocale) return original;
+  const entry = i18n.entries?.[locale as ServiceLocale];
+  if (!entry) return original;
+  return {
+    description: entry.description || original.description,
+    bookingNotice: entry.bookingNotice || original.bookingNotice,
+  };
 }

@@ -19,6 +19,7 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
+import { getProviderText } from '@booking-app/shared';
 import { resolveRevealedAddress } from '../utils/addressReveal';
 import { resolveClientAddress } from '../utils/clientAddressReveal';
 import {
@@ -192,11 +193,16 @@ async function toEmailData(
 
   const providerSlug = await getProviderSlug(booking.providerId);
 
-  // Fetch bookingNotice from provider settings
+  // Consigne de réservation du pro, dans la langue de la CLIENTE quand une
+  // traduction existe — sinon l'original tel quel (getProviderText retombe
+  // champ par champ, un compte jamais traduit ne change rien).
   let bookingNotice: string | null = null;
   try {
     const providerDoc = await admin.firestore().collection('providers').doc(booking.providerId).get();
-    bookingNotice = providerDoc.data()?.settings?.bookingNotice || null;
+    const pdata = providerDoc.data();
+    bookingNotice = pdata
+      ? getProviderText(pdata as Parameters<typeof getProviderText>[0], booking.clientLocale ?? 'fr').bookingNotice
+      : null;
   } catch {
     // Non-blocking
   }

@@ -58,3 +58,8 @@ export function choicesHash(service) {
 export function categoryHash(name) {
   return createHash('sha1').update(name ?? '').digest('hex');
 }
+
+/** Empreinte d'un texte libre du profil (bio, consigne de réservation). */
+export function textHash(s) {
+  return createHash('sha1').update(s ?? '').digest('hex');
+}

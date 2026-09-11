@@ -121,6 +121,12 @@ export interface Provider {
    * n'était que DÉDUITE de son pays. Absent = on retombe sur cette déduction.
    */
   locale?: 'fr' | 'en' | 'it' | 'pt' | 'de';
+  /**
+   * Traductions de la bio et de la consigne de réservation, servies par
+   * `getProviderText`. Absent (nouveau compte, jamais traduit) = les
+   * clientes lisent l'original, quelle que soit leur langue.
+   */
+  i18n?: ProviderTranslations | null;
   portfolioPhotos: string[];
   socialLinks: SocialLinks;
   rating: Rating;
@@ -813,6 +819,39 @@ export interface ServiceCategoryTranslations {
   sourceText: { name: string };
   entries: Partial<Record<ServiceLocale, { name: string; sourceHash?: string; edited?: boolean }>>;
   translatedAt: Date;
+}
+
+/**
+ * Traductions des TEXTES PUBLICS du prestataire : sa bio (`description`) et
+ * sa consigne de réservation (`settings.bookingNotice`). Même contrat que
+ * les prestations : les champs d'origine ne sont JAMAIS modifiés, le lecteur
+ * `getProviderText` sert la traduction quand elle existe et retombe sur
+ * l'original sinon — un compte jamais traduit s'affiche comme aujourd'hui.
+ *
+ * Deux empreintes séparées : la bio et la consigne changent indépendamment,
+ * réécrire l'une ne doit pas périmer la traduction de l'autre (même leçon
+ * que `sourceHash` / `choicesHash` sur les prestations).
+ */
+export interface ProviderTranslationEntry {
+  description?: string;
+  /** Empreinte de la bio source que cette entrée traduit. */
+  descriptionHash?: string;
+  bookingNotice?: string;
+  /** Empreinte de la consigne source que cette entrée traduit. */
+  noticeHash?: string;
+  /** Retouché à la main : le traducteur automatique ne remplace plus. */
+  edited?: boolean;
+}
+
+export interface ProviderTranslations {
+  sourceLocale: string;
+  /** Empreinte bio « toutes langues à jour » ; null = au moins une en retard. */
+  descriptionHash?: string | null;
+  /** Idem pour la consigne de réservation. */
+  noticeHash?: string | null;
+  sourceText?: { description: string; bookingNotice: string };
+  entries?: Partial<Record<ServiceLocale, ProviderTranslationEntry>>;
+  translatedAt?: Date;
 }
 
 export interface ServiceCategory {

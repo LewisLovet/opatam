@@ -30,7 +30,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
-import { categoryHash, choicesHash, hasChoiceTexts, listChoiceTexts } from './lib/choice-texts.mjs';
+import { categoryHash, choicesHash, hasChoiceTexts, listChoiceTexts, textHash } from './lib/choice-texts.mjs';
 
 const args = process.argv.slice(2);
 const argOf = (name) => {
@@ -74,6 +74,7 @@ let upToDate = 0;
 let choicesOnly = 0;
 let categoriesScanned = 0;
 let categoriesUpToDate = 0;
+let profilesToDo = 0;
 
 for (const p of providers.docs) {
   const prov = p.data();
@@ -204,7 +205,33 @@ for (const p of providers.docs) {
     });
   }
 
-  if (items.length === 0 && categories.length === 0) continue;
+  // ── Profil du prestataire : bio (description) + consigne de réservation
+  //    (settings.bookingNotice). Empreintes séparées dans provider.i18n :
+  //    réécrire l'une ne périme pas la traduction de l'autre. Un champ vide
+  //    n'a rien à traduire.
+  const bio = (prov.description ?? '').trim();
+  const notice = (prov.settings?.bookingNotice ?? '').trim();
+  const pi18n = prov.i18n;
+  const fieldStatus = (text, globalHash, key) => {
+    if (!text) return null; // rien à traduire
+    const h = textHash(text);
+    if (globalHash === h) return null; // à jour
+    const hasAny = Object.values(pi18n?.entries ?? {}).some((e) => e?.[key]);
+    return { text, hash: h, status: !hasAny ? 'never' : globalHash === null ? 'incomplete' : 'stale' };
+  };
+  const profileDesc = fieldStatus(bio, pi18n?.descriptionHash, 'description');
+  const profileNotice = fieldStatus(notice, pi18n?.noticeHash, 'bookingNotice');
+  const profile = profileDesc || profileNotice
+    ? {
+        description: profileDesc,
+        bookingNotice: profileNotice,
+        sourceLocale: pi18n?.sourceLocale ?? null,
+        existingLocales: Object.keys(pi18n?.entries ?? {}),
+      }
+    : null;
+  if (profile) profilesToDo++;
+
+  if (items.length === 0 && categories.length === 0 && !profile) continue;
 
   todo.push({
     providerId: p.id,
@@ -215,6 +242,7 @@ for (const p of providers.docs) {
     otherServices: siblings.slice(0, 20),
     services: items,
     categories,
+    profile,
   });
 
   const never = items.filter((i) => i.status === 'never').length;
@@ -227,6 +255,7 @@ for (const p of providers.docs) {
     stale ? `${stale} modifiées` : null,
     onlyChoices ? `${onlyChoices} choix seulement` : null,
     categories.length ? `${categories.length} catégorie(s)` : null,
+    profile ? `profil (${[profileDesc && 'bio', profileNotice && 'consigne'].filter(Boolean).join(' + ')})` : null,
   ].filter(Boolean);
   lines.push(
     `  ${(prov.businessName ?? '?').padEnd(24)} ${String(items.length).padStart(3)} à traiter` +
@@ -236,6 +265,7 @@ for (const p of providers.docs) {
 
 const total = todo.reduce((n, p) => n + p.services.length, 0);
 const totalCats = todo.reduce((n, p) => n + p.categories.length, 0);
+const totalProfiles = todo.reduce((n, p) => n + (p.profile ? 1 : 0), 0);
 const choiceChars = (s) =>
   (s.choices?.items ?? []).reduce(
     (m, t) => m + t.name.length + t.description.length + (t.values ?? []).join('').length,
@@ -251,19 +281,22 @@ const chars = todo.reduce(
         choiceChars(s),
       0,
     ) +
-    p.categories.reduce((m, c) => m + c.current.name.length, 0),
+    p.categories.reduce((m, c) => m + c.current.name.length, 0) +
+    (p.profile?.description?.text.length ?? 0) +
+    (p.profile?.bookingNotice?.text.length ?? 0),
   0,
 );
 
 console.log(
   `\n${scanned} prestations examinées · ${upToDate} à jour · ${total} à traiter` +
     `${choicesOnly ? ` (dont ${choicesOnly} pour les choix seulement)` : ''}` +
-    `\n${categoriesScanned} catégories examinées · ${categoriesUpToDate} à jour · ${totalCats} à traiter\n`,
+    `\n${categoriesScanned} catégories examinées · ${categoriesUpToDate} à jour · ${totalCats} à traiter` +
+    `\n${profilesToDo} profil(s) (bio/consigne) à traiter\n`,
 );
 if (lines.length) console.log(lines.join('\n'));
 else console.log('  Rien à faire : tout est à jour.');
 
-if (total > 0 || totalCats > 0) {
+if (total > 0 || totalCats > 0 || totalProfiles > 0) {
   writeFileSync(
     outPath,
     JSON.stringify(
@@ -280,6 +313,7 @@ if (total > 0 || totalCats > 0) {
           'CHOIX : quand "choices" est présent, ajouter "choicesTranslations" = { <langue>: { variations: { <id>: { name, description?, options: { <id>: { name, description? } } } }, options: { <id>: { name, description? } }, infoFields: { <id>: { name, description?, values?: [...] } } } }',
           '— une entrée par id de "choices.items" (les valeurs de variation sous "variations.<groupe>.options.<id>"), les "values" de liste dans le MÊME ORDRE que l\'original.',
           'CATÉGORIES : pour chaque entrée de "categories", renseigner "sourceLocale" et "translations" = { <langue>: { name } }.',
+          'PROFIL : quand "profile" est présent, renseigner "profile.sourceLocale" et "profile.translations" = { <langue>: { description?, bookingNotice? } } — un champ par bloc non nul de "profile".',
         ].join(' '),
         providers: todo,
       },
