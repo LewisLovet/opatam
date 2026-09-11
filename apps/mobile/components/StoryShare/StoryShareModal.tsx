@@ -1136,28 +1136,49 @@ export function StoryShareModal({
             ]}
             showsVerticalScrollIndicator={false}
           >
-            {/* L'effet des stories : partagées, et vues de la page autour —
-                ce qui donne envie d'en refaire une. */}
-            <View style={[styles.impactRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {[
-                { key: 'shared', value: impact.shared, label: t('storyShare.impact.shared') },
-                {
-                  key: 'since',
-                  value: impact.viewsSinceLastStory,
-                  label: t('storyShare.impact.sinceLast'),
-                },
-                { key: 'week', value: impact.viewsLast7Days, label: t('storyShare.impact.last7Days') },
-              ].map((c, i) => (
-                <View key={c.key} style={[styles.impactCell, i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border }]}>
-                  <Text style={[styles.impactValue, { color: colors.text }]}>
-                    {impact.loading && c.key !== 'shared' ? '…' : c.value === null ? '—' : c.value}
-                  </Text>
-                  <Text style={[styles.impactLabel, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {c.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {/* L'effet des stories — une carte de marque, pas un tableau :
+                les chiffres doivent donner envie d'en refaire une. */}
+            {(() => {
+              const jours = impact.lastSharedAt
+                ? Math.floor((Date.now() - impact.lastSharedAt.getTime()) / 86_400_000)
+                : null;
+              const accroche =
+                impact.shared === 0
+                  ? t('storyShare.impact.hookFirst')
+                  : jours !== null && jours >= 7
+                    ? t('storyShare.impact.hookStale', { days: jours })
+                    : t('storyShare.impact.hookKeepGoing');
+              const cellules = [
+                { key: 'shared', icon: 'share-social', value: impact.shared, label: t('storyShare.impact.shared') },
+                { key: 'since', icon: 'eye', value: impact.viewsSinceLastStory, label: t('storyShare.impact.sinceLast') },
+                { key: 'week', icon: 'trending-up', value: impact.viewsLast7Days, label: t('storyShare.impact.last7Days') },
+              ] as const;
+              return (
+                <LinearGradient
+                  colors={['#2A4AA5', '#1B2F6E', '#152551']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.impactCard}
+                >
+                  <View style={styles.impactDecor} />
+                  <View style={styles.impactHead}>
+                    <Text style={styles.impactEyebrow}>{t('storyShare.impact.title')}</Text>
+                    <Text style={styles.impactHook}>{accroche}</Text>
+                  </View>
+                  <View style={styles.impactRow}>
+                    {cellules.map((c, i) => (
+                      <View key={c.key} style={[styles.impactCell, i > 0 && styles.impactCellSep]}>
+                        <Ionicons name={c.icon as any} size={15} color="#F4C928" />
+                        <Text style={styles.impactValue}>
+                          {impact.loading && c.key !== 'shared' ? '…' : c.value === null ? '—' : c.value}
+                        </Text>
+                        <Text style={styles.impactLabel} numberOfLines={2}>{c.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </LinearGradient>
+              );
+            })()}
 
             <View style={styles.chooserIntro}>
               <Text style={[styles.chooserTitle, { color: colors.text }]}>
@@ -2460,10 +2481,40 @@ const styles = StyleSheet.create({
   },
   /** L'écran de choix du contenu. */
   chooserIntro: { gap: 6, marginBottom: 4 },
-  impactRow: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
-  impactCell: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, gap: 2 },
-  impactValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  impactLabel: { fontSize: 10.5, lineHeight: 13, textAlign: 'center', fontWeight: '600' },
+  impactCard: {
+    borderRadius: 18,
+    padding: 16,
+    overflow: 'hidden',
+    gap: 14,
+    shadowColor: '#1B2F6E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  impactDecor: {
+    position: 'absolute',
+    top: -50,
+    right: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(244,201,40,0.12)',
+  },
+  impactHead: { gap: 4 },
+  impactEyebrow: { color: '#F4C928', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  impactHook: { color: '#FFFFFF', fontSize: 15, lineHeight: 20, fontWeight: '700' },
+  impactRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  impactCell: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, gap: 3 },
+  impactCellSep: { borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.14)' },
+  impactValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+  impactLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 10.5, lineHeight: 13, textAlign: 'center', fontWeight: '600' },
   chooserTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
   chooserLead: { fontSize: 13.5, lineHeight: 19 },
   chooserRow: {

@@ -2549,7 +2549,11 @@
     "impact": {
       "shared": "Stories partilhadas",
       "sinceLast": "Visitas desde a última story",
-      "last7Days": "Visitas em 7 dias"
+      "last7Days": "Visitas em 7 dias",
+      "title": "AS SUAS STORIES",
+      "hookFirst": "Publique a sua primeira story: é o que traz mais visitas.",
+      "hookStale": "A sua última story foi há {{days}} dias — uma nova reacende a atenção.",
+      "hookKeepGoing": "Bom ritmo. Uma story por semana basta para animar a sua página."
     }
   },
   "proServices": {

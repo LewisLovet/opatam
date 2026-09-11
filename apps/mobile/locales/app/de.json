@@ -2549,7 +2549,11 @@
     "impact": {
       "shared": "Geteilte Stories",
       "sinceLast": "Aufrufe seit letzter Story",
-      "last7Days": "Aufrufe in 7 Tagen"
+      "last7Days": "Aufrufe in 7 Tagen",
+      "title": "IHRE STORIES",
+      "hookFirst": "Posten Sie Ihre erste Story: nichts bringt mehr Besuche.",
+      "hookStale": "Ihre letzte Story ist {{days}} Tage her — eine neue holt die Aufmerksamkeit zurück.",
+      "hookKeepGoing": "Guter Lauf. Eine Story pro Woche hält Ihre Seite lebendig."
     }
   },
   "proServices": {
