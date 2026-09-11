@@ -2545,6 +2545,11 @@
       "bannerCard": "Karte",
       "bannerCompact": "Dezent",
       "bannerNone": "Keins"
+    },
+    "impact": {
+      "shared": "Geteilte Stories",
+      "sinceLast": "Aufrufe seit letzter Story",
+      "last7Days": "Aufrufe in 7 Tagen"
     }
   },
   "proServices": {

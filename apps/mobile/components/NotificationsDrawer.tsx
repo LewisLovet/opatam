@@ -12,7 +12,7 @@
  * nothing crashes — the real blur appears once the app is rebuilt.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Modal,
@@ -94,6 +94,57 @@ function Thumb({
         </View>
       ) : null}
     </Wrapper>
+  );
+}
+
+/**
+ * Image d'une notification, montrée ENTIÈRE (à son propre format, jamais
+ * recadrée) et ouvrable en plein écran d'un tap. Le recadrage à 160 px de
+ * haut coupait l'essentiel des visuels (captures d'écran verticales).
+ */
+function DetailImage({ uri }: { uri: string }) {
+  const insets = useSafeAreaInsets();
+  const [ratio, setRatio] = useState<number | null>(null);
+  const [ouverte, setOuverte] = useState(false);
+  useEffect(() => {
+    let actif = true;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (actif && w > 0 && h > 0) setRatio(w / h);
+      },
+      () => {
+        if (actif) setRatio(16 / 9);
+      },
+    );
+    return () => {
+      actif = false;
+    };
+  }, [uri]);
+  return (
+    <>
+      <Pressable onPress={() => setOuverte(true)} style={styles.detailImage}>
+        <Image
+          source={{ uri }}
+          // Plafonné en hauteur pour ne pas pousser le texte hors de vue ;
+          // l'image complète est à un tap.
+          style={{ width: '100%', aspectRatio: ratio ?? 16 / 9, maxHeight: 360 }}
+          resizeMode="contain"
+        />
+      </Pressable>
+      <Modal visible={ouverte} transparent animationType="fade" onRequestClose={() => setOuverte(false)}>
+        <Pressable style={styles.viewerOverlay} onPress={() => setOuverte(false)}>
+          <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+          <Pressable
+            onPress={() => setOuverte(false)}
+            hitSlop={12}
+            style={[styles.viewerClose, { top: insets.top + 12 }]}
+          >
+            <Ionicons name="close" size={22} color="#fff" />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -264,11 +315,7 @@ export function NotificationsDrawer({
                   {formatDate(selected.publishedAtMs, i18n.language)}
                 </Text>
                 {selected.imageUrl ? (
-                  <Image
-                    source={{ uri: selected.imageUrl }}
-                    style={styles.detailImage}
-                    resizeMode="cover"
-                  />
+                  <DetailImage uri={selected.imageUrl} />
                 ) : null}
                 <Text variant="body" style={{ color: colors.text, lineHeight: 22 }}>
                   {selected.modalBody || selected.body}
@@ -488,9 +535,20 @@ const styles = StyleSheet.create({
   },
   detailImage: {
     width: '100%',
-    height: 160,
     borderRadius: 14,
     marginBottom: 16,
+    overflow: 'hidden',
+  },
+  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.96)', alignItems: 'center', justifyContent: 'center' },
+  viewerClose: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   thumbWrap: {
     width: '100%',

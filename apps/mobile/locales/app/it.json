@@ -2545,6 +2545,11 @@
       "bannerCard": "Scheda",
       "bannerCompact": "Discreto",
       "bannerNone": "Nessuno"
+    },
+    "impact": {
+      "shared": "Story condivise",
+      "sinceLast": "Visite dall'ultima story",
+      "last7Days": "Visite in 7 giorni"
     }
   },
   "proServices": {

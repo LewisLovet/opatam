@@ -67,6 +67,7 @@ import { Text } from '../Text';
 import { useProvider } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
 import { useServiceCategories } from '../../hooks/useServiceCategories';
+import { useStoryImpact } from '../../hooks/useStoryImpact';
 import { ServicePickerModal } from '../business';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -302,6 +303,7 @@ export function StoryShareModal({
   const insets = useSafeAreaInsets();
   const { provider, refreshProvider } = useProvider();
   const { categories } = useServiceCategories(provider?.id);
+  const impact = useStoryImpact(provider, provider?.id);
   const viewRef = useRef<View>(null);
   const [sharing, setSharing] = useState<string | null>(null);
   const [services, setServices] = useState<WithId<Service>[]>([]);
@@ -1134,6 +1136,29 @@ export function StoryShareModal({
             ]}
             showsVerticalScrollIndicator={false}
           >
+            {/* L'effet des stories : partagées, et vues de la page autour —
+                ce qui donne envie d'en refaire une. */}
+            <View style={[styles.impactRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {[
+                { key: 'shared', value: impact.shared, label: t('storyShare.impact.shared') },
+                {
+                  key: 'since',
+                  value: impact.viewsSinceLastStory,
+                  label: t('storyShare.impact.sinceLast'),
+                },
+                { key: 'week', value: impact.viewsLast7Days, label: t('storyShare.impact.last7Days') },
+              ].map((c, i) => (
+                <View key={c.key} style={[styles.impactCell, i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border }]}>
+                  <Text style={[styles.impactValue, { color: colors.text }]}>
+                    {impact.loading && c.key !== 'shared' ? '…' : c.value === null ? '—' : c.value}
+                  </Text>
+                  <Text style={[styles.impactLabel, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {c.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
             <View style={styles.chooserIntro}>
               <Text style={[styles.chooserTitle, { color: colors.text }]}>
                 {t('storyShare.chooser.title')}
@@ -2435,6 +2460,10 @@ const styles = StyleSheet.create({
   },
   /** L'écran de choix du contenu. */
   chooserIntro: { gap: 6, marginBottom: 4 },
+  impactRow: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  impactCell: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, gap: 2 },
+  impactValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  impactLabel: { fontSize: 10.5, lineHeight: 13, textAlign: 'center', fontWeight: '600' },
   chooserTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
   chooserLead: { fontSize: 13.5, lineHeight: 19 },
   chooserRow: {

@@ -2545,6 +2545,11 @@
       "bannerCard": "Carte",
       "bannerCompact": "Discret",
       "bannerNone": "Aucun"
+    },
+    "impact": {
+      "shared": "Stories partagées",
+      "sinceLast": "Vues depuis la dernière story",
+      "last7Days": "Vues sur 7 jours"
     }
   },
   "proServices": {

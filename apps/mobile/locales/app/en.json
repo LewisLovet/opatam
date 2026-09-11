@@ -2545,6 +2545,11 @@
       "bannerCard": "Card",
       "bannerCompact": "Subtle",
       "bannerNone": "None"
+    },
+    "impact": {
+      "shared": "Stories shared",
+      "sinceLast": "Views since last story",
+      "last7Days": "Views in 7 days"
     }
   },
   "proServices": {
