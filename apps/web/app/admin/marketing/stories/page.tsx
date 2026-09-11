@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Share2, Users, Instagram, RefreshCw } from 'lucide-react';
+import { Loader2, Share2, Users, Instagram, RefreshCw, Eye } from 'lucide-react';
 import { adminHeaders } from '@/services/admin/adminFetch';
 
 /**
@@ -17,6 +17,7 @@ interface StoriesData {
   days: number;
   total: number;
   sharers: number;
+  storyViews: number;
   byContent: { content: string; label: string; count: number }[];
   byChannel: { channel: string; count: number }[];
   byWeek: { week: string; count: number }[];
@@ -25,6 +26,7 @@ interface StoriesData {
     businessName: string;
     photoURL: string | null;
     isPublished: boolean;
+    storyViews: number;
     total: number;
     byContent: Record<string, number>;
     lastAt: string | null;
@@ -118,9 +120,10 @@ export default function AdminStoriesPage() {
       ) : (
         <>
           {/* Chiffres clés */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { icon: <Share2 className="w-5 h-5" />, label: 'Partages', value: data.total },
+              { icon: <Eye className="w-5 h-5" />, label: 'Visites via une story', value: data.storyViews ?? 0, sub: 'lien ou QR ?src=story — cumul' },
               { icon: <Users className="w-5 h-5" />, label: 'Prestataires qui partagent', value: data.sharers },
               { icon: <Instagram className="w-5 h-5" />, label: 'Vers Instagram', value: instagram, sub: data.total > 0 ? `${Math.round((instagram / data.total) * 100)} % des partages` : undefined },
             ].map((k) => (
@@ -201,6 +204,7 @@ export default function AdminStoriesPage() {
                     <tr className="text-left text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-gray-700">
                       <th className="px-5 py-2.5 font-semibold">Prestataire</th>
                       <th className="px-3 py-2.5 font-semibold text-right">Partages</th>
+                      <th className="px-3 py-2.5 font-semibold text-right" title="Visites arrivées par un lien ou QR de story">Visites story</th>
                       <th className="px-3 py-2.5 font-semibold">Types</th>
                       <th className="px-5 py-2.5 font-semibold text-right">Dernier</th>
                     </tr>
@@ -228,6 +232,7 @@ export default function AdminStoriesPage() {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-right font-semibold text-gray-900 dark:text-white tabular-nums">{p.total}</td>
+                        <td className="px-3 py-3 text-right text-gray-600 dark:text-gray-300 tabular-nums">{p.storyViews ?? 0}</td>
                         <td className="px-3 py-3">
                           <div className="flex flex-wrap gap-1">
                             {Object.entries(p.byContent)

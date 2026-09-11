@@ -838,12 +838,20 @@ export function StoryShareModal({
     return true;
   }, []);
 
+  /**
+   * Le lien EMBARQUÉ dans les stories (QR, lien copié pour le sticker
+   * Instagram) porte `?src=story` : la visite est alors comptée à part
+   * (vues issues d'une story). Le texte affiché sur l'image reste l'adresse
+   * propre, sans paramètre.
+   */
+  const storyUrl = `${bookingUrl}?src=story`;
+
   // Copy booking link to clipboard
   const handleCopyLink = useCallback(async () => {
-    await Clipboard.setStringAsync(bookingUrl);
+    await Clipboard.setStringAsync(storyUrl);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
-  }, [bookingUrl]);
+  }, [storyUrl]);
 
   // Instagram — show link reminder modal first
   const handleShareInstagram = useCallback(() => {
@@ -1079,6 +1087,7 @@ export function StoryShareModal({
     photoURL: provider.photoURL,
     services: filteredServices,
     bookingUrl,
+    qrUrl: storyUrl,
     displayMode,
     availabilityGrid,
     monthGrid,

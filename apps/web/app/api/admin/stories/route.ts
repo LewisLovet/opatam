@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   // Noms des salons — une lecture groupée, pas une par ligne.
   const providerIds = Object.keys(byProvider);
-  const names: Record<string, { businessName: string; photoURL: string | null; isPublished: boolean }> = {};
+  const names: Record<string, { businessName: string; photoURL: string | null; isPublished: boolean; storyViews: number }> = {};
   if (providerIds.length > 0) {
     const refs = providerIds.map((id) => db.collection('providers').doc(id));
     const docs = await db.getAll(...refs);
@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
         businessName: x?.businessName || 'Prestataire supprimé',
         photoURL: x?.photoURL || null,
         isPublished: x?.isPublished === true,
+        storyViews: (x?.stats?.pageViews?.storyTotal ?? 0) + (x?.stats?.pageViews?.storyToday ?? 0),
       };
     }
   }
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
       businessName: names[id]?.businessName ?? id,
       photoURL: names[id]?.photoURL ?? null,
       isPublished: names[id]?.isPublished ?? false,
+      storyViews: names[id]?.storyViews ?? 0,
       total: byProvider[id].total,
       byContent: byProvider[id].byContent,
       lastAt: byProvider[id].lastAt?.toISOString() ?? null,
@@ -106,6 +108,9 @@ export async function GET(request: NextRequest) {
     days,
     total: snap.size,
     sharers: providerIds.length,
+    // Visites arrivées par un lien / QR de story (`?src=story`), cumul des
+    // prestataires qui ont partagé — mesure conservatrice, pas une attribution.
+    storyViews: Object.values(names).reduce((a, n) => a + n.storyViews, 0),
     byContent: Object.entries(byContent)
       .map(([content, count]) => ({ content, label: CONTENT_LABELS[content] ?? content, count }))
       .sort((a, b) => b.count - a.count),

@@ -219,10 +219,18 @@ export function ProviderPageClient({
     const key = `pv_${provider.id}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
+    // `?src=story` : lien ou QR d'une story Opatam → compté à part (storyToday).
+    let src: string | undefined;
+    try {
+      const v = new URLSearchParams(window.location.search).get('src');
+      if (v === 'story') src = 'story';
+    } catch {
+      /* SSR / URL illisible */
+    }
     fetch('/api/analytics/track-view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ providerId: provider.id }),
+      body: JSON.stringify({ providerId: provider.id, ...(src ? { src } : {}) }),
     }).catch(() => {});
     // Meta Pixel — ViewContent. Drives Meta's mid-funnel optimisation
     // ("people who viewed a provider page") and lets us build retargeting

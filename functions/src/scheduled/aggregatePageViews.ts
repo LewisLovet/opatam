@@ -77,9 +77,16 @@ export const aggregatePageViews = onSchedule(
       await Promise.all(batch.map(async (providerDoc) => {
         const providerId = providerDoc.id;
         const data = providerDoc.data();
-        const todayViews = data?.stats?.pageViews?.today ?? 0;
+        const todayViews: number = data?.stats?.pageViews?.today ?? 0;
+        const storyToday: number = data?.stats?.pageViews?.storyToday ?? 0;
         const currentTotal = data?.stats?.pageViews?.total ?? 0;
 
+        // Garde contre une double exécution (relance manuelle, retry du
+        // scheduler) : le jour est déjà archivé → on ne le compte pas deux fois.
+        if (data?.stats?.pageViews?.lastAggregatedDate === yesterdayStr) {
+          skipped++;
+          return;
+        }
         if (todayViews === 0 && currentTotal === 0) {
           skipped++;
           return;
@@ -93,6 +100,7 @@ export const aggregatePageViews = onSchedule(
               providerId,
               date: yesterdayStr,
               count: FieldValue.increment(todayViews),
+              ...(storyToday > 0 ? { storyCount: FieldValue.increment(storyToday) } : {}),
             }, { merge: true });
             serverTracker.trackWrite('pageViewsDaily', 1);
 
@@ -129,13 +137,17 @@ export const aggregatePageViews = onSchedule(
             }
           }
 
-          // 3. Update provider: total += today, reset today, set last7/30
-          const newTotal = currentTotal + todayViews;
+          // 3. Update provider — en INCRÉMENTS RELATIFS : une vue arrivée
+          //    entre la lecture et cette écriture n'est ni perdue (today
+          //    n'est pas remis à 0 en absolu) ni doublée.
           await db.collection('providers').doc(providerId).update({
-            'stats.pageViews.total': newTotal,
-            'stats.pageViews.today': 0,
+            'stats.pageViews.total': FieldValue.increment(todayViews),
+            'stats.pageViews.today': FieldValue.increment(-todayViews),
+            'stats.pageViews.storyTotal': FieldValue.increment(storyToday),
+            'stats.pageViews.storyToday': FieldValue.increment(-storyToday),
             'stats.pageViews.last7Days': last7Days,
             'stats.pageViews.last30Days': last30Days,
+            'stats.pageViews.lastAggregatedDate': yesterdayStr,
           });
           serverTracker.trackWrite('providers', 1);
 

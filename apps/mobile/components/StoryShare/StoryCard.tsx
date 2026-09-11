@@ -76,6 +76,8 @@ export interface StoryCardProps {
   photoURL?: string | null;
   services: Array<{ name: string; price: number; duration: number }>;
   bookingUrl: string;
+  /** URL encodée dans le QR (avec `?src=story`) — le texte affiché reste `bookingUrl`. */
+  qrUrl?: string;
   displayMode?:
     | 'services'
     | 'availabilities'
@@ -2203,6 +2205,7 @@ export function StoryCard({
   ratingCount,
   loyalty,
   realisation,
+  qrUrl,
 }: StoryCardProps) {
   const topServices = services.slice(0, 5);
   const subtitle = [category, city].filter(Boolean).join(' • ').toUpperCase();
@@ -2443,7 +2446,7 @@ export function StoryCard({
               <View style={[styles.qrContainer, { backgroundColor: palette.qrContainerBg }]}>
                 {QRCode ? (
                   <QRCode
-                    value={bookingUrl}
+                    value={qrUrl ?? bookingUrl}
                     size={140}
                     backgroundColor="white"
                     color="#111827"

@@ -88,7 +88,8 @@ import {
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
   getServiceMinDuration, isTeamTier, getServiceCategoryText } from '@booking-app/shared';
-import { analyticsService, type WithId } from '@booking-app/firebase';
+import { type WithId } from '@booking-app/firebase';
+import { API_URL } from '../../../lib/config';
 import { getServiceText } from '@booking-app/shared';
 import { ProviderAccent } from '../../../components/ProviderAccent';
 
@@ -320,7 +321,13 @@ function ProviderDetailScreen({
   useEffect(() => {
     if (!provider?.id || isPreview || trackedRef.current === provider.id) return;
     trackedRef.current = provider.id;
-    analyticsService.trackPageView(provider.id).catch(() => {});
+    // Par l'API web, pas par le SDK : les règles Firestore refusent l'écriture
+    // de `stats` depuis un client — ces vues étaient perdues en silence.
+    fetch(`${API_URL}/api/analytics/track-view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: provider.id }),
+    }).catch(() => {});
   }, [provider?.id, isPreview]);
 
   // Tab & selection state

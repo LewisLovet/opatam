@@ -29,10 +29,12 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Connexion requise');
 
-  const { providerId, content, channel } = (request.data ?? {}) as {
+  const { providerId, content, channel, nonce } = (request.data ?? {}) as {
     providerId?: string;
     content?: string;
     channel?: string;
+    /** Identifiant aléatoire par action : une relance réseau ne compte pas deux fois. */
+    nonce?: string;
   };
   if (!providerId) throw new HttpsError('invalid-argument', 'providerId requis');
   // Provider.id === User.id — pas de lecture supplémentaire nécessaire.
@@ -46,14 +48,45 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
   }
 
   const db = admin.firestore();
-  await Promise.all([
-    db.collection('storyEvents').add({
+  const providerRef = db.collection('providers').doc(providerId);
+
+  // Anti-doublon léger : même contenu + même canal à moins de 10 s du
+  // précédent = une relance, pas un second partage. Lu sur le compteur
+  // dénormalisé, sans index.
+  const snap = await providerRef.get();
+  const st = snap.data()?.stats?.stories ?? {};
+  const lastAt: Date | undefined = st.lastSharedAt?.toDate?.();
+  if (
+    lastAt &&
+    Date.now() - lastAt.getTime() < 10_000 &&
+    st.lastContent === content &&
+    st.lastChannel === channel
+  ) {
+    return { success: true, deduplicated: true };
+  }
+
+  // Le nonce devient l'identifiant du document : un second appel avec le
+  // même nonce échoue à la création et ne compte rien.
+  const nonceOk = typeof nonce === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(nonce);
+  const eventRef = nonceOk ? db.collection('storyEvents').doc(`${providerId}_${nonce}`) : db.collection('storyEvents').doc();
+  try {
+    await eventRef.create({
       providerId,
       content,
       channel,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    }),
-    db.collection('providers').doc(providerId).update({
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: number }).code === 6 /* ALREADY_EXISTS */) {
+      return { success: true, deduplicated: true };
+    }
+    throw e;
+  }
+
+  await Promise.all([
+    providerRef.update({
+      'stats.stories.lastContent': content,
+      'stats.stories.lastChannel': channel,
       'stats.stories.shared': admin.firestore.FieldValue.increment(1),
       'stats.stories.lastSharedAt': admin.firestore.FieldValue.serverTimestamp(),
       // Compteurs par type et par période — base des objectifs de partage

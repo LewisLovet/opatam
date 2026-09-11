@@ -263,6 +263,12 @@ export interface PageViewStats {
   total: number;         // Accumulated total, updated nightly
   last7Days: number;     // Recalculated nightly from daily docs
   last30Days: number;    // Recalculated nightly from daily docs
+  /** Vues arrivées par un lien ou QR de story (`?src=story`) — jour courant / cumul.
+   *  Mesure conservatrice : une visite via Google après une story n'y est pas. */
+  storyToday?: number;
+  storyTotal?: number;
+  /** Dernier jour archivé par aggregatePageViews (« 2026-09-11 ») — garde contre une double exécution. */
+  lastAggregatedDate?: string;
 }
 
 // Daily page view document (pageViewsDaily collection)

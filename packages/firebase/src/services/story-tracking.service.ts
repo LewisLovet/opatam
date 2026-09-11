@@ -46,7 +46,10 @@ class StoryTrackingService {
       // l'activité ne doit pas être gonflable depuis la console. L'événement
       // et le compteur sont écrits ensemble côté Admin SDK.
       const fns = getFunctions(app, 'europe-west1');
-      await httpsCallable(fns, 'recordStoryShare')({ providerId, content, channel });
+      // Un identifiant par action : une relance réseau de ce même appel ne
+      // crée pas un second événement côté serveur.
+      const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+      await httpsCallable(fns, 'recordStoryShare')({ providerId, content, channel, nonce });
     } catch (e) {
       console.warn('[stories] comptabilisation du partage:', e);
     }
