@@ -6,8 +6,8 @@
  *  - la PHOTO est le sujet : elle occupe tout le cadre, le reste se pose
  *    dessus sur des voiles sombres pour rester lisible quelle que soit l'image ;
  *  - Opatam est présent sans crier : le monogramme et le nom en en-tête, la
- *    phrase « Réservez chez … » et l'adresse en pied, comme les stories
- *    avis et fidélité ;
+ *    phrase « Réservez chez … » et la signature opatam.com en pied, comme
+ *    les stories avis et fidélité ;
  *  - zones sûres Instagram : l'en-tête commence sous la barre de progression
  *    (~64 px à l'échelle 360×640), le pied s'arrête au-dessus de la zone de
  *    réponse (~88 px). Un bandeau placé hors de ces zones serait masqué ;
@@ -69,7 +69,8 @@ interface RealisationStoryLayoutProps {
   category: string;
   city?: string;
   photoURL?: string | null;
-  bookingUrl: string;
+  /** Conservée pour l'appelant (QR, partage) ; le pied n'affiche que le domaine. */
+  bookingUrl?: string;
   realisation: StoryRealisation;
 }
 
@@ -116,10 +117,8 @@ export function RealisationStoryLayout({
   category,
   city,
   photoURL,
-  bookingUrl,
   realisation,
 }: RealisationStoryLayoutProps) {
-  const adresse = bookingUrl.replace(/^https?:\/\//, '');
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
   const avantApres = mode === 'avantApres';
   const empile = avantApres && realisation.splitLayout === 'stacked';
@@ -265,7 +264,9 @@ export function RealisationStoryLayout({
         <View style={{ flex: 1 }} />
         {realisation.bannerPosition === 'bottom' ? bandeau : null}
 
-        {/* Pied : le salon et son adresse — en texte, rien n'est cliquable.
+        {/* Pied : le salon, puis la signature — en texte, rien n'est cliquable.
+            Pas l'URL complète de la page : personne ne recopie un chemin
+            depuis une image, et elle écrasait le pied. Le domaine suffit.
             En avant / après empilé, le pied tombe au milieu de la photo du
             bas : version compacte, sur une ligne. */}
         {empile ? (
@@ -278,11 +279,10 @@ export function RealisationStoryLayout({
               <Text style={s.footerNameSmall} numberOfLines={1}>
                 {i18n.t('storyShare.review.bookAt', { name: businessName })}
               </Text>
-              <Text style={s.footerBrandSmall}>
-                OPATAM<Text style={s.footerBrandTld}>.COM</Text>
-              </Text>
             </View>
-            <Text style={s.footerUrlSmall} numberOfLines={1}>{adresse}</Text>
+            <Text style={s.footerBrandSmall}>
+              opatam<Text style={s.footerBrandTld}>.com</Text>
+            </Text>
           </View>
         ) : (
         <View style={s.footer}>
@@ -297,17 +297,15 @@ export function RealisationStoryLayout({
               {i18n.t('storyShare.review.bookAt', { name: businessName })}
             </Text>
           </View>
-          {/* La marque en grand, l'adresse exacte de la page en dessous, discrète */}
+          {/* La signature, discrète et en dernier : elle marque l'origine
+              sans voler la vedette au travail montré. */}
           <View style={s.footerBrandRow}>
             <View style={s.footerBrandLine} />
             <Text style={s.footerBrand}>
-              OPATAM<Text style={s.footerBrandTld}>.COM</Text>
+              opatam<Text style={s.footerBrandTld}>.com</Text>
             </Text>
             <View style={s.footerBrandLine} />
           </View>
-          <Text style={s.footerUrl} numberOfLines={1}>
-            {adresse}
-          </Text>
         </View>
         )}
       </View>
@@ -413,12 +411,13 @@ const s = StyleSheet.create({
   },
   avatarInitial: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   footerName: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', flexShrink: 1 },
-  footerBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  footerBrandLine: { width: 28, height: 1, backgroundColor: 'rgba(255,255,255,0.45)' },
-  footerBrand: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 1.2 },
+  // La signature descend (marginTop) et maigrit : elle occupait un tiers du
+  // pied et passait avant le travail montré.
+  footerBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  footerBrandLine: { width: 18, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
+  footerBrand: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700', letterSpacing: 1.4 },
   footerBrandTld: { color: OPATAM_OR },
-  footerUrl: { color: 'rgba(255,255,255,0.6)', fontSize: 10.5, letterSpacing: 0.3 },
-  footerCompact: { alignItems: 'center', gap: 2 },
+  footerCompact: { alignItems: 'center', gap: 6 },
   avatarSmall: {
     width: 18,
     height: 18,
@@ -432,6 +431,5 @@ const s = StyleSheet.create({
   },
   avatarInitialSmall: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
   footerNameSmall: { color: '#FFFFFF', fontSize: 10.5, fontWeight: '700', flexShrink: 1 },
-  footerBrandSmall: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginLeft: 4 },
-  footerUrlSmall: { color: 'rgba(255,255,255,0.55)', fontSize: 8.5, letterSpacing: 0.3 },
+  footerBrandSmall: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
 });

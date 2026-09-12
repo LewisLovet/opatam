@@ -1408,6 +1408,9 @@ const STANDARD_DARK: StandardPalette = {
 // cliquable. Dessiner un bouton promettrait une action impossible. Une phrase
 // et l'adresse disent la même chose sans mentir sur ce qu'on peut faire.
 
+/** Signature des stories : le domaine, jamais le chemin de la page. */
+const DOMAINE_AFFICHE = 'opatam.com';
+
 /** Bleu de marque — exactement celui de l'icône de l'application. */
 const OPATAM_BLEU = '#133b8f';
 /** Doré des accents : étoiles, filet, étiquette d'en-tête. */
@@ -1448,9 +1451,10 @@ function ReviewStoryLayout({
   const etoiles = Math.max(1, Math.min(5, Math.round(noteAffichee)));
   const commentaire = review?.comment?.trim() || null;
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
-  // « https://opatam.com/p/x » → « opatam.com/p/x » : le protocole ne dit rien
-  // à personne et mange de la place sur une ligne déjà étroite.
-  const adresse = bookingUrl.replace(/^https?:\/\//, '');
+  // Le DOMAINE seul, jamais l'URL complète de la page : personne ne recopie
+  // « opatam.com/p/mon-salon » depuis une image, et le chemin prenait toute
+  // la ligne. La signature marque l'origine, le QR donne le lien exact.
+  const adresse = DOMAINE_AFFICHE;
 
   return (
     <LinearGradient
@@ -1627,7 +1631,10 @@ function LoyaltyStoryLayout({
 }: LoyaltyStoryLayoutProps) {
   const pal = theme === 'light' ? BRAND_LIGHT : BRAND_DARK;
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
-  const adresse = bookingUrl.replace(/^https?:\/\//, '');
+  // Le DOMAINE seul, jamais l'URL complète de la page : personne ne recopie
+  // « opatam.com/p/mon-salon » depuis une image, et le chemin prenait toute
+  // la ligne. La signature marque l'origine, le QR donne le lien exact.
+  const adresse = DOMAINE_AFFICHE;
 
   // `seuil - 1` cases numérotées, puis la case récompense. Au-delà de dix,
   // les tampons deviendraient illisibles : on montre alors la récompense
@@ -2100,10 +2107,10 @@ const loyaltyStyles = StyleSheet.create({
   foot: { alignItems: 'center', paddingTop: 20 },
   ctaText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
   url: {
-    marginTop: 6,
-    fontSize: 9,
+    marginTop: 10,
+    fontSize: 8.5,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
   },
 });
 
@@ -2184,7 +2191,9 @@ const reviewStyles = StyleSheet.create({
 
   footer: { alignItems: 'center', gap: 5, paddingTop: 18 },
   cta: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  url: { fontSize: 12 },
+  // Discrète et détachée de l'appel à l'action : c'est une signature,
+  // pas une seconde accroche.
+  url: { fontSize: 10, letterSpacing: 0.8, marginTop: 5 },
 });
 
 export function StoryCard({
