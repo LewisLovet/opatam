@@ -281,7 +281,7 @@ export function RealisationStoryLayout({
               </Text>
             </View>
             <Text style={s.footerBrandSmall}>
-              opatam<Text style={s.footerBrandTld}>.com</Text>
+              OPATAM<Text style={s.footerBrandTld}>.COM</Text>
             </Text>
           </View>
         ) : (
@@ -302,7 +302,7 @@ export function RealisationStoryLayout({
           <View style={s.footerBrandRow}>
             <View style={s.footerBrandLine} />
             <Text style={s.footerBrand}>
-              opatam<Text style={s.footerBrandTld}>.com</Text>
+              OPATAM<Text style={s.footerBrandTld}>.COM</Text>
             </Text>
             <View style={s.footerBrandLine} />
           </View>

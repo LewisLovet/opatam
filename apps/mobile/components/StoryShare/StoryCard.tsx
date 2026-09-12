@@ -44,6 +44,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { APP_CONFIG, getCategoryLabel } from '@booking-app/shared/constants';
 import { RealisationStoryLayout, type StoryRealisation } from './RealisationStoryLayout';
 
+/**
+ * Signature des stories : le domaine, jamais le chemin de la page, et en
+ * CAPITALES — choix client, la marque doit se lire d'un coup d'œil sur une
+ * ligne volontairement petite.
+ */
+const DOMAINE_AFFICHE = 'OPATAM.COM';
+
 export type { StoryRealisation };
 
 /** A single day in the "Disponibilités" story mode (computed from real
@@ -410,7 +417,7 @@ function AvailabilityStoryLayout({
       {/* Footer */}
       <View style={availStoryStyles.footer}>
         <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>
-          opatam.com
+          {DOMAINE_AFFICHE}
         </Text>
       </View>
     </>
@@ -663,7 +670,7 @@ function TodayAvailabilityLayout({
       {/* Footer — branding only, no emoji per design */}
       <View style={todayStyles.footer}>
         <Text style={[todayStyles.footerLink, { color: palette.footerText }]}>
-          opatam.com
+          {DOMAINE_AFFICHE}
         </Text>
       </View>
 
@@ -1277,7 +1284,7 @@ function MonthAvailabilityStoryLayout({
 
       {/* Footer */}
       <View style={availStoryStyles.footer}>
-        <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>opatam.com</Text>
+        <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>{DOMAINE_AFFICHE}</Text>
       </View>
     </>
   );
@@ -1407,9 +1414,6 @@ const STANDARD_DARK: StandardPalette = {
 // PAS DE BOUTON, malgré la maquette : une story est une image, rien n'y est
 // cliquable. Dessiner un bouton promettrait une action impossible. Une phrase
 // et l'adresse disent la même chose sans mentir sur ce qu'on peut faire.
-
-/** Signature des stories : le domaine, jamais le chemin de la page. */
-const DOMAINE_AFFICHE = 'opatam.com';
 
 /** Bleu de marque — exactement celui de l'icône de l'application. */
 const OPATAM_BLEU = '#133b8f';
@@ -2493,7 +2497,7 @@ export function StoryCard({
                 resizeMode="contain"
               />
               <Text style={[styles.brandingText, { color: palette.brandingText }]}>
-                opatam.com
+                {DOMAINE_AFFICHE}
               </Text>
             </View>
             <View style={[styles.brandingDivider, { backgroundColor: palette.brandingDivider }]} />
