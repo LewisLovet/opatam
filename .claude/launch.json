@@ -22,6 +22,16 @@
       "autoPort": false
     },
     {
+      "name": "web-3002",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/lewislovet/Developer/booking-app' && export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && export NEXT_DIST_DIR=.next-3002 && pnpm --filter @booking-app/web exec next dev --hostname 0.0.0.0 --port 3002"
+      ],
+      "port": 3002,
+      "autoPort": false
+    },
+    {
       "name": "mobile-web",
       "url": "http://localhost:8081",
       "port": 8081

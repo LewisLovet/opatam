@@ -13,6 +13,10 @@ process.env.TZ = 'Europe/Paris';
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  // Deux serveurs de dev sur ce dépôt écrasent le même `.next` et se
+  // renvoient mutuellement des 404. `NEXT_DIST_DIR` donne à chacun son
+  // dossier de build ; non défini, rien ne change (build, Vercel, CI).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   transpilePackages: [
     '@booking-app/shared',
