@@ -137,6 +137,9 @@ export {
   // "Vos créations" marquee on /nail-artist & co.)
   LandingGalleryRepository,
   landingGalleryRepository,
+  // Vidéos de prestataires en page d'accueil
+  LandingVideoRepository,
+  landingVideoRepository,
   // Provider stats (3-tier aggregation)
   ProviderStatsRepository,
   providerStatsRepository,

@@ -32,6 +32,7 @@ import {
   MailWarning, CreditCard, ChevronRight,
   MessageCircle,
   Share2,
+  Clapperboard,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -128,6 +129,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Blog', href: '/admin/articles', icon: <FileText className="w-5 h-5" /> },
       { label: 'Galeries landings', href: '/admin/galleries', icon: <Images className="w-5 h-5" /> },
+      { label: "Vidéos de l'accueil", href: '/admin/videos', icon: <Clapperboard className="w-5 h-5" /> },
     ],
   },
   {

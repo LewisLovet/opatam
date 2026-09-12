@@ -32,6 +32,10 @@ export const storagePaths = {
    *  coiffeur, …). Admin uploads land here; the URL is then stored
    *  in the `landingGalleries/{slug}` Firestore doc. */
   landingGallery: (slug: string) => `landing/galleries/${slug}`,
+  /** Vidéos de prestataires mises en avant sur une page (accueil…).
+   *  Vidéo ET affiche vivent ici ; l'URL est stockée dans
+   *  `landingVideos/{slug}`. */
+  landingVideos: (slug: string) => `landing/videos/${slug}`,
 } as const;
 
 /**

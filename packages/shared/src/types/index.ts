@@ -1776,6 +1776,54 @@ export interface LandingGalleryItem {
   uploadedBy?: string;
 }
 
+/**
+ * Une vidéo de prestataire mise en avant sur la page d'accueil.
+ *
+ * Double usage assumé : montrer le VRAI travail fait avec Opatam, et
+ * renvoyer vers la page publique du salon. La citation est facultative —
+ * avec, la carte se lit comme un témoignage ; sans, comme une vitrine.
+ *
+ * Les informations du salon (nom, sous-titre, photo, slug) sont RECOPIÉES
+ * à l'ajout plutôt que lues à chaque rendu : l'accueil ne fait alors qu'une
+ * seule lecture Firestore, et un salon renommé n'altère pas une sélection
+ * validée par l'équipe. Le bouton « Rafraîchir » de l'admin les remet à jour.
+ */
+export interface LandingVideoItem {
+  /** Identifiant stable (uuid) — survit aux réordonnancements. */
+  id: string;
+  /** URL de la vidéo (Firebase Storage ou externe). */
+  src: string;
+  /** Affiche montrée avant lecture : c'est ELLE qui est chargée au rendu,
+   *  jamais la vidéo. Extraite de la première image à l'envoi. */
+  poster: string;
+  /** Prestataire mis en avant. */
+  providerId: string;
+  /** Slug de sa page publique — la carte y renvoie (`/p/{slug}`). */
+  providerSlug: string;
+  businessName: string;
+  /** « Onglerie · Lyon » — déjà mis en forme pour l'affichage. */
+  subtitle?: string | null;
+  /** Photo du salon, pour la pastille de la carte. */
+  photoURL?: string | null;
+  /** Citation facultative. Présente = carte témoignage. */
+  quote?: string | null;
+  /** Clé de tri (croissante). */
+  order: number;
+  /** Masquer sans supprimer — une sélection se prépare avant d'être montrée. */
+  published: boolean;
+  addedAt?: Date;
+  addedBy?: string;
+}
+
+/** Le bloc vidéo d'une page (id du doc = emplacement, « home »). */
+export interface LandingVideo {
+  /** Emplacement alimenté, par exemple `home`. */
+  slug: string;
+  /** Liste ordonnée (déjà triée par `order` à la lecture). */
+  items: LandingVideoItem[];
+  updatedAt: Date;
+}
+
 export interface LandingGallery {
   /** Slug of the vertical landing this gallery feeds, e.g. `nail-artist`. */
   slug: string;

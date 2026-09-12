@@ -15,6 +15,17 @@ service firebase.storage {
       return request.resource.contentType.matches('image/.*');
     }
 
+    function isVideoType() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    // Les vidéos de prestataires mises en avant sur l'accueil sont des
+    // formats verticaux courts ; 60 Mo laissent de la marge sans ouvrir
+    // la porte à un envoi de plusieurs centaines de mégaoctets.
+    function isUnder60MB() {
+      return request.resource.size < 60 * 1024 * 1024;
+    }
+
     function isUnder5MB() {
       return request.resource.size < 5 * 1024 * 1024;
     }
@@ -49,6 +60,16 @@ service firebase.storage {
     match /landing/galleries/{slug}/{allPaths=**} {
       allow read: if true;
       allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+    }
+
+    // Vidéos de prestataires mises en avant sur l'accueil, envoyées depuis
+    // /admin/videos — la vidéo ET son affiche. Lecture publique (la page
+    // d'accueil l'est) ; écriture authentifiée, l'autorité admin étant
+    // portée par l'AdminGuard de la page.
+    match /landing/videos/{slug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && ((isImageType() && isUnder5MB()) || (isVideoType() && isUnder60MB()));
     }
 
     // In-app notification images (uploaded from /admin/notifications).

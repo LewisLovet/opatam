@@ -47,6 +47,12 @@ export {
   landingGalleryRepository,
 } from './landingGallery.repository';
 
+// Vidéos de prestataires mises en avant (un doc par emplacement, `home`)
+export {
+  LandingVideoRepository,
+  landingVideoRepository,
+} from './landingVideo.repository';
+
 // Provider stats repository (3-tier aggregation, read-only)
 export {
   ProviderStatsRepository,

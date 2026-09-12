@@ -19,6 +19,11 @@ interface SearchResult {
   id: string;
   userId: string;
   businessName: string;
+  /** Slug de la page publique — utilisé par /admin/videos pour lier la carte. */
+  slug: string | null;
+  /** Catégorie et première ville — /admin/videos en compose le sous-titre. */
+  category: string | null;
+  city: string | null;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
@@ -62,6 +67,8 @@ export async function GET(request: NextRequest) {
           userId: (d.userId as string) ?? doc.id,
           businessName: (d.businessName as string) ?? '',
           slug: (d.slug as string) ?? '',
+          category: (d.category as string | null) ?? null,
+          city: Array.isArray(d.cities) && typeof d.cities[0] === 'string' ? (d.cities[0] as string) : null,
           photoURL: (d.photoURL as string | null) ?? null,
           affiliateId: (d.affiliateId as string | null) ?? null,
           rating: rawRating
@@ -103,6 +110,9 @@ export async function GET(request: NextRequest) {
         id: m.id,
         userId: m.userId,
         businessName: m.businessName,
+        slug: m.slug || null,
+        category: m.category,
+        city: m.city,
         email: u?.email ?? null,
         displayName: u?.displayName ?? null,
         photoURL: m.photoURL,

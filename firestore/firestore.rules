@@ -482,6 +482,17 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // === VIDÉOS DE PRESTATAIRES EN PAGE D'ACCUEIL ===
+    //
+    // Un doc par emplacement (id = `home`), liste ordonnée des vidéos mises
+    // en avant. Mêmes règles que les galeries : lecture publique (la page
+    // d'accueil l'est), écriture bloquée aux anonymes — l'autorité admin
+    // est portée par l'AdminGuard qui enveloppe /admin/videos.
+    match /landingVideos/{slug} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     // === PAGE VIEWS DAILY (read-only by provider, written by Cloud Function) ===
     //
     // Daily counts of vitrine views, populated by the
