@@ -411,9 +411,17 @@ const s = StyleSheet.create({
   },
   avatarInitial: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   footerName: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', flexShrink: 1 },
-  // La signature descend (marginTop) et maigrit : elle occupait un tiers du
-  // pied et passait avant le travail montré.
-  footerBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  // La signature maigrit et descend jusqu'au bord. Le `marginBottom` négatif
+  // la fait mordre sur la zone réservée à la réponse Instagram : c'est
+  // assumé pour CETTE ligne seulement, discrète et sans information utile,
+  // le nom du salon restant lui au-dessus de la zone.
+  footerBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 18,
+    marginBottom: -18,
+  },
   footerBrandLine: { width: 18, height: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
   footerBrand: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700', letterSpacing: 1.4 },
   footerBrandTld: { color: OPATAM_OR },
@@ -431,5 +439,5 @@ const s = StyleSheet.create({
   },
   avatarInitialSmall: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
   footerNameSmall: { color: '#FFFFFF', fontSize: 10.5, fontWeight: '700', flexShrink: 1 },
-  footerBrandSmall: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
+  footerBrandSmall: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: -12 },
 });

@@ -1905,7 +1905,8 @@ const LOYAL_OR = '#F4C928';
 const LOYAL_GRIS = '#6B7793';
 
 const loyaltyStyles = StyleSheet.create({
-  canvas: { flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 },
+  // Bas réduit : la signature descend au ras du bord (voir reviewStyles).
+  canvas: { flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   // `icon.png` est le carré bleu de l'icône, pas un monogramme détouré :
@@ -2107,7 +2108,7 @@ const loyaltyStyles = StyleSheet.create({
   foot: { alignItems: 'center', paddingTop: 20 },
   ctaText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
   url: {
-    marginTop: 10,
+    marginTop: 14,
     fontSize: 8.5,
     fontWeight: '600',
     letterSpacing: 0.8,
@@ -2115,7 +2116,9 @@ const loyaltyStyles = StyleSheet.create({
 });
 
 const reviewStyles = StyleSheet.create({
-  canvas: { flex: 1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 28 },
+  // Bas réduit : la signature descend au ras du bord, comme sur la story
+  // réalisation. Le reste du pied suit de la même hauteur.
+  canvas: { flex: 1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 14 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandMark: { width: 26, height: 26, borderRadius: 6 },
@@ -2193,7 +2196,7 @@ const reviewStyles = StyleSheet.create({
   cta: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
   // Discrète et détachée de l'appel à l'action : c'est une signature,
   // pas une seconde accroche.
-  url: { fontSize: 10, letterSpacing: 0.8, marginTop: 5 },
+  url: { fontSize: 10, letterSpacing: 0.8, marginTop: 10 },
 });
 
 export function StoryCard({
