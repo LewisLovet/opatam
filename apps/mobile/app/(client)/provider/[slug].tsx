@@ -1198,16 +1198,27 @@ function ProviderDetailScreen({
       {/* Booking Notice Modal */}
       <Modal visible={showBookingNotice} transparent animationType="fade">
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: spacing.lg }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, maxWidth: 340, width: '100%' }}>
+          {/* La consigne est écrite par le prestataire : elle peut faire dix
+              lignes comme trente. La fenêtre se limite donc à 80 % de la
+              hauteur d'écran et c'est le TEXTE qui défile — les deux boutons
+              restent visibles, sinon une consigne longue les poussait hors
+              de l'écran et la réservation devenait impossible. */}
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, maxWidth: 340, width: '100%', maxHeight: '80%' }}>
             <View style={{ alignItems: 'center', marginBottom: spacing.md }}>
               <Ionicons name="alert-circle-outline" size={40} color={colors.primary} />
             </View>
             <Text variant="h3" style={{ textAlign: 'center', marginBottom: spacing.sm }}>
               {t('providerScreen.notice.title')}
             </Text>
-            <Text variant="body" color="textSecondary" style={{ textAlign: 'center', marginBottom: spacing.lg }}>
-              {provider ? getProviderText(provider, i18n.language).bookingNotice : null}
-            </Text>
+            <ScrollView
+              style={{ flexShrink: 1, marginBottom: spacing.lg }}
+              contentContainerStyle={{ flexGrow: 0 }}
+              showsVerticalScrollIndicator
+            >
+              <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
+                {provider ? getProviderText(provider, i18n.language).bookingNotice : null}
+              </Text>
+            </ScrollView>
             <View style={{ gap: spacing.sm }}>
               <Button
                 title={t('providerScreen.notice.continue')}

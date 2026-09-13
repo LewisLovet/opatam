@@ -531,8 +531,12 @@ export function EmbedBookingFlow({
               setPendingServiceId(null);
             }}
           />
-          <div className="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-5 animate-fade-in">
-            <div className="flex items-center gap-2.5 mb-3">
+          {/* La consigne est écrite par le prestataire : dix lignes ou trente.
+              La fenêtre se limite à la hauteur de l'écran et c'est le TEXTE
+              qui défile — les deux boutons restent visibles, sinon une
+              consigne longue les poussait hors de l'écran. */}
+          <div className="relative w-full max-w-sm max-h-[85vh] flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-5 animate-fade-in">
+            <div className="flex items-center gap-2.5 mb-3 flex-shrink-0">
               <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
                 <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
@@ -540,10 +544,10 @@ export function EmbedBookingFlow({
                 {t('flow.notice.title')}
               </h3>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line mb-5">
+            <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line mb-5 overflow-y-auto overscroll-contain min-h-0">
               {provider.settings.bookingNotice}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <button
                 onClick={() => {
                   setNoticeOpen(false);

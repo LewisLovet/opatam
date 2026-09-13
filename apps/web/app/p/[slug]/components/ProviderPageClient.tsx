@@ -415,8 +415,12 @@ export function ProviderPageClient({
       {showNotice && bookingNotice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowNotice(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
+          {/* La consigne est écrite par le prestataire : dix lignes ou trente.
+              La fenêtre se limite à la hauteur de l'écran et c'est le TEXTE
+              qui défile — les deux boutons restent visibles, sinon une
+              consigne longue les poussait hors de l'écran. */}
+          <div className="relative w-full max-w-md max-h-[85vh] flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4 flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                 <Megaphone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
@@ -424,10 +428,10 @@ export function ProviderPageClient({
                 {t('notice.title')}
               </h3>
             </div>
-            <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6">
+            <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-line mb-6 overflow-y-auto overscroll-contain min-h-0">
               {bookingNotice}
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-shrink-0">
               <button
                 onClick={() => setShowNotice(false)}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
