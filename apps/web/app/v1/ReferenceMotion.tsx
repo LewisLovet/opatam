@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, Bell, CalendarDays, Globe, Smartphone, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, Globe, Smartphone, Users } from 'lucide-react';
 import s from './v1.module.css';
 import { CaptureViewer } from './CaptureViewer';
 
@@ -50,6 +50,15 @@ const clientScreens = [
   { file: 'acompte', title: 'L’acompte', alt: 'Choix du moyen de paiement pour régler un acompte dans Opatam', description: 'Si vous demandez un acompte, il se règle dans la foulée — carte, Apple Pay ou paiement en plusieurs fois.' },
 ];
 
+// Le téléphone du haut de page garde SES captures, Cam Beauty Studio : elles
+// ont été choisies pour cet emplacement, et le client tient à les y garder.
+// Format d'origine différent (1290 × 2796), d'où les dimensions portées.
+const heroScreens = [
+  { file: 'cam-profil', title: 'Votre vitrine', alt: 'Profil Cam Beauty Studio dans l’application Opatam', width: 1290, height: 2796 },
+  { file: 'cam-prestations', title: 'Les prestations', alt: 'Liste des prestations et tarifs de Cam Beauty Studio dans Opatam', width: 1290, height: 2796 },
+  { file: 'cam-creneaux', title: 'Les disponibilités', alt: 'Sélection d’une date et d’un horaire dans l’application Opatam', width: 1290, height: 2796 },
+];
+
 // Côté pro, le même écran raconte deux métiers : l'indépendant qui voit sa
 // journée, l'équipe qui voit toutes ses colonnes. D'où le sélecteur.
 const proScreens = [
@@ -57,15 +66,15 @@ const proScreens = [
   { file: 'agenda-equipe', title: 'En équipe', alt: 'Agenda Opatam d’une équipe, une colonne par membre en vue journée', description: 'En équipe, chaque membre a sa colonne. Filtrez par personne ou par catégorie pour ne voir que ce qui vous concerne.' },
 ];
 
-function Capture({ file, alt, priority = false }: { file: string; alt: string; priority?: boolean }) {
-  return <Image src={`/v1/captures/${file}.jpg`} alt={alt} width={1206} height={2622} sizes="(max-width: 600px) 280px, 320px" priority={priority} className={s.captureImage} />;
+function Capture({ file, alt, priority = false, width = 1206, height = 2622 }: { file: string; alt: string; priority?: boolean; width?: number; height?: number }) {
+  return <Image src={`/v1/captures/${file}.jpg`} alt={alt} width={width} height={height} sizes="(max-width: 600px) 280px, 320px" priority={priority} className={s.captureImage} />;
 }
 
 export function HeroMotion() {
   const { ref, active } = useMotion();
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
-  const screens = clientScreens.slice(0, 3);
+  const screens = heroScreens;
   useEffect(() => {
     if (!active || paused) return;
     const id = setTimeout(() => setStep(value => (value + 1) % 3), 5000);
@@ -75,14 +84,14 @@ export function HeroMotion() {
   return <div className={s.realHero} ref={ref} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }} onFocusCapture={() => setPaused(true)} role="region" aria-label="Aperçu du parcours client dans l’application">
     <div className={s.captureFrame}>
       {screens.map((screen, index) => <div key={screen.file} className={s.captureSlide} data-active={step === index} aria-hidden={step !== index}>
-        <Capture file={screen.file} alt={screen.alt} priority={index === 0} />
+        <Capture file={screen.file} alt={screen.alt} priority={index === 0} width={screen.width} height={screen.height} />
       </div>)}
     </div>
     <div className={s.captureControls}>
       <div role="group" aria-label="Choisir un écran">{screens.map((screen, index) => <button key={screen.file} aria-label={screen.title} aria-pressed={step === index} onClick={() => { setStep(index); setPaused(true); }}><span /></button>)}</div>
       <span>{screens[step].title}</span>
     </div>
-    <p className={s.captureCredit}>Dans l’app Opatam · Braidztouch</p>
+    <p className={s.captureCredit}>Dans l’app Opatam · Cam Beauty Studio</p>
   </div>;
 }
 
@@ -98,37 +107,62 @@ export function FeatureScenes() {
 }
 
 export function ProductGallery() {
+  const { ref, active } = useMotion();
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<'client' | 'pro'>('client');
   const [step, setStep] = useState(0);
   const [proStep, setProStep] = useState(0);
+  // Le parcours se joue tout seul, comme une démo : une étape toutes les
+  // 4 s tant que la section est visible. Un geste du visiteur (étape,
+  // suivant, agrandir, côté pro) reprend la main et arrête le défilement —
+  // rien de pire qu'un écran qui change sous le doigt.
+  const [auto, setAuto] = useState(true);
   const screen = view === 'client' ? clientScreens[step] : proScreens[proStep];
+  const dernier = clientScreens.length - 1;
+  const choisir = (index: number) => { setAuto(false); setStep(index); };
+  const suivant = () => choisir(step === dernier ? 0 : step + 1);
+  const precedent = () => choisir(step === 0 ? dernier : step - 1);
+  useEffect(() => {
+    if (!auto || !active || view !== 'client' || expanded) return;
+    const id = setTimeout(() => setStep(value => (value + 1) % clientScreens.length), 4000);
+    return () => clearTimeout(id);
+  }, [auto, active, view, expanded, step]);
   // Trois blocs et non deux : sur mobile, les sélecteurs d'étape doivent
   // tomber SOUS la capture. Empilés dans le bloc de texte, ils occupaient
   // tout l'écran et on ne voyait pas que l'image changeait plus bas.
   // Sur grand écran, la grille les remet dans la colonne de gauche.
-  return <div className={s.demo} data-reveal>
+  return <div className={s.demo} data-reveal data-auto={auto && active && view === 'client'} ref={ref}>
     <div className={s.demoIntro}>
       <span className={s.demoNumber}>VOTRE ACTIVITÉ, DES DEUX CÔTÉS</span>
       <h3>{view === 'client' ? 'Votre univers. Leur prochain rendez-vous.' : 'Tout votre planning. À portée de main.'}</h3>
       <p>{view === 'client' ? 'Une page à votre image et un parcours guidé, de la prestation au paiement de l’acompte.' : 'Le même agenda, que vous travailliez seul ou à plusieurs.'}</p>
       <div className={s.demoChoices} role="group" aria-label="Choisir le côté du produit">
         <button aria-pressed={view === 'client'} onClick={() => setView('client')}><Globe size={19} /><span>Le parcours client</span><ArrowRight size={18} /></button>
-        <button aria-pressed={view === 'pro'} onClick={() => setView('pro')}><Smartphone size={19} /><span>L’application pro</span><ArrowRight size={18} /></button>
+        <button aria-pressed={view === 'pro'} onClick={() => { setAuto(false); setView('pro'); }}><Smartphone size={19} /><span>L’application pro</span><ArrowRight size={18} /></button>
       </div>
     </div>
     <div className={s.demoSteps}>
       {view === 'client'
-        ? <div className={s.captureSteps} role="group" aria-label="Étapes du parcours client">{clientScreens.map((item, index) => <button key={item.file} aria-pressed={step === index} onClick={() => setStep(index)}><span>0{index + 1}</span>{item.title}</button>)}</div>
-        : <div className={`${s.captureSteps} ${s.captureStepsPair}`} role="group" aria-label="Taille de l’activité">{proScreens.map((item, index) => <button key={item.file} aria-pressed={proStep === index} onClick={() => setProStep(index)}>{item.title}</button>)}</div>}
+        ? <>
+          <div className={s.stepNav}>
+            <button type="button" onClick={precedent} aria-label="Étape précédente"><ArrowLeft size={18} /></button>
+            <div className={s.stepProgress} role="group" aria-label="Étapes du parcours client">
+              {clientScreens.map((item, index) => <button key={item.file} type="button" aria-label={`Étape ${index + 1} : ${item.title}`} aria-pressed={step === index} data-done={index < step} onClick={() => choisir(index)}><span /></button>)}
+            </div>
+            <span className={s.stepCount} aria-live="polite">Étape {step + 1} / {clientScreens.length}</span>
+            <button type="button" className={s.stepNext} onClick={suivant}>{step === dernier ? 'Revoir' : 'Étape suivante'} <ArrowRight size={17} /></button>
+          </div>
+          <div className={s.captureSteps} role="group" aria-label="Aller directement à une étape">{clientScreens.map((item, index) => <button key={item.file} type="button" aria-pressed={step === index} onClick={() => choisir(index)}><span>0{index + 1}</span>{item.title}</button>)}</div>
+        </>
+        : <div className={`${s.captureSteps} ${s.captureStepsPair}`} role="group" aria-label="Taille de l’activité">{proScreens.map((item, index) => <button key={item.file} type="button" aria-pressed={proStep === index} onClick={() => setProStep(index)}>{item.title}</button>)}</div>}
       <p className={s.screenDescription} aria-live="polite">{screen.description}</p>
       <a className={s.textLink} href="https://opatam.com/p/braidztouch-1" target="_blank" rel="noopener noreferrer">Voir sa page web en ligne <ArrowUpRight size={18} /></a>
       <p className={s.captureNote}>Captures de l’application Opatam. Le lien ouvre la vraie page web de Braidztouch.</p>
     </div>
     <figure className={s.galleryStage}>
       <div className={s.galleryLabel}>{view === 'client' ? 'CÔTÉ CLIENT' : 'CÔTÉ PRO'}<span>APP OPATAM</span></div>
-      <button key={screen.file} onClick={() => setExpanded(true)} className={s.galleryCapture} aria-label={`Agrandir : ${screen.title}`}><Capture file={screen.file} alt={screen.alt} /></button>
-      <figcaption><strong>{screen.title}</strong><button onClick={() => setExpanded(true)}>Agrandir <ArrowUpRight size={14} /></button></figcaption>
+      <button key={screen.file} onClick={() => { setAuto(false); setExpanded(true); }} className={s.galleryCapture} aria-label={`Agrandir : ${screen.title}`}><Capture file={screen.file} alt={screen.alt} /></button>
+      <figcaption><strong>{screen.title}</strong><button onClick={() => { setAuto(false); setExpanded(true); }}>Agrandir <ArrowUpRight size={14} /></button></figcaption>
     </figure>
     {expanded && <CaptureViewer file={screen.file} title={screen.title} onClose={() => setExpanded(false)} />}
   </div>;

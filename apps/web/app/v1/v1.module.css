@@ -153,7 +153,8 @@
 .stripHeading p { font-size: 14px; color: var(--muted); }
 .stripHeading strong { color: var(--ink); font-weight: 500; }
 .stripHeading button { border: 1px solid var(--line); border-radius: 20px; background: #fff; color: var(--muted); padding: 5px 12px; display: flex; align-items: center; gap: 7px; font-size: 12px; }
-.track { display: flex; width: max-content; animation: marquee 65s linear infinite; }
+/* 28 s pour un tour au lieu de 65 : à 65 s le bandeau paraissait figé. */
+.track { display: flex; width: max-content; animation: marquee 28s linear infinite; }
 .tradeGroup { display: flex; gap: 44px; padding-right: 44px; flex-shrink: 0; }
 .trade { display: flex; align-items: center; gap: 19px; white-space: nowrap; font-size: 21px; letter-spacing: -.025em; }
 .trade img { width: 92px; height: 62px; object-fit: cover; border-radius: 5px; }
@@ -396,6 +397,13 @@
   .demoSteps .captureSteps::-webkit-scrollbar { display: none; }
   .demoSteps .captureSteps button { flex: 0 0 auto; scroll-snap-align: start; padding: 9px 13px; font-size: 13px; }
   .demoSteps .captureStepsPair { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+  /* Préfixées par `.demoSteps` : les règles de base de la barre sont
+     déclarées PLUS BAS dans ce fichier, à spécificité égale elles
+     l'emporteraient sur ce bloc. */
+  .demoSteps .stepNav { flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .demoSteps .stepProgress { order: -1; flex: 0 0 100%; }
+  .demoSteps .stepCount { margin-right: auto; }
+  .demoSteps .stepNext { min-height: 44px; padding: 10px 16px; font-size: 14px; }
 
   .wrap { width: calc(100% - 40px); }
   .section { padding-top: 65px; padding-bottom: 65px; }
@@ -685,7 +693,41 @@
 .realAgendaScene > span { color: var(--muted); font-size: 12px; }
 .sceneRow .textLink { margin-top: 22px; }
 .sceneRow .eyebrow { margin-top: 0; margin-bottom: 20px; font-size: 12px; }
-.captureSteps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 24px; }
+/* La barre de lecture du parcours : précédent · jauge · compteur · suivant.
+   Elle joue toute seule (une étape toutes les 4 s) et la jauge du segment
+   courant se remplit pendant ce temps — c'est ce qui accroche l'œil. */
+.stepNav { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
+.stepNav > button:first-child {
+  flex: 0 0 auto; width: 40px; height: 40px; display: grid; place-items: center;
+  border: 1px solid #dce2ef; border-radius: 50%; background: #fff; color: var(--navy);
+}
+.stepNav > button:first-child:hover { border-color: var(--navy); }
+.stepProgress { display: flex; flex: 1; gap: 5px; min-width: 0; }
+.stepProgress button {
+  flex: 1; height: 22px; padding: 0; border: 0; background: transparent; cursor: pointer;
+  display: grid; align-items: center;
+}
+.stepProgress button span {
+  display: block; height: 4px; border-radius: 2px; background: #d9e0ef; overflow: hidden; position: relative;
+}
+.stepProgress button[data-done='true'] span { background: var(--navy); }
+.stepProgress button[aria-pressed='true'] span::after {
+  content: ''; position: absolute; inset: 0; background: var(--navy);
+  transform-origin: left; transform: scaleX(0);
+  animation: stepFill 4s linear forwards;
+}
+.demo[data-auto='false'] .stepProgress button[aria-pressed='true'] span::after { animation: none; transform: scaleX(1); }
+.stepCount { flex: 0 0 auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stepNext {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px; border-radius: 999px;
+  background: var(--navy); color: #fff; border: 1px solid var(--navy);
+  font-size: 13px; font-weight: 600; transition: transform .2s, background .2s;
+}
+.stepNext:hover { background: var(--deep); transform: translateY(-1px); }
+@keyframes stepFill { to { transform: scaleX(1); } }
+
+.captureSteps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .captureSteps button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 11px 12px; border: 1px solid #dce2ef; border-radius: 12px; background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; }
 .captureSteps button span { font-size: 12px; opacity: .7; }
 .captureStepsPair button { justify-content: center; }
@@ -860,6 +902,7 @@
   .storyPending strong { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .stepProgress button[aria-pressed='true'] span::after { animation: none; transform: scaleX(1); }
   .hero h1 em::after { transform: scaleX(1); }
   .sceneRow[data-visible='false'] .sceneAppointment > span { transform: none; }
   .sceneRow[data-visible='false'] .reminderScene > div { transform: none; opacity: 1; }
