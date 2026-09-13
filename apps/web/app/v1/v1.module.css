@@ -643,7 +643,9 @@
 .providerRail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 360px); overflow-x: auto; scroll-snap-type: x mandatory; gap: 24px; padding: 8px 3px 24px; }
 .providerCard { scroll-snap-align: start; min-width: 0; }
 .providerMedia { position: relative; aspect-ratio: 9/16; border-radius: 20px; overflow: hidden; background: #0b173e; }
-.providerMedia > button { display: block; position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: #0b173e; color: #fff; }
+/* L'affiche cliquable occupe toute la carte — mais PAS la pastille de son,
+   qui est un bouton frère et se retrouvait étirée sur toute la surface. */
+.providerMedia > button:not(.soundToggle) { display: block; position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: #0b173e; color: #fff; }
 .providerMedia img { object-fit: cover; transition: transform .5s ease; }
 .providerMedia > button:hover img { transform: scale(1.035); }
 .providerMedia video { width: 100%; height: 100%; object-fit: contain; }
@@ -686,6 +688,25 @@
 .providerCta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 22px; min-height: 50px; padding: 13px 17px; border-radius: 999px; background: var(--yellow); color: #101b38; font-size: 14px; font-weight: 600; transition: background .2s, transform .2s; }
 .providerCta:hover { background: #ffdb47; transform: translateY(-2px); }
 .providerCta svg { flex-shrink: 0; }
+/* Notre bouton de son, posé sur le lecteur : discret, pas une barre YouTube. */
+.soundToggle {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .28);
+  background: rgba(10, 18, 40, .58);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  transition: background .2s, transform .2s;
+}
+.soundToggle:hover { background: rgba(10, 18, 40, .82); transform: scale(1.06); }
+
 .youtubeHost { position: absolute; inset: 0; width: 100%; height: 100%; }
 .youtubeHost iframe { width: 100%; height: 100%; border: 0; }
 .youtubeError { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; background: #0b173e; }

@@ -38,17 +38,27 @@ export function HeroFilm() {
   </div>;
 }
 
-// Original screenshots supplied by Opatam; keep their pixels and full aspect ratio.
+// Captures réelles de l'application, fournies par Opatam — le parcours
+// complet d'une cliente chez Braidztouch, de la vitrine au paiement de
+// l'acompte. Toutes au même format, donc un seul ratio à déclarer.
 const clientScreens = [
-  { file: 'profil', title: 'Votre vitrine', alt: 'Profil Cam Beauty Studio dans l’application Opatam', description: 'Votre univers, vos photos et vos avis, réunis sur votre profil.' },
-  { file: 'prestations', title: 'Les prestations', alt: 'Liste des prestations et tarifs de Cam Beauty Studio dans Opatam', description: 'Des prestations détaillées, avec leurs tarifs et leur durée.' },
-  { file: 'creneaux', title: 'Les disponibilités', alt: 'Sélection d’une date et d’un horaire dans l’application Opatam', description: 'Vos clients choisissent une date et un horaire parmi les disponibilités proposées.' },
-  { file: 'acompte', title: 'L’acompte', alt: 'Saisie d’une carte bancaire pour régler un acompte dans Opatam', description: 'Si vous activez les acomptes, le paiement fait partie du parcours. Cet écran montre la saisie de la carte, avant le paiement.' },
+  { file: 'vitrine', title: 'Votre vitrine', alt: 'Page Braidztouch dans l’application Opatam : photo, avis et carte de fidélité', description: 'Votre univers, vos photos, vos avis et votre carte de fidélité, réunis sur votre page.' },
+  { file: 'prestations', title: 'Les prestations', alt: 'Liste des prestations Braidztouch avec tarifs, durées et promotions', description: 'Vos prestations détaillées, avec leur durée, leur tarif et vos promotions en cours.' },
+  { file: 'options', title: 'Les options', alt: 'Choix de la longueur et des options d’une prestation dans Opatam', description: 'Longueurs, variantes, options : le tarif et la durée se mettent à jour au fur et à mesure.' },
+  { file: 'creneaux', title: 'La date', alt: 'Calendrier et horaires disponibles d’une prestation dans Opatam', description: 'Vos clients voient les jours complets et choisissent un horaire parmi ceux que vous laissez ouverts.' },
+  { file: 'recapitulatif', title: 'Le récapitulatif', alt: 'Récapitulatif d’une réservation Opatam avant confirmation', description: 'Prestation, date, professionnel et lieu : tout est relu avant de confirmer.' },
+  { file: 'acompte', title: 'L’acompte', alt: 'Choix du moyen de paiement pour régler un acompte dans Opatam', description: 'Si vous demandez un acompte, il se règle dans la foulée — carte, Apple Pay ou paiement en plusieurs fois.' },
 ];
-const agendaScreen = { file: 'agenda-jour', title: 'Votre agenda pro', alt: 'Véritable agenda professionnel Opatam en vue journée', description: 'Votre journée, vos rendez-vous et les plannings de votre équipe, dans la même application.' };
+
+// Côté pro, le même écran raconte deux métiers : l'indépendant qui voit sa
+// journée, l'équipe qui voit toutes ses colonnes. D'où le sélecteur.
+const proScreens = [
+  { file: 'agenda-solo', title: 'En solo', alt: 'Agenda Opatam d’un professionnel seul, en vue journée', description: 'En solo, votre journée tient sur une colonne : vos rendez-vous, dans l’ordre, avec la prestation et le client.' },
+  { file: 'agenda-equipe', title: 'En équipe', alt: 'Agenda Opatam d’une équipe, une colonne par membre en vue journée', description: 'En équipe, chaque membre a sa colonne. Filtrez par personne ou par catégorie pour ne voir que ce qui vous concerne.' },
+];
 
 function Capture({ file, alt, priority = false }: { file: string; alt: string; priority?: boolean }) {
-  return <Image src={`/v1/captures/${file}.jpg`} alt={alt} width={file === 'agenda-jour' ? 1206 : 1290} height={file === 'agenda-jour' ? 2622 : 2796} sizes="(max-width: 600px) 280px, 320px" priority={priority} className={s.captureImage} />;
+  return <Image src={`/v1/captures/${file}.jpg`} alt={alt} width={1206} height={2622} sizes="(max-width: 600px) 280px, 320px" priority={priority} className={s.captureImage} />;
 }
 
 export function HeroMotion() {
@@ -72,7 +82,7 @@ export function HeroMotion() {
       <div role="group" aria-label="Choisir un écran">{screens.map((screen, index) => <button key={screen.file} aria-label={screen.title} aria-pressed={step === index} onClick={() => { setStep(index); setPaused(true); }}><span /></button>)}</div>
       <span>{screens[step].title}</span>
     </div>
-    <p className={s.captureCredit}>Dans l’app Opatam · Cam Beauty Studio</p>
+    <p className={s.captureCredit}>Dans l’app Opatam · Braidztouch</p>
   </div>;
 }
 
@@ -81,9 +91,9 @@ export function FeatureScenes() {
   return <div className={s.featureScenes}>
     <article className={s.sceneRow} data-reveal>
       <div><p className={s.eyebrow}>VOTRE APPLICATION PRO</p><h3>Votre journée.<br />En un coup d’œil.</h3><p>Les réservations arrivent en ligne. Vous retrouvez une organisation claire, sans passer votre journée à jongler entre les messages.</p><div className={s.agendaBenefits}>{[[CalendarDays, "Un agenda qui s’adapte", "Jour, semaine ou mois : choisissez la vue qui vous aide à organiser votre activité."], [Users, "Votre équipe, au même endroit", "Filtrez par membre et par catégorie pour voir les rendez-vous qui vous concernent."], [Bell, "Les rappels, sans y penser", "Les rappels automatiques par email et notification accompagnent vos clients avant leur rendez-vous."]].map(([Icon, title, text]) => { const BenefitIcon = Icon as typeof CalendarDays; return <div key={String(title)}><span><BenefitIcon size={20} /></span><p><strong>{String(title)}</strong><small>{String(text)}</small></p></div>; })}</div><a href="#telecharger" className={s.textLink}>Télécharger l’application <ArrowRight size={18} /></a></div>
-      <div className={s.realAgendaScene}><button onClick={() => setExpanded(true)} className={s.agendaCapture} aria-label="Agrandir la capture de l’agenda pro"><Capture file="agenda-jour" alt={agendaScreen.alt} /></button><span>Vue journée · Application professionnelle</span></div>
+      <div className={s.realAgendaScene}><button onClick={() => setExpanded(true)} className={s.agendaCapture} aria-label="Agrandir la capture de l’agenda pro"><Capture file="agenda-equipe" alt={proScreens[1].alt} /></button><span>Vue journée · Application professionnelle</span></div>
     </article>
-    {expanded && <CaptureViewer file="agenda-jour" title={agendaScreen.title} onClose={() => setExpanded(false)} />}
+    {expanded && <CaptureViewer file="agenda-equipe" title="Votre agenda pro" onClose={() => setExpanded(false)} />}
   </div>;
 }
 
@@ -91,20 +101,23 @@ export function ProductGallery() {
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<'client' | 'pro'>('client');
   const [step, setStep] = useState(0);
-  const screen = view === 'client' ? clientScreens[step] : agendaScreen;
+  const [proStep, setProStep] = useState(0);
+  const screen = view === 'client' ? clientScreens[step] : proScreens[proStep];
   return <div className={s.demo} data-reveal>
     <div className={s.demoInfo}>
       <span className={s.demoNumber}>VOTRE ACTIVITÉ, DES DEUX CÔTÉS</span>
       <h3>{view === 'client' ? 'Votre univers. Leur prochain rendez-vous.' : 'Tout votre planning. À portée de main.'}</h3>
-      <p>{view === 'client' ? 'Un profil à votre image et un parcours guidé pour choisir une prestation, une date et un horaire.' : agendaScreen.description}</p>
+      <p>{view === 'client' ? 'Une page à votre image et un parcours guidé, de la prestation au paiement de l’acompte.' : 'Le même agenda, que vous travailliez seul ou à plusieurs.'}</p>
       <div className={s.demoChoices} role="group" aria-label="Choisir le côté du produit">
         <button aria-pressed={view === 'client'} onClick={() => setView('client')}><Globe size={19} /><span>Le parcours client</span><ArrowRight size={18} /></button>
         <button aria-pressed={view === 'pro'} onClick={() => setView('pro')}><Smartphone size={19} /><span>L’application pro</span><ArrowRight size={18} /></button>
       </div>
-      {view === 'client' && <div className={s.captureSteps} role="group" aria-label="Étapes du parcours client">{clientScreens.map((item, index) => <button key={item.file} aria-pressed={step === index} onClick={() => setStep(index)}><span>0{index + 1}</span>{item.title}</button>)}</div>}
+      {view === 'client'
+        ? <div className={s.captureSteps} role="group" aria-label="Étapes du parcours client">{clientScreens.map((item, index) => <button key={item.file} aria-pressed={step === index} onClick={() => setStep(index)}><span>0{index + 1}</span>{item.title}</button>)}</div>
+        : <div className={s.captureSteps} role="group" aria-label="Taille de l’activité">{proScreens.map((item, index) => <button key={item.file} aria-pressed={proStep === index} onClick={() => setProStep(index)}>{item.title}</button>)}</div>}
       <p className={s.screenDescription} aria-live="polite">{screen.description}</p>
-      <a className={s.textLink} href="https://opatam.com/p/cam-beauty-studio" target="_blank" rel="noopener noreferrer">Voir sa page web en ligne <ArrowUpRight size={18} /></a>
-      <p className={s.captureNote}>Captures de l’application Opatam. Le lien ouvre la vraie page web de Cam Beauty Studio.</p>
+      <a className={s.textLink} href="https://opatam.com/p/braidztouch-1" target="_blank" rel="noopener noreferrer">Voir sa page web en ligne <ArrowUpRight size={18} /></a>
+      <p className={s.captureNote}>Captures de l’application Opatam. Le lien ouvre la vraie page web de Braidztouch.</p>
     </div>
     <figure className={s.galleryStage}>
       <div className={s.galleryLabel}>{view === 'client' ? 'CÔTÉ CLIENT' : 'CÔTÉ PRO'}<span>APP OPATAM</span></div>

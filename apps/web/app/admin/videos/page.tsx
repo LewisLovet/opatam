@@ -192,35 +192,60 @@ export default function AdminLandingVideosPage() {
   );
 
   /**
+   * Écrit la liste en base. Prend la liste en paramètre plutôt que de lire
+   * l'état : l'ajout enregistre DANS LA FOULÉE, sans attendre le prochain
+   * rendu — sinon il fallait cliquer « Ajouter » puis « Enregistrer », et
+   * une vidéo ajoutée puis oubliée disparaissait au rechargement.
+   */
+  const enregistrer = useCallback(async (liste?: LandingVideoItem[]) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await landingVideoRepository.upsert(SLOT, liste ?? items);
+      setSavedAt(new Date());
+    } catch (e) {
+      console.error('[admin/videos] sauvegarde', e);
+      setError('Enregistrement impossible.');
+    } finally {
+      setSaving(false);
+    }
+  }, [items]);
+
+  /**
    * Ce que les deux façons d'ajouter ont en commun : le prestataire recopié,
    * la citation, la place en fin de liste et le brouillon par défaut.
    */
   const ajouterEntree = useCallback(
     (base: Pick<LandingVideoItem, 'kind' | 'src' | 'poster' | 'youtubeId'>) => {
       if (!cible) return;
-      setItems((prev) => [
-        ...prev,
-        {
-          ...base,
-          id: newId(),
-          providerId: cible.id,
-          providerSlug: cible.slug ?? '',
-          businessName: cible.businessName,
-          subtitle: sousTitre(cible.category, cible.city) || null,
-          photoURL: cible.photoURL,
-          quote: citation.trim() || null,
-          order: prev.length * 10,
-          published: false,
-          addedAt: new Date(),
-          addedBy: firebaseUser?.uid ?? undefined,
-        },
-      ]);
+      setItems((prev) => {
+        const suivante = [
+          ...prev,
+          {
+            ...base,
+            id: newId(),
+            providerId: cible.id,
+            providerSlug: cible.slug ?? '',
+            businessName: cible.businessName,
+            subtitle: sousTitre(cible.category, cible.city) || null,
+            photoURL: cible.photoURL,
+            quote: citation.trim() || null,
+            order: prev.length * 10,
+            published: false,
+            addedAt: new Date(),
+            addedBy: firebaseUser?.uid ?? undefined,
+          },
+        ];
+        // Enregistré tout de suite : une vidéo ajoutée est une vidéo gardée.
+        void enregistrer(suivante);
+        return suivante;
+      });
       setCitation('');
       setLien('');
       setCible(null);
       setRecherche('');
     },
-    [cible, citation, firebaseUser?.uid],
+    [cible, citation, enregistrer, firebaseUser?.uid],
   );
 
   /**
@@ -361,20 +386,6 @@ export default function AdminLandingVideosPage() {
     }
   }, []);
 
-  const enregistrer = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      await landingVideoRepository.upsert(SLOT, items);
-      setSavedAt(new Date());
-    } catch (e) {
-      console.error('[admin/videos] sauvegarde', e);
-      setError('Enregistrement impossible.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const publiees = items.filter((i) => i.published).length;
 
   return (
@@ -393,8 +404,8 @@ export default function AdminLandingVideosPage() {
               <CheckCircle2 className="w-4 h-4" /> Enregistré
             </span>
           )}
-          <Button onClick={enregistrer} disabled={saving || loading} leftIcon={<Save className="w-4 h-4" />}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          <Button onClick={() => void enregistrer()} disabled={saving || loading} variant="secondary" leftIcon={<Save className="w-4 h-4" />}>
+            {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </Button>
         </div>
       </div>
@@ -519,11 +530,10 @@ export default function AdminLandingVideosPage() {
             </div>
             <Button
               type="submit"
-              variant="secondary"
-              disabled={!cible || !lien.trim()}
+              disabled={!cible || !lien.trim() || saving}
               leftIcon={<Link2 className="w-4 h-4" />}
             >
-              Ajouter le lien
+              {saving ? 'Enregistrement…' : 'Ajouter et enregistrer'}
             </Button>
           </form>
           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -554,7 +564,7 @@ export default function AdminLandingVideosPage() {
               onClick={() => fichierRef.current?.click()}
               leftIcon={progression !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             >
-              {progression !== null ? `Envoi ${progression} %` : 'Envoyer un fichier'}
+              {progression !== null ? `Envoi ${progression} %` : 'Envoyer un fichier et enregistrer'}
             </Button>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               Format vertical conseillé (9:16), {MAX_VIDEO_MB} Mo max. L&apos;affiche est extraite
@@ -584,6 +594,8 @@ export default function AdminLandingVideosPage() {
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Seules les vidéos publiées apparaissent sur l&apos;accueil, dans cet ordre.
+            Un ajout est enregistré tout de suite ; l&apos;ordre, la citation et la
+            publication demandent « Enregistrer les modifications ».
           </p>
         </div>
 
