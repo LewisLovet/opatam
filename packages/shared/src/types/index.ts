@@ -1788,11 +1788,26 @@ export interface LandingGalleryItem {
  * seule lecture Firestore, et un salon renommé n'altère pas une sélection
  * validée par l'équipe. Le bouton « Rafraîchir » de l'admin les remet à jour.
  */
+/**
+ * D'où vient la vidéo. `file` = fichier envoyé dans Storage, lu par une
+ * balise `<video>`. `youtube` = lien fourni par le prestataire, lu dans un
+ * lecteur YouTube : rien à héberger, et la vidéo reste chez lui.
+ */
+export type LandingVideoKind = 'file' | 'youtube';
+
 export interface LandingVideoItem {
   /** Identifiant stable (uuid) — survit aux réordonnancements. */
   id: string;
-  /** URL de la vidéo (Firebase Storage ou externe). */
+  /** Absent sur les entrées créées avant l'ouverture aux liens : `file`. */
+  kind?: LandingVideoKind;
+  /**
+   * `file` : URL de téléchargement Storage, jouable dans `<video>`.
+   * `youtube` : l'URL de la vidéo telle que saisie — pour le lecteur,
+   * utiliser `youtubeId`, jamais cette URL.
+   */
   src: string;
+  /** Identifiant YouTube (11 caractères) quand `kind === 'youtube'`. */
+  youtubeId?: string | null;
   /** Affiche montrée avant lecture : c'est ELLE qui est chargée au rendu,
    *  jamais la vidéo. Extraite de la première image à l'envoi. */
   poster: string;

@@ -10,9 +10,13 @@
  * Ce que fait cet écran :
  *   - chercher un prestataire (autocomplétion) — nom, sous-titre, photo et
  *     slug sont recopiés dans l'entrée, donc une seule lecture à l'affichage ;
- *   - envoyer la vidéo dans Storage (`landing/videos/home`) avec progression,
- *     et en EXTRAIRE L'AFFICHE automatiquement (première image) — c'est elle
- *     qui est chargée sur l'accueil, jamais la vidéo ;
+ *   - DEUX façons d'ajouter une vidéo :
+ *       · un fichier envoyé dans Storage (`landing/videos/home`), dont
+ *         L'AFFICHE est extraite automatiquement (première image) — c'est
+ *         elle qui est chargée sur l'accueil, jamais la vidéo ;
+ *       · un lien YouTube : rien à héberger, l'affiche vient de YouTube et
+ *         la vidéo reste sur la chaîne du prestataire. C'est le cas le plus
+ *         courant, les salons publient déjà là-bas ;
  *   - citation facultative (avec = témoignage, sans = vitrine) ;
  *   - ordre d'affichage, publication différée, suppression.
  *
@@ -32,9 +36,11 @@ import {
   Loader2,
   RefreshCw,
   Save,
+  Link2,
   Search,
   Trash2,
   Upload,
+  Youtube,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminHeaders } from '@/services/admin/adminFetch';
@@ -45,7 +51,7 @@ import {
   uploadFileWithProgress,
 } from '@booking-app/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { getCategoryLabel } from '@booking-app/shared';
+import { extractYouTubeId, getCategoryLabel, youtubeThumbnailUrl } from '@booking-app/shared';
 import type { LandingVideoItem } from '@booking-app/shared';
 import { Button, Input, Switch, Textarea } from '@/components/ui';
 
@@ -130,6 +136,7 @@ export default function AdminLandingVideosPage() {
   const [resultats, setResultats] = useState<ProviderHit[]>([]);
   const [cible, setCible] = useState<ProviderHit | null>(null);
   const [citation, setCitation] = useState('');
+  const [lien, setLien] = useState('');
   const [progression, setProgression] = useState<number | null>(null);
   const fichierRef = useRef<HTMLInputElement | null>(null);
   const afficheRef = useRef<HTMLInputElement | null>(null);
@@ -184,6 +191,63 @@ export default function AdminLandingVideosPage() {
     [],
   );
 
+  /**
+   * Ce que les deux façons d'ajouter ont en commun : le prestataire recopié,
+   * la citation, la place en fin de liste et le brouillon par défaut.
+   */
+  const ajouterEntree = useCallback(
+    (base: Pick<LandingVideoItem, 'kind' | 'src' | 'poster' | 'youtubeId'>) => {
+      if (!cible) return;
+      setItems((prev) => [
+        ...prev,
+        {
+          ...base,
+          id: newId(),
+          providerId: cible.id,
+          providerSlug: cible.slug ?? '',
+          businessName: cible.businessName,
+          subtitle: sousTitre(cible.category, cible.city) || null,
+          photoURL: cible.photoURL,
+          quote: citation.trim() || null,
+          order: prev.length * 10,
+          published: false,
+          addedAt: new Date(),
+          addedBy: firebaseUser?.uid ?? undefined,
+        },
+      ]);
+      setCitation('');
+      setLien('');
+      setCible(null);
+      setRecherche('');
+    },
+    [cible, citation, firebaseUser?.uid],
+  );
+
+  /**
+   * Lien YouTube — le chemin le plus court : rien n'est envoyé, l'affiche est
+   * celle que YouTube génère. `hqdefault` et pas `maxresdefault` : la version
+   * haute définition n'existe pas pour toutes les vidéos et laisserait une
+   * carte vide, alors que `hqdefault` existe toujours.
+   */
+  const ajouterLien = useCallback(() => {
+    if (!cible) {
+      setError('Choisissez d’abord le prestataire mis en avant.');
+      return;
+    }
+    const id = extractYouTubeId(lien.trim());
+    if (!id) {
+      setError('Lien YouTube non reconnu. Collez l’adresse de la vidéo (watch, youtu.be, Short…).');
+      return;
+    }
+    setError(null);
+    ajouterEntree({
+      kind: 'youtube',
+      youtubeId: id,
+      src: `https://www.youtube.com/watch?v=${id}`,
+      poster: youtubeThumbnailUrl(lien.trim(), 'hq') ?? '',
+    });
+  }, [ajouterEntree, cible, lien]);
+
   /** Envoi de la vidéo choisie + affiche extraite, puis ajout à la liste. */
   const ajouterVideo = useCallback(
     async (file: File) => {
@@ -214,27 +278,7 @@ export default function AdminLandingVideosPage() {
             'image/jpeg',
           );
         }
-        setItems((prev) => [
-          ...prev,
-          {
-            id: newId(),
-            src,
-            poster,
-            providerId: cible.id,
-            providerSlug: cible.slug ?? '',
-            businessName: cible.businessName,
-            subtitle: sousTitre(cible.category, cible.city) || null,
-            photoURL: cible.photoURL,
-            quote: citation.trim() || null,
-            order: prev.length * 10,
-            published: false,
-            addedAt: new Date(),
-            addedBy: firebaseUser?.uid ?? undefined,
-          },
-        ]);
-        setCitation('');
-        setCible(null);
-        setRecherche('');
+        ajouterEntree({ kind: 'file', src, poster, youtubeId: null });
         if (!affiche) {
           setError('Affiche non extraite (format non lu par le navigateur) — ajoutez-la à la main sur la ligne.');
         }
@@ -246,7 +290,7 @@ export default function AdminLandingVideosPage() {
         if (fichierRef.current) fichierRef.current.value = '';
       }
     },
-    [cible, citation, firebaseUser?.uid, televerser],
+    [ajouterEntree, cible, televerser],
   );
 
   /** Affiche fournie à la main pour une entrée donnée. */
@@ -445,29 +489,78 @@ export default function AdminLandingVideosPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            ref={fichierRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void ajouterVideo(f);
+        {/* 3. La vidéo — un lien YouTube, ou un fichier. Le lien d'abord :
+            c'est le cas courant, les salons publient déjà sur leur chaîne. */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            3. La vidéo
+          </label>
+
+          {/* Un vrai formulaire : coller un lien puis appuyer sur Entrée est
+              le geste naturel, et seul `onSubmit` le garantit. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              ajouterLien();
             }}
-          />
-          <Button
-            variant="secondary"
-            disabled={!cible || progression !== null}
-            onClick={() => fichierRef.current?.click()}
-            leftIcon={progression !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            className="flex items-end gap-3 flex-wrap"
           >
-            {progression !== null ? `Envoi ${progression} %` : '3. Choisir la vidéo'}
-          </Button>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Format vertical conseillé (9:16), {MAX_VIDEO_MB} Mo max. L&apos;affiche est extraite
-            automatiquement de la première image.
-          </span>
+            <div className="flex-1 min-w-[260px]">
+              <div className="relative">
+                <Youtube className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="url"
+                  value={lien}
+                  onChange={(e) => setLien(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=… ou youtu.be/…"
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 pl-9 pr-3 py-2.5 text-sm text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={!cible || !lien.trim()}
+              leftIcon={<Link2 className="w-4 h-4" />}
+            >
+              Ajouter le lien
+            </Button>
+          </form>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Adresse normale, courte ou Short : l&apos;affiche est celle de YouTube, et la vidéo
+            reste sur la chaîne du prestataire.
+          </p>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+            <span className="text-[11px] uppercase tracking-wider text-gray-400">ou</span>
+            <span className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <input
+              ref={fichierRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void ajouterVideo(f);
+              }}
+            />
+            <Button
+              variant="secondary"
+              disabled={!cible || progression !== null}
+              onClick={() => fichierRef.current?.click()}
+              leftIcon={progression !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            >
+              {progression !== null ? `Envoi ${progression} %` : 'Envoyer un fichier'}
+            </Button>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Format vertical conseillé (9:16), {MAX_VIDEO_MB} Mo max. L&apos;affiche est extraite
+              automatiquement de la première image.
+            </span>
+          </div>
         </div>
       </section>
 
@@ -507,7 +600,11 @@ export default function AdminLandingVideosPage() {
             {items.map((item, i) => (
               <li key={item.id} className="p-4 flex gap-4 items-start">
                 {/* Affiche, au format de la carte publique */}
-                <div className="w-[72px] h-32 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                <div
+                  className={`rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 ${
+                    item.kind === 'youtube' ? 'w-32 h-[72px]' : 'w-[72px] h-32'
+                  }`}
+                >
                   {item.poster ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.poster} alt="" className="w-full h-full object-cover" />
@@ -519,6 +616,15 @@ export default function AdminLandingVideosPage() {
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 dark:text-white">{item.businessName}</span>
+                    {item.kind === 'youtube' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 dark:bg-red-900/25 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-300">
+                        <Youtube className="w-3 h-3" /> YouTube
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                        <Film className="w-3 h-3" /> Fichier
+                      </span>
+                    )}
                     {item.subtitle && <span className="text-xs text-gray-500">{item.subtitle}</span>}
                     {item.providerSlug ? (
                       <Link
@@ -575,7 +681,12 @@ export default function AdminLandingVideosPage() {
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-900 dark:hover:text-white"
                     >
-                      <Film className="w-3.5 h-3.5" /> Voir la vidéo
+                      {item.kind === 'youtube' ? (
+                        <Youtube className="w-3.5 h-3.5" />
+                      ) : (
+                        <Film className="w-3.5 h-3.5" />
+                      )}{' '}
+                      Voir la vidéo
                     </a>
                     <button
                       type="button"
