@@ -45,11 +45,17 @@ import { APP_CONFIG, getCategoryLabel } from '@booking-app/shared/constants';
 import { RealisationStoryLayout, type StoryRealisation } from './RealisationStoryLayout';
 
 /**
- * Signature des stories : le domaine, jamais le chemin de la page, et en
- * CAPITALES — choix client, la marque doit se lire d'un coup d'œil sur une
- * ligne volontairement petite.
+ * Pied de story : l'adresse COMPLÈTE de la page du prestataire, sans le
+ * protocole (« opatam.com/p/mon-salon »). Le lecteur doit pouvoir retrouver
+ * la page, pas seulement savoir d'où vient l'image.
+ *
+ * Une seule mise en forme pour tous les gabarits, celle des stories de
+ * disponibilités : une ligne, une couleur, une taille. Le traitement
+ * « OPATAM » + « .COM » doré et plus gros a été écarté par le client.
  */
-const DOMAINE_AFFICHE = 'OPATAM.COM';
+function adressePublique(bookingUrl: string | null | undefined): string {
+  return (bookingUrl ?? '').replace(/^https?:\/\//, '') || 'opatam.com';
+}
 
 export type { StoryRealisation };
 
@@ -214,6 +220,7 @@ function AvailabilityStoryLayout({
   category,
   city,
   photoURL,
+  bookingUrl,
   grid,
   theme,
 }: {
@@ -221,6 +228,7 @@ function AvailabilityStoryLayout({
   category: string;
   city?: string;
   photoURL?: string | null;
+  bookingUrl?: string;
   grid: AvailabilityGrid;
   theme: AvailabilityTheme;
 }) {
@@ -417,7 +425,7 @@ function AvailabilityStoryLayout({
       {/* Footer */}
       <View style={availStoryStyles.footer}>
         <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>
-          {DOMAINE_AFFICHE}
+          {adressePublique(bookingUrl)}
         </Text>
       </View>
     </>
@@ -507,11 +515,13 @@ function fullyBookedLabel(dateKey: string): string {
 function TodayAvailabilityLayout({
   businessName,
   photoURL,
+  bookingUrl,
   day,
   theme,
 }: {
   businessName: string;
   photoURL?: string | null;
+  bookingUrl?: string;
   day: AvailabilityDay;
   theme: AvailabilityTheme;
 }) {
@@ -670,7 +680,7 @@ function TodayAvailabilityLayout({
       {/* Footer — branding only, no emoji per design */}
       <View style={todayStyles.footer}>
         <Text style={[todayStyles.footerLink, { color: palette.footerText }]}>
-          {DOMAINE_AFFICHE}
+          {adressePublique(bookingUrl)}
         </Text>
       </View>
 
@@ -1179,6 +1189,7 @@ function MonthAvailabilityStoryLayout({
   category,
   city,
   photoURL,
+  bookingUrl,
   grid,
   theme,
 }: {
@@ -1186,6 +1197,7 @@ function MonthAvailabilityStoryLayout({
   category: string;
   city?: string;
   photoURL?: string | null;
+  bookingUrl?: string;
   grid: MonthAvailabilityGrid;
   theme: AvailabilityTheme;
 }) {
@@ -1284,7 +1296,7 @@ function MonthAvailabilityStoryLayout({
 
       {/* Footer */}
       <View style={availStoryStyles.footer}>
-        <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>{DOMAINE_AFFICHE}</Text>
+        <Text style={[availStoryStyles.footerText, { color: palette.footerText }]}>{adressePublique(bookingUrl)}</Text>
       </View>
     </>
   );
@@ -1455,10 +1467,7 @@ function ReviewStoryLayout({
   const etoiles = Math.max(1, Math.min(5, Math.round(noteAffichee)));
   const commentaire = review?.comment?.trim() || null;
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
-  // Le DOMAINE seul, jamais l'URL complète de la page : personne ne recopie
-  // « opatam.com/p/mon-salon » depuis une image, et le chemin prenait toute
-  // la ligne. La signature marque l'origine, le QR donne le lien exact.
-  const adresse = DOMAINE_AFFICHE;
+  const adresse = adressePublique(bookingUrl);
 
   return (
     <LinearGradient
@@ -1635,10 +1644,7 @@ function LoyaltyStoryLayout({
 }: LoyaltyStoryLayoutProps) {
   const pal = theme === 'light' ? BRAND_LIGHT : BRAND_DARK;
   const sousTitre = [getCategoryLabel(category), city].filter(Boolean).join(' — ');
-  // Le DOMAINE seul, jamais l'URL complète de la page : personne ne recopie
-  // « opatam.com/p/mon-salon » depuis une image, et le chemin prenait toute
-  // la ligne. La signature marque l'origine, le QR donne le lien exact.
-  const adresse = DOMAINE_AFFICHE;
+  const adresse = adressePublique(bookingUrl);
 
   // `seuil - 1` cases numérotées, puis la case récompense. Au-delà de dix,
   // les tampons deviendraient illisibles : on montre alors la récompense
@@ -2310,6 +2316,7 @@ export function StoryCard({
           category={category}
           city={city}
           photoURL={photoURL}
+          bookingUrl={bookingUrl}
           grid={monthGrid}
           theme={storyTheme}
         />
@@ -2324,6 +2331,7 @@ export function StoryCard({
           <TodayAvailabilityLayout
             businessName={businessName}
             photoURL={photoURL}
+            bookingUrl={bookingUrl}
             // We pass the FIRST day of the grid — when scope is
             // 'day' the hook fetched a single-day window so this
             // is always today (or the picked day).
@@ -2340,6 +2348,7 @@ export function StoryCard({
           category={category}
           city={city}
           photoURL={photoURL}
+          bookingUrl={bookingUrl}
           grid={availabilityGrid}
           theme={storyTheme}
         />
@@ -2497,7 +2506,7 @@ export function StoryCard({
                 resizeMode="contain"
               />
               <Text style={[styles.brandingText, { color: palette.brandingText }]}>
-                {DOMAINE_AFFICHE}
+                {adressePublique(bookingUrl)}
               </Text>
             </View>
             <View style={[styles.brandingDivider, { backgroundColor: palette.brandingDivider }]} />
