@@ -103,8 +103,12 @@ export function ProductGallery() {
   const [step, setStep] = useState(0);
   const [proStep, setProStep] = useState(0);
   const screen = view === 'client' ? clientScreens[step] : proScreens[proStep];
+  // Trois blocs et non deux : sur mobile, les sélecteurs d'étape doivent
+  // tomber SOUS la capture. Empilés dans le bloc de texte, ils occupaient
+  // tout l'écran et on ne voyait pas que l'image changeait plus bas.
+  // Sur grand écran, la grille les remet dans la colonne de gauche.
   return <div className={s.demo} data-reveal>
-    <div className={s.demoInfo}>
+    <div className={s.demoIntro}>
       <span className={s.demoNumber}>VOTRE ACTIVITÉ, DES DEUX CÔTÉS</span>
       <h3>{view === 'client' ? 'Votre univers. Leur prochain rendez-vous.' : 'Tout votre planning. À portée de main.'}</h3>
       <p>{view === 'client' ? 'Une page à votre image et un parcours guidé, de la prestation au paiement de l’acompte.' : 'Le même agenda, que vous travailliez seul ou à plusieurs.'}</p>
@@ -112,9 +116,11 @@ export function ProductGallery() {
         <button aria-pressed={view === 'client'} onClick={() => setView('client')}><Globe size={19} /><span>Le parcours client</span><ArrowRight size={18} /></button>
         <button aria-pressed={view === 'pro'} onClick={() => setView('pro')}><Smartphone size={19} /><span>L’application pro</span><ArrowRight size={18} /></button>
       </div>
+    </div>
+    <div className={s.demoSteps}>
       {view === 'client'
         ? <div className={s.captureSteps} role="group" aria-label="Étapes du parcours client">{clientScreens.map((item, index) => <button key={item.file} aria-pressed={step === index} onClick={() => setStep(index)}><span>0{index + 1}</span>{item.title}</button>)}</div>
-        : <div className={s.captureSteps} role="group" aria-label="Taille de l’activité">{proScreens.map((item, index) => <button key={item.file} aria-pressed={proStep === index} onClick={() => setProStep(index)}>{item.title}</button>)}</div>}
+        : <div className={`${s.captureSteps} ${s.captureStepsPair}`} role="group" aria-label="Taille de l’activité">{proScreens.map((item, index) => <button key={item.file} aria-pressed={proStep === index} onClick={() => setProStep(index)}>{item.title}</button>)}</div>}
       <p className={s.screenDescription} aria-live="polite">{screen.description}</p>
       <a className={s.textLink} href="https://opatam.com/p/braidztouch-1" target="_blank" rel="noopener noreferrer">Voir sa page web en ligne <ArrowUpRight size={18} /></a>
       <p className={s.captureNote}>Captures de l’application Opatam. Le lien ouvre la vraie page web de Braidztouch.</p>

@@ -78,7 +78,13 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
     if (!menu) return;
     const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false); };
     window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
+    // Sans ce verrou, le doigt fait défiler la page DERRIÈRE le panneau.
+    const avant = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', close);
+      document.body.style.overflow = avant;
+    };
   }, [menu]);
 
   return <div className={s.root} ref={root} lang="fr">
@@ -89,8 +95,48 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
         <nav className={s.desktopNav} aria-label="Navigation principale"><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#videos">Leurs métiers</a></nav>
         <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href="/register" className={s.buttonSmall}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
       </div>
-      {menu && <nav id="v1-menu" className={s.mobileMenu} aria-label="Navigation mobile" onClick={() => setMenu(false)}><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#avis">Leurs mots</a><a href="#telecharger">Télécharger l’app</a><Link href="/login">Connexion</Link></nav>}
     </header>
+      {/* Le panneau est un FRÈRE de l'en-tête, pas un enfant : le
+          `backdrop-filter` du bandeau crée un bloc conteneur, et un
+          `position: fixed` posé dedans se retrouve enfermé dans ses 70 px
+          de hauteur au lieu de couvrir l'écran. */}
+      {/* Panneau latéral, pas un dépliant : sur un téléphone, un menu qui
+          pousse le contenu vers le bas se confond avec la page. Le voile
+          sombre et le panneau qui arrive par la droite disent clairement
+          qu'on est sorti du fil de lecture. */}
+      <div className={s.drawerRoot} data-open={menu} aria-hidden={!menu}>
+        <button className={s.drawerScrim} onClick={() => setMenu(false)} tabIndex={-1} aria-label="Fermer le menu" />
+        <nav id="v1-menu" className={s.drawer} aria-label="Navigation mobile">
+          <div className={s.drawerHead}>
+            <span className={s.drawerBrand}>Menu</span>
+            <button onClick={() => setMenu(false)} aria-label="Fermer le menu"><X size={20} /></button>
+          </div>
+          <div className={s.drawerLinks} onClick={() => setMenu(false)}>
+            {[
+              ['#fonctionnement', 'Comment ça marche'],
+              ['#videos', 'Leurs métiers'],
+              ['#stories', 'Vos réseaux'],
+              ['#avis', 'Leurs mots'],
+              ['#tarifs', 'Tarifs'],
+              ['#telecharger', 'Télécharger l’app'],
+            ].map(([href, label]) => (
+              <a key={href} href={href} tabIndex={menu ? 0 : -1}>
+                <span>{label}</span>
+                <ArrowRight size={17} aria-hidden="true" />
+              </a>
+            ))}
+          </div>
+          <div className={s.drawerFoot}>
+            <Link href="/register" className={s.primary} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
+              Créer ma page web <ArrowRight size={18} />
+            </Link>
+            <Link href="/login" className={s.drawerLogin} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
+              J’ai déjà un compte · Connexion
+            </Link>
+            <small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small>
+          </div>
+        </nav>
+      </div>
 
     <main id="contenu-v1">
       <section className={s.hero}>

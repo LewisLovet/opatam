@@ -43,8 +43,64 @@
 .secondary:hover { background: #e7eff3; transform: translateY(-2px); }
 .buttonSmall { min-height: 43px; padding: 9px 16px; font-size: 14px; }
 .menuButton { display: none; padding: 8px; border: 0; color: var(--ink); background: transparent; }
-.mobileMenu { display: grid; padding: 10px 24px 24px; }
-.mobileMenu a { color: var(--ink); padding: 12px 0; }
+
+/* ── Panneau latéral mobile ──
+   Monté en permanence et masqué par `visibility` : il peut ainsi glisser
+   à l'ouverture ET à la fermeture, ce qu'un montage conditionnel ne permet
+   pas. `data-open` porte l'état. */
+.drawerRoot { position: fixed; inset: 0; z-index: 60; visibility: hidden; }
+.drawerRoot[data-open='true'] { visibility: visible; }
+.drawerScrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: #0a142cbf;
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity .28s ease;
+}
+.drawerRoot[data-open='true'] .drawerScrim { opacity: 1; }
+.drawer {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(330px, 86vw);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(168deg, #24439e, var(--deep) 46%, var(--ink));
+  color: #fff;
+  padding: 18px 22px calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.drawerRoot[data-open='true'] .drawer { transform: translateX(0); }
+.drawerHead { display: flex; align-items: center; justify-content: space-between; }
+.drawerBrand { font-size: 11px; letter-spacing: .18em; color: #ffffff8c; text-transform: uppercase; }
+.drawerHead button {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border: 1px solid #ffffff2e; border-radius: 50%; background: #ffffff14; color: #fff;
+}
+.drawerLinks { display: grid; margin-top: 22px; }
+.drawerLinks a {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 2px;
+  color: #fff;
+  font-family: 'Clash Display', var(--font-inter), sans-serif;
+  font-size: 21px;
+  letter-spacing: -.02em;
+  border-bottom: 1px solid #ffffff1a;
+}
+.drawerLinks a svg { color: var(--yellow); flex: 0 0 auto; }
+.drawerLinks a:active { color: var(--yellow); }
+.drawerFoot { margin-top: auto; padding-top: 26px; display: grid; gap: 12px; justify-items: stretch; }
+.drawerFoot .primary { background: var(--yellow); border-color: var(--yellow); color: var(--ink); width: 100%; }
+.drawerFoot .primary:hover { background: #ffd84a; }
+.drawerLogin { color: #ffffffd1; font-size: 14px; text-align: center; padding: 6px 0; }
+.drawerFoot small { color: #ffffff8c; font-size: 12px; text-align: center; }
+/* Au clavier sur grand écran, le panneau reste hors du parcours de tabulation. */
+@media (min-width: 901px) { .drawerRoot { display: none; } }
 .skip { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 12px; background: #fff; color: var(--ink); }
 .skip:focus { top: 10px; }
 
@@ -106,11 +162,17 @@
 .sectionHeading { text-align: center; }
 .sectionHeading .eyebrow { justify-content: center; margin-bottom: 17px; }
 .sectionHeading > p:last-of-type { margin-top: 21px; color: var(--muted); font-size: 17px; }
-.demo { display: grid; grid-template-columns: .9fr 1.1fr; background: var(--surface); border: 1px solid #e6ecf0; border-radius: 16px; overflow: hidden; margin-top: 48px; }
+/* Trois blocs : l'intro et les étapes dans la colonne de gauche, la capture
+   à droite sur toute la hauteur. Sur mobile la grille retombe sur une
+   colonne et les étapes passent SOUS la capture (voir @media 900px). */
+.demo { display: grid; grid-template-columns: .9fr 1.1fr; grid-template-rows: auto auto; align-content: center; background: var(--surface); border: 1px solid #e6ecf0; border-radius: 16px; overflow: hidden; margin-top: 48px; }
+.demoIntro { grid-column: 1; grid-row: 1; padding: 48px 48px 0; }
+.demoSteps { grid-column: 1; grid-row: 2; padding: 0 48px 48px; }
+.demo > figure { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
 .demoInfo { padding: 48px; align-self: center; }
-.demoNumber { font-size: 13px; color: var(--blue); font-weight: 600; letter-spacing: .08em; }
-.demoInfo h3 { font-size: 30px; line-height: 1.25; letter-spacing: -.035em; font-weight: 500; margin-top: 18px; }
-.demoInfo > p { color: var(--muted); font-size: 16px; margin-top: 18px; }
+.demoIntro .demoNumber, .demoNumber { font-size: 13px; color: var(--blue); font-weight: 600; letter-spacing: .08em; }
+.demoIntro h3, .demoInfo h3 { font-size: 30px; line-height: 1.25; letter-spacing: -.035em; font-weight: 500; margin-top: 18px; }
+.demoIntro > p, .demoInfo > p { color: var(--muted); font-size: 16px; margin-top: 18px; }
 .demoChoices { display: grid; gap: 9px; margin-top: 27px; }
 .demoChoices button { text-align: left; display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 8px; background: transparent; color: var(--ink); border: 1px solid transparent; font-size: 14px; }
 .demoChoices button svg:last-child { margin-left: auto; }
@@ -271,6 +333,18 @@
   .downloadGrid { gap: 40px; }
 }
 @media (max-width: 900px) {
+  /* La capture remonte entre l'intro et les sélecteurs d'étape : on voit
+     l'écran changer juste au-dessus du bouton qu'on vient de toucher. */
+  /* `minmax(0, 1fr)` et non `1fr` : un élément de grille a `min-width: auto`,
+     donc la colonne se dimensionnait sur le contenu le plus large et
+     débordait de l'écran — la capture sortait par la droite. */
+  .demo { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .demoIntro, .demoSteps, .demo > figure { grid-column: 1; grid-row: auto; min-width: 0; }
+  .demoIntro { order: 1; padding: 32px 32px 0; }
+  .demo > figure { order: 2; }
+  .demoSteps { order: 3; padding: 0 32px 32px; }
+  .demoSteps .screenDescription { min-height: 0; }
+
   .desktopNav,.login { display: none; }
   .menuButton { display: inline-flex; }
   .nav { min-height: 74px; }
@@ -285,7 +359,6 @@
   .miniAgenda { right: 24px; bottom: 30px; width: 240px; }
   .heroBottom { flex-direction: column; align-items: flex-start; gap: 8px; }
   .demo { grid-template-columns: 1fr; }
-  .demoInfo { padding: 32px; }
   .demoChoices { grid-template-columns: 1fr 1fr; }
   .demoChoices button svg:last-child { display: none; }
   .demoStage { padding: 30px 45px 0; }
@@ -305,6 +378,25 @@
   .startCards > div + div { border-top: 0; border-left: 1px solid #385363; margin: 0; padding: 0 0 0 25px; }
 }
 @media (max-width: 600px) {
+  .demoIntro { padding: 25px 25px 0; }
+  .demoSteps { padding: 0 25px 25px; }
+  .galleryStage { padding: 20px 18px 18px; gap: 18px; }
+  /* Les six étapes en bandeau qui défile : empilées, elles remplissaient
+     l'écran à elles seules et repoussaient tout le reste. */
+  .demoSteps .captureSteps {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .demoSteps .captureSteps::-webkit-scrollbar { display: none; }
+  .demoSteps .captureSteps button { flex: 0 0 auto; scroll-snap-align: start; padding: 9px 13px; font-size: 13px; }
+  .demoSteps .captureStepsPair { display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+
   .wrap { width: calc(100% - 40px); }
   .section { padding-top: 65px; padding-bottom: 65px; }
   .brand { font-size: 25px; }
@@ -342,8 +434,7 @@
   .eyebrow { font-size: 10px; }
   .sectionHeading > p:last-of-type { font-size: 16px; }
   .demo { margin-top: 30px; }
-  .demoInfo { padding: 25px; }
-  .demoInfo h3 { font-size: 26px; }
+  .demoIntro h3, .demoInfo h3 { font-size: 26px; }
   .demoChoices { grid-template-columns: 1fr; }
   .demoChoices button svg:last-child { display: block; }
   .demoStage { padding: 20px 12px 0; }
@@ -376,8 +467,10 @@
   .downloadSection { padding: 60px 0; }
   .startCards { grid-template-columns: 1fr; padding: 24px; }
   .startCards > div + div { border-left: 0; border-top: 1px solid #385363; padding: 24px 0 0; }
-  .storeLinks { gap: 8px; }
-  .storeLinks a { padding: 9px 11px; gap: 7px; }
+  /* Deux colonnes égales sur toute la largeur : les deux boutons flottaient
+     à gauche en laissant un vide à droite. */
+  .storeLinks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+  .storeLinks a { padding: 9px 11px; gap: 7px; justify-content: center; }
   .storeLinks strong { font-size: 16px; }
   .storeLinks a svg { width: 20px; }
   .footer { grid-template-columns: 1fr; gap: 30px; }
@@ -388,8 +481,6 @@
 .brand { color: #fff; font-family: 'Clash Display',sans-serif; font-size: 21px; letter-spacing: .04em; }
 .desktopNav a,.login,.menuButton { color: #ffffffcf; }
 .desktopNav a:hover,.login:hover { color: var(--yellow); }
-.mobileMenu { background: var(--deep); }
-.mobileMenu a { color: #fff; }
 .primary,.buttonSmall { background: var(--yellow); color: var(--ink); border-color: var(--yellow); border-radius: 999px; }
 .primary:hover,.buttonSmall:hover { background: #ffdb3f; box-shadow: 0 12px 28px #f4c92840; }
 .secondary { border-radius: 999px; border-color: var(--navy); color: var(--navy); }
@@ -428,7 +519,7 @@
 .root h2 em { color: inherit; }
 .demo { margin-top: 50px; }
 .demoStage { background: #e7ebf5; }
-.demoInfo h3 { letter-spacing: -.01em; }
+.demoIntro h3, .demoInfo h3 { letter-spacing: -.01em; }
 .demoChoices button[aria-pressed='true'] { border-color: #233d85; color: var(--navy); }
 .bookButton,.slots button[aria-pressed='true'] { background: var(--navy); }
 .bookButton { border-radius: 999px; }
@@ -597,9 +688,10 @@
 .captureSteps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 24px; }
 .captureSteps button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 11px 12px; border: 1px solid #dce2ef; border-radius: 12px; background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; }
 .captureSteps button span { font-size: 12px; opacity: .7; }
+.captureStepsPair button { justify-content: center; }
 .captureSteps button[aria-pressed='true'] { color: var(--navy); border-color: var(--navy); background: #edf2ff; }
-.demoInfo .screenDescription { font-size: 16px; min-height: 76px; margin-top: 22px; }
-.demoInfo .captureNote { font-size: 12px; line-height: 1.5; margin-top: 15px; }
+.demoSteps .screenDescription, .demoInfo .screenDescription { font-size: 16px; min-height: 76px; margin-top: 22px; }
+.demoSteps .captureNote, .demoInfo .captureNote { font-size: 12px; line-height: 1.5; margin-top: 15px; color: var(--muted); }
 .galleryStage { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 28px 30px 24px; border-radius: 24px; background: linear-gradient(150deg, #e8effe, #f5f7fc); gap: 26px; }
 .galleryLabel { display: flex; justify-content: space-between; width: 100%; color: var(--navy); font-size: 12px; letter-spacing: .08em; }
 .galleryLabel span { color: var(--muted); }
