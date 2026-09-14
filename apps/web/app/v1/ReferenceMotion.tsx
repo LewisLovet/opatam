@@ -74,12 +74,12 @@ export function HeroMotion() {
   const { ref, active } = useMotion();
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
-  // Le téléphone arrive d'abord (entrée en 3D, ~1,2 s) ; le défilement des
+  // Le téléphone arrive d'abord (entrée en 3D, ~2,2 s) ; le défilement des
   // écrans ne commence qu'ensuite, sinon le premier écran changeait pendant
   // que le téléphone se posait encore.
   const [arrive, setArrive] = useState(false);
   useEffect(() => {
-    const id = setTimeout(() => setArrive(true), 1400);
+    const id = setTimeout(() => setArrive(true), 2600);
     return () => clearTimeout(id);
   }, []);
   const screens = heroScreens;

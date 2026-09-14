@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, Globe, Menu, Plus, Smartphone, Users, X } from 'lucide-react';
+import { ArrowRight, Check, Globe, Menu, Play, Plus, Smartphone, Users, X } from 'lucide-react';
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
 import { trackSite } from '@/lib/trackSite';
@@ -46,7 +46,8 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
   const root = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [yearly, setYearly] = useState(false);
+  // L'annuel est mis en avant : c'est l'offre qu'on veut voir choisie.
+  const [yearly, setYearly] = useState(true);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -145,11 +146,18 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
         <div className={`${s.wrap} ${s.heroGrid}`}>
           <div className={s.heroCopy}>
             <p className={s.eyebrow}><span /> POUR LES INDÉPENDANTS & PETITES ÉQUIPES</p>
-            <h1>La réservation<br />en ligne,<br /><em>sans commission.</em></h1>
+            <h1>La réservation<br />en ligne,<br /><em>qui remplit votre agenda.</em></h1>
             <p className={s.heroLead}>Vos clients réservent 24 h/24 sur votre page. Votre agenda vous suit dans l’app. Vous gardez la main sur votre activité.</p>
-            <div className={s.actions}><Link href="/register" className={s.primary}>Créer ma page web <ArrowRight size={18} /></Link><a href="#telecharger" className={s.secondary}><Smartphone size={18} /> Télécharger l’app</a></div>
+            <div className={s.actions}><Link href="/register" className={s.primary}>Créer ma vitrine <ArrowRight size={18} /></Link><Link href="/p/demo" className={s.secondary}><Play size={17} /> Essayer la démo</Link></div>
             <p className={s.fine}><Check size={15} /> {APP_CONFIG.trialDays} jours gratuits <span>·</span> Sans carte bancaire</p>
-            <div className={s.heroChips}><span>Prêt en <b>5 min</b></span><span><b>0 %</b> de commission</span><span>Dès <b>{money(SUBSCRIPTION_PLANS.solo.monthlyPrice)}</b>/mois</span></div>
+            {/* L'application, en second plan : deux liens discrets plutôt qu'un
+                troisième bouton qui concurrencerait la vitrine et la démo. */}
+            <p className={s.heroStores}><Smartphone size={15} /> L’application :
+              <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackSite('download:ios')}>iPhone</a>
+              <span>·</span>
+              <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackSite('download:android')}>Android</a>
+            </p>
+            <div className={s.heroChips}><span>Prêt en <b>5 min</b></span><span>Réservations <b>24 h/24</b></span><span>Rappels <b>automatiques</b></span></div>
           </div>
           <HeroMotion />
         </div>
@@ -157,7 +165,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
 
       <section className={s.trades} aria-label="Les métiers qui peuvent utiliser Opatam">
         <div className={`${s.wrap} ${s.stripHeading}`} data-reveal><p><span>Vous avez le savoir-faire</span><strong>On s’occupe des rendez-vous.</strong></p></div>
-        <div className={s.marquee} data-paused={paused}><div className={s.track}>{[0, 1].map(copy => <div className={s.tradeGroup} key={copy} aria-hidden={copy === 1 ? true : undefined}>{trades.map(trade => <div className={s.trade} key={trade.title}><Image src={`/category-covers/${trade.image}.jpg`} alt="" width={104} height={76} /><span>{trade.title}</span></div>)}</div>)}</div></div>
+        <div className={s.marquee} data-paused={paused}><div className={s.track}>{[0, 1, 2, 3].map(copy => <div className={s.tradeGroup} key={copy} aria-hidden={copy > 0 ? true : undefined}>{trades.map(trade => <div className={s.trade} key={trade.title}><Image src={`/category-covers/${trade.image}.jpg`} alt="" width={104} height={76} /><span>{trade.title}</span></div>)}</div>)}</div></div>
       </section>
 
       {/* Les vidéos des prestataires juste sous les métiers : la preuve
@@ -182,7 +190,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
       </section>
 
       <section className={s.pricingSection} id="tarifs"><div className={`${s.wrap} ${s.section}`}>
-        <div className={s.sectionHeading} data-reveal><p className={s.eyebrow}>SIMPLE, JUSQU’AU TARIF</p><h2>Votre activité grandit.<br /><em>Pas nos commissions.</em></h2><p>Un abonnement fixe. Aucune commission sur vos réservations.</p><div className={s.period} role="group" aria-label="Période de facturation"><button aria-pressed={!yearly} onClick={() => setYearly(false)}>Mensuel</button><button aria-pressed={yearly} onClick={() => setYearly(true)}>Annuel <span>2 mois offerts</span></button></div></div>
+        <div className={s.sectionHeading} data-reveal><p className={s.eyebrow}>SIMPLE, JUSQU’AU TARIF</p><h2>Votre activité grandit.<br /><em>Pas nos commissions.</em></h2><p>Un abonnement fixe. Aucune commission sur vos réservations.</p><div className={s.period} role="group" aria-label="Période de facturation"><button aria-pressed={yearly} onClick={() => setYearly(true)}>Annuel <span>2 mois offerts</span></button><button aria-pressed={!yearly} onClick={() => setYearly(false)}>Mensuel</button></div></div>
         <div className={s.plans}>{[
           { name: 'Pro', audience: 'Votre activité, en solo.', monthly: SUBSCRIPTION_PLANS.solo.monthlyPrice, annual: SUBSCRIPTION_PLANS.solo.yearlyPrice, icon: Smartphone, features: ['Votre page de réservation personnalisée', 'Réservations illimitées, sans commission', 'Agenda sur le web et dans l’app', 'Rappels automatiques email et push', '1 professionnel · 1 lieu'] },
           { name: 'Studio', audience: 'Un collectif. Un même rythme.', monthly: SUBSCRIPTION_PLANS.team.baseMonthlyPrice, annual: SUBSCRIPTION_PLANS.team.baseYearlyPrice, icon: Users, features: ['Tout ce qui est inclus dans Pro', 'Jusqu’à 10 agendas synchronisés', 'Prestations attribuées par membre', 'Jusqu’à 10 lieux d’exercice', 'Une page publique pour votre équipe'] },
