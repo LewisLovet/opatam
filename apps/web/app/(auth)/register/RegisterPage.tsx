@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAuth } from 'firebase/auth';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { attributionInscription, memoriserCampagne } from '@/lib/campaign';
 import {
   Mail,
   Lock,
@@ -185,6 +186,11 @@ export default function RegisterPage() {
   useEffect(() => {
     trackEvent('Lead', { content_name: 'register-wizard' });
   }, []);
+
+  // Campagne publicitaire : un visiteur peut atterrir DIRECTEMENT ici depuis
+  // une publicité (lien vers /register). On la mémorise pour la session,
+  // comme l'accueil le fait — voir lib/campaign.ts.
+  useEffect(() => { memoriserCampagne(); }, []);
 
   // Read ?ref= from URL and verify the code
   useEffect(() => {
@@ -539,6 +545,10 @@ export default function RegisterPage() {
             detail: data.acquisitionDetail.trim() || null,
           }
         : undefined,
+      // Mesuré, en plus de la réponse déclarée ci-dessus : l'URL de cette
+      // page d'abord (paramètres recopiés depuis l'accueil), la session en
+      // filet. `undefined` = arrivée directe, rien n'est écrit.
+      attribution: attributionInscription(typeof window !== 'undefined' ? window.location.search : ''),
     });
 
     // If referral code, link affiliate to provider + increment stats

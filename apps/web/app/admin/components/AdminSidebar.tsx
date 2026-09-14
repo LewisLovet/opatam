@@ -121,6 +121,7 @@ const navGroups: NavGroup[] = [
     label: 'Analyse',
     items: [
       { label: 'Analytics', href: '/admin/analytics', icon: <BarChart3 className="w-5 h-5" /> },
+      { label: 'Acquisition', href: '/admin/acquisition', icon: <Megaphone className="w-5 h-5" /> },
       { label: 'Activité', href: '/admin/activity', icon: <Activity className="w-5 h-5" /> },
     ],
   },

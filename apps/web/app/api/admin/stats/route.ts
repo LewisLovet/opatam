@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
       return jsonWithCache(data, 120);
     }
 
+    // Acquisition : tout l'entonnoir de l'accueil par jour (vues, clics,
+    // vidéos, défilement, stores, inscriptions, pages publiées, abonnés)
+    // et la ventilation des inscrits par campagne mesurée et par réponse
+    // déclarée. Cache 2 min.
+    if (type === 'acquisition') {
+      const days = Math.min(365, Math.max(1, parseInt(request.nextUrl.searchParams.get('days') || '30')));
+      const data = await getAcquisition(db, days);
+      return jsonWithCache(data, 120);
+    }
+
     if (type === 'by-category') {
       const data = await getBookingsByCategory(db);
       return jsonWithCache(data, 120);
@@ -932,4 +942,138 @@ async function getSiteFunnel(
   );
 
   return { days: liste, totals };
+}
+
+
+// ─── Acquisition ──────────────────────────────────────────────────────────
+
+const CLES_ACQUISITION = [
+  'view:home', 'click:vitrine', 'click:demo', 'click:pricing', 'video:play',
+  'video:provider', 'download:ios', 'download:android', 'scroll:50', 'scroll:90',
+] as const;
+type CleAcquisition = (typeof CLES_ACQUISITION)[number];
+
+export interface JourAcquisition extends Record<CleAcquisition, number> {
+  day: string;
+  /** Prestataires inscrits ce jour (comptes de test exclus). */
+  signups: number;
+  /** Parmi les inscrits de la période, ceux dont la page est publiée aujourd'hui. */
+  published: number;
+  /** Parmi les inscrits de la période, ceux abonnés (payants) aujourd'hui. */
+  paying: number;
+}
+
+interface LigneSource {
+  source: string;
+  medium: string;
+  campaign: string;
+  signups: number;
+  published: number;
+  paying: number;
+}
+
+function jourVide(day: string): JourAcquisition {
+  const j = { day, signups: 0, published: 0, paying: 0 } as JourAcquisition;
+  for (const k of CLES_ACQUISITION) j[k] = 0;
+  return j;
+}
+
+/**
+ * L'entonnoir complet de l'accueil, par jour, plus les inscrits ventilés par
+ * campagne (mesurée : utm/référent) et par réponse (« comment nous
+ * avez-vous connus ? »). Les comptes de test sont exclus, comme partout dans
+ * l'admin. Deux lectures : les compteurs du site et les prestataires créés
+ * sur la période.
+ */
+async function getAcquisition(
+  db: FirebaseFirestore.Firestore,
+  days: number
+): Promise<{
+  days: JourAcquisition[];
+  totals: Omit<JourAcquisition, 'day'>;
+  bySource: LigneSource[];
+  byChannel: { channel: string; signups: number; published: number; paying: number }[];
+}> {
+  const now = new Date();
+  const depuis = new Date(now.getTime() - (days - 1) * 86400000);
+  depuis.setHours(0, 0, 0, 0);
+  const premierJour = jourParis(depuis);
+
+  const parJour: Record<string, JourAcquisition> = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = jourParis(new Date(now.getTime() - i * 86400000));
+    parJour[d] = jourVide(d);
+  }
+
+  const [metriques, prestataires] = await Promise.all([
+    db.collection('siteMetricsDaily').where('day', '>=', premierJour).get(),
+    db.collection('providers').where('createdAt', '>=', depuis).get().catch(() => null),
+  ]);
+
+  metriques.docs.forEach((doc) => {
+    const d = doc.data() as { day?: string; key?: string; count?: number };
+    const jour = d.day && parJour[d.day];
+    if (!jour || typeof d.count !== 'number') return;
+    if ((CLES_ACQUISITION as readonly string[]).includes(d.key ?? '')) {
+      jour[d.key as CleAcquisition] += d.count;
+    }
+  });
+
+  const sources = new Map<string, LigneSource>();
+  const canaux = new Map<string, { channel: string; signups: number; published: number; paying: number }>();
+
+  prestataires?.docs.forEach((doc) => {
+    const p = doc.data() as {
+      createdAt?: { toDate?: () => Date };
+      isTest?: boolean;
+      isPublished?: boolean;
+      subscription?: { status?: string | null } | null;
+      attribution?: { source?: string | null; medium?: string | null; campaign?: string | null } | null;
+      acquisitionSource?: { channel?: string } | null;
+    };
+    if (p.isTest) return;
+    const cree = p.createdAt?.toDate?.();
+    if (!cree) return;
+    const jour = parJour[jourParis(cree)];
+    if (!jour) return;
+    const publie = p.isPublished === true;
+    const paye = p.subscription?.status === 'active';
+    jour.signups++;
+    if (publie) jour.published++;
+    if (paye) jour.paying++;
+
+    const a = p.attribution;
+    const source = a?.source || (a?.medium ? '—' : 'direct');
+    const medium = a?.medium || '—';
+    const campaign = a?.campaign || '—';
+    const cle = `${source}|${medium}|${campaign}`;
+    const ligne = sources.get(cle) ?? { source, medium, campaign, signups: 0, published: 0, paying: 0 };
+    ligne.signups++;
+    if (publie) ligne.published++;
+    if (paye) ligne.paying++;
+    sources.set(cle, ligne);
+
+    const channel = p.acquisitionSource?.channel || 'non renseigné';
+    const c = canaux.get(channel) ?? { channel, signups: 0, published: 0, paying: 0 };
+    c.signups++;
+    if (publie) c.published++;
+    if (paye) c.paying++;
+    canaux.set(channel, c);
+  });
+
+  const liste = Object.values(parJour);
+  const totals = liste.reduce((acc, j) => {
+    for (const k of CLES_ACQUISITION) acc[k] += j[k];
+    acc.signups += j.signups;
+    acc.published += j.published;
+    acc.paying += j.paying;
+    return acc;
+  }, (() => { const { day: _d, ...reste } = jourVide(''); return reste; })());
+
+  return {
+    days: liste,
+    totals,
+    bySource: [...sources.values()].sort((a, b) => b.signups - a.signups),
+    byChannel: [...canaux.values()].sort((a, b) => b.signups - a.signups),
+  };
 }

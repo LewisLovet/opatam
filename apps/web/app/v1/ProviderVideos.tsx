@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
 import type { LandingVideoItem } from '@booking-app/shared';
 import { extractYouTubeId } from '@/lib/youtube';
 import { meilleureAfficheYoutube } from '@/lib/youtubePoster';
+import { trackSite } from '@/lib/trackSite';
 import { YouTubeVideo } from './YouTubeVideo';
 import s from './v1.module.css';
 
@@ -116,6 +117,7 @@ function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; select
     else video.current.pause();
   }, [active, loaded, id]);
   const play = () => {
+    trackSite('video:play');
     onActivate();
     setManual(true);
     setLoaded(true);
@@ -130,7 +132,7 @@ function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; select
     </div>
     {failed && <p className={s.videoError} role="status">Cette vidéo ne peut pas être chargée pour le moment.</p>}
     <figcaption>{item.quote && <blockquote>« {item.quote} »</blockquote>}<div className={s.providerIdentity}>{item.photoURL && <Image src={item.photoURL} alt="" width={44} height={44} />}<div><strong>{item.businessName}</strong>{item.subtitle && <span>{item.subtitle}</span>}</div></div>
-      {item.providerSlug && <a className={s.providerCta} href={`https://opatam.com/p/${encodeURIComponent(item.providerSlug)}`} target="_blank" rel="noopener noreferrer" aria-label={`Voir la page de réservation de ${item.businessName}`}>Voir sa page de réservation <ArrowUpRight size={19} /></a>}
+      {item.providerSlug && <a className={s.providerCta} href={`https://opatam.com/p/${encodeURIComponent(item.providerSlug)}`} target="_blank" rel="noopener noreferrer" onClick={() => trackSite('video:provider')} aria-label={`Voir la page de réservation de ${item.businessName}`}>Voir sa page de réservation <ArrowUpRight size={19} /></a>}
     </figcaption>
   </figure>;
 }

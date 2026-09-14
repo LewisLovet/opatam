@@ -7,6 +7,7 @@ import { ArrowRight, Check, Globe, Menu, Play, Plus, Smartphone, Users, X } from
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
 import { trackSite } from '@/lib/trackSite';
+import { memoriserCampagne, suffixeCampagne } from '@/lib/campaign';
 import s from './v1.module.css';
 import { StoriesSection } from './StoriesSection';
 import { ProviderVideos, type ProviderVideo } from './ProviderVideos';
@@ -54,6 +55,36 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
   // ici aurait mis le compteur à zéro le jour du lancement des publicités.
   useEffect(() => { trackSite('view:home'); }, []);
 
+  // Campagne : mémorisée pour la session, et recopiée sur les liens vers
+  // l'inscription (voir lib/campaign.ts). Calculé après le montage pour ne
+  // pas différer du rendu serveur.
+  const [suffixe, setSuffixe] = useState('');
+  useEffect(() => {
+    memoriserCampagne();
+    setSuffixe(suffixeCampagne(window.location.search));
+  }, []);
+  const inscription = `/register${suffixe}`;
+
+  // Profondeur de défilement, deux repères envoyés une seule fois. Écouteur
+  // passif et calcul différé à la prochaine image : rien ne bloque le
+  // défilement lui-même.
+  useEffect(() => {
+    const envoyes = { 50: false, 90: false };
+    let frame = 0;
+    const mesurer = () => {
+      frame = 0;
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      if (total <= 0) return;
+      const pct = (window.scrollY / total) * 100;
+      if (!envoyes[50] && pct >= 50) { envoyes[50] = true; trackSite('scroll:50'); }
+      if (!envoyes[90] && pct >= 90) { envoyes[90] = true; trackSite('scroll:90'); }
+      if (envoyes[50] && envoyes[90]) window.removeEventListener('scroll', planifier);
+    };
+    const planifier = () => { if (!frame) frame = requestAnimationFrame(mesurer); };
+    window.addEventListener('scroll', planifier, { passive: true });
+    return () => { window.removeEventListener('scroll', planifier); if (frame) cancelAnimationFrame(frame); };
+  }, []);
+
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const sync = () => setPaused(media.matches);
@@ -99,7 +130,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
       <div className={`${s.wrap} ${s.nav}`}>
         <Link href="/" className={s.brand} aria-label="Opatam, accueil"><Image src="/logo-opatam-blanc.png" alt="" width={34} height={34} />OPATAM</Link>
         <nav className={s.desktopNav} aria-label="Navigation principale"><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#videos">Leurs métiers</a></nav>
-        <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href="/register" className={s.buttonSmall}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
+        <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href={inscription} className={s.buttonSmall} onClick={() => trackSite('click:vitrine')}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
       </div>
     </header>
       {/* Le panneau est un FRÈRE de l'en-tête, pas un enfant : le
@@ -133,7 +164,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
             ))}
           </div>
           <div className={s.drawerFoot}>
-            <Link href="/register" className={s.primary} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
+            <Link href={inscription} className={s.primary} tabIndex={menu ? 0 : -1} onClick={() => { trackSite('click:vitrine'); setMenu(false); }}>
               Créer ma page web <ArrowRight size={18} />
             </Link>
             <Link href="/login" className={s.drawerLogin} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
@@ -153,7 +184,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
             <p className={s.eyebrow}><span /> POUR LES INDÉPENDANTS & PETITES ÉQUIPES</p>
             <h1>La réservation<br />en ligne,<br /><em>qui remplit votre agenda.</em></h1>
             <p className={s.heroLead}>Vos clients réservent 24 h/24 sur votre page. Votre agenda vous suit dans l’app. Vous gardez la main sur votre activité.</p>
-            <div className={s.actions}><Link href="/register" className={s.primary}>Créer ma vitrine <ArrowRight size={18} /></Link><Link href="/p/demo" className={s.secondary}><Play size={17} /> Essayer la démo</Link></div>
+            <div className={s.actions}><Link href={inscription} className={s.primary} onClick={() => trackSite('click:vitrine')}>Créer ma vitrine <ArrowRight size={18} /></Link><Link href="/p/demo" className={s.secondary} onClick={() => trackSite('click:demo')}><Play size={17} /> Essayer la démo</Link></div>
             <p className={s.fine}><Check size={15} /> {APP_CONFIG.trialDays} jours gratuits <span>·</span> Sans carte bancaire</p>
             {/* L'application, en second plan : deux liens discrets plutôt qu'un
                 troisième bouton qui concurrencerait la vitrine et la démo. */}
@@ -199,7 +230,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
         <div className={s.plans}>{[
           { name: 'Pro', audience: 'Votre activité, en solo.', monthly: SUBSCRIPTION_PLANS.solo.monthlyPrice, annual: SUBSCRIPTION_PLANS.solo.yearlyPrice, icon: Smartphone, features: ['Votre page de réservation personnalisée', 'Réservations illimitées, sans commission', 'Agenda sur le web et dans l’app', 'Rappels automatiques email et push', '1 professionnel · 1 lieu'] },
           { name: 'Studio', audience: 'Un collectif. Un même rythme.', monthly: SUBSCRIPTION_PLANS.team.baseMonthlyPrice, annual: SUBSCRIPTION_PLANS.team.baseYearlyPrice, icon: Users, features: ['Tout ce qui est inclus dans Pro', 'Jusqu’à 10 agendas synchronisés', 'Prestations attribuées par membre', 'Jusqu’à 10 lieux d’exercice', 'Une page publique pour votre équipe'] },
-        ].map(({ name, audience, monthly, annual, icon: Icon, features }) => <article key={name} data-reveal><div className={s.planTop}><Icon size={23} /><span>{name === 'Pro' ? 'POUR LES INDÉPENDANTS' : 'POUR LES PETITES ÉQUIPES'}</span></div><h3>{name}</h3><p>{audience}</p><div className={s.price}>{money(yearly ? annual / 12 : monthly)}<small>/ mois</small></div><p className={s.billing}>{yearly ? `${money(annual)} facturés par an` : 'Facturation mensuelle · Sans engagement'}</p><Link href="/register" className={name === 'Pro' ? s.primary : s.secondary}>Créer ma page {name} <ArrowRight size={17} /></Link><ul>{features.map(feature => <li key={feature}><Check size={17} />{feature}</li>)}</ul></article>)}</div>
+        ].map(({ name, audience, monthly, annual, icon: Icon, features }) => <article key={name} data-reveal><div className={s.planTop}><Icon size={23} /><span>{name === 'Pro' ? 'POUR LES INDÉPENDANTS' : 'POUR LES PETITES ÉQUIPES'}</span></div><h3>{name}</h3><p>{audience}</p><div className={s.price}>{money(yearly ? annual / 12 : monthly)}<small>/ mois</small></div><p className={s.billing}>{yearly ? `${money(annual)} facturés par an` : 'Facturation mensuelle · Sans engagement'}</p><Link href={inscription} className={name === 'Pro' ? s.primary : s.secondary} onClick={() => trackSite('click:pricing')}>Créer ma page {name} <ArrowRight size={17} /></Link><ul>{features.map(feature => <li key={feature}><Check size={17} />{feature}</li>)}</ul></article>)}</div>
         <p className={s.priceNote}><Check size={17} /> {APP_CONFIG.trialDays} jours pour essayer. Sans carte bancaire.<span>Vous préférez commencer sur mobile ? <a href="#telecharger">Téléchargez l’app <ArrowRight size={14} /></a></span></p>
       </div></section>
 
@@ -207,7 +238,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
 
       <section className={s.downloadSection} id="telecharger"><div className={`${s.wrap} ${s.downloadGrid}`}>
         <div data-reveal><p className={s.eyebrow}>LE PROCHAIN RENDEZ-VOUS COMMENCE ICI</p><h2>Faites de la place<br /><em>à votre métier.</em></h2><p>Sur votre téléphone ou votre ordinateur,<br />votre nouvelle organisation commence avec Opatam.</p></div>
-        <div className={s.startCards}><div><Smartphone size={25} /><h3>Votre activité dans la poche.</h3><StoreLinks /></div><div><Globe size={25} /><h3>Votre page, prête à être partagée.</h3><Link href="/register" className={s.primary}>Créer ma page web <ArrowRight size={18} /></Link><small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small></div></div>
+        <div className={s.startCards}><div><Smartphone size={25} /><h3>Votre activité dans la poche.</h3><StoreLinks /></div><div><Globe size={25} /><h3>Votre page, prête à être partagée.</h3><Link href={inscription} className={s.primary} onClick={() => trackSite('click:vitrine')}>Créer ma vitrine <ArrowRight size={18} /></Link><small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small></div></div>
       </div></section>
     </main>
     <footer className={`${s.wrap} ${s.footer}`}><div><Link href="/v1" className={s.brand}><Image src="/logo-opatam.png" alt="" width={30} height={30} />opatam.</Link><p>Votre savoir-faire mérite du temps.</p></div><nav aria-label="Liens utiles"><Link href="/recherche">Trouver un professionnel</Link><Link href="/blog">Conseils & tutoriels</Link><Link href="/contact">Contact</Link><Link href="/mentions-legales">Mentions légales</Link><Link href="/confidentialite">Confidentialité</Link><Link href="/cgu">CGU</Link></nav><small>© {new Date().getFullYear()} Opatam · KamerleonTech</small></footer>

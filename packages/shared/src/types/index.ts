@@ -88,6 +88,25 @@ export interface AccessOverride {
   serenity?: boolean;
 }
 
+export interface ProviderAttribution {
+  /** utm_source — « meta », « google », « instagram »… ou l'hôte du site référent. */
+  source?: string | null;
+  /** utm_medium — « cpc », « social », « referral »… */
+  medium?: string | null;
+  /** utm_campaign — le nom de la campagne. */
+  campaign?: string | null;
+  /** utm_content — la variante (visuel, emplacement). */
+  content?: string | null;
+  /** utm_term — le mot-clé. */
+  term?: string | null;
+  /** Identifiant de clic présent sur le lien : publicité Meta ou Google. */
+  clickId?: 'fbclid' | 'gclid' | null;
+  /** Hôte du site référent, sans le chemin. */
+  referrer?: string | null;
+  /** Première page vue sur opatam.com. */
+  landing?: string | null;
+}
+
 export interface Provider {
   /** « Comment avez-vous connu Opatam ? » — réponse d'inscription.
    *  `equipe` = amené par un commercial (libellé public : « un membre de
@@ -97,6 +116,14 @@ export interface Provider {
     channel: AcquisitionChannel;
     detail?: string | null;
   } | null;
+  /**
+   * D'où vient l'inscription, MESURÉ et non déclaré : les paramètres de
+   * campagne (utm_*) et l'identifiant de clic publicitaire lus sur le lien
+   * d'arrivée, le site référent, la page d'atterrissage. Complète
+   * `acquisitionSource` (la réponse du prestataire). Absent = arrivée
+   * directe ou lien sans paramètres. Voir apps/web/lib/campaign.ts.
+   */
+  attribution?: ProviderAttribution | null;
   userId: string;
   plan: ProviderPlan;
   businessName: string;

@@ -36,6 +36,20 @@ export const SITE_METRIC_KEYS = [
   'download:ios',
   /** Un clic sur le badge Google Play. */
   'download:android',
+  /** Un clic sur « Créer ma vitrine » (hero, en-tête, menu, pied de page). */
+  'click:vitrine',
+  /** Un clic sur « Essayer la démo ». */
+  'click:demo',
+  /** Un clic sur « Créer ma page » depuis un tarif. */
+  'click:pricing',
+  /** Une vidéo de prestataire lancée à la main (pas la lecture automatique). */
+  'video:play',
+  /** Un clic vers la page d'un prestataire depuis sa vidéo. */
+  'video:provider',
+  /** Le visiteur a fait défiler la moitié de l'accueil. Une fois par visite. */
+  'scroll:50',
+  /** Le visiteur est arrivé près du bas de l'accueil. Une fois par visite. */
+  'scroll:90',
   /*
    * Pas de clé pour les inscriptions : elles se comptent depuis la
    * collection `providers`, par date de création. Les instrumenter en

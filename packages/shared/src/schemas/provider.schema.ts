@@ -160,6 +160,23 @@ export const createProviderSchema = z.object({
       detail: z.string().max(120).nullable().optional(),
     })
     .optional(),
+  /**
+   * Attribution de campagne mesurée sur le lien d'arrivée (utm_*, fbclid,
+   * gclid, référent). Bornée champ par champ : ces valeurs viennent de
+   * l'URL, donc de n'importe qui.
+   */
+  attribution: z
+    .object({
+      source: z.string().max(120).nullable().optional(),
+      medium: z.string().max(120).nullable().optional(),
+      campaign: z.string().max(120).nullable().optional(),
+      content: z.string().max(120).nullable().optional(),
+      term: z.string().max(120).nullable().optional(),
+      clickId: z.enum(['fbclid', 'gclid']).nullable().optional(),
+      referrer: z.string().max(200).nullable().optional(),
+      landing: z.string().max(200).nullable().optional(),
+    })
+    .optional(),
 });
 
 // Update provider schema - Tout optionnel
