@@ -348,21 +348,25 @@ function ConfirmationActivite({
     <Animated.View style={[StyleSheet.absoluteFill, { opacity: voile, zIndex: 50 }]} pointerEvents="auto">
       <LinearGradient colors={[couleur, couleurSombre]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={c.fond}>
         <View style={c.centre}>
-          {/* L'onde : un cercle qui s'élargit et s'efface derrière le disque */}
-          <Animated.View
-            style={[
-              c.onde,
-              {
-                opacity: onde.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }),
-                transform: [{ scale: onde.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.4] }) }],
-              },
-            ]}
-          />
-          <Animated.View style={[c.disque, { transform: [{ scale: disque }] }]}>
-            <Animated.View style={{ transform: [{ scale: coche }], opacity: coche }}>
-              <Ionicons name="checkmark" size={54} color={couleur} />
+          {/* Un cadre de la taille du disque : l'onde, en absolu dedans, est
+              centrée sur lui. Posée en absolu dans la colonne, elle partait
+              du coin haut-gauche et semblait jaillir d'en bas. */}
+          <View style={c.cadreDisque}>
+            <Animated.View
+              style={[
+                c.onde,
+                {
+                  opacity: onde.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }),
+                  transform: [{ scale: onde.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.4] }) }],
+                },
+              ]}
+            />
+            <Animated.View style={[c.disque, { transform: [{ scale: disque }] }]}>
+              <Animated.View style={{ transform: [{ scale: coche }], opacity: coche }}>
+                <Ionicons name="checkmark" size={54} color={couleur} />
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
+          </View>
           <Animated.View
             style={{
               alignItems: 'center',
@@ -385,7 +389,8 @@ function ConfirmationActivite({
 const c = StyleSheet.create({
   fond: { flex: 1 },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  onde: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: '#fff' },
+  cadreDisque: { width: 112, height: 112, alignItems: 'center', justifyContent: 'center', marginBottom: 26 },
+  onde: { position: 'absolute', top: -4, left: -4, width: 120, height: 120, borderRadius: 60, backgroundColor: '#fff' },
   disque: {
     width: 112,
     height: 112,
@@ -393,7 +398,6 @@ const c = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 26,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.22,
@@ -962,7 +966,9 @@ export default function CreateActivityScreen() {
             multiline
             numberOfLines={3}
             maxLength={200}
-            leftIcon={<Ionicons name="create-outline" size={18} color={teinte} />}
+            // En multiligne, le champ aligne son icône tout en haut alors que
+            // le texte commence 8 px plus bas : on descend l'icône d'autant.
+            leftIcon={<View style={{ paddingTop: 10 }}><Ionicons name="create-outline" size={18} color={teinte} /></View>}
           />
         </View>
 
@@ -1130,7 +1136,9 @@ const s = StyleSheet.create({
   champValeur: { fontSize: 16, fontWeight: '700', marginTop: 2 },
   heures: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   heure: { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14 },
-  heureValeur: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, marginTop: 2, fontVariant: ['tabular-nums'] },
+  // `lineHeight` explicite : sans elle, un chiffre gras de 26 px se fait
+  // rogner le haut par la boîte de ligne par défaut.
+  heureValeur: { fontSize: 26, lineHeight: 32, fontWeight: '800', letterSpacing: -0.5, marginTop: 2, fontVariant: ['tabular-nums'], includeFontPadding: false },
   heureFleche: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   durees: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' },
   duree: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
