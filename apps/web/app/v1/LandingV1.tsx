@@ -49,6 +49,11 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
   // L'annuel est mis en avant : c'est l'offre qu'on veut voir choisie.
   const [yearly, setYearly] = useState(true);
 
+  // Une vue de l'accueil, comptée dans l'entonnoir de l'admin (vues →
+  // clics stores → inscriptions). L'ancienne page l'envoyait ; l'oublier
+  // ici aurait mis le compteur à zéro le jour du lancement des publicités.
+  useEffect(() => { trackSite('view:home'); }, []);
+
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     const sync = () => setPaused(media.matches);
