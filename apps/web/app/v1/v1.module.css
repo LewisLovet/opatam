@@ -294,8 +294,11 @@
 .startCards > div + div { padding-top: 25px; margin-top: 26px; border-top: 1px solid #385363; }
 .startCards > div > svg { color: var(--yellow); }
 .startCards h3 { font-size: 18px; font-weight: 500; margin: 10px 0 18px; }
-.storeLinks { display: flex; flex-wrap: wrap; gap: 10px; }
-.storeLinks a { display: flex; align-items: center; gap: 10px; border: 1px solid #68818f; background: #fff; color: var(--ink); border-radius: 7px; padding: 10px 16px; transition: transform .2s; }
+/* Deux colonnes égales sur toute la largeur, à toutes les tailles : les
+   deux boutons flottaient à gauche du bloc, sous un titre pleine largeur
+   et au-dessus d'un bouton jaune pleine largeur. */
+.storeLinks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.storeLinks a { display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #68818f; background: #fff; color: var(--ink); border-radius: 7px; padding: 10px 16px; transition: transform .2s; }
 .storeLinks a:hover { transform: translateY(-3px); }
 .storeLinks span { display: grid; line-height: 1.3; }
 .storeLinks small { font-size: 10px; }
