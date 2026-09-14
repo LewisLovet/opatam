@@ -5,7 +5,7 @@ import type { LandingVideoItem } from '@booking-app/shared';
 import type { ProviderVideo } from './ProviderVideos';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Opatam — Réservation en ligne sans commission | V1' },
+  title: { absolute: 'Opatam — La réservation en ligne qui remplit votre agenda | V1' },
   description: 'Votre page de réservation et votre agenda dans une seule application. Pour les indépendants et les petites équipes, sans commission.',
   robots: { index: false, follow: false },
   // Sans cette ligne, la page hérite du canonique du layout racine et se
