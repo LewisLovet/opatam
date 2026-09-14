@@ -2405,7 +2405,13 @@
     "addToCalendar": "Add to calendar",
     "deleteActivity": "Delete this activity",
     "startTimeTitle": "Start time",
-    "endTimeTitle": "End time"
+    "endTimeTitle": "End time",
+    "recapPlaceholder": "Your activity takes shape here",
+    "whenLabel": "When",
+    "durationLabel": "Duration",
+    "detailsLabel": "Details",
+    "paymentLabel": "Payment",
+    "optional": "Optional"
   },
   "storyShare": {
     "today": "Today",

@@ -2405,7 +2405,13 @@
     "addToCalendar": "Adicionar à agenda",
     "deleteActivity": "Eliminar esta atividade",
     "startTimeTitle": "Hora de início",
-    "endTimeTitle": "Hora de fim"
+    "endTimeTitle": "Hora de fim",
+    "recapPlaceholder": "A sua atividade ganha forma aqui",
+    "whenLabel": "Quando",
+    "durationLabel": "Duração",
+    "detailsLabel": "Detalhes",
+    "paymentLabel": "Remuneração",
+    "optional": "Opcional"
   },
   "storyShare": {
     "today": "Hoje",

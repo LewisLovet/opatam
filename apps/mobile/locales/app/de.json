@@ -2405,7 +2405,13 @@
     "addToCalendar": "Zum Kalender hinzufügen",
     "deleteActivity": "Diese Aktivität löschen",
     "startTimeTitle": "Beginn",
-    "endTimeTitle": "Ende"
+    "endTimeTitle": "Ende",
+    "recapPlaceholder": "Hier nimmt Ihre Aktivität Form an",
+    "whenLabel": "Wann",
+    "durationLabel": "Dauer",
+    "detailsLabel": "Details",
+    "paymentLabel": "Vergütung",
+    "optional": "Optional"
   },
   "storyShare": {
     "today": "Heute",

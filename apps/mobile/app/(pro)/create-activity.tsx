@@ -31,10 +31,11 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Button, Card, Input, Loader, SubscriptionRequiredModal } from '../../components';
+import { Text, Input, Loader, SubscriptionRequiredModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   schedulingService,
@@ -57,6 +58,33 @@ function formatDateShort(date: Date): string {
 function formatTime(date: Date): string {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 }
+
+/** « jeu. 14 sept. » — la date du bandeau, courte et dans la langue de l'app. */
+function formatDateBandeau(date: Date): string {
+  return new Intl.DateTimeFormat(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
+}
+
+/** 90 → « 1 h 30 », 45 → « 45 min », 120 → « 2 h ». Lisible dans les cinq langues. */
+function formatDuree(minutes: number): string {
+  if (minutes <= 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${String(m).padStart(2, '0')}`;
+}
+
+/** Assombrit une couleur hex — la seconde teinte du dégradé de bandeau. */
+function assombrir(hex: string, ratio = 0.28): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = Math.round(((n >> 16) & 255) * (1 - ratio));
+  const g = Math.round(((n >> 8) & 255) * (1 - ratio));
+  const b = Math.round((n & 255) * (1 - ratio));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+/** Durées proposées d'un geste sous les heures. */
+const DUREES_RAPIDES = [30, 60, 90, 120];
 
 // ─── Category palette ─────────────────────────────────────────────────
 // Single source of truth for category visuals lives in
@@ -577,7 +605,7 @@ export default function CreateActivityScreen() {
     );
   };
 
-  if (isLoading) {
+if (isLoading) {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
         <View style={s.center}><Loader /></View>
@@ -585,294 +613,296 @@ export default function CreateActivityScreen() {
     );
   }
 
+  // ── Ce que l'écran raconte ──
+  // La couleur de la catégorie teinte tout l'écran : bandeau, tuile
+  // choisie, bouton d'enregistrement. Le bandeau reprend en direct ce
+  // que le professionnel saisit — titre, jour, heures, durée — pour
+  // qu'il voie son activité prendre forme avant de la valider.
+  const teinte = activeCategory.color;
+  const teinteSombre = assombrir(teinte);
+  const dureeMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+  const titreAffiche = title.trim();
+
+  const appliquerDuree = (minutes: number) => {
+    const d = new Date(startTime);
+    d.setMinutes(d.getMinutes() + minutes);
+    // Mono-date : au-delà de minuit, on cale à 23:59, comme la roue le permet.
+    if (d.getDate() !== startTime.getDate()) {
+      d.setTime(startTime.getTime());
+      d.setHours(23, 59, 0, 0);
+    }
+    setEndTime(d);
+  };
+
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => { setShowSubModal(false); router.back(); }}
         context={t('proActivity.subscriptionContext')}
       />
 
-      {/* Header */}
-      <View style={[s.header, { padding: spacing.lg, paddingBottom: spacing.md }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </Pressable>
-        <Text variant="h2" style={{ marginLeft: spacing.md, flex: 1 }}>
-          {isEditing ? t('proActivity.editTitle') : t('proActivity.newTitle')}
-        </Text>
-      </View>
+      {/* ── Bandeau : la catégorie donne la couleur, la saisie donne le contenu ── */}
+      <LinearGradient
+        colors={[teinte, teinteSombre]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.bandeau}
+      >
+        <SafeAreaView>
+          <View style={s.bandeauDecor1} />
+          <View style={s.bandeauDecor2} />
+          <View style={[s.bandeauBarre, { paddingHorizontal: spacing.lg }]}>
+            <Pressable onPress={() => router.back()} hitSlop={10} style={s.boutonRond}>
+              <Ionicons name="arrow-back" size={20} color="#fff" />
+            </Pressable>
+            <Text style={s.bandeauTitre}>
+              {isEditing ? t('proActivity.editTitle') : t('proActivity.newTitle')}
+            </Text>
+            {isEditing ? (
+              <Pressable onPress={handleDelete} hitSlop={10} style={s.boutonRond} disabled={isSubmitting}>
+                <Ionicons name="trash-outline" size={19} color="#fff" />
+              </Pressable>
+            ) : (
+              <View style={{ width: 38 }} />
+            )}
+          </View>
+
+          <View style={[s.recap, { marginHorizontal: spacing.lg }]}>
+            <View style={s.recapIcone}>
+              <Ionicons name={activeCategory.icon} size={26} color={teinte} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.recapCategorie}>{activeCategory.label.toUpperCase()}</Text>
+              <Text style={[s.recapTitre, !titreAffiche && s.recapTitreVide]} numberOfLines={2}>
+                {titreAffiche || t('proActivity.recapPlaceholder')}
+              </Text>
+              <View style={s.recapLigne}>
+                <Ionicons name="calendar-clear-outline" size={13} color="rgba(255,255,255,0.85)" />
+                <Text style={s.recapMeta}>{formatDateBandeau(activityDate)}</Text>
+                <Text style={s.recapPoint}>·</Text>
+                <Text style={s.recapMeta}>{formatTime(startTime)} – {formatTime(endTime)}</Text>
+                <View style={s.recapDuree}>
+                  <Text style={s.recapDureeTexte}>{formatDuree(dureeMinutes)}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, paddingBottom: spacing['3xl'] }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
       >
-        {/* Category chip row */}
-        <View style={{ marginBottom: spacing.lg }}>
-          <Text
-            variant="caption"
-            color="textSecondary"
-            style={{
-              marginBottom: spacing.sm,
-              textTransform: 'uppercase',
-              fontWeight: '600',
-              letterSpacing: 0.5,
-              marginLeft: spacing.xs,
-            }}
-          >
-            {t('proActivity.category')}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              {CATEGORIES.map((cat) => {
-                const isSelected = cat.key === category;
+        {/* ── Catégorie : des tuiles, toutes visibles, pas un ruban qui coupe la cinquième ── */}
+        <Text style={[s.sectionTitre, { color: colors.textSecondary }]}>{t('proActivity.category')}</Text>
+        <View style={s.tuiles}>
+          {CATEGORIES.map((cat) => {
+            const isSelected = cat.key === category;
+            return (
+              <Pressable
+                key={cat.key}
+                onPress={() => setCategory(cat.key)}
+                style={({ pressed }) => [
+                  s.tuile,
+                  {
+                    backgroundColor: isSelected ? `${cat.color}1A` : colors.surface,
+                    borderColor: isSelected ? cat.color : colors.border,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
+                ]}
+              >
+                <View style={[s.tuileIcone, { backgroundColor: isSelected ? cat.color : `${cat.color}1F` }]}>
+                  <Ionicons name={cat.icon} size={18} color={isSelected ? '#fff' : cat.color} />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[s.tuileLabel, { color: isSelected ? cat.color : colors.text, fontWeight: isSelected ? '700' : '600' }]}
+                >
+                  {cat.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* ── Titre ── */}
+        <Text style={[s.sectionTitre, { color: colors.textSecondary, marginTop: spacing.xl }]}>{t('proActivity.titleLabel')}</Text>
+        <Input
+          placeholder={t('proActivity.titlePlaceholder')}
+          value={title}
+          onChangeText={setTitle}
+          autoCapitalize="sentences"
+          maxLength={80}
+          leftIcon={<Ionicons name="pencil-outline" size={18} color={teinte} />}
+        />
+
+        {/* ── Pour qui (équipes seulement) ── */}
+        {members.length > 1 && (
+          <>
+            <Text style={[s.sectionTitre, { color: colors.textSecondary, marginTop: spacing.xl }]}>{t('proActivity.forLabel')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+              {members.map((member) => {
+                const isSelected = member.id === selectedMemberId;
                 return (
                   <Pressable
-                    key={cat.key}
-                    onPress={() => setCategory(cat.key)}
+                    key={member.id}
+                    onPress={() => setSelectedMemberId(member.id)}
                     style={[
-                      s.chip,
+                      s.membre,
                       {
-                        backgroundColor: isSelected ? cat.color : colors.surface,
-                        borderColor: isSelected ? cat.color : colors.border,
-                        borderRadius: radius.full,
-                        paddingHorizontal: spacing.md,
-                        paddingVertical: spacing.sm,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
+                        backgroundColor: isSelected ? teinte : colors.surface,
+                        borderColor: isSelected ? teinte : colors.border,
                       },
                     ]}
                   >
-                    <Ionicons
-                      name={cat.icon}
-                      size={16}
-                      color={isSelected ? '#fff' : cat.color}
-                    />
-                    <Text
-                      variant="bodySmall"
-                      style={{
-                        color: isSelected ? '#fff' : colors.text,
-                        fontWeight: '500',
-                      }}
-                    >
-                      {cat.label}
+                    <View style={[s.membreInitiale, { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : `${teinte}1F` }]}>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: isSelected ? '#fff' : teinte }}>
+                        {member.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: isSelected ? '#fff' : colors.text }}>
+                      {member.name}
                     </Text>
                   </Pressable>
                 );
               })}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Title */}
-        <View style={{ marginBottom: spacing.lg }}>
-          <Input
-            label={t('proActivity.titleLabel')}
-            placeholder={t('proActivity.titlePlaceholder')}
-            value={title}
-            onChangeText={setTitle}
-            autoCapitalize="sentences"
-            maxLength={80}
-          />
-        </View>
-
-        {/* Member (only if multi-member) */}
-        {members.length > 1 && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <Text
-              variant="caption"
-              color="textSecondary"
-              style={{
-                marginBottom: spacing.sm,
-                textTransform: 'uppercase',
-                fontWeight: '600',
-                letterSpacing: 0.5,
-                marginLeft: spacing.xs,
-              }}
-            >
-              {t('proActivity.forLabel')}
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-                {members.map((member) => {
-                  const isSelected = member.id === selectedMemberId;
-                  return (
-                    <Pressable
-                      key={member.id}
-                      onPress={() => setSelectedMemberId(member.id)}
-                      style={[
-                        s.chip,
-                        {
-                          backgroundColor: isSelected ? colors.primary : colors.surface,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                          borderRadius: radius.full,
-                          paddingHorizontal: spacing.md,
-                          paddingVertical: spacing.sm,
-                        },
-                      ]}
-                    >
-                      <Text
-                        variant="bodySmall"
-                        style={{
-                          color: isSelected ? '#fff' : colors.text,
-                          fontWeight: '500',
-                        }}
-                      >
-                        {member.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
             </ScrollView>
-          </View>
+          </>
         )}
 
-        {/* Date + time card */}
-        <Card padding="md" style={{ marginBottom: spacing.lg }}>
-          <Pressable
-            onPress={() => setActivePicker('date')}
-            style={[s.row, { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }]}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">{t('proActivity.date')}</Text>
-              <Text variant="body" style={{ fontWeight: '500' }}>
-                {formatDateShort(activityDate)}
-              </Text>
+        {/* ── Quand : la date, puis début et fin côte à côte, puis les durées d'un geste ── */}
+        <Text style={[s.sectionTitre, { color: colors.textSecondary, marginTop: spacing.xl }]}>{t('proActivity.whenLabel')}</Text>
+        <View style={[s.carte, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Pressable onPress={() => setActivePicker('date')} style={[s.ligneDate, { borderBottomColor: colors.border }]}>
+            <View style={[s.pastille, { backgroundColor: `${teinte}1F` }]}>
+              <Ionicons name="calendar-outline" size={18} color={teinte} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.champLabel, { color: colors.textSecondary }]}>{t('proActivity.date')}</Text>
+              <Text style={[s.champValeur, { color: colors.text }]}>{formatDateShort(activityDate)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>
 
-          <Pressable
-            onPress={() => setActivePicker('startTime')}
-            style={[s.row, { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }]}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">{t('proActivity.start')}</Text>
-              <Text variant="body" style={{ fontWeight: '500' }}>
-                {formatTime(startTime)}
-              </Text>
+          <View style={s.heures}>
+            <Pressable onPress={() => setActivePicker('startTime')} style={[s.heure, { backgroundColor: colors.surfaceSecondary }]}>
+              <Text style={[s.champLabel, { color: colors.textSecondary }]}>{t('proActivity.start')}</Text>
+              <Text style={[s.heureValeur, { color: colors.text }]}>{formatTime(startTime)}</Text>
+            </Pressable>
+            <View style={[s.heureFleche, { backgroundColor: teinte }]}>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </Pressable>
+            <Pressable onPress={() => setActivePicker('endTime')} style={[s.heure, { backgroundColor: colors.surfaceSecondary }]}>
+              <Text style={[s.champLabel, { color: colors.textSecondary }]}>{t('proActivity.end')}</Text>
+              <Text style={[s.heureValeur, { color: colors.text }]}>{formatTime(endTime)}</Text>
+            </Pressable>
+          </View>
 
-          <Pressable
-            onPress={() => setActivePicker('endTime')}
-            style={[s.row, { paddingVertical: spacing.md }]}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text variant="caption" color="textSecondary">{t('proActivity.end')}</Text>
-              <Text variant="body" style={{ fontWeight: '500' }}>
-                {formatTime(endTime)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </Pressable>
-        </Card>
+          <View style={s.durees}>
+            <Text style={[s.champLabel, { color: colors.textSecondary, marginRight: 4 }]}>{t('proActivity.durationLabel')}</Text>
+            {DUREES_RAPIDES.map((minutes) => {
+              const actif = dureeMinutes === minutes;
+              return (
+                <Pressable
+                  key={minutes}
+                  onPress={() => appliquerDuree(minutes)}
+                  style={[
+                    s.duree,
+                    { backgroundColor: actif ? teinte : colors.surface, borderColor: actif ? teinte : colors.border },
+                  ]}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: actif ? '#fff' : colors.text }}>
+                    {formatDuree(minutes)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
-        {/* Address (optional) */}
-        <View style={{ marginBottom: spacing.lg }}>
+        {/* ── Détails, facultatifs ── */}
+        <View style={[s.sectionLigne, { marginTop: spacing.xl }]}>
+          <Text style={[s.sectionTitre, { color: colors.textSecondary, marginBottom: 0 }]}>{t('proActivity.detailsLabel')}</Text>
+          <Text style={[s.facultatif, { color: colors.textMuted }]}>{t('proActivity.optional')}</Text>
+        </View>
+        <View style={[s.carte, { backgroundColor: colors.surface, borderColor: colors.border, gap: spacing.md }]}>
           <Input
-            label={t('proActivity.addressLabel')}
             placeholder={t('proActivity.addressPlaceholder')}
             value={address}
             onChangeText={setAddress}
             autoCapitalize="sentences"
             maxLength={200}
+            leftIcon={<Ionicons name="location-outline" size={18} color={teinte} />}
           />
-        </View>
-
-        {/* Notes (optional) */}
-        <View style={{ marginBottom: spacing.lg }}>
           <Input
-            label={t('proActivity.notesLabel')}
             placeholder={t('proActivity.notesPlaceholder')}
             value={notes}
             onChangeText={setNotes}
             multiline
             numberOfLines={3}
             maxLength={200}
+            leftIcon={<Ionicons name="create-outline" size={18} color={teinte} />}
           />
         </View>
 
-        {/* Amount (optional) — for paid activities (workshop, gig…)
-            Currently shown as a badge on the calendar card. Will be
-            aggregated into "Autres revenus" in the stats Phase 2. */}
-        <View style={{ marginBottom: spacing.lg }}>
+        {/* ── Rémunération hors plateforme ── */}
+        <View style={[s.sectionLigne, { marginTop: spacing.xl }]}>
+          <Text style={[s.sectionTitre, { color: colors.textSecondary, marginBottom: 0 }]}>{t('proActivity.paymentLabel')}</Text>
+          <Text style={[s.facultatif, { color: colors.textMuted }]}>{t('proActivity.optional')}</Text>
+        </View>
+        <View style={[s.carte, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Input
-            label={t('proActivity.amountLabel')}
             placeholder="0"
             value={amount}
             onChangeText={(v) => {
-              // Allow digits + one comma/dot for cents. Strip the rest.
+              // Chiffres et une seule virgule ou un seul point pour les centimes.
               const cleaned = v.replace(/[^0-9.,]/g, '').replace(',', '.');
               const dotCount = (cleaned.match(/\./g) || []).length;
-              if (dotCount > 1) return; // refuse second decimal point
+              if (dotCount > 1) return;
               setAmount(cleaned);
             }}
             keyboardType="decimal-pad"
             maxLength={10}
-            helperText={t('proActivity.amountHelper')}
+            leftIcon={<Ionicons name="cash-outline" size={18} color={teinte} />}
+            rightIcon={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.textSecondary }}>€</Text>}
           />
+          <Text style={[s.aide, { color: colors.textMuted }]}>{t('proActivity.amountHelper')}</Text>
         </View>
-
-        {/* Submit */}
-        <Button
-          title={
-            isSubmitting
-              ? isEditing
-                ? t('proActivity.saving')
-                : t('proActivity.creating')
-              : isEditing
-                ? t('proActivity.saveChanges')
-                : t('proActivity.addToCalendar')
-          }
-          onPress={handleSubmit}
-          loading={isSubmitting}
-          disabled={isSubmitting}
-          style={{ backgroundColor: activeCategory.color }}
-        />
-
-        {/* Delete — only when editing an existing activity. Two-step
-            confirm in handleDelete so accidental taps don't lose
-            data. Hidden during create flow where there's nothing to
-            delete yet. */}
-        {isEditing && (
-          <Pressable
-            onPress={handleDelete}
-            disabled={isSubmitting}
-            style={({ pressed }) => [
-              {
-                marginTop: spacing.md,
-                paddingVertical: spacing.md,
-                alignItems: 'center',
-                opacity: isSubmitting ? 0.5 : pressed ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text variant="body" style={{ color: '#DC2626', fontWeight: '600' }}>
-              {t('proActivity.deleteActivity')}
-            </Text>
-          </Pressable>
-        )}
       </ScrollView>
 
-      {/* Time picker */}
+      {/* ── Pied fixe : toujours à portée de pouce, quelle que soit la longueur du formulaire ── */}
+      <View style={[s.pied, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <Pressable
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          style={({ pressed }) => [s.piedBouton, { backgroundColor: teinte, opacity: isSubmitting ? 0.7 : pressed ? 0.9 : 1 }]}
+        >
+          <Ionicons name={isEditing ? 'checkmark' : 'add'} size={22} color="#fff" />
+          <View style={{ flex: 1 }}>
+            <Text style={s.piedTexte}>
+              {isSubmitting
+                ? (isEditing ? t('proActivity.saving') : t('proActivity.creating'))
+                : (isEditing ? t('proActivity.saveChanges') : t('proActivity.addToCalendar'))}
+            </Text>
+            <Text style={s.piedSous}>
+              {formatDateBandeau(activityDate)} · {formatTime(startTime)} · {formatDuree(dureeMinutes)}
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.85)" />
+        </Pressable>
+      </View>
+
+      {/* Roue des heures */}
       <TimePickerModal
         visible={activePicker === 'startTime' || activePicker === 'endTime'}
         title={activePicker === 'startTime' ? t('proActivity.startTimeTitle') : t('proActivity.endTimeTitle')}
-        initialHour={
-          activePicker === 'startTime' ? startTime.getHours() : endTime.getHours()
-        }
-        initialMinute={
-          activePicker === 'startTime' ? startTime.getMinutes() : endTime.getMinutes()
-        }
+        initialHour={activePicker === 'startTime' ? startTime.getHours() : endTime.getHours()}
+        initialMinute={activePicker === 'startTime' ? startTime.getMinutes() : endTime.getMinutes()}
         onClose={() => setActivePicker(null)}
         onConfirm={handleTimeConfirm}
         colors={colors}
@@ -880,7 +910,7 @@ export default function CreateActivityScreen() {
         radius={radius}
       />
 
-      {/* Date picker — native */}
+      {/* Sélecteur de date — natif */}
       {activePicker === 'date' && Platform.OS === 'android' && (
         <DateTimePicker
           value={activityDate}
@@ -895,26 +925,8 @@ export default function CreateActivityScreen() {
       {activePicker === 'date' && Platform.OS === 'ios' && (
         <Modal visible transparent animationType="slide" onRequestClose={() => setActivePicker(null)}>
           <View style={s.modalOverlay}>
-            <View
-              style={[
-                s.modalSheet,
-                {
-                  backgroundColor: colors.surface,
-                  borderTopLeftRadius: radius.xl,
-                  borderTopRightRadius: radius.xl,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  s.modalHeader,
-                  {
-                    paddingHorizontal: spacing.lg,
-                    paddingVertical: spacing.md,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-              >
+            <View style={[s.modalSheet, { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+              <View style={[s.modalHeader, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomColor: colors.border }]}>
                 <Pressable onPress={() => setActivePicker(null)} hitSlop={8}>
                   <Text variant="body" color="textSecondary">{t('common.cancel')}</Text>
                 </Pressable>
@@ -928,57 +940,99 @@ export default function CreateActivityScreen() {
                 mode="date"
                 display="inline"
                 minimumDate={new Date()}
-                onChange={(_: any, date: Date | undefined) => {
-                  if (date) handleDateChange(date);
-                }}
+                onChange={(_: any, date: Date | undefined) => { if (date) handleDateChange(date); }}
               />
             </View>
           </View>
         </Modal>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  chip: {
+
+  // Bandeau
+  bandeau: { paddingBottom: 18, overflow: 'hidden' },
+  bandeauDecor1: { position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.10)' },
+  bandeauDecor2: { position: 'absolute', bottom: -70, left: -30, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(0,0,0,0.08)' },
+  bandeauBarre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, paddingBottom: 14 },
+  bandeauTitre: { color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  boutonRond: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
+  recap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    minHeight: 300,
-  },
-  modalHeader: {
+  recapIcone: { width: 52, height: 52, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  recapCategorie: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
+  recapTitre: { color: '#fff', fontSize: 19, lineHeight: 24, fontWeight: '800', letterSpacing: -0.3, marginTop: 2 },
+  recapTitreVide: { color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
+  recapLigne: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, flexWrap: 'wrap' },
+  recapMeta: { color: 'rgba(255,255,255,0.92)', fontSize: 12.5, fontWeight: '600' },
+  recapPoint: { color: 'rgba(255,255,255,0.6)', fontSize: 12.5 },
+  recapDuree: { marginLeft: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: '#fff' },
+  recapDureeTexte: { fontSize: 11, fontWeight: '800', color: '#1f2937' },
+
+  // Sections
+  sectionTitre: { fontSize: 11, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 10, marginLeft: 2 },
+  sectionLigne: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
+  facultatif: { fontSize: 11, fontWeight: '600' },
+  carte: { borderWidth: 1, borderRadius: 18, padding: 14 },
+
+  // Catégories
+  tuiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tuile: {
+    width: '31.5%',
+    flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
-  wheelsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  wheelHighlight: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-  },
-  wheelColumn: {
-    flex: 1,
-    height: WHEEL_ITEM_HEIGHT * VISIBLE_ITEMS,
-  },
+  tuileIcone: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tuileLabel: { fontSize: 13, flexShrink: 1 },
+
+  // Membres
+  membre: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 6, paddingRight: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  membreInitiale: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+
+  // Quand
+  ligneDate: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottomWidth: 1, marginBottom: 14 },
+  pastille: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  champLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
+  champValeur: { fontSize: 16, fontWeight: '700', marginTop: 2 },
+  heures: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heure: { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14 },
+  heureValeur: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, marginTop: 2, fontVariant: ['tabular-nums'] },
+  heureFleche: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  durees: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' },
+  duree: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+  aide: { fontSize: 12, lineHeight: 17, marginTop: 8 },
+
+  // Pied
+  pied: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, paddingBottom: 28, borderTopWidth: 1 },
+  piedBouton: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16 },
+  piedTexte: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  piedSous: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 1 },
+
+  // Sélecteurs (inchangés)
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { minHeight: 300 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1 },
+  wheelsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  wheelHighlight: { position: 'absolute', left: 0, right: 0 },
+  wheelColumn: { flex: 1, height: WHEEL_ITEM_HEIGHT * VISIBLE_ITEMS },
   wheel: { height: WHEEL_ITEM_HEIGHT * VISIBLE_ITEMS },
   wheelItem: { alignItems: 'center', justifyContent: 'center' },
 });

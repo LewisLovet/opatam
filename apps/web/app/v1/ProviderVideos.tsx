@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
 import type { LandingVideoItem } from '@booking-app/shared';
 import { extractYouTubeId } from '@/lib/youtube';
+import { meilleureAfficheYoutube } from '@/lib/youtubePoster';
 import { YouTubeVideo } from './YouTubeVideo';
 import s from './v1.module.css';
 
@@ -81,6 +82,16 @@ function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; select
   // `youtubeId` fourni par l'admin d'abord ; le parsing de `src` reste le
   // repli pour les entrées enregistrées avant que le champ existe.
   const id = (item.kind === 'youtube' && item.youtubeId) || youtubeIdFromUrl(item.src);
+  // L'affiche enregistrée peut être la petite (480 × 360) : les premières
+  // entrées l'ont été ainsi. On cherche mieux au rendu, sans bloquer
+  // l'affichage — la petite reste en place tant que la grande n'est pas là.
+  const [poster, setPoster] = useState(item.poster);
+  useEffect(() => {
+    if (!id || !/\/hqdefault\.jpg$/.test(item.poster)) return;
+    let cancelled = false;
+    void meilleureAfficheYoutube(id).then(url => { if (!cancelled && url !== item.poster) setPoster(url); });
+    return () => { cancelled = true; };
+  }, [id, item.poster]);
   const active = selected && visible && (!reduced || manual);
   useEffect(() => {
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -114,7 +125,7 @@ function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; select
     <div ref={media} className={s.providerMedia}>{loaded ? id
       ? <YouTubeVideo id={id} title={`Vidéo : ${item.businessName}`} active={active} onPlay={onActivate} />
       : <video ref={video} src={item.src} poster={item.poster || undefined} muted playsInline controls preload="metadata" onPlay={onActivate} onError={() => setFailed(true)} aria-label={`Vidéo : ${item.businessName}`} />
-      : <button onClick={play} aria-label={`Lire la vidéo de ${item.businessName}`}>{item.poster ? <Image src={item.poster} alt="" fill sizes="(max-width: 760px) 85vw, 33vw" /> : <span className={s.noPoster}>{item.businessName}</span>}<span className={s.providerPlay}><Play size={25} fill="currentColor" /></span><span className={s.watchLabel}>Voir la vidéo</span></button>}
+      : <button onClick={play} aria-label={`Lire la vidéo de ${item.businessName}`}>{poster ? <Image src={poster} alt="" fill sizes="(max-width: 760px) 85vw, 33vw" /> : <span className={s.noPoster}>{item.businessName}</span>}<span className={s.providerPlay}><Play size={25} fill="currentColor" /></span><span className={s.watchLabel}>Voir la vidéo</span></button>}
       {blocked && !failed && <button className={s.autoplayFallback} onClick={play}>Lire la vidéo <Play size={18} /></button>}
     </div>
     {failed && <p className={s.videoError} role="status">Cette vidéo ne peut pas être chargée pour le moment.</p>}

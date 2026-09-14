@@ -51,7 +51,8 @@ import {
   uploadFileWithProgress,
 } from '@booking-app/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { extractYouTubeId, getCategoryLabel, youtubeThumbnailUrl } from '@booking-app/shared';
+import { extractYouTubeId, getCategoryLabel } from '@booking-app/shared';
+import { meilleureAfficheYoutube } from '@/lib/youtubePoster';
 import type { LandingVideoItem } from '@booking-app/shared';
 import { Button, Input, Switch, Textarea } from '@/components/ui';
 
@@ -250,11 +251,11 @@ export default function AdminLandingVideosPage() {
 
   /**
    * Lien YouTube — le chemin le plus court : rien n'est envoyé, l'affiche est
-   * celle que YouTube génère. `hqdefault` et pas `maxresdefault` : la version
-   * haute définition n'existe pas pour toutes les vidéos et laisserait une
-   * carte vide, alors que `hqdefault` existe toujours.
+   * celle que YouTube génère, dans la plus grande taille qui existe pour
+   * cette vidéo (voir lib/youtubePoster : la haute définition manque
+   * souvent, et son absence ne se voit pas à un simple `onError`).
    */
-  const ajouterLien = useCallback(() => {
+  const ajouterLien = useCallback(async () => {
     if (!cible) {
       setError('Choisissez d’abord le prestataire mis en avant.');
       return;
@@ -265,11 +266,12 @@ export default function AdminLandingVideosPage() {
       return;
     }
     setError(null);
+    const poster = await meilleureAfficheYoutube(id);
     ajouterEntree({
       kind: 'youtube',
       youtubeId: id,
       src: `https://www.youtube.com/watch?v=${id}`,
-      poster: youtubeThumbnailUrl(lien.trim(), 'hq') ?? '',
+      poster,
     });
   }, [ajouterEntree, cible, lien]);
 
@@ -512,7 +514,7 @@ export default function AdminLandingVideosPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              ajouterLien();
+              void ajouterLien();
             }}
             className="flex items-end gap-3 flex-wrap"
           >
