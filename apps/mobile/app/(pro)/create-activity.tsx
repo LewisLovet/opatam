@@ -16,7 +16,7 @@
  *     reach for "Bloquer une période" instead.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -27,6 +27,8 @@ import {
   Platform,
   Modal,
   FlatList,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -299,6 +301,110 @@ function TimePickerModal({
 
 type PickerMode = 'date' | 'startTime' | 'endTime' | null;
 
+// ─── Confirmation animée ──────────────────────────────────────────────
+//
+// Une alerte système « OK » après l'enregistrement, c'est une formalité ;
+// on veut une récompense. Un voile à la couleur de la catégorie monte, un
+// disque blanc jaillit avec la coche, le titre et le récap apparaissent,
+// puis l'écran se referme tout seul. Le tout dure moins de deux secondes :
+// assez pour être senti, pas assez pour être attendu.
+function ConfirmationActivite({
+  couleur,
+  couleurSombre,
+  titre,
+  sousTitre,
+  icone,
+  onFini,
+}: {
+  couleur: string;
+  couleurSombre: string;
+  titre: string;
+  sousTitre: string;
+  icone: keyof typeof Ionicons.glyphMap;
+  onFini: () => void;
+}) {
+  const voile = useRef(new Animated.Value(0)).current;
+  const disque = useRef(new Animated.Value(0)).current;
+  const coche = useRef(new Animated.Value(0)).current;
+  const texte = useRef(new Animated.Value(0)).current;
+  const onde = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(voile, { toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.parallel([
+        Animated.spring(disque, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }),
+        Animated.timing(onde, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+      Animated.spring(coche, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+      Animated.timing(texte, { toValue: 1, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.delay(900),
+    ]).start(({ finished }) => {
+      if (finished) onFini();
+    });
+  }, [voile, disque, coche, texte, onde, onFini]);
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: voile, zIndex: 50 }]} pointerEvents="auto">
+      <LinearGradient colors={[couleur, couleurSombre]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={c.fond}>
+        <View style={c.centre}>
+          {/* L'onde : un cercle qui s'élargit et s'efface derrière le disque */}
+          <Animated.View
+            style={[
+              c.onde,
+              {
+                opacity: onde.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }),
+                transform: [{ scale: onde.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.4] }) }],
+              },
+            ]}
+          />
+          <Animated.View style={[c.disque, { transform: [{ scale: disque }] }]}>
+            <Animated.View style={{ transform: [{ scale: coche }], opacity: coche }}>
+              <Ionicons name="checkmark" size={54} color={couleur} />
+            </Animated.View>
+          </Animated.View>
+          <Animated.View
+            style={{
+              alignItems: 'center',
+              opacity: texte,
+              transform: [{ translateY: texte.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+            }}
+          >
+            <Text style={c.titre}>{titre}</Text>
+            <View style={c.ligne}>
+              <Ionicons name={icone} size={15} color="rgba(255,255,255,0.9)" />
+              <Text style={c.sousTitre} numberOfLines={2}>{sousTitre}</Text>
+            </View>
+          </Animated.View>
+        </View>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
+const c = StyleSheet.create({
+  fond: { flex: 1 },
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  onde: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: '#fff' },
+  disque: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 26,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  titre: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.4, textAlign: 'center' },
+  ligne: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, maxWidth: 300 },
+  sousTitre: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', textAlign: 'center', flexShrink: 1 },
+});
+
 export default function CreateActivityScreen() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
@@ -367,6 +473,8 @@ export default function CreateActivityScreen() {
   const [activePicker, setActivePicker] = useState<PickerMode>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Confirmation animée après l'enregistrement ; `null` = pas affichée.
+  const [confirmation, setConfirmation] = useState<{ titre: string; sousTitre: string } | null>(null);
 
   // Load members + auto-select default; in edit mode also hydrate
   // form state from the existing blockedSlot doc.
@@ -529,11 +637,7 @@ export default function CreateActivityScreen() {
           address: address.trim() || null,
           amount: amountCents,
         });
-        Alert.alert(
-          t('proActivity.updatedTitle'),
-          t('proActivity.updatedMessage', { title: title.trim() }),
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
+        setConfirmation({ titre: t('proActivity.updatedTitle'), sousTitre: title.trim() });
       } else {
         await schedulingService.blockPeriod(providerId, {
           memberId: selectedMember.id,
@@ -550,11 +654,7 @@ export default function CreateActivityScreen() {
           address: address.trim() || null,
           amount: amountCents,
         });
-        Alert.alert(
-          t('proActivity.addedTitle'),
-          t('proActivity.addedMessage', { title: title.trim() }),
-          [{ text: 'OK', onPress: () => router.back() }],
-        );
+        setConfirmation({ titre: t('proActivity.addedTitle'), sousTitre: title.trim() });
       }
     } catch (error) {
       console.error('Error saving activity:', error);
@@ -623,6 +723,10 @@ if (isLoading) {
   const dureeMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
   const titreAffiche = title.trim();
 
+  // Stable entre les rendus : l'animation la reçoit en dépendance et ne
+  // doit pas repartir de zéro à chaque frappe.
+  const fermerApresConfirmation = useMemo(() => () => router.back(), [router]);
+
   const appliquerDuree = (minutes: number) => {
     const d = new Date(startTime);
     d.setMinutes(d.getMinutes() + minutes);
@@ -636,6 +740,16 @@ if (isLoading) {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
+      {confirmation && (
+        <ConfirmationActivite
+          couleur={teinte}
+          couleurSombre={teinteSombre}
+          titre={confirmation.titre}
+          sousTitre={`${confirmation.sousTitre} · ${formatDateBandeau(activityDate)} · ${formatTime(startTime)}`}
+          icone={activeCategory.icon}
+          onFini={fermerApresConfirmation}
+        />
+      )}
       <SubscriptionRequiredModal
         visible={showSubModal}
         onClose={() => { setShowSubModal(false); router.back(); }}

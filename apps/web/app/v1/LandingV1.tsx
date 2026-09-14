@@ -160,13 +160,15 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
         <div className={s.marquee} data-paused={paused}><div className={s.track}>{[0, 1].map(copy => <div className={s.tradeGroup} key={copy} aria-hidden={copy === 1 ? true : undefined}>{trades.map(trade => <div className={s.trade} key={trade.title}><Image src={`/category-covers/${trade.image}.jpg`} alt="" width={104} height={76} /><span>{trade.title}</span></div>)}</div>)}</div></div>
       </section>
 
+      {/* Les vidéos des prestataires juste sous les métiers : la preuve
+          sociale se voit tôt, avant l'explication du produit. */}
+      <ProviderVideos items={videos} />
+
       <section className={`${s.wrap} ${s.section}`} id="fonctionnement">
         <div className={s.sectionHeading} data-reveal><p className={s.eyebrow}>CE QUE ÇA CHANGE</p><h2>Moins d’administratif.<br /><em>Plus de rendez-vous.</em></h2><p>Une page pour être réservé. Une application pour tout gérer.</p></div>
         <FeatureScenes />
         <ProductGallery />
       </section>
-
-      <ProviderVideos items={videos} />
 
       <StoriesSection />
 
