@@ -28,6 +28,26 @@ const categories: StoryCategory[] = [
 // liste ci-dessus suffit à faire réapparaître l'onglet.
 const visibles = categories.filter((category) => category.screens.every((screen) => screen.src));
 
+// Inclinaison qui suit la souris : ±7° selon la position du pointeur sur le
+// téléphone, et un reflet qui se déplace avec lui. Tout passe par des
+// variables CSS lues par .storyPreviewButton — aucun rendu React par
+// mouvement, seulement le style de l'élément touché.
+function incliner(event: React.PointerEvent<HTMLButtonElement>) {
+  const el = event.currentTarget;
+  const r = el.getBoundingClientRect();
+  const x = (event.clientX - r.left) / r.width;
+  const y = (event.clientY - r.top) / r.height;
+  el.style.setProperty('--ry', `${((x - 0.5) * 14).toFixed(2)}deg`);
+  el.style.setProperty('--rx', `${((0.5 - y) * 14).toFixed(2)}deg`);
+  el.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
+  el.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
+  el.style.setProperty('--lift', '-8px');
+}
+function redresser(event: React.PointerEvent<HTMLButtonElement>) {
+  const el = event.currentTarget;
+  ['--rx', '--ry', '--lift'].forEach(v => el.style.removeProperty(v));
+}
+
 export function StoriesSection() {
   const [selected, setSelected] = useState(visibles[0]?.id ?? '');
   const [expanded, setExpanded] = useState<StoryScreen | null>(null);
@@ -48,7 +68,7 @@ export function StoriesSection() {
         {visibles.map(category => <TabsContent key={category.id} value={category.id} id={`story-panel-${category.id}`} aria-labelledby={`story-tab-${category.id}`} className={s.socialPanel}>
           <div className={s.storyPitch}><span className={s.socialCategory}>{category.label}</span><h3>{category.title}</h3><p>{category.description}</p><a href="#telecharger" className={s.primary}>Découvrir l’application <ArrowRight size={18} /></a><small>Créez dans Opatam. Partagez sur vos réseaux.</small></div>
           <div className={s.storyPair}>{category.screens.map((screen, index) => <figure key={`${category.id}-${index}`}>
-            <button className={s.storyPreviewButton} onClick={() => setExpanded(screen)} aria-label={`Agrandir : ${screen.title}`}><Image src={screen.src!} alt={`Story Opatam : ${screen.title}`} width={540} height={960} sizes="(max-width: 600px) 43vw, 270px" /><span><Maximize2 size={17} /></span></button>
+            <button className={s.storyPreviewButton} onClick={() => setExpanded(screen)} onPointerMove={incliner} onPointerLeave={redresser} aria-label={`Agrandir : ${screen.title}`}><Image src={screen.src!} alt={`Story Opatam : ${screen.title}`} width={540} height={960} sizes="(max-width: 600px) 43vw, 270px" /><span><Maximize2 size={17} /></span></button>
             <figcaption>{screen.title}</figcaption>
           </figure>)}</div>
         </TabsContent>)}

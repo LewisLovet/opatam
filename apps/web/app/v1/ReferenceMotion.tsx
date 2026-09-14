@@ -74,12 +74,20 @@ export function HeroMotion() {
   const { ref, active } = useMotion();
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Le téléphone arrive d'abord (entrée en 3D, ~1,2 s) ; le défilement des
+  // écrans ne commence qu'ensuite, sinon le premier écran changeait pendant
+  // que le téléphone se posait encore.
+  const [arrive, setArrive] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setArrive(true), 1400);
+    return () => clearTimeout(id);
+  }, []);
   const screens = heroScreens;
   useEffect(() => {
-    if (!active || paused) return;
+    if (!active || paused || !arrive) return;
     const id = setTimeout(() => setStep(value => (value + 1) % 3), 5000);
     return () => clearTimeout(id);
-  }, [active, paused, step]);
+  }, [active, paused, arrive, step]);
 
   return <div className={s.realHero} ref={ref} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }} onFocusCapture={() => setPaused(true)} role="region" aria-label="Aperçu du parcours client dans l’application">
     <div className={s.captureFrame}>

@@ -156,7 +156,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
       </section>
 
       <section className={s.trades} aria-label="Les métiers qui peuvent utiliser Opatam">
-        <div className={`${s.wrap} ${s.stripHeading}`}><p>Vous avez le savoir-faire. <strong>On s’occupe des rendez-vous.</strong></p></div>
+        <div className={`${s.wrap} ${s.stripHeading}`} data-reveal><p><span>Vous avez le savoir-faire</span><strong>On s’occupe des rendez-vous.</strong></p></div>
         <div className={s.marquee} data-paused={paused}><div className={s.track}>{[0, 1].map(copy => <div className={s.tradeGroup} key={copy} aria-hidden={copy === 1 ? true : undefined}>{trades.map(trade => <div className={s.trade} key={trade.title}><Image src={`/category-covers/${trade.image}.jpg`} alt="" width={104} height={76} /><span>{trade.title}</span></div>)}</div>)}</div></div>
       </section>
 
