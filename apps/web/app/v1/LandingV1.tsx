@@ -92,7 +92,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
     <a href="#contenu-v1" className={s.skip}>Aller au contenu</a>
     <header className={s.header}>
       <div className={`${s.wrap} ${s.nav}`}>
-        <Link href="/v1" className={s.brand} aria-label="Opatam, accueil V1"><Image src="/logo-opatam-blanc.png" alt="" width={34} height={34} />OPATAM</Link>
+        <Link href="/" className={s.brand} aria-label="Opatam, accueil"><Image src="/logo-opatam-blanc.png" alt="" width={34} height={34} />OPATAM</Link>
         <nav className={s.desktopNav} aria-label="Navigation principale"><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#videos">Leurs métiers</a></nav>
         <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href="/register" className={s.buttonSmall}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
       </div>

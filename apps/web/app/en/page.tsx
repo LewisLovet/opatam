@@ -6,6 +6,6 @@
 
 // Route segment config must be declared locally (not re-exported) for
 // Next's static analysis. Keep in sync with ../page.tsx.
-export const revalidate = 1800;
+export const revalidate = 300;
 
 export { default, generateMetadata } from '../page';

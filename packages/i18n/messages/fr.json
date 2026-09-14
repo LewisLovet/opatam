@@ -50,11 +50,11 @@
   },
   "seo": {
     "home": {
-      "title": "Opatam — Réservation en ligne pour professionnels | Sans commission",
-      "description": "Opatam est la plateforme de réservation en ligne sans commission pour les professionnels de la beauté, bien-être, coaching et services. Agenda en ligne, rappels automatiques, page de réservation. Essai gratuit.",
-      "ogTitle": "Opatam — Réservation en ligne sans commission",
-      "ogDescription": "Gérez vos rendez-vous en ligne, attirez de nouveaux clients et développez votre activité. 0% de commission. Essai gratuit.",
-      "orgDescription": "Plateforme de réservation en ligne sans commission pour les professionnels de services."
+      "title": "Opatam — La réservation en ligne qui remplit votre agenda",
+      "description": "Opatam est la plateforme de réservation en ligne des professionnels de la beauté, du bien-être, du coaching et des services. Page de réservation, agenda dans l’application, rappels automatiques. Essai gratuit, sans carte bancaire.",
+      "ogTitle": "Opatam — La réservation en ligne qui remplit votre agenda",
+      "ogDescription": "Vos clients réservent 24 h/24 sur votre page. Votre agenda vous suit dans l’app. Essai gratuit, sans carte bancaire.",
+      "orgDescription": "Plateforme de réservation en ligne pour les professionnels de services."
     },
     "booking": {
       "title": "Réserver chez {businessName}",

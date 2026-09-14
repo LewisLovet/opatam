@@ -3,11 +3,14 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { articleRepository } from '@booking-app/firebase';
 import { ogLocale } from '@/lib/ogLocale';
 import LandingPage from './HomePage';
+import LandingV1 from './v1/LandingV1';
+import { chargerVideosAccueil } from './v1/loadVideos';
 import type { ArticleCardData } from './blog/components/ArticleCard';
 
-// Refresh the homepage tutorial block every 30 min — new tutorials are
-// rare and ISR keeps Firestore reads tiny.
-export const revalidate = 1800;
+// Rafraîchi toutes les 5 min : la sélection de vidéos de prestataires se
+// gère depuis l'admin et doit apparaître sans attendre une demi-heure.
+// Les lectures Firestore restent minimes (deux documents).
+export const revalidate = 300;
 
 const BASE_URL = 'https://opatam.com';
 // hreflang pair — declared on BOTH versions so Google links them and serves
@@ -132,12 +135,30 @@ function buildJsonLd(
 }
 
 export default async function Page() {
+  const locale = await getLocale();
   const tSeo = await getTranslations('seo.home');
   const tFaq = await getTranslations('home.faq');
   const jsonLd = buildJsonLd(
     tSeo('orgDescription'),
     tFaq.raw('items') as { question: string; answer: string }[],
   );
+
+  // La nouvelle page d'accueil (dossier v1) n'existe qu'en français. Les
+  // versions /en, /it, /pt, /de gardent l'ancienne page, traduite, plutôt
+  // qu'un accueil français servi à un visiteur anglais. Même métadonnées,
+  // même JSON-LD, mêmes hreflang : seul le rendu diffère.
+  if (locale === 'fr') {
+    const videos = await chargerVideosAccueil();
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <LandingV1 videos={videos} />
+      </>
+    );
+  }
   // Tutorials block on the homepage — pulled from the blog with category
   // 'tutoriels'. Tolerant: an empty list (no tutorial yet, or Firestore
   // unavailable) just hides the section, never breaks the landing.

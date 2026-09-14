@@ -23,7 +23,7 @@ const BASE_URL = 'https://opatam.com';
  * sur une page qui, par construction, ne change presque jamais. L'inverse —
  * tout dater à maintenant — coûte la crédibilité de TOUT le fichier.
  */
-const EDITORIAL_LAST_MODIFIED = new Date('2026-08-16T00:00:00.000Z');
+const EDITORIAL_LAST_MODIFIED = new Date('2026-09-14T00:00:00.000Z');
 
 /** La plus récente d'une série de dates, ou un repli si la série est vide. */
 function newestOf(dates: (Date | undefined)[], fallback: Date): Date {
