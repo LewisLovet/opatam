@@ -16,7 +16,7 @@
  *     reach for "Bloquer une période" instead.
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -705,7 +705,13 @@ export default function CreateActivityScreen() {
     );
   };
 
-if (isLoading) {
+  // Stable entre les rendus : l'animation la reçoit en dépendance et ne
+  // doit pas repartir de zéro à chaque frappe. Déclaré AVANT la sortie de
+  // chargement ci-dessous : un hook après un `return` conditionnel change
+  // l'ordre des hooks d'un rendu à l'autre, et React s'arrête net.
+  const fermerApresConfirmation = useCallback(() => router.back(), [router]);
+
+  if (isLoading) {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
         <View style={s.center}><Loader /></View>
@@ -722,10 +728,6 @@ if (isLoading) {
   const teinteSombre = assombrir(teinte);
   const dureeMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
   const titreAffiche = title.trim();
-
-  // Stable entre les rendus : l'animation la reçoit en dépendance et ne
-  // doit pas repartir de zéro à chaque frappe.
-  const fermerApresConfirmation = useMemo(() => () => router.back(), [router]);
 
   const appliquerDuree = (minutes: number) => {
     const d = new Date(startTime);
