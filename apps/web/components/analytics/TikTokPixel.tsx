@@ -21,6 +21,19 @@ import { TIKTOK_PIXEL_ID, setTikTokConsent } from '@/lib/tiktok-pixel';
 
 const SCRIPT_DOM_ID = 'tiktok-pixel-snippet';
 
+/**
+ * Téléphone au format E.164 (« +33612345678 »), le seul que TikTok
+ * rapproche. Les fiches portent souvent un numéro français en 06… ou avec
+ * des espaces : on normalise avant de hacher. `null` si inexploitable.
+ */
+function telephoneE164(brut: string | null | undefined): string | null {
+  const chiffres = (brut ?? '').replace(/\D/g, '');
+  if (chiffres.length < 8) return null;
+  if (chiffres.length === 10 && chiffres.startsWith('0')) return `+33${chiffres.slice(1)}`;
+  if (chiffres.startsWith('33') && chiffres.length === 11) return `+${chiffres}`;
+  return `+${chiffres}`;
+}
+
 /** SHA-256 hexadécimal, minuscules — le format attendu par TikTok. */
 async function sha256(valeur: string): Promise<string> {
   const data = new TextEncoder().encode(valeur.trim().toLowerCase());
@@ -78,6 +91,7 @@ export function TikTokPixel() {
   const { status } = useConsent();
   const auth = useContext(AuthContext);
   const firebaseUser = auth?.firebaseUser ?? null;
+  const telephone = telephoneE164(auth?.user?.phone);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const premierePageVue = useRef(false);
@@ -101,12 +115,14 @@ export function TikTokPixel() {
     if (firebaseUser?.uid !== dernierUid.current) {
       dernierUid.current = firebaseUser?.uid ?? null;
       if (firebaseUser?.email && window.ttq && typeof crypto?.subtle?.digest === 'function') {
-        void Promise.all([sha256(firebaseUser.email), sha256(firebaseUser.uid)])
-          .then(([email, external_id]) => window.ttq?.identify({ email, external_id }))
+        void Promise.all([sha256(firebaseUser.email), sha256(firebaseUser.uid), telephone ? sha256(telephone) : Promise.resolve(null)])
+          .then(([email, external_id, phone_number]) =>
+            window.ttq?.identify(phone_number ? { email, external_id, phone_number } : { email, external_id }),
+          )
           .catch(() => undefined);
       }
     }
-  }, [status, firebaseUser?.uid, firebaseUser?.email]);
+  }, [status, firebaseUser?.uid, firebaseUser?.email, telephone]);
 
   // 2. Une page vue à chaque navigation côté client.
   useEffect(() => {
