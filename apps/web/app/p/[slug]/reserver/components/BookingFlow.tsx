@@ -11,7 +11,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { APP_CONFIG } from '@booking-app/shared/constants';
-import type { ServiceDiscount } from '@booking-app/shared';
+import type { ServiceDiscount, Service as SharedService } from '@booking-app/shared';
 import {
   computeDiscountedTotal,
   resolveServiceDiscount,
@@ -31,6 +31,9 @@ import {
   localizeBooleanAnswer,
   localizeService,
   localizeServiceChoices,
+  resolveDeposit,
+  combineResolvedDeposits,
+  clientServiceFee,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import { StepService } from './StepService';
@@ -60,7 +63,10 @@ interface Provider {
     cancellationDeadline: number;
     bookingNotice?: string | null;
     globalDiscount?: ServiceDiscount | null;
+    depositDefault?: { percent: number; refundDeadlineHours: number } | null;
   };
+  /** Calculé côté serveur : accès aux acomptes + compte Stripe actif. */
+  depositEligible?: boolean;
 }
 
 interface ServiceCategory {
@@ -83,6 +89,7 @@ interface Service {
   options?: ServiceOption[];
   infoFields?: ServiceInfoField[];
   discount?: ServiceDiscount | null;
+  deposit?: SharedService['deposit'];
   /** `false` = visible mais non réservable en ligne. */
   isAvailable?: boolean;
   /** Jours réservables (0 = dimanche). Vide = tous les jours. */
@@ -352,6 +359,19 @@ export function BookingFlow({
     () => cartLines.reduce((sum, l) => sum + l.price, 0),
     [cartLines],
   );
+  // Acompte et frais de plateforme À RÉGLER MAINTENANT — même règle que le
+  // serveur (booking.service) : accès aux acomptes + compte Stripe actif,
+  // acompte par prestation sur le prix effectif, frais de plateforme dessus.
+  // Affiché sous le total pour que la cliente le voie avant la page Stripe.
+  const depositPreview = useMemo(() => {
+    if (!provider.depositEligible) return null;
+    const deposits = cartLines
+      .map((l) => resolveDeposit({ ...l.service, price: l.price }, provider.settings ?? {}))
+      .filter((d): d is NonNullable<typeof d> => d !== null);
+    const combined = combineResolvedDeposits(deposits);
+    if (!combined || combined.amount <= 0) return null;
+    return { amount: combined.amount, fee: clientServiceFee(combined.amount) };
+  }, [cartLines, provider]);
   // Pre-discount total + aggregate % — drives the crossed-out price / badge.
   const cartTotalOriginal = useMemo(
     () => cartLines.reduce((sum, l) => sum + l.original, 0),
@@ -1368,6 +1388,7 @@ export function BookingFlow({
               promoDaysLeft={cartPromo?.daysLeft ?? null}
               choiceLabels={choiceLabels}
               travelFee={travelQuote.status === 'ok' && requiresClientAddress ? travelQuote.fee : null}
+              depositPreview={depositPreview}
             />
           </div>
           )}
@@ -1396,6 +1417,7 @@ export function BookingFlow({
             promoDaysLeft={cartPromo?.daysLeft ?? null}
             choiceLabels={choiceLabels}
             travelFee={travelQuote.status === 'ok' && requiresClientAddress ? travelQuote.fee : null}
+            depositPreview={depositPreview}
             compact
           />
         </div>

@@ -195,7 +195,10 @@
     "promoUntil": "until {date}",
     "promoValid": "Offer valid {datePart}",
     "promoSavings": "Promotion −{percent}% · you save {amount}",
-    "promoSavingsAmount": "Promotion · you save {amount}"
+    "promoSavingsAmount": "Promotion · you save {amount}",
+    "depositNow": "Deposit",
+    "platformFee": "Platform fee",
+    "payToday": "Due today"
   },
   "summary": {
     "title": "Summary",

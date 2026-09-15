@@ -195,7 +195,10 @@
     "promoUntil": "bis zum {date}",
     "promoValid": "Angebot gültig {datePart}",
     "promoSavings": "Aktion −{percent} % · Sie sparen {amount}",
-    "promoSavingsAmount": "Aktion · Sie sparen {amount}"
+    "promoSavingsAmount": "Aktion · Sie sparen {amount}",
+    "depositNow": "Anzahlung",
+    "platformFee": "Plattformgebühr",
+    "payToday": "Heute zu zahlen"
   },
   "summary": {
     "title": "Übersicht",

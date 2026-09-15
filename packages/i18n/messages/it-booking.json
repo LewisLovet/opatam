@@ -195,7 +195,10 @@
     "promoUntil": "fino al {date}",
     "promoValid": "Offerta valida {datePart}",
     "promoSavings": "Promozione −{percent}% · risparmi {amount}",
-    "promoSavingsAmount": "Promozione · risparmi {amount}"
+    "promoSavingsAmount": "Promozione · risparmi {amount}",
+    "depositNow": "Acconto",
+    "platformFee": "Commissione piattaforma",
+    "payToday": "Da pagare oggi"
   },
   "summary": {
     "title": "Riepilogo",

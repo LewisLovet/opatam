@@ -84,6 +84,9 @@ interface BookingRecapProps {
   promoDaysLeft?: number | null;
   /** Labels of the chosen variations/options to list under the service. */
   choiceLabels?: string[];
+  /** Acompte à régler maintenant (centimes) et frais de plateforme dessus ;
+   *  null = pas d'acompte pour ce panier. */
+  depositPreview?: { amount: number; fee: number } | null;
   /** Frais de déplacement (centimes) — HORS du prix des prestations.
    *  null/undefined = pas de déplacement ; 0 = offert (affiché). */
   travelFee?: number | null;
@@ -99,6 +102,16 @@ function formatDuration(minutes: number): string {
     return `${hours}h`;
   }
   return `${hours}h${remainingMinutes}`;
+}
+
+/** Montants à payer : toujours deux décimales (« 73,50 € », pas « 73,5 € »). */
+function fmtExact(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
 function fmtCurrency(cents: number, locale: string): string {
@@ -139,6 +152,7 @@ export function BookingRecap({
   slot,
   provider,
   compact = false,
+  depositPreview = null,
   effectivePrice,
   effectiveDuration,
   originalPrice,
@@ -208,6 +222,14 @@ export function BookingRecap({
               {promoCountdownText && (
                 <p className="text-[11px] font-semibold text-rose-500 dark:text-rose-400">
                   {promoCountdownText}
+                </p>
+              )}
+              {depositPreview && (
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {t('recap.payToday')} : {fmtExact(depositPreview.amount + depositPreview.fee, locale)}
+                  {depositPreview.fee > 0
+                    ? ` (${t('recap.depositNow').toLowerCase()} ${fmtExact(depositPreview.amount, locale)} + ${t('recap.platformFee').toLowerCase()} ${fmtExact(depositPreview.fee, locale)})`
+                    : ''}
                 </p>
               )}
             </>
@@ -437,6 +459,26 @@ export function BookingRecap({
             <p className="text-right text-[11px] font-medium text-rose-500 dark:text-rose-400">
               {promoCountdownText}
             </p>
+          )}
+          {/* À régler maintenant : acompte + frais de plateforme, visibles
+              AVANT la page Stripe (qui replie le détail sur mobile). */}
+          {depositPreview && (
+            <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-1 text-sm">
+              <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                <span>{t('recap.depositNow')}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.amount, locale)}</span>
+              </div>
+              {depositPreview.fee > 0 && (
+                <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                  <span>{t('recap.platformFee')}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.fee, locale)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
+                <span>{t('recap.payToday')}</span>
+                <span>{fmtExact(depositPreview.amount + depositPreview.fee, locale)}</span>
+              </div>
+            </div>
           )}
         </div>
       )}

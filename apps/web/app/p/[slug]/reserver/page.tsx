@@ -10,7 +10,7 @@ import {
   memberRepository,
   availabilityRepository,
 } from '@booking-app/firebase';
-import { getProviderText, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
+import { getProviderText, isTeamTier, isPubliclyVisible, hasDepositAccess } from '@booking-app/shared';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { BookingFlow } from './components/BookingFlow';
 import { loadDemo, demoIdFromSlug } from '@/lib/sales-demo-load';
@@ -190,6 +190,13 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     // Consigne de réservation dans la langue du visiteur (original si non
     // traduite — getProviderText ne renvoie jamais autre chose qu'un texte).
     settings: { ...provider.settings, bookingNotice: getProviderText(provider, locale).bookingNotice },
+    // Un acompte sera-t-il demandé ? Décidé ici (même règle que le serveur
+    // de réservation) pour que le récap l'annonce avant la page Stripe,
+    // sans exposer les identifiants Stripe au navigateur.
+    depositEligible:
+      hasDepositAccess(provider) &&
+      provider.stripeConnectStatus === 'active' &&
+      !!provider.stripeConnectAccountId,
   };
 
   const serializedServices = services.map((s) => ({
@@ -208,6 +215,7 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     infoFields: s.infoFields ?? [],
     // Per-service promotion (null = none / inherit the global one).
     discount: s.discount ?? null,
+    deposit: s.deposit ?? null,
     // Suspension temporaire. CE CHAMP MANQUAIT : sans lui, `isAvailable`
     // arrivait `undefined` côté client, le test `=== false` était donc
     // toujours faux, et une prestation suspendue restait sélectionnable
