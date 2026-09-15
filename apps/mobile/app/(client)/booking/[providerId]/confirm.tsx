@@ -26,7 +26,14 @@ import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
 import { useAuth } from '../../../../contexts';
 import { useLocations } from '../../../../hooks';
-import { computeDiscountedTotal } from '@booking-app/shared';
+import {
+  computeDiscountedTotal,
+  hasDepositAccess,
+  resolveDeposit,
+  combineResolvedDeposits,
+  clientServiceFee,
+  isServiceLoyaltyEligible,
+} from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
 import { searchAddress, type AddressSuggestion } from '../../../../lib/addressSearch';
@@ -167,6 +174,38 @@ export default function ConfirmBookingScreen() {
   );
   const cartHasPromo = cartOriginal > cartPrice;
   const isMulti = cart.length > 1;
+
+  // Acompte et frais de plateforme À RÉGLER MAINTENANT — même règle que le
+  // serveur (booking.service) : accès aux acomptes + compte Stripe actif,
+  // fidélité appliquée à la première prestation éligible, acompte par
+  // prestation sur le prix effectif, frais de plateforme dessus. Affiché
+  // sous le total : la feuille Stripe ne montre qu'un montant.
+  const depositPreview = (() => {
+    if (
+      !provider ||
+      !hasDepositAccess(provider) ||
+      provider.stripeConnectStatus !== 'active' ||
+      !provider.stripeConnectAccountId
+    ) {
+      return null;
+    }
+    let loyaltyLeft = loyaltyPreview.amountOff;
+    const armed = loyaltyPreview.armedSettings;
+    const deposits: Array<{ amount: number; refundDeadlineHours: number }> = [];
+    for (const c of cart) {
+      let price = computeDiscountedTotal(c.service, c.selections, globalDiscount).price;
+      if (loyaltyLeft > 0 && armed && isServiceLoyaltyEligible(c.service.id, armed)) {
+        price = Math.max(0, price - loyaltyLeft);
+        loyaltyLeft = 0;
+      }
+      const d = resolveDeposit({ ...c.service, price }, provider.settings ?? {});
+      if (d) deposits.push(d);
+    }
+    const combined = combineResolvedDeposits(deposits);
+    if (!combined || combined.amount <= 0) return null;
+    return { amount: combined.amount, fee: clientServiceFee(combined.amount) };
+  })();
+  const eurosExact = (c: number) => `${(c / 100).toFixed(2)} €`;
 
   // Get locations to display location info
   const { locations } = useLocations(providerId);
@@ -872,9 +911,42 @@ export default function ConfirmBookingScreen() {
               {t('bookingFlow.confirm.loyaltyLine', { reward: loyaltyPreview.rewardLabel })}
             </Text>
           )}
-          <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-            {t('bookingFlow.confirm.payOnSite')}
-          </Text>
+          {depositPreview ? (
+            <View
+              style={{
+                marginTop: spacing.sm,
+                paddingTop: spacing.sm,
+                borderTopWidth: 1,
+                borderStyle: 'dashed',
+                borderTopColor: colors.border,
+                gap: 4,
+              }}
+            >
+              <View style={styles.priceRow}>
+                <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.depositNow')}</Text>
+                <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.amount)}</Text>
+              </View>
+              {depositPreview.fee > 0 && (
+                <View style={styles.priceRow}>
+                  <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.platformFee')}</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.fee)}</Text>
+                </View>
+              )}
+              <View style={styles.priceRow}>
+                <Text variant="body" style={{ fontWeight: '700' }}>{t('bookingFlow.confirm.payToday')}</Text>
+                <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
+                  {eurosExact(depositPreview.amount + depositPreview.fee)}
+                </Text>
+              </View>
+              <Text variant="caption" color="textSecondary">
+                {t('bookingFlow.confirm.restOnSite')}
+              </Text>
+            </View>
+          ) : (
+            <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+              {t('bookingFlow.confirm.payOnSite')}
+            </Text>
+          )}
         </Card>
 
         {/* Login prompt if not authenticated */}

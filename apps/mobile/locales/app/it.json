@@ -528,7 +528,11 @@
       "feeDetail": {
         "title": "Acconto da versare",
         "message": "Acconto: {{deposit}}\nCommissione piattaforma: {{fee}}\nTotale: {{total}}"
-      }
+      },
+      "depositNow": "Acconto",
+      "platformFee": "Commissione piattaforma",
+      "payToday": "Da pagare oggi",
+      "restOnSite": "Il resto si paga in loco."
     },
     "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
     "dayClash": "« {{a}} » si prenota {{aDays}}, « {{b}} » si prenota {{bDays}}. Prenota due appuntamenti separati.",

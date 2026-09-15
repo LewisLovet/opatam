@@ -528,7 +528,11 @@
       "feeDetail": {
         "title": "Deposit to pay",
         "message": "Deposit: {{deposit}}\nPlatform fee: {{fee}}\nTotal: {{total}}"
-      }
+      },
+      "depositNow": "Deposit",
+      "platformFee": "Platform fee",
+      "payToday": "Due today",
+      "restOnSite": "The balance is paid on site."
     },
     "dayClashTitle": "These two services cannot be booked on the same day",
     "dayClash": "“{{a}}” is available {{aDays}}, “{{b}}” is available {{bDays}}. Please book them separately.",
