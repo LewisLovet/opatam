@@ -736,7 +736,11 @@ export default function RegisterPage() {
       trackEvent('CompleteRegistration', {
         content_category: 'pro',
       });
-      trackTikTok('CompleteRegistration', { contents: contenu('pro', 'Compte prestataire') });
+      trackTikTok(
+        'CompleteRegistration',
+        { contents: contenu('pro', 'Compte prestataire') },
+        { event_id: `CompleteRegistration:${user.id}` },
+      );
 
       // Auto-login: the user is already signed in from registerProvider — we
       // DON'T log them out anymore. A hard navigation re-initialises the auth

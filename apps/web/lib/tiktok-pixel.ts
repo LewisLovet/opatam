@@ -21,7 +21,8 @@ export type TikTokStandardEvent =
   | 'SubmitForm'
   | 'CompleteRegistration'
   | 'InitiateCheckout'
-  | 'CompletePayment'
+  /** « Achat » dans TikTok Ads Manager — l'acompte payé. */
+  | 'Purchase'
   | 'Subscribe'
   | 'Contact';
 

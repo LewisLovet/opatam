@@ -259,13 +259,13 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
       { eventID: `Purchase:${booking.id}` },
     );
     trackTikTok(
-      'CompletePayment',
+      'Purchase',
       {
         contents: contenu(booking.id, `Acompte — ${booking.providerName}`),
         value: (booking.deposit?.amount ?? 0) / 100,
         currency: 'EUR',
       },
-      { event_id: `CompletePayment:${booking.id}` },
+      { event_id: `Purchase:${booking.id}` },
     );
   }, [depositPaid, booking.id, booking.providerName, booking.deposit?.amount]);
 
