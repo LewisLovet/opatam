@@ -366,20 +366,22 @@ export function depositTransferAmount(depositCents: number): number {
 
 /**
  * Frais de service Opatam facturés à la CLIENTE sur un acompte, en plus de
- * celui-ci (décision 2026-09-16) : 10 % de l'acompte, plafonnés à 0,49 €,
- * et rien sous 5 € d'acompte. Le prestataire touche son acompte inchangé ;
+ * celui-ci (décision 2026-09-16) : un FORFAIT de 0,49 € dès que l'acompte
+ * atteint 5 €, rien en dessous. Le prestataire touche son acompte inchangé ;
  * les frais restent à la plateforme, y compris en cas d'annulation.
+ *
+ * (Un « 10 % plafonné à 0,49 € » avec ce seuil donnait toujours 0,49 € :
+ * autant l'assumer comme un forfait, plus simple à afficher et à écrire.)
  *
  * Seule source de vérité : le montant est figé sur la réservation
  * (`deposit.serviceFee`) au moment de sa création, et relu partout ensuite.
  */
-export const CLIENT_SERVICE_FEE_RATE = 0.1;
-export const CLIENT_SERVICE_FEE_CAP_CENTS = 49;
+export const CLIENT_SERVICE_FEE_CENTS = 49;
 export const CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS = 500;
 
 export function clientServiceFee(depositCents: number): number {
   if (!Number.isFinite(depositCents) || depositCents < CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS) return 0;
-  return Math.min(Math.round(depositCents * CLIENT_SERVICE_FEE_RATE), CLIENT_SERVICE_FEE_CAP_CENTS);
+  return CLIENT_SERVICE_FEE_CENTS;
 }
 
 interface ProviderSettingsForDeposit {

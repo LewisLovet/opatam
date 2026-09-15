@@ -383,8 +383,7 @@ describe('clientServiceFee', () => {
     expect(clientServiceFee(0)).toBe(0);
     expect(clientServiceFee(499)).toBe(0);
   });
-  it('10 % de l\'acompte, plafonnés à 0,49 €', () => {
-    // À 5 € tout rond, 10 % = 0,50 € → déjà plafonné.
+  it('forfait de 0,49 € dès 5 €', () => {
     expect(clientServiceFee(500)).toBe(49);
     expect(clientServiceFee(1200)).toBe(49);
     expect(clientServiceFee(10000)).toBe(49);
