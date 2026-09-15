@@ -173,6 +173,7 @@ export const createProviderSchema = z.object({
       content: z.string().max(120).nullable().optional(),
       term: z.string().max(120).nullable().optional(),
       clickId: z.enum(['fbclid', 'gclid', 'ttclid']).nullable().optional(),
+      clickIdValue: z.string().max(200).nullable().optional(),
       referrer: z.string().max(200).nullable().optional(),
       landing: z.string().max(200).nullable().optional(),
     })

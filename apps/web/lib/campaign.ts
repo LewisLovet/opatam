@@ -44,9 +44,16 @@ export function lireCampagneUrl(search: string): ProviderAttribution {
     const v = propre(q.get(param));
     if (v) (a as Record<string, unknown>)[champ] = v;
   }
-  if (q.has('fbclid')) a.clickId = 'fbclid';
-  else if (q.has('gclid')) a.clickId = 'gclid';
-  else if (q.has('ttclid')) a.clickId = 'ttclid';
+  // La valeur est gardée aussi : l'API serveur de TikTok rapproche une
+  // conversion de la pub par `ttclid`, pas par le seul fait qu'il existait.
+  for (const id of ['fbclid', 'gclid', 'ttclid'] as const) {
+    const v = propre(q.get(id));
+    if (v) {
+      a.clickId = id;
+      a.clickIdValue = v.slice(0, 200);
+      break;
+    }
+  }
   return a;
 }
 

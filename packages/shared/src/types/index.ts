@@ -101,6 +101,8 @@ export interface ProviderAttribution {
   term?: string | null;
   /** Identifiant de clic présent sur le lien : publicité Meta, Google ou TikTok. */
   clickId?: 'fbclid' | 'gclid' | 'ttclid' | null;
+  /** Sa valeur, telle que lue sur le lien — sert à l'attribution serveur. */
+  clickIdValue?: string | null;
   /** Hôte du site référent, sans le chemin. */
   referrer?: string | null;
   /** Première page vue sur opatam.com. */

@@ -12,6 +12,7 @@ import { commissionnerPaiement, verserCommissionsEnAttente } from '@/lib/affilia
 import type Stripe from 'stripe';
 import { generatePlanChangeEmail } from '@/lib/emails/planChange';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { sendTikTokEvent } from '@/lib/tiktok-events-api';
 import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
 import { isAccessOverrideActive, canSystemUnpublish } from '@booking-app/shared';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
@@ -404,6 +405,26 @@ async function handleCheckoutCompleted(
       const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
       const amountCents = session.amount_total ?? 0;
       const currency = (session.currency ?? 'eur').toUpperCase();
+      // TikTok : pas d'événement d'essai, seul l'abonnement payé compte.
+      // Même event_id que le pixel n'enverrait (il ne l'envoie pas côté
+      // navigateur), dédoublonnage sans risque.
+      if (!isTrial) {
+        void sendTikTokEvent({
+          event: 'Subscribe',
+          eventId: subscriptionEventId('Subscribe', subscriptionId),
+          url: 'https://opatam.com/inscription/pro',
+          user: {
+            email: existingData?.email ?? existingData?.contactEmail ?? null,
+            externalId: providerId,
+            ttclid: existingData?.attribution?.clickId === 'ttclid' ? existingData.attribution.clickIdValue ?? null : null,
+          },
+          properties: {
+            contents: [{ content_id: plan, content_type: 'product', content_name: `${planDisplayName} plan` }],
+            value: (session.amount_total ?? 0) / 100,
+            currency: (session.currency ?? 'eur').toUpperCase(),
+          },
+        });
+      }
       const result = await sendCapiEvent({
         eventName,
         eventId: subscriptionEventId(eventName, subscriptionId),
@@ -688,6 +709,21 @@ async function handleInvoicePaid(
     if (!alreadyFired && amountPaid && amountPaid > 0) {
       const plan = stripeSubscription.metadata?.plan || existingData?.plan || 'solo';
       const planDisplayName = plan === 'team' ? 'Studio' : 'Pro';
+      void sendTikTokEvent({
+        event: 'Subscribe',
+        eventId: subscriptionEventId('Subscribe', subscriptionId),
+        url: 'https://opatam.com/pro',
+        user: {
+          email: existingData?.email ?? existingData?.contactEmail ?? null,
+          externalId: providerId,
+          ttclid: existingData?.attribution?.clickId === 'ttclid' ? existingData.attribution.clickIdValue ?? null : null,
+        },
+        properties: {
+          contents: [{ content_id: plan, content_type: 'product', content_name: `${planDisplayName} plan` }],
+          value: amountPaid / 100,
+          currency: (invoice.currency ?? 'eur').toUpperCase(),
+        },
+      });
       const result = await sendCapiEvent({
         eventName: 'Subscribe',
         eventId: subscriptionEventId('Subscribe', subscriptionId),
@@ -1455,6 +1491,17 @@ async function handleDepositPaymentIntentSucceeded(
   try {
     const amountCents = intent.amount_received ?? booking.deposit?.amount ?? 0;
     if (amountCents > 0) {
+      void sendTikTokEvent({
+        event: 'Purchase',
+        eventId: `Purchase:${bookingId}`,
+        url: `https://opatam.com/reservation/confirmation/${bookingId}`,
+        user: { email: booking.clientInfo?.email ?? null, phone: booking.clientInfo?.phone ?? null },
+        properties: {
+          contents: [{ content_id: bookingId, content_type: 'product', content_name: `Acompte — ${booking.providerName ?? 'prestataire'}` }],
+          value: amountCents / 100,
+          currency: (intent.currency ?? 'eur').toUpperCase(),
+        },
+      });
       await sendCapiEvent({
         eventName: 'Purchase',
         eventId: `Purchase:${bookingId}`,

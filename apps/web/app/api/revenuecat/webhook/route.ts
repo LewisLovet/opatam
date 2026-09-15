@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendCapiEvent, subscriptionEventId } from '@/lib/meta-capi';
+import { sendTikTokEvent } from '@/lib/tiktok-events-api';
 import { sendSerenityTrialUpsellEmail } from '@/lib/emails/serenityTrialUpsell';
 import { revalidateProviderPublicPages } from '@/lib/revalidate';
 import { canSystemUnpublish } from '@booking-app/shared';
@@ -354,6 +355,22 @@ async function handleInitialPurchase(
         ?? event.subscriber_attributes?.email?.value
         ?? existingData?.email
         ?? null;
+      if (!isTrial) {
+        void sendTikTokEvent({
+          event: 'Subscribe',
+          eventId: subscriptionEventId('Subscribe', event.original_transaction_id),
+          user: {
+            email: emailAttr,
+            externalId: providerId,
+            ttclid: existingData?.attribution?.clickId === 'ttclid' ? existingData.attribution.clickIdValue ?? null : null,
+          },
+          properties: {
+            contents: [{ content_id: event.product_id, content_type: 'product', content_name: `${planDisplayName} plan` }],
+            value: event.price_in_purchased_currency ?? 0,
+            currency: event.currency ?? 'EUR',
+          },
+        });
+      }
       const result = await sendCapiEvent({
         eventName,
         eventId: subscriptionEventId(eventName, event.original_transaction_id),
@@ -480,6 +497,20 @@ async function handleRenewal(
         ?? event.subscriber_attributes?.email?.value
         ?? existingData?.email
         ?? null;
+      void sendTikTokEvent({
+        event: 'Subscribe',
+        eventId: subscriptionEventId('Subscribe', event.original_transaction_id),
+        user: {
+          email: emailAttr,
+          externalId: providerId,
+          ttclid: existingData?.attribution?.clickId === 'ttclid' ? existingData.attribution.clickIdValue ?? null : null,
+        },
+        properties: {
+          contents: [{ content_id: event.product_id, content_type: 'product', content_name: `${planDisplayName} plan` }],
+          value: amount,
+          currency: event.currency ?? 'EUR',
+        },
+      });
       const result = await sendCapiEvent({
         eventName: 'Subscribe',
         eventId: subscriptionEventId('Subscribe', event.original_transaction_id),

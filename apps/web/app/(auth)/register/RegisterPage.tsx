@@ -723,6 +723,12 @@ export default function RegisterPage() {
           email: data.email,
           displayName: data.displayName,
           businessName: data.businessName,
+          // Pour la conversion serveur TikTok (voir la route).
+          uid: user.id,
+          ttclid: (() => {
+            const a = attributionInscription(typeof window !== 'undefined' ? window.location.search : '');
+            return a?.clickId === 'ttclid' ? a.clickIdValue ?? null : null;
+          })(),
         }),
       }).catch(() => {});
 

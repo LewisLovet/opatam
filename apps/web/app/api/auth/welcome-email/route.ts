@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendTikTokEvent } from '@/lib/tiktok-events-api';
 import {
   resend,
   emailConfig,
@@ -8,6 +9,10 @@ import {
 } from '@/lib/resend';
 
 interface WelcomeEmailRequest {
+  /** Identifiant du compte créé — pour la conversion serveur TikTok. */
+  uid?: string;
+  /** Identifiant de clic TikTok du lien d'arrivée, s'il y en avait un. */
+  ttclid?: string | null;
   email: string;
   displayName: string;
   businessName: string;
@@ -16,7 +21,27 @@ interface WelcomeEmailRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: WelcomeEmailRequest = await request.json();
-    const { email, displayName, businessName } = body;
+    const { email, displayName, businessName, uid, ttclid } = body;
+
+    // Conversion « inscription terminée » vers TikTok, côté serveur — même
+    // event_id que le pixel (`CompleteRegistration:<uid>`), donc comptée une
+    // seule fois quand les deux arrivent, et comptée quand même si un
+    // bloqueur a tu le pixel. Fire-and-forget : l'e-mail n'attend pas.
+    if (typeof uid === 'string' && uid) {
+      void sendTikTokEvent({
+        event: 'CompleteRegistration',
+        eventId: `CompleteRegistration:${uid}`,
+        url: 'https://opatam.com/register',
+        user: {
+          email,
+          externalId: uid,
+          ttclid: typeof ttclid === 'string' && ttclid ? ttclid.slice(0, 200) : null,
+          ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+          userAgent: request.headers.get('user-agent'),
+        },
+        properties: { contents: [{ content_id: 'pro', content_type: 'product', content_name: 'Compte prestataire' }] },
+      });
+    }
 
     if (!email || !displayName || !businessName) {
       return NextResponse.json(
