@@ -591,6 +591,17 @@ export async function POST(request: NextRequest) {
               depositAmount: String(booking.deposit.amount),
               serviceFee: String(serviceFee),
             },
+            // Sur mobile, Stripe replie les lignes derrière « Afficher les
+            // détails » : cette phrase, elle, reste visible sous le bouton Payer.
+            ...(serviceFee > 0
+              ? {
+                  custom_text: {
+                    submit: {
+                      message: `Ce montant comprend l'acompte de ${(booking.deposit.amount / 100).toFixed(2).replace('.', ',')} € et ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de plateforme.`,
+                    },
+                  },
+                }
+              : {}),
             payment_intent_data: {
               ...(serviceFee > 0 ? { application_fee_amount: serviceFee } : {}),
               metadata: {
