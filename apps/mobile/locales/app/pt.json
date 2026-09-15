@@ -525,14 +525,10 @@
       "loyaltyApplied": "Desconto de fidelização de {{amount}} € aplicado 🎉",
       "loyaltyLine": "Fidelização {{reward}} aplicada",
       "payTotal": "Pagar {{total}}",
-      "feeDetail": {
-        "title": "Sinal a pagar",
-        "message": "Sinal: {{deposit}}\nTaxa de plataforma: {{fee}}\nTotal: {{total}}"
-      },
       "depositNow": "Sinal",
       "platformFee": "Taxa de plataforma",
       "payToday": "A pagar hoje",
-      "restOnSite": "O restante paga-se no local."
+      "restOnSite": "Restante a pagar no local"
     },
     "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
     "dayClash": "« {{a}} » marca-se {{aDays}}, « {{b}} » marca-se {{bDays}}. Faça duas marcações separadas.",

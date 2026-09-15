@@ -198,7 +198,8 @@
     "promoSavingsAmount": "Promotion · vous économisez {amount}",
     "depositNow": "Acompte",
     "platformFee": "Frais de plateforme",
-    "payToday": "À payer aujourd'hui"
+    "payToday": "À payer aujourd'hui",
+    "restOnSite": "Reste à régler sur place"
   },
   "summary": {
     "title": "Récapitulatif",

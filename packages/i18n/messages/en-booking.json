@@ -198,7 +198,8 @@
     "promoSavingsAmount": "Promotion · you save {amount}",
     "depositNow": "Deposit",
     "platformFee": "Platform fee",
-    "payToday": "Due today"
+    "payToday": "Due today",
+    "restOnSite": "Balance due on site"
   },
   "summary": {
     "title": "Summary",

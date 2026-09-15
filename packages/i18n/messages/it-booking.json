@@ -198,7 +198,8 @@
     "promoSavingsAmount": "Promozione · risparmi {amount}",
     "depositNow": "Acconto",
     "platformFee": "Commissione piattaforma",
-    "payToday": "Da pagare oggi"
+    "payToday": "Da pagare oggi",
+    "restOnSite": "Saldo da pagare in loco"
   },
   "summary": {
     "title": "Riepilogo",

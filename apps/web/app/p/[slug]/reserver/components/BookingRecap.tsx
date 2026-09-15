@@ -478,6 +478,10 @@ export function BookingRecap({
                 <span>{t('recap.payToday')}</span>
                 <span>{fmtExact(depositPreview.amount + depositPreview.fee, locale)}</span>
               </div>
+              <div className="flex items-center justify-between text-gray-500 dark:text-gray-400 text-xs">
+                <span>{t('recap.restOnSite')}</span>
+                <span>{fmtExact(Math.max(0, displayPrice + (travelFee ?? 0) - depositPreview.amount), locale)}</span>
+              </div>
             </div>
           )}
         </div>

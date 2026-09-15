@@ -525,14 +525,10 @@
       "loyaltyApplied": "Sconto fedeltà di {{amount}} € applicato 🎉",
       "loyaltyLine": "Fedeltà {{reward}} applicata",
       "payTotal": "Paga {{total}}",
-      "feeDetail": {
-        "title": "Acconto da versare",
-        "message": "Acconto: {{deposit}}\nCommissione piattaforma: {{fee}}\nTotale: {{total}}"
-      },
       "depositNow": "Acconto",
       "platformFee": "Commissione piattaforma",
       "payToday": "Da pagare oggi",
-      "restOnSite": "Il resto si paga in loco."
+      "restOnSite": "Saldo da pagare in loco"
     },
     "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
     "dayClash": "« {{a}} » si prenota {{aDays}}, « {{b}} » si prenota {{bDays}}. Prenota due appuntamenti separati.",

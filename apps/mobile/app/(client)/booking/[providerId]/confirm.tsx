@@ -417,9 +417,8 @@ export default function ConfirmBookingScreen() {
         // so the PaymentIntent is on the platform. Funds get routed to
         // the pro's connected account via `transfer_data` automatically.
         // La feuille Stripe n'affiche qu'un total et coupe les libellés
-        // longs : le bouton reste court (« Payer 88,99 € »), et le détail
-        // acompte + frais de service est confirmé dans une boîte native
-        // juste avant d'ouvrir la feuille (voir la boucle ci-dessous).
+        // longs : le bouton reste court (« Payer 88,99 € »), le détail est
+        // dans le récapitulatif en haut de l'écran.
         const fraisService = Number(data.serviceFee) || 0;
         const depositCents = Number(data.depositAmount) || 0;
         const euros = (c: number) => `${(c / 100).toFixed(2).replace('.', ',')} €`;
@@ -448,38 +447,11 @@ export default function ConfirmBookingScreen() {
         // attempts on a single intent until it succeeds or is cancelled.
         // On final cancel, we abandon the booking server-side so the
         // slot is freed immediately (no 30 min cron wait).
-        // Détail des montants, une fois, avant la feuille Stripe : la
-        // cliente voit acompte + frais de service + total et choisit.
-        let detailAccepte = !(fraisService > 0 && depositCents > 0);
+        // Le détail (acompte + frais de plateforme + reste sur place) est
+        // déjà affiché en haut de l'écran : la feuille Stripe s'ouvre
+        // directement, avec un bouton court « Payer X € ».
         while (true) {
-          let payError: { code: string; message?: string } | undefined;
-          if (!detailAccepte) {
-            const ok = await new Promise<boolean>((resolve) => {
-              Alert.alert(
-                t('bookingFlow.confirm.feeDetail.title'),
-                t('bookingFlow.confirm.feeDetail.message', {
-                  deposit: euros(depositCents),
-                  fee: euros(fraisService),
-                  total: euros(depositCents + fraisService),
-                }),
-                [
-                  { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
-                  {
-                    text: t('bookingFlow.confirm.payTotal', { total: euros(depositCents + fraisService) }),
-                    style: 'default',
-                    onPress: () => resolve(true),
-                  },
-                ],
-                { cancelable: false },
-              );
-            });
-            if (ok) detailAccepte = true;
-            else payError = { code: 'Canceled' };
-          }
-          if (!payError) {
-            const r = await presentPaymentSheet();
-            payError = r.error;
-          }
+          const { error: payError } = await presentPaymentSheet();
           if (!payError) break; // success → fall through to confirmation
 
           if (payError.code !== 'Canceled') {
@@ -654,8 +626,87 @@ export default function ConfirmBookingScreen() {
           {t('bookingFlow.confirm.reviewSubtitle')}
         </Text>
 
-        {/* Booking details */}
+        {/* Price summary */}
         <Card padding="lg" shadow="sm" style={{ marginTop: spacing.xl }}>
+          {requiresClientAddress && travelQuote.status === 'ok' && (
+            <View style={[styles.priceRow, { marginBottom: spacing.xs }]}>
+              <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.travel.feeLine')}</Text>
+              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                {travelQuote.fee === 0 ? t('bookingFlow.travel.freeShort') : `${(travelQuote.fee / 100).toFixed(2)} €`}
+              </Text>
+            </View>
+          )}
+          <View style={styles.priceRow}>
+            <Text variant="body">{t('bookingFlow.total')}</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              {cartHasPromo && (
+                <Text
+                  variant="bodySmall"
+                  style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
+                >
+                  {(cartOriginal / 100).toFixed(2)} €
+                </Text>
+              )}
+              <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
+                {cartPrice + travelFee === 0
+                  ? t('common.free')
+                  : `${((cartPrice + travelFee) / 100).toFixed(2)} €`}
+              </Text>
+            </View>
+          </View>
+          {cartHasPromo && (
+            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
+              {t('bookingFlow.confirm.youSave', { amount: ((cartOriginal - cartPrice) / 100).toFixed(2) })}
+            </Text>
+          )}
+          {loyaltyPreview.rewardLabel && (
+            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', marginTop: spacing.xs }}>
+              {t('bookingFlow.confirm.loyaltyLine', { reward: loyaltyPreview.rewardLabel })}
+            </Text>
+          )}
+          {depositPreview ? (
+            <View
+              style={{
+                marginTop: spacing.sm,
+                paddingTop: spacing.sm,
+                borderTopWidth: 1,
+                borderStyle: 'dashed',
+                borderTopColor: colors.border,
+                gap: 4,
+              }}
+            >
+              <View style={styles.priceRow}>
+                <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.depositNow')}</Text>
+                <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.amount)}</Text>
+              </View>
+              {depositPreview.fee > 0 && (
+                <View style={styles.priceRow}>
+                  <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.platformFee')}</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.fee)}</Text>
+                </View>
+              )}
+              <View style={styles.priceRow}>
+                <Text variant="body" style={{ fontWeight: '700' }}>{t('bookingFlow.confirm.payToday')}</Text>
+                <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
+                  {eurosExact(depositPreview.amount + depositPreview.fee)}
+                </Text>
+              </View>
+              <View style={styles.priceRow}>
+                <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.restOnSite')}</Text>
+                <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                  {eurosExact(Math.max(0, cartPrice + travelFee - depositPreview.amount))}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+              {t('bookingFlow.confirm.payOnSite')}
+            </Text>
+          )}
+        </Card>
+
+        {/* Booking details */}
+        <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
           {/* Service */}
           <View style={styles.detailRow}>
             <View style={[styles.detailIcon, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
@@ -872,82 +923,6 @@ export default function ConfirmBookingScreen() {
             )}
           </Card>
         )}
-
-        {/* Price summary */}
-        <Card padding="lg" shadow="sm" style={{ marginTop: spacing.lg }}>
-          {requiresClientAddress && travelQuote.status === 'ok' && (
-            <View style={[styles.priceRow, { marginBottom: spacing.xs }]}>
-              <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.travel.feeLine')}</Text>
-              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                {travelQuote.fee === 0 ? t('bookingFlow.travel.freeShort') : `${(travelQuote.fee / 100).toFixed(2)} €`}
-              </Text>
-            </View>
-          )}
-          <View style={styles.priceRow}>
-            <Text variant="body">{t('bookingFlow.total')}</Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              {cartHasPromo && (
-                <Text
-                  variant="bodySmall"
-                  style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
-                >
-                  {(cartOriginal / 100).toFixed(2)} €
-                </Text>
-              )}
-              <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
-                {cartPrice + travelFee === 0
-                  ? t('common.free')
-                  : `${((cartPrice + travelFee) / 100).toFixed(2)} €`}
-              </Text>
-            </View>
-          </View>
-          {cartHasPromo && (
-            <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
-              {t('bookingFlow.confirm.youSave', { amount: ((cartOriginal - cartPrice) / 100).toFixed(2) })}
-            </Text>
-          )}
-          {loyaltyPreview.rewardLabel && (
-            <Text variant="caption" style={{ color: colors.primary, fontWeight: '600', marginTop: spacing.xs }}>
-              {t('bookingFlow.confirm.loyaltyLine', { reward: loyaltyPreview.rewardLabel })}
-            </Text>
-          )}
-          {depositPreview ? (
-            <View
-              style={{
-                marginTop: spacing.sm,
-                paddingTop: spacing.sm,
-                borderTopWidth: 1,
-                borderStyle: 'dashed',
-                borderTopColor: colors.border,
-                gap: 4,
-              }}
-            >
-              <View style={styles.priceRow}>
-                <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.depositNow')}</Text>
-                <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.amount)}</Text>
-              </View>
-              {depositPreview.fee > 0 && (
-                <View style={styles.priceRow}>
-                  <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.platformFee')}</Text>
-                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.fee)}</Text>
-                </View>
-              )}
-              <View style={styles.priceRow}>
-                <Text variant="body" style={{ fontWeight: '700' }}>{t('bookingFlow.confirm.payToday')}</Text>
-                <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
-                  {eurosExact(depositPreview.amount + depositPreview.fee)}
-                </Text>
-              </View>
-              <Text variant="caption" color="textSecondary">
-                {t('bookingFlow.confirm.restOnSite')}
-              </Text>
-            </View>
-          ) : (
-            <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
-              {t('bookingFlow.confirm.payOnSite')}
-            </Text>
-          )}
-        </Card>
 
         {/* Login prompt if not authenticated */}
         {!isAuthenticated && (

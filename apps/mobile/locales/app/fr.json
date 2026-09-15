@@ -525,14 +525,10 @@
       "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
       "loyaltyLine": "Fidélité {{reward}} appliquée",
       "payTotal": "Payer {{total}}",
-      "feeDetail": {
-        "title": "Acompte à régler",
-        "message": "Acompte : {{deposit}}\nFrais de plateforme : {{fee}}\nTotal : {{total}}"
-      },
       "depositNow": "Acompte",
       "platformFee": "Frais de plateforme",
       "payToday": "À payer aujourd'hui",
-      "restOnSite": "Le reste se règle sur place."
+      "restOnSite": "Reste à régler sur place"
     },
     "dayClashTitle": "Ces deux prestations ne se réservent pas le même jour",
     "dayClash": "« {{a}} » se réserve {{aDays}}, « {{b}} » se réserve {{bDays}}. Prenez deux rendez-vous séparés.",
