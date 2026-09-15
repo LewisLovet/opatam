@@ -6,6 +6,7 @@ import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Store } fro
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { trackEvent } from '@/lib/meta-pixel';
+import { trackTikTok } from '@/lib/tiktok-pixel';
 import { BookingChoices } from '@/components/booking';
 import type {
   BookingSelectedVariation,
@@ -256,6 +257,17 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
         currency: 'EUR',
       },
       { eventID: `Purchase:${booking.id}` },
+    );
+    trackTikTok(
+      'CompletePayment',
+      {
+        content_name: `Acompte — ${booking.providerName}`,
+        content_type: 'product',
+        content_id: booking.id,
+        value: (booking.deposit?.amount ?? 0) / 100,
+        currency: 'EUR',
+      },
+      { event_id: `CompletePayment:${booking.id}` },
     );
   }, [depositPaid, booking.id, booking.providerName, booking.deposit?.amount]);
 

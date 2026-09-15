@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
+import { trackTikTok } from '@/lib/tiktok-pixel';
 import { ArrowLeft, Check, CalendarCheck, Store, Info, ArrowRight, Trash2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -529,6 +530,13 @@ export function BookingFlow({
       content_name: provider.businessName,
       content_category: 'booking',
       content_ids: [provider.slug],
+      value: selectedService?.price ? selectedService.price / 100 : undefined,
+      currency: selectedService?.price ? 'EUR' : undefined,
+    });
+    trackTikTok('InitiateCheckout', {
+      content_name: provider.businessName,
+      content_type: 'product',
+      content_id: provider.slug,
       value: selectedService?.price ? selectedService.price / 100 : undefined,
       currency: selectedService?.price ? 'EUR' : undefined,
     });

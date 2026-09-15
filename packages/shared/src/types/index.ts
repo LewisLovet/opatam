@@ -99,8 +99,8 @@ export interface ProviderAttribution {
   content?: string | null;
   /** utm_term — le mot-clé. */
   term?: string | null;
-  /** Identifiant de clic présent sur le lien : publicité Meta ou Google. */
-  clickId?: 'fbclid' | 'gclid' | null;
+  /** Identifiant de clic présent sur le lien : publicité Meta, Google ou TikTok. */
+  clickId?: 'fbclid' | 'gclid' | 'ttclid' | null;
   /** Hôte du site référent, sans le chemin. */
   referrer?: string | null;
   /** Première page vue sur opatam.com. */

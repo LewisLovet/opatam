@@ -11,6 +11,7 @@ import { Providers } from './providers';
 import { APP_CONFIG } from '@booking-app/shared';
 import { ClarityScript } from '@/components/analytics/ClarityScript';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
+import { TikTokPixel } from '@/components/analytics/TikTokPixel';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
 import { LanguageSuggestionBanner } from '@/components/common/LanguageSuggestionBanner';
 import { ChunkReloadGuard } from '@/components/ChunkReloadGuard';
@@ -107,6 +108,8 @@ export default async function RootLayout({
               paths to stay opt-in. */}
           <Suspense fallback={null}>
             <MetaPixel />
+            {/* Même bannière, mêmes règles : voir components/analytics/TikTokPixel. */}
+            <TikTokPixel />
           </Suspense>
           <ConsentBanner />
           {/* Proposes English to English browsers — never forces it. */}

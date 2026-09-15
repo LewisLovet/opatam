@@ -46,6 +46,7 @@ export function lireCampagneUrl(search: string): ProviderAttribution {
   }
   if (q.has('fbclid')) a.clickId = 'fbclid';
   else if (q.has('gclid')) a.clickId = 'gclid';
+  else if (q.has('ttclid')) a.clickId = 'ttclid';
   return a;
 }
 
@@ -96,7 +97,7 @@ export function suffixeCampagne(search: string): string {
   try {
     const q = new URLSearchParams(search);
     const garde = new URLSearchParams();
-    for (const param of [...Object.keys(UTM), 'fbclid', 'gclid']) {
+    for (const param of [...Object.keys(UTM), 'fbclid', 'gclid', 'ttclid']) {
       const v = q.get(param);
       if (v) garde.set(param, v.slice(0, MAX));
     }
