@@ -377,21 +377,17 @@ export default function ConfirmBookingScreen() {
         // No `stripeAccountId` needed — the API uses Destination charges,
         // so the PaymentIntent is on the platform. Funds get routed to
         // the pro's connected account via `transfer_data` automatically.
-        // La feuille Stripe n'affiche qu'un total : le bouton dit ce qu'il
-        // contient (acompte + frais de service), avant que la cliente valide.
+        // La feuille Stripe n'affiche qu'un total et coupe les libellés
+        // longs : le bouton reste court (« Payer 88,99 € »), et le détail
+        // acompte + frais de service est confirmé dans une boîte native
+        // juste avant d'ouvrir la feuille (voir la boucle ci-dessous).
         const fraisService = Number(data.serviceFee) || 0;
         const depositCents = Number(data.depositAmount) || 0;
         const euros = (c: number) => `${(c / 100).toFixed(2).replace('.', ',')} €`;
         const init = await initPaymentSheet({
           merchantDisplayName: provider.businessName ?? 'Opatam',
           ...(fraisService > 0 && depositCents > 0
-            ? {
-                primaryButtonLabel: t('bookingFlow.confirm.payWithFee', {
-                  total: euros(depositCents + fraisService),
-                  deposit: euros(depositCents),
-                  fee: euros(fraisService),
-                }),
-              }
+            ? { primaryButtonLabel: t('bookingFlow.confirm.payTotal', { total: euros(depositCents + fraisService) }) }
             : {}),
           paymentIntentClientSecret: data.paymentIntent,
           customerId: data.customer,
@@ -413,8 +409,38 @@ export default function ConfirmBookingScreen() {
         // attempts on a single intent until it succeeds or is cancelled.
         // On final cancel, we abandon the booking server-side so the
         // slot is freed immediately (no 30 min cron wait).
+        // Détail des montants, une fois, avant la feuille Stripe : la
+        // cliente voit acompte + frais de service + total et choisit.
+        let detailAccepte = !(fraisService > 0 && depositCents > 0);
         while (true) {
-          const { error: payError } = await presentPaymentSheet();
+          let payError: { code: string; message?: string } | undefined;
+          if (!detailAccepte) {
+            const ok = await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                t('bookingFlow.confirm.feeDetail.title'),
+                t('bookingFlow.confirm.feeDetail.message', {
+                  deposit: euros(depositCents),
+                  fee: euros(fraisService),
+                  total: euros(depositCents + fraisService),
+                }),
+                [
+                  { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+                  {
+                    text: t('bookingFlow.confirm.payTotal', { total: euros(depositCents + fraisService) }),
+                    style: 'default',
+                    onPress: () => resolve(true),
+                  },
+                ],
+                { cancelable: false },
+              );
+            });
+            if (ok) detailAccepte = true;
+            else payError = { code: 'Canceled' };
+          }
+          if (!payError) {
+            const r = await presentPaymentSheet();
+            payError = r.error;
+          }
           if (!payError) break; // success → fall through to confirmation
 
           if (payError.code !== 'Canceled') {

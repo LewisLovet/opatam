@@ -524,7 +524,11 @@
       "loginButton": "Iniciar sessão para reservar",
       "loyaltyApplied": "Desconto de fidelização de {{amount}} € aplicado 🎉",
       "loyaltyLine": "Fidelização {{reward}} aplicada",
-      "payWithFee": "Pagar {{total}} (sinal {{deposit}} + taxa de serviço {{fee}})"
+      "payTotal": "Pagar {{total}}",
+      "feeDetail": {
+        "title": "Sinal a pagar",
+        "message": "Sinal: {{deposit}}\nTaxa de serviço Opatam: {{fee}}\nTotal: {{total}}"
+      }
     },
     "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
     "dayClash": "« {{a}} » marca-se {{aDays}}, « {{b}} » marca-se {{bDays}}. Faça duas marcações separadas.",
