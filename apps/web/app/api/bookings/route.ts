@@ -577,7 +577,6 @@ export async function POST(request: NextRequest) {
                         unit_amount: serviceFee,
                         product_data: {
                           name: 'Frais de service Opatam',
-                          description: 'Non remboursables',
                         },
                       },
                       quantity: 1,
