@@ -9,6 +9,8 @@ interface AdminStatCardProps {
   trend?: {
     value: number;
     label: string;
+    /** 'currency' → la valeur de tendance est en centimes. */
+    format?: 'currency';
   };
   format?: 'number' | 'currency' | 'percentage';
 }
@@ -43,8 +45,9 @@ export function AdminStatCard({ label, value, icon, trend, format }: AdminStatCa
                   trend.value >= 0 ? 'text-emerald-500' : 'text-red-500'
                 }`}
               >
-                {trend.value >= 0 ? '+' : ''}
-                {trend.value}
+                {trend.format === 'currency'
+                  ? `${(trend.value / 100).toFixed(2).replace('.', ',')} €`
+                  : `${trend.value >= 0 ? '+' : ''}${trend.value}`}
               </span>
               <span className="text-xs text-gray-400">{trend.label}</span>
             </div>

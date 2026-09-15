@@ -25,8 +25,12 @@ export interface DashboardStats {
   collectedThisMonth: number;
   cancellationRate: number;
   noshowRate: number;
-  averageRating: number;
   trialConversionRate: number;
+  /** Frais de service encaissés sur les acomptes (cents) — conservés même
+   *  si l'acompte est remboursé ; source : bookings.deposit.serviceFee. */
+  serviceFeesThisMonth: number;
+  serviceFeesTotal: number;
+  serviceFeesCount: number;
 }
 
 export interface TrendData {

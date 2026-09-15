@@ -263,8 +263,6 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
   const totalBookings = s.totalBookings || 0;
   const cancelledBookings = s.cancelledBookings || 0;
   const noshowBookings = s.noshowBookings || 0;
-  const totalReviews = s.totalReviews || 0;
-  const ratingSum = s.ratingSum || 0;
 
   // Derived rates: prefer the values stored by the source-of-truth recompute
   // (correct definitions, test accounts excluded). Fall back to deriving from
@@ -277,10 +275,6 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     typeof s.noshowRate === 'number'
       ? s.noshowRate
       : totalBookings > 0 ? (noshowBookings / totalBookings) * 100 : 0;
-  const averageRating =
-    typeof s.averageRating === 'number'
-      ? s.averageRating
-      : totalReviews > 0 ? ratingSum / totalReviews : 0;
   const trialConversionRate =
     typeof s.trialConversionRate === 'number'
       ? s.trialConversionRate
@@ -304,6 +298,32 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     console.error('[admin/stats] Stripe revenue error:', err);
   }
 
+  // Frais de service sur les acomptes — lus sur les réservations plutôt que
+  // dans Stripe : le web les porte en application fee, le mobile dans un
+  // paiement plateforme, une seule source les couvre tous les deux. Un
+  // acompte remboursé garde ses frais (voir clientServiceFee).
+  let serviceFeesThisMonth = 0;
+  let serviceFeesTotal = 0;
+  let serviceFeesCount = 0;
+  try {
+    const feesSnap = await db
+      .collection('bookings')
+      .where('deposit.status', 'in', ['paid', 'refunded'])
+      .select('deposit')
+      .get();
+    for (const doc of feesSnap.docs) {
+      const dep = doc.data().deposit;
+      const fee = Number(dep?.serviceFee) || 0;
+      if (fee <= 0) continue;
+      serviceFeesTotal += fee;
+      serviceFeesCount += 1;
+      const paidAt = dep?.paidAt?.toDate?.() ?? null;
+      if (paidAt && paidAt >= startOfMonth) serviceFeesThisMonth += fee;
+    }
+  } catch (err) {
+    console.error('[admin/stats] service fees error:', err);
+  }
+
   return {
     totalUsers,
     totalClients,
@@ -324,8 +344,10 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     collectedThisMonth,
     cancellationRate: Math.round(cancellationRate * 10) / 10,
     noshowRate: Math.round(noshowRate * 10) / 10,
-    averageRating: Math.round(averageRating * 10) / 10,
     trialConversionRate: Math.round(trialConversionRate * 10) / 10,
+    serviceFeesThisMonth,
+    serviceFeesTotal,
+    serviceFeesCount,
   };
 }
 

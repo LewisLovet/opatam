@@ -6,7 +6,7 @@ import {
   Briefcase,
   Calendar,
   TrendingUp,
-  Star,
+  Coins,
   DollarSign,
   UserPlus,
   XCircle,
@@ -167,9 +167,11 @@ export default function AdminDashboardPage() {
           trend={{ value: stats.bookingsToday, label: "aujourd'hui" }}
         />
         <AdminStatCard
-          label="Note moyenne"
-          value={stats.averageRating}
-          icon={<Star className="w-5 h-5 text-red-500" />}
+          label="Frais de service (mois)"
+          value={stats.serviceFeesThisMonth}
+          icon={<Coins className="w-5 h-5 text-red-500" />}
+          format="currency"
+          trend={{ value: stats.serviceFeesTotal, label: `total (${stats.serviceFeesCount} acomptes)`, format: 'currency' }}
         />
         <AdminStatCard
           label="Taux d'annulation"
