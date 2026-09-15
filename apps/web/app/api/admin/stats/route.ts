@@ -792,19 +792,56 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
       };
     });
 
-  const clients = usersSnap.docs
-    .filter((doc) => doc.data().role === 'client')
-    .slice(0, 10)
-    .map((doc) => {
-      const d = doc.data();
+  // Pour chaque client : le prestataire de sa PREMIÈRE réservation — c'est
+  // lui qui l'a fait venir sur l'app. Égalité seule + tri en mémoire (pas
+  // d'index composite) ; repli sur l'e-mail pour les résas invitées faites
+  // avant la création du compte.
+  const premiereResa = async (uid: string, email: string | null) => {
+    const plusAncienne = (docs: FirebaseFirestore.QueryDocumentSnapshot[]) =>
+      docs
+        .map((b) => b.data())
+        .sort((a, c) => (a.createdAt?.seconds || 0) - (c.createdAt?.seconds || 0))[0] ?? null;
+    try {
+      let b = plusAncienne((await db.collection('bookings').where('clientId', '==', uid).select('providerId', 'providerName', 'createdAt').get()).docs);
+      if (!b && email) {
+        b = plusAncienne((await db.collection('bookings').where('clientInfo.email', '==', email.toLowerCase()).select('providerId', 'providerName', 'createdAt').get()).docs);
+      }
+      if (!b) return null;
       return {
-        id: doc.id,
-        displayName: d.displayName || null,
-        email: d.email || null,
-        photoURL: d.photoURL || null,
-        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+        providerId: b.providerId || null,
+        providerName: b.providerName || 'Prestataire',
+        createdAt: b.createdAt?.toDate?.() ?? null,
       };
-    });
+    } catch {
+      return null;
+    }
+  };
+
+  const clients = await Promise.all(
+    usersSnap.docs
+      .filter((doc) => doc.data().role === 'client')
+      .slice(0, 10)
+      .map(async (doc) => {
+        const d = doc.data();
+        const inscrit = d.createdAt?.toDate?.() ?? null;
+        const first = await premiereResa(doc.id, d.email || null);
+        return {
+          id: doc.id,
+          displayName: d.displayName || null,
+          email: d.email || null,
+          photoURL: d.photoURL || null,
+          createdAt: inscrit?.toISOString() || null,
+          firstBooking: first
+            ? {
+                providerId: first.providerId,
+                providerName: first.providerName,
+                date: first.createdAt?.toISOString() || null,
+                beforeSignup: !!(first.createdAt && inscrit && first.createdAt < inscrit),
+              }
+            : null,
+        };
+      }),
+  );
 
   return { providers, clients, bookings };
 }

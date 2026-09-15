@@ -187,6 +187,16 @@ export interface RecentSignup {
   email: string | null;
   photoURL: string | null;
   createdAt: string | null;
+  /** Le prestataire qui a amené ce client sur Opatam : sa PREMIÈRE
+   *  réservation (par compte, sinon par e-mail — cas d'une résa invitée
+   *  antérieure à l'inscription). null = aucune réservation. */
+  firstBooking: {
+    providerId: string | null;
+    providerName: string;
+    date: string | null;
+    /** true si la première résa précède la création du compte (invitée). */
+    beforeSignup: boolean;
+  } | null;
 }
 
 export interface RecentProvider {

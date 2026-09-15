@@ -276,6 +276,28 @@ export default function AdminDashboardPage() {
                           {c.displayName || 'Sans nom'}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{c.email}</p>
+                        {/* Qui l'a fait venir : le prestataire de sa première réservation */}
+                        {c.firstBooking ? (
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                            Via{' '}
+                            {c.firstBooking.providerId ? (
+                              <Link
+                                href={`/admin/providers/${c.firstBooking.providerId}`}
+                                className="font-medium text-red-600 dark:text-red-400 hover:underline"
+                              >
+                                {c.firstBooking.providerName}
+                              </Link>
+                            ) : (
+                              <span className="font-medium">{c.firstBooking.providerName}</span>
+                            )}
+                            {c.firstBooking.date
+                              ? ` · 1ʳᵉ résa le ${new Date(c.firstBooking.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                              : ''}
+                            {c.firstBooking.beforeSignup ? ' (invitée avant le compte)' : ''}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Aucune réservation</p>
+                        )}
                       </div>
                       <span className="text-xs text-gray-400 flex-shrink-0">
                         {c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''}
