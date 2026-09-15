@@ -377,8 +377,22 @@ export default function ConfirmBookingScreen() {
         // No `stripeAccountId` needed — the API uses Destination charges,
         // so the PaymentIntent is on the platform. Funds get routed to
         // the pro's connected account via `transfer_data` automatically.
+        // La feuille Stripe n'affiche qu'un total : le bouton dit ce qu'il
+        // contient (acompte + frais de service), avant que la cliente valide.
+        const fraisService = Number(data.serviceFee) || 0;
+        const depositCents = Number(data.depositAmount) || 0;
+        const euros = (c: number) => `${(c / 100).toFixed(2).replace('.', ',')} €`;
         const init = await initPaymentSheet({
           merchantDisplayName: provider.businessName ?? 'Opatam',
+          ...(fraisService > 0 && depositCents > 0
+            ? {
+                primaryButtonLabel: t('bookingFlow.confirm.payWithFee', {
+                  total: euros(depositCents + fraisService),
+                  deposit: euros(depositCents),
+                  fee: euros(fraisService),
+                }),
+              }
+            : {}),
           paymentIntentClientSecret: data.paymentIntent,
           customerId: data.customer,
           customerEphemeralKeySecret: data.ephemeralKey,

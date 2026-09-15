@@ -523,7 +523,8 @@
       "confirmButton": "Confirm booking",
       "loginButton": "Sign in to book",
       "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉",
-      "loyaltyLine": "Loyalty {{reward}} applied"
+      "loyaltyLine": "Loyalty {{reward}} applied",
+      "payWithFee": "Pay {{total}} (deposit {{deposit}} + service fee {{fee}})"
     },
     "dayClashTitle": "These two services cannot be booked on the same day",
     "dayClash": "“{{a}}” is available {{aDays}}, “{{b}}” is available {{bDays}}. Please book them separately.",

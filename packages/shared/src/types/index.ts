@@ -1351,7 +1351,13 @@ export type BookingStatus =
 export type BookingDepositStatus = 'pending' | 'paid' | 'refunded' | 'failed';
 
 export interface BookingDeposit {
-  amount: number;                 // cents — what the client paid (or owes)
+  amount: number;                 // cents — l'acompte, ce que touche le prestataire
+  /**
+   * Frais de service Opatam payés par la cliente EN PLUS de l'acompte
+   * (`clientServiceFee`). Conservés par la plateforme, remboursement compris.
+   * Absent sur les réservations antérieures = 0.
+   */
+  serviceFee?: number;
   refundDeadlineHours: number;    // copied from service/default at booking time
   paymentIntentId: string | null; // 'pi_...' on the connected account
   /**

@@ -93,17 +93,24 @@ export const onBookingCancelledRefund = onDocumentWritten(
 
     try {
       const stripe = getStripe();
+      // Frais de service Opatam (deposit.serviceFee) : jamais remboursés — on
+      // ne rembourse que l'acompte. Même logique que apps/web/lib/refund-deposit.ts.
+      const serviceFee = Number(deposit.serviceFee) || 0;
       const params: Stripe.RefundCreateParams = {
         payment_intent: deposit.paymentIntentId,
+        ...(serviceFee > 0 ? { amount: deposit.amount } : {}),
         metadata: {
           bookingId,
           triggeredBy: 'auto-cf',
           cancelledBy: after.cancelledBy ?? 'unknown',
+          serviceFeeKept: String(serviceFee),
         },
       };
       // Destination charge (acompte mobile, connectAccountId null) : renvoyer
-      // aussi vers la plateforme les fonds déjà transférés au pro.
-      if (!deposit.connectAccountId) {
+      // aussi vers la plateforme les fonds déjà transférés au pro. Avec des
+      // frais (remboursement partiel), le renversement est fait à part, en
+      // totalité — un reverse_transfer partiel ne renverse qu'au prorata.
+      if (!deposit.connectAccountId && serviceFee === 0) {
         params.reverse_transfer = true;
       }
 
@@ -115,6 +122,23 @@ export const onBookingCancelledRefund = onDocumentWritten(
       }
 
       const refund = await stripe.refunds.create(params, requestOptions);
+
+      if (!deposit.connectAccountId && serviceFee > 0) {
+        const intent = await stripe.paymentIntents.retrieve(deposit.paymentIntentId, { expand: ['latest_charge'] });
+        const charge = intent.latest_charge as Stripe.Charge | null;
+        const transferId = typeof charge?.transfer === 'string' ? charge.transfer : charge?.transfer?.id;
+        if (transferId) {
+          const transfer = await stripe.transfers.retrieve(transferId);
+          const restant = transfer.amount - transfer.amount_reversed;
+          if (restant > 0) {
+            await stripe.transfers.createReversal(
+              transferId,
+              { amount: restant, metadata: { bookingId, reason: 'deposit_refund' } },
+              { idempotencyKey: `reverse_${bookingId}` },
+            );
+          }
+        }
+      }
 
       await event.data!.after!.ref.update({
         'deposit.status': 'refunded',

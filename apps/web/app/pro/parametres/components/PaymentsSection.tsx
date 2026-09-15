@@ -409,7 +409,7 @@ export function PaymentsSection() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                  Aucune commission Opatam sur les acomptes
+                  Aucune commission Opatam sur ce que vous encaissez
                 </li>
               </ul>
               <button

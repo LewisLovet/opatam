@@ -523,7 +523,8 @@
       "confirmButton": "Confirmer la réservation",
       "loginButton": "Se connecter pour réserver",
       "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
-      "loyaltyLine": "Fidélité {{reward}} appliquée"
+      "loyaltyLine": "Fidélité {{reward}} appliquée",
+      "payWithFee": "Payer {{total}} (acompte {{deposit}} + frais de service {{fee}})"
     },
     "dayClashTitle": "Ces deux prestations ne se réservent pas le même jour",
     "dayClash": "« {{a}} » se réserve {{aDays}}, « {{b}} » se réserve {{bDays}}. Prenez deux rendez-vous séparés.",

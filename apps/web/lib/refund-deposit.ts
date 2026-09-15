@@ -61,17 +61,25 @@ export async function refundBookingDeposit(
   //   - null → Destination charge (mobile PaymentSheet). PaymentIntent
   //     lives on the platform → no header needed; the reversed transfer
   //     is automatic.
+  // Les frais de service Opatam ne sont JAMAIS remboursés : on ne rembourse
+  // que l'acompte. Sur un paiement direct (web), l'application fee reste à
+  // la plateforme (refund_application_fee non posé = false) et le compte du
+  // pro finance exactement l'acompte. Sur un paiement à destination
+  // (mobile), on renverse explicitement TOUT le transfert au pro — un
+  // `reverse_transfer` avec montant partiel ne renverserait qu'au prorata et
+  // laisserait le pro avec une fraction de l'acompte.
+  const serviceFee = Number(deposit.serviceFee) || 0;
   const refundParams: Stripe.RefundCreateParams = {
     payment_intent: deposit.paymentIntentId,
+    ...(serviceFee > 0 ? { amount: deposit.amount } : {}),
     metadata: {
       bookingId: opts.bookingId,
       triggeredBy: opts.triggeredBy,
+      serviceFeeKept: String(serviceFee),
       ...(opts.reason ? { reason: opts.reason } : {}),
     },
   };
-  // Destination charges need `reverse_transfer: true` so the funds
-  // already routed to the pro come back to the platform.
-  if (!deposit.connectAccountId) {
+  if (!deposit.connectAccountId && serviceFee === 0) {
     refundParams.reverse_transfer = true;
   }
 
@@ -81,6 +89,10 @@ export async function refundBookingDeposit(
       ? { stripeAccount: deposit.connectAccountId }
       : undefined,
   );
+
+  if (!deposit.connectAccountId && serviceFee > 0) {
+    await reverseDestinationTransfer(stripe, deposit.paymentIntentId, opts.bookingId);
+  }
 
   await ref.update({
     'deposit.status': 'refunded',
@@ -92,6 +104,22 @@ export async function refundBookingDeposit(
   });
 
   return { refunded: true, refundId: refund.id };
+}
+
+/** Renverse en totalité le transfert d'un paiement à destination (acompte mobile). */
+async function reverseDestinationTransfer(stripe: Stripe, paymentIntentId: string, bookingId: string) {
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge'] });
+  const charge = intent.latest_charge as Stripe.Charge | null;
+  const transferId = typeof charge?.transfer === 'string' ? charge.transfer : charge?.transfer?.id;
+  if (!transferId) return;
+  const transfer = await stripe.transfers.retrieve(transferId);
+  const restant = transfer.amount - transfer.amount_reversed;
+  if (restant <= 0) return;
+  await stripe.transfers.createReversal(
+    transferId,
+    { amount: restant, metadata: { bookingId, reason: 'deposit_refund' } },
+    { idempotencyKey: `reverse_${bookingId}` },
+  );
 }
 
 export { isWithinRefundDeadline } from './refund-deadline';

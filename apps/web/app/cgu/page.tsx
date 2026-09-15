@@ -95,6 +95,7 @@ export default function CGUPage() {
               <h2 className="mb-3 text-xl font-semibold text-gray-900">7. Réservations</h2>
               <p>La réservation d&apos;une prestation via la Plateforme constitue un accord entre le Client et le Professionnel. KamerleonTech agit uniquement en tant qu&apos;intermédiaire technique et n&apos;est pas partie au contrat de prestation.</p>
               <p className="mt-2">Les conditions d&apos;annulation et de modification sont définies par chaque Professionnel. L&apos;Utilisateur est invité à consulter les conditions spécifiques avant toute réservation.</p>
+              <p className="mt-2"><strong>Acomptes et frais de service.</strong> Lorsqu&apos;un Professionnel demande un acompte à la réservation, celui-ci est encaissé pour son compte via notre prestataire de paiement Stripe. En complément de l&apos;acompte, KamerleonTech facture au Client des frais de service d&apos;un montant de 10 % de l&apos;acompte, plafonnés à 0,49 € TTC, et non facturés lorsque l&apos;acompte est inférieur à 5 €. Le montant de ces frais est affiché distinctement sur la page de paiement avant validation. Ces frais rémunèrent le service de réservation et de paiement en ligne fourni par KamerleonTech ; ils sont définitivement acquis et ne sont pas remboursés, y compris en cas d&apos;annulation donnant lieu au remboursement de l&apos;acompte par le Professionnel.</p>
             </section>
 
             <section>

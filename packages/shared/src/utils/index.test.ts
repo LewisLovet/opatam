@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  clientServiceFee,
   formatPrice,
   formatDuration,
   generateAccessCode,
@@ -374,5 +375,18 @@ describe('resolveDeposit', () => {
     expect(combined!.amount).toBeLessThanOrEqual(500 + 3000);
     // Fenêtre la plus favorable à la cliente conservée.
     expect(combined?.refundDeadlineHours).toBe(24);
+  });
+});
+
+describe('clientServiceFee', () => {
+  it("rien sous 5 € d'acompte", () => {
+    expect(clientServiceFee(0)).toBe(0);
+    expect(clientServiceFee(499)).toBe(0);
+  });
+  it('10 % de l\'acompte, plafonnés à 0,49 €', () => {
+    // À 5 € tout rond, 10 % = 0,50 € → déjà plafonné.
+    expect(clientServiceFee(500)).toBe(49);
+    expect(clientServiceFee(1200)).toBe(49);
+    expect(clientServiceFee(10000)).toBe(49);
   });
 });

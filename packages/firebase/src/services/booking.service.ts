@@ -21,6 +21,7 @@ import {
   parseOrThrow,
   createBookingSchema,
   resolveDeposit,
+  clientServiceFee,
   combineResolvedDeposits,
   computeServiceTotal,
   computeDiscountedTotal,
@@ -348,6 +349,7 @@ export class BookingService {
     const depositField: BookingDeposit | null = resolvedDeposit
       ? {
           amount: resolvedDeposit.amount,
+          serviceFee: clientServiceFee(resolvedDeposit.amount),
           refundDeadlineHours: resolvedDeposit.refundDeadlineHours,
           paymentIntentId: null,
           connectAccountId: null,

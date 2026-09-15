@@ -523,7 +523,8 @@
       "confirmButton": "Confirmar a reserva",
       "loginButton": "Iniciar sessão para reservar",
       "loyaltyApplied": "Desconto de fidelização de {{amount}} € aplicado 🎉",
-      "loyaltyLine": "Fidelização {{reward}} aplicada"
+      "loyaltyLine": "Fidelização {{reward}} aplicada",
+      "payWithFee": "Pagar {{total}} (sinal {{deposit}} + taxa de serviço {{fee}})"
     },
     "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",
     "dayClash": "« {{a}} » marca-se {{aDays}}, « {{b}} » marca-se {{bDays}}. Faça duas marcações separadas.",

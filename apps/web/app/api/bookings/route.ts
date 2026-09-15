@@ -11,6 +11,7 @@ import {
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
   depositTransferAmount,
+  clientServiceFee,
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
@@ -465,12 +466,17 @@ export async function POST(request: NextRequest) {
             { apiVersion: '2025-04-30.basil' },
           );
 
+          // Frais de service Opatam, payés par la cliente en plus de l'acompte
+          // et conservés par la plateforme (le transfert au pro ne change pas).
+          const serviceFee = booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount);
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: booking.deposit.amount,
+            amount: booking.deposit.amount + serviceFee,
             currency: 'eur',
             customer: customer.id,
             automatic_payment_methods: { enabled: true },
-            description: `Acompte — ${booking.serviceName} chez ${booking.providerName}`,
+            description:
+              `Acompte — ${booking.serviceName} chez ${booking.providerName}` +
+              (serviceFee > 0 ? ` (dont ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de service)` : ''),
             transfer_data: {
               destination: providerData.stripeConnectAccountId,
               // Frais de traitement déduits, comme sur le tunnel web.
@@ -491,6 +497,7 @@ export async function POST(request: NextRequest) {
               providerId: booking.providerId,
               serviceId: booking.serviceId,
               depositAmount: String(booking.deposit.amount),
+              serviceFee: String(serviceFee),
             },
           });
 
@@ -510,6 +517,7 @@ export async function POST(request: NextRequest) {
               // PaymentSheet expects these fields exactly:
               paymentIntent: paymentIntent.client_secret,
               ephemeralKey: ephemeralKey.secret,
+              serviceFee,
               customer: customer.id,
               depositAmount: booking.deposit.amount,
             },
@@ -540,6 +548,10 @@ export async function POST(request: NextRequest) {
         const successUrl = `${appUrl}/reservation/confirmation/${booking.id}?deposit=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${appUrl}/p/${providerData.slug}/reserver?deposit=cancelled`;
 
+        // Frais de service Opatam : ligne à part sur la page de paiement (la
+        // cliente voit le détail avant de valider), retenus par la plateforme
+        // via application_fee_amount — le pro reçoit son acompte inchangé.
+        const serviceFee = booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount);
         const session = await stripe.checkout.sessions.create(
           {
             mode: 'payment',
@@ -557,17 +569,35 @@ export async function POST(request: NextRequest) {
                 },
                 quantity: 1,
               },
+              ...(serviceFee > 0
+                ? [
+                    {
+                      price_data: {
+                        currency: 'eur',
+                        unit_amount: serviceFee,
+                        product_data: {
+                          name: 'Frais de service Opatam',
+                          description: 'Non remboursables',
+                        },
+                      },
+                      quantity: 1,
+                    },
+                  ]
+                : []),
             ],
             metadata: {
               bookingId: booking.id,
               providerId: booking.providerId,
               serviceId: booking.serviceId,
               depositAmount: String(booking.deposit.amount),
+              serviceFee: String(serviceFee),
             },
             payment_intent_data: {
+              ...(serviceFee > 0 ? { application_fee_amount: serviceFee } : {}),
               metadata: {
                 bookingId: booking.id,
                 providerId: booking.providerId,
+                serviceFee: String(serviceFee),
               },
             },
             success_url: successUrl,

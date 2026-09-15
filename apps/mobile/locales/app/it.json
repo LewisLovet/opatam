@@ -523,7 +523,8 @@
       "confirmButton": "Conferma la prenotazione",
       "loginButton": "Accedi per prenotare",
       "loyaltyApplied": "Sconto fedeltà di {{amount}} € applicato 🎉",
-      "loyaltyLine": "Fedeltà {{reward}} applicata"
+      "loyaltyLine": "Fedeltà {{reward}} applicata",
+      "payWithFee": "Paga {{total}} (acconto {{deposit}} + commissione di servizio {{fee}})"
     },
     "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",
     "dayClash": "« {{a}} » si prenota {{aDays}}, « {{b}} » si prenota {{bDays}}. Prenota due appuntamenti separati.",
