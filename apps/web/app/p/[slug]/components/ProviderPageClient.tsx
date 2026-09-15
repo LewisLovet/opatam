@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
-import { trackTikTok } from '@/lib/tiktok-pixel';
+import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { Megaphone, Gift, Info } from 'lucide-react';
@@ -244,9 +244,7 @@ export function ProviderPageClient({
       currency: minPrice ? 'EUR' : undefined,
     });
     trackTikTok('ViewContent', {
-      content_name: provider.businessName,
-      content_type: 'product',
-      content_id: provider.slug,
+      contents: contenu(provider.slug, provider.businessName),
       value: minPrice ? minPrice / 100 : undefined,
       currency: minPrice ? 'EUR' : undefined,
     });

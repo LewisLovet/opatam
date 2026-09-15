@@ -8,6 +8,7 @@ import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
 import { trackSite } from '@/lib/trackSite';
 import { memoriserCampagne, suffixeCampagne } from '@/lib/campaign';
+import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import s from './v1.module.css';
 import { StoriesSection } from './StoriesSection';
 import { ProviderVideos, type ProviderVideo } from './ProviderVideos';
@@ -64,6 +65,10 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
     setSuffixe(suffixeCampagne(window.location.search));
   }, []);
   const inscription = `/register${suffixe}`;
+  // Les clics vers l'inscription et la démo, aussi pour TikTok (ClickButton),
+  // en plus de la mesure maison.
+  const clicVitrine = () => { trackSite('click:vitrine'); trackTikTok('ClickButton', { contents: contenu('creer-ma-vitrine', 'Créer ma vitrine') }); };
+  const clicDemo = () => { trackSite('click:demo'); trackTikTok('ClickButton', { contents: contenu('essayer-la-demo', 'Essayer la démo') }); };
 
   // Profondeur de défilement, deux repères envoyés une seule fois. Écouteur
   // passif et calcul différé à la prochaine image : rien ne bloque le
@@ -130,7 +135,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
       <div className={`${s.wrap} ${s.nav}`}>
         <Link href="/" className={s.brand} aria-label="Opatam, accueil"><Image src="/logo-opatam-blanc.png" alt="" width={34} height={34} />OPATAM</Link>
         <nav className={s.desktopNav} aria-label="Navigation principale"><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#videos">Leurs métiers</a></nav>
-        <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href={inscription} className={s.buttonSmall} onClick={() => trackSite('click:vitrine')}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
+        <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href={inscription} className={s.buttonSmall} onClick={clicVitrine}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
       </div>
     </header>
       {/* Le panneau est un FRÈRE de l'en-tête, pas un enfant : le
@@ -164,7 +169,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
             ))}
           </div>
           <div className={s.drawerFoot}>
-            <Link href={inscription} className={s.primary} tabIndex={menu ? 0 : -1} onClick={() => { trackSite('click:vitrine'); setMenu(false); }}>
+            <Link href={inscription} className={s.primary} tabIndex={menu ? 0 : -1} onClick={() => { clicVitrine(); setMenu(false); }}>
               Créer ma page web <ArrowRight size={18} />
             </Link>
             <Link href="/login" className={s.drawerLogin} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
@@ -184,7 +189,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
             <p className={s.eyebrow}><span /> POUR LES INDÉPENDANTS & PETITES ÉQUIPES</p>
             <h1>La réservation<br />en ligne,<br /><em>qui remplit votre agenda.</em></h1>
             <p className={s.heroLead}>Vos clients réservent 24 h/24 sur votre page. Votre agenda vous suit dans l’app. Vous gardez la main sur votre activité.</p>
-            <div className={s.actions}><Link href={inscription} className={s.primary} onClick={() => trackSite('click:vitrine')}>Créer ma vitrine <ArrowRight size={18} /></Link><Link href="/p/demo" className={s.secondary} onClick={() => trackSite('click:demo')}><Play size={17} /> Essayer la démo</Link></div>
+            <div className={s.actions}><Link href={inscription} className={s.primary} onClick={clicVitrine}>Créer ma vitrine <ArrowRight size={18} /></Link><Link href="/p/demo" className={s.secondary} onClick={clicDemo}><Play size={17} /> Essayer la démo</Link></div>
             <p className={s.fine}><Check size={15} /> {APP_CONFIG.trialDays} jours gratuits <span>·</span> Sans carte bancaire</p>
             {/* L'application, en second plan : deux liens discrets plutôt qu'un
                 troisième bouton qui concurrencerait la vitrine et la démo. */}
@@ -238,7 +243,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
 
       <section className={s.downloadSection} id="telecharger"><div className={`${s.wrap} ${s.downloadGrid}`}>
         <div data-reveal><p className={s.eyebrow}>LE PROCHAIN RENDEZ-VOUS COMMENCE ICI</p><h2>Faites de la place<br /><em>à votre métier.</em></h2><p>Sur votre téléphone ou votre ordinateur,<br />votre nouvelle organisation commence avec Opatam.</p></div>
-        <div className={s.startCards}><div><Smartphone size={25} /><h3>Votre activité dans la poche.</h3><StoreLinks /></div><div><Globe size={25} /><h3>Votre page, prête à être partagée.</h3><Link href={inscription} className={s.primary} onClick={() => trackSite('click:vitrine')}>Créer ma vitrine <ArrowRight size={18} /></Link><small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small></div></div>
+        <div className={s.startCards}><div><Smartphone size={25} /><h3>Votre activité dans la poche.</h3><StoreLinks /></div><div><Globe size={25} /><h3>Votre page, prête à être partagée.</h3><Link href={inscription} className={s.primary} onClick={clicVitrine}>Créer ma vitrine <ArrowRight size={18} /></Link><small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small></div></div>
       </div></section>
     </main>
     <footer className={`${s.wrap} ${s.footer}`}><div><Link href="/v1" className={s.brand}><Image src="/logo-opatam.png" alt="" width={30} height={30} />opatam.</Link><p>Votre savoir-faire mérite du temps.</p></div><nav aria-label="Liens utiles"><Link href="/recherche">Trouver un professionnel</Link><Link href="/blog">Conseils & tutoriels</Link><Link href="/contact">Contact</Link><Link href="/mentions-legales">Mentions légales</Link><Link href="/confidentialite">Confidentialité</Link><Link href="/cgu">CGU</Link></nav><small>© {new Date().getFullYear()} Opatam · KamerleonTech</small></footer>

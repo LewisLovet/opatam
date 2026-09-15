@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { providerRepository, type ProviderSearchFilters, type WithId } from '@booking-app/firebase';
 import { CATEGORIES, type Provider } from '@booking-app/shared';
 import { Header } from '@/components/layout/Header';
+import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import { Footer } from '@/components/layout/Footer';
 import {
   SearchBar,
@@ -55,6 +56,15 @@ export function SearchPageClient({
     city: initialCity,
   });
   const [query, setQuery] = useState(initialQuery);
+
+  // Une recherche = un événement TikTok « Search », avec le mot cherché.
+  // Se déclenche aussi à l'arrivée sur /recherche?q=… : c'en est une.
+  // Ne fait rien sans consentement (le pixel n'est alors pas chargé).
+  useEffect(() => {
+    const mot = query.trim();
+    if (!mot) return;
+    trackTikTok('Search', { search_string: mot.slice(0, 100), contents: contenu('recherche', mot.slice(0, 100)) });
+  }, [query]);
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [providers, setProviders] = useState<WithId<Provider>[]>(initialProviders);
   const [isLoading, setIsLoading] = useState(false);

@@ -6,7 +6,7 @@ import { Check, Clock, MapPin, Calendar, User, ArrowRight, Download, Store } fro
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { trackEvent } from '@/lib/meta-pixel';
-import { trackTikTok } from '@/lib/tiktok-pixel';
+import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import { BookingChoices } from '@/components/booking';
 import type {
   BookingSelectedVariation,
@@ -261,9 +261,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
     trackTikTok(
       'CompletePayment',
       {
-        content_name: `Acompte — ${booking.providerName}`,
-        content_type: 'product',
-        content_id: booking.id,
+        contents: contenu(booking.id, `Acompte — ${booking.providerName}`),
         value: (booking.deposit?.amount ?? 0) / 100,
         currency: 'EUR',
       },

@@ -39,7 +39,7 @@ import { ACQUISITION_CHANNELS, CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVIC
 import type { ServiceVariation, ServiceOption, ServiceInfoField, AcquisitionChannel } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
-import { trackTikTok } from '@/lib/tiktok-pixel';
+import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import { VariationsListEditor } from '@/app/pro/activite/prestations/components/VariationsListEditor';
 import { OptionsListEditor } from '@/app/pro/activite/prestations/components/OptionsListEditor';
 import { InfoFieldsListEditor } from '@/app/pro/activite/prestations/components/InfoFieldsListEditor';
@@ -186,8 +186,7 @@ export default function RegisterPage() {
   // hasn't accepted yet (the helper no-ops).
   useEffect(() => {
     trackEvent('Lead', { content_name: 'register-wizard' });
-    // TikTok n'a pas de « Lead » : l'ouverture du tunnel est un contenu vu.
-    trackTikTok('ViewContent', { content_name: 'register-wizard', content_type: 'product' });
+    trackTikTok('Lead', { contents: contenu('register-wizard', 'Inscription prestataire') });
   }, []);
 
   // Campagne publicitaire : un visiteur peut atterrir DIRECTEMENT ici depuis
@@ -737,7 +736,7 @@ export default function RegisterPage() {
       trackEvent('CompleteRegistration', {
         content_category: 'pro',
       });
-      trackTikTok('CompleteRegistration', { content_name: 'pro' });
+      trackTikTok('CompleteRegistration', { contents: contenu('pro', 'Compte prestataire') });
 
       // Auto-login: the user is already signed in from registerProvider — we
       // DON'T log them out anymore. A hard navigation re-initialises the auth
