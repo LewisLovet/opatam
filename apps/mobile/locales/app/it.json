@@ -527,7 +527,7 @@
       "payTotal": "Paga {{total}}",
       "feeDetail": {
         "title": "Acconto da versare",
-        "message": "Acconto: {{deposit}}\nCommissione di servizio Opatam: {{fee}}\nTotale: {{total}}"
+        "message": "Acconto: {{deposit}}\nCommissione piattaforma: {{fee}}\nTotale: {{total}}"
       }
     },
     "dayClashTitle": "Queste due prestazioni non si prenotano lo stesso giorno",

@@ -527,7 +527,7 @@
       "payTotal": "{{total}} zahlen",
       "feeDetail": {
         "title": "Anzahlung",
-        "message": "Anzahlung: {{deposit}}\nOpatam-Servicegebühr: {{fee}}\nGesamt: {{total}}"
+        "message": "Anzahlung: {{deposit}}\nPlattformgebühr: {{fee}}\nGesamt: {{total}}"
       }
     },
     "dayClashTitle": "Diese beiden Leistungen sind nicht am selben Tag buchbar",

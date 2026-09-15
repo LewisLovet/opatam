@@ -527,7 +527,7 @@
       "payTotal": "Pay {{total}}",
       "feeDetail": {
         "title": "Deposit to pay",
-        "message": "Deposit: {{deposit}}\nOpatam service fee: {{fee}}\nTotal: {{total}}"
+        "message": "Deposit: {{deposit}}\nPlatform fee: {{fee}}\nTotal: {{total}}"
       }
     },
     "dayClashTitle": "These two services cannot be booked on the same day",

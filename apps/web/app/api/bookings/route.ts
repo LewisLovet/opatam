@@ -476,7 +476,7 @@ export async function POST(request: NextRequest) {
             automatic_payment_methods: { enabled: true },
             description:
               `Acompte — ${booking.serviceName} chez ${booking.providerName}` +
-              (serviceFee > 0 ? ` (dont ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de service)` : ''),
+              (serviceFee > 0 ? ` (dont ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de plateforme)` : ''),
             transfer_data: {
               destination: providerData.stripeConnectAccountId,
               // Frais de traitement déduits, comme sur le tunnel web.
@@ -576,7 +576,7 @@ export async function POST(request: NextRequest) {
                         currency: 'eur',
                         unit_amount: serviceFee,
                         product_data: {
-                          name: 'Frais de service Opatam',
+                          name: 'Frais de plateforme',
                         },
                       },
                       quantity: 1,

@@ -527,7 +527,7 @@
       "payTotal": "Pagar {{total}}",
       "feeDetail": {
         "title": "Sinal a pagar",
-        "message": "Sinal: {{deposit}}\nTaxa de serviço Opatam: {{fee}}\nTotal: {{total}}"
+        "message": "Sinal: {{deposit}}\nTaxa de plataforma: {{fee}}\nTotal: {{total}}"
       }
     },
     "dayClashTitle": "Estas duas prestações não se marcam no mesmo dia",

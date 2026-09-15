@@ -527,7 +527,7 @@
       "payTotal": "Payer {{total}}",
       "feeDetail": {
         "title": "Acompte à régler",
-        "message": "Acompte : {{deposit}}\nFrais de service Opatam : {{fee}}\nTotal : {{total}}"
+        "message": "Acompte : {{deposit}}\nFrais de plateforme : {{fee}}\nTotal : {{total}}"
       }
     },
     "dayClashTitle": "Ces deux prestations ne se réservent pas le même jour",
