@@ -1,5 +1,5 @@
 /*!
- * Opatam Embed — v1
+ * Opatam Embed — v1.1
  *
  * Tiny vanilla-JS loader that lets any website integrate the Opatam booking UI.
  * See https://opatam.com/pro/parametres?tab=widget for copy-paste snippets.
@@ -13,6 +13,13 @@
  *   data-primary   — hex color, with or without # (e.g. "#FF5733" or "FF5733")
  *   data-radius    — border radius in px (0-32)
  *   data-theme     — "light" | "dark" | "auto"
+ *   data-service   — service id to preselect (skips the first step)
+ *
+ * Inline-only option:
+ *   data-min-height — floor for the iframe height in px once the widget has
+ *                     reported its size (default 160). Before the first
+ *                     report the iframe keeps a 520px floor so a blocked
+ *                     message never leaves an unusable strip.
  *
  * Floating-only options:
  *   data-label     — button text (default: "Réserver")
@@ -67,7 +74,10 @@
     iframe.style.display = 'block';
     iframe.style.background = 'transparent';
     if (mode !== 'modal') {
+      // Plancher de sécurité tant que le widget n'a pas annoncé sa hauteur.
       iframe.style.minHeight = '520px';
+      var floor = parseInt(options.minHeight, 10);
+      iframe.setAttribute('data-opatam-floor', String(floor > 0 ? floor : 160));
     }
     return iframe;
   }
@@ -85,9 +95,24 @@
     for (var i = 0; i < iframes.length; i++) {
       var iframe = iframes[i];
       if (iframe.contentWindow !== event.source) continue;
-      // Don't auto-size iframes inside a modal — those fill their container
-      if (iframe.getAttribute('data-opatam-mode') === 'modal') return;
-      iframe.style.height = Math.ceil(height) + 'px';
+      var h = Math.ceil(height);
+      if (iframe.getAttribute('data-opatam-mode') === 'modal') {
+        // La boîte de la modale suit le contenu : plus de moitié vide à la
+        // dernière étape. Plafond à l'écran, plancher pour rester lisible.
+        var box = iframe.parentElement;
+        if (box && box.getAttribute('data-opatam-frame') === '1') {
+          box.style.height = 'min(90vh,' + Math.max(320, h) + 'px)';
+        }
+        return;
+      }
+      // Première mesure reçue : le plancher de sécurité laisse place au
+      // plancher réel (data-min-height, 160 par défaut). Le widget peut alors
+      // aussi rétrécir — une étape courte ne laisse plus de vide.
+      var floor = iframe.getAttribute('data-opatam-floor');
+      if (floor) {
+        iframe.style.minHeight = floor + 'px';
+      }
+      iframe.style.height = h + 'px';
       return;
     }
   });
@@ -204,10 +229,14 @@
       'animation:opatam-fade-in 0.2s ease-out;';
 
     var frame = document.createElement('div');
+    frame.setAttribute('data-opatam-frame', '1');
+    // Hauteur initiale pleine, puis ajustée au contenu à chaque étape via le
+    // message de hauteur du widget (voir le listener plus haut).
     frame.style.cssText =
       'position:relative;width:100%;max-width:900px;height:min(90vh,900px);' +
       'background:#fff;border-radius:' + radius + 'px;overflow:hidden;' +
       'box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);' +
+      'transition:height 0.25s ease-out;' +
       'animation:opatam-pop-in 0.25s cubic-bezier(.2,.9,.3,1.2);';
 
     var closeBtn = document.createElement('button');
@@ -256,6 +285,7 @@
       radius: el.getAttribute('data-radius'),
       theme: el.getAttribute('data-theme'),
       service: el.getAttribute('data-service'),
+      minHeight: el.getAttribute('data-min-height'),
     };
   }
 

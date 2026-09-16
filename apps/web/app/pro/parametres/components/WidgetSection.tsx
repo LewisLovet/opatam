@@ -17,6 +17,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { serviceRepository } from '@booking-app/firebase';
 
 type WidgetMode = 'inline' | 'popup' | 'floating';
 type FloatingPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -27,6 +28,8 @@ interface WidgetConfig {
   radius: number;
   buttonLabel: string;
   position: FloatingPosition;
+  /** Prestation présélectionnée : le widget saute le choix et ouvre le calendrier. '' = aucune. */
+  serviceId: string;
 }
 
 const DEFAULT_CONFIG: WidgetConfig = {
@@ -35,6 +38,7 @@ const DEFAULT_CONFIG: WidgetConfig = {
   radius: 12,
   buttonLabel: 'Prendre rendez-vous',
   position: 'bottom-right',
+  serviceId: '',
 };
 
 const MODE_OPTIONS: { id: WidgetMode; label: string; description: string; icon: typeof Laptop }[] = [
@@ -61,6 +65,19 @@ const MODE_OPTIONS: { id: WidgetMode; label: string; description: string; icon: 
 export function WidgetSection() {
   const { provider } = useAuth();
   const [config, setConfig] = useState<WidgetConfig>(DEFAULT_CONFIG);
+  // Les prestations actives, pour proposer la présélection (`data-service`).
+  // L'identifiant n'était visible nulle part : un intégrateur ne pouvait pas
+  // s'en servir sans nous le demander.
+  const [services, setServices] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (!provider?.id) return;
+    let cancelled = false;
+    serviceRepository
+      .getActiveByProvider(provider.id)
+      .then((list) => { if (!cancelled) setServices(list.map((s) => ({ id: s.id, name: s.name }))); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [provider?.id]);
   const [copied, setCopied] = useState(false);
   const [snippetTab, setSnippetTab] = useState<WidgetMode>('inline');
 
@@ -80,11 +97,12 @@ export function WidgetSection() {
     params.set('radius', String(config.radius));
     // Popup + floating modes render inside a modal over the host site — show the
     // mini-header in the preview too so the pro sees exactly what their clients will.
+    if (config.serviceId) params.set('service', config.serviceId);
     if (config.mode !== 'inline') {
       params.set('mode', 'modal');
     }
     return `${origin}/p/${slug}/embed?${params.toString()}`;
-  }, [slug, origin, config.primary, config.radius, config.mode]);
+  }, [slug, origin, config.primary, config.radius, config.mode, config.serviceId]);
 
   // Generated snippet based on current tab + config
   const snippet = useMemo(() => {
@@ -93,6 +111,7 @@ export function WidgetSection() {
     const dataAttrs = [
       `  data-primary="#${color}"`,
       `  data-radius="${config.radius}"`,
+      ...(config.serviceId ? [`  data-service="${config.serviceId}"`] : []),
     ].join('\n');
 
     if (snippetTab === 'inline') {
@@ -280,6 +299,29 @@ export function WidgetSection() {
                 />
               </div>
             </div>
+
+            {/* Prestation présélectionnée */}
+            {services.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  Prestation présélectionnée
+                </div>
+                <select
+                  value={config.serviceId}
+                  onChange={(e) => setConfig((c) => ({ ...c, serviceId: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  <option value="">Aucune — le client choisit</option>
+                  {services.map((svc) => (
+                    <option key={svc.id} value={svc.id}>{svc.name}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  Le widget saute le choix de la prestation et ouvre directement le calendrier. Utile avec une seule offre.
+                </p>
+              </div>
+            )}
 
             {/* Border radius */}
             <div>

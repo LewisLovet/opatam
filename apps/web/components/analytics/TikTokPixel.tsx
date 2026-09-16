@@ -100,6 +100,9 @@ export function TikTokPixel() {
   // 1. Injection + consentement + identification hachée au changement de compte.
   useEffect(() => {
     if (!TIKTOK_PIXEL_ID) return;
+    // Jamais dans le widget embarqué sur un site tiers : cookies tiers
+    // bloqués ou cloisonnés par les navigateurs, et pas de bannière là-bas.
+    if (pathname.endsWith('/embed')) return;
     if (status === 'denied') {
       setTikTokConsent(false);
       return;

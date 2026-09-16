@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { generatePrimaryPalette, paletteToCss } from '@/lib/embed-palette';
+import { EMBED_ROOT_ID, annoncerHauteurEmbed } from '@/lib/embed-height';
 import { providerThemeVars, providerThemeDarkVars } from '@/lib/providerTheme';
 
 interface EmbedShellProps {
@@ -91,21 +92,14 @@ export function EmbedShell({
     }
   }, [theme]);
 
-  // Report height to parent on every layout change via ResizeObserver
+  // Hauteur annoncée au site hôte à chaque changement de mise en page. On
+  // observe le CONTENEUR DE CONTENU, pas le document : le document ne peut
+  // pas rétrécir sous la fenêtre de l'iframe (voir lib/embed-height).
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const sendHeight = () => {
-      const h = document.documentElement.scrollHeight;
-      try {
-        window.parent.postMessage(
-          { type: 'opatam-embed-height', height: h },
-          '*'
-        );
-      } catch {
-        // Parent is cross-origin and doesn't accept this message — ignore silently.
-      }
-    };
+    const sendHeight = () => annoncerHauteurEmbed();
 
     // Send once on mount + an initial delayed send to catch images/fonts loaded later
     sendHeight();
@@ -113,7 +107,7 @@ export function EmbedShell({
     const secondTimer = setTimeout(sendHeight, 1000);
 
     const ro = new ResizeObserver(() => sendHeight());
-    ro.observe(document.documentElement);
+    if (rootRef.current) ro.observe(rootRef.current);
     ro.observe(document.body);
 
     // Also listen for images finishing load
@@ -157,7 +151,7 @@ export function EmbedShell({
           __html: `:root { --embed-radius: ${clampedRadius}px; }`,
         }}
       />
-      <div>{children}</div>
+      <div id={EMBED_ROOT_ID} ref={rootRef}>{children}</div>
     </>
   );
 }

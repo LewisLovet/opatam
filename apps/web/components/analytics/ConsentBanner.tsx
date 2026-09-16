@@ -33,6 +33,11 @@ export function ConsentBanner() {
   // bannière : aucun traceur marketing n'y a sa place, et un outil de
   // travail qui redemande les cookies à chaque page est insupportable.
   if (pathname.startsWith('/sales') || pathname.startsWith('/admin')) return null;
+  // Widget embarqué sur le site d'un professionnel : c'est SA marque qui
+  // s'affiche chez lui. Une demande de consentement pour nos campagnes n'y a
+  // pas sa place — et les pixels n'y sont pas chargés (voir MetaPixel /
+  // TikTokPixel), il n'y a donc rien à consentir.
+  if (pathname.endsWith('/embed')) return null;
 
   // 'loading' = localStorage pas encore lu : ne rien afficher — c'était la
   // frame de bannière fantôme visible à chaque chargement. 'granted'/'denied'

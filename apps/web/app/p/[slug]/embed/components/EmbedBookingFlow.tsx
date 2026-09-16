@@ -1,5 +1,7 @@
 'use client';
 
+import { annoncerHauteurEmbed } from '@/lib/embed-height';
+
 import { useState, useMemo, useEffect } from 'react';
 import { Loader2, Info } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -237,14 +239,7 @@ export function EmbedBookingFlow({
   // ── Post height message on step change so iframe auto-resizes ────────────
   useEffect(() => {
     // Defer by a tick to let DOM repaint before measuring
-    const t = setTimeout(() => {
-      try {
-        window.parent.postMessage(
-          { type: 'opatam-embed-height', height: document.documentElement.scrollHeight },
-          '*'
-        );
-      } catch { /* no-op */ }
-    }, 0);
+    const t = setTimeout(() => annoncerHauteurEmbed(), 0);
     return () => clearTimeout(t);
   }, [step]);
 
