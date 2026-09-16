@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { articleRepository } from '@booking-app/firebase';
+import { APP_CONFIG, CATEGORIES } from '@booking-app/shared/constants';
 import { ogLocale } from '@/lib/ogLocale';
-import LandingPage from './HomePage';
 import LandingV1 from './v1/LandingV1';
 import { chargerVideosAccueil } from './v1/loadVideos';
-import type { ArticleCardData } from './blog/components/ArticleCard';
 
 // Rafraîchi toutes les 5 min : la sélection de vidéos de prestataires se
 // gère depuis l'admin et doit apparaître sans attendre une demi-heure.
@@ -135,59 +133,40 @@ function buildJsonLd(
 }
 
 export default async function Page() {
-  const locale = await getLocale();
   const tSeo = await getTranslations('seo.home');
-  const tFaq = await getTranslations('home.faq');
+  // La FAQ du JSON-LD est CELLE affichée : les questions de la nouvelle
+  // page (landing.faq), dans la langue servie, avec la durée d'essai injectée
+  // comme à l'écran.
+  const tLanding = await getTranslations('landing');
+  const questions = tLanding.raw('faq.items') as { question: string; answer: string }[];
   const jsonLd = buildJsonLd(
     tSeo('orgDescription'),
-    tFaq.raw('items') as { question: string; answer: string }[],
+    questions.map((item, index) => ({
+      question: item.question,
+      answer: tLanding(`faq.items.${index}.answer`, { days: APP_CONFIG.trialDays }),
+    })),
   );
 
-  // La nouvelle page d'accueil (dossier v1) n'existe qu'en français. Les
-  // versions /en, /it, /pt, /de gardent l'ancienne page, traduite, plutôt
-  // qu'un accueil français servi à un visiteur anglais. Même métadonnées,
-  // même JSON-LD, mêmes hreflang : seul le rendu diffère.
-  if (locale === 'fr') {
-    const videos = await chargerVideosAccueil();
-    return (
-      <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        <LandingV1 videos={videos} />
-      </>
-    );
-  }
-  // Tutorials block on the homepage — pulled from the blog with category
-  // 'tutoriels'. Tolerant: an empty list (no tutorial yet, or Firestore
-  // unavailable) just hides the section, never breaks the landing.
-  const tutorialDocs = await articleRepository
-    .getPublishedByCategory('tutoriels', 3)
-    .catch((err) => {
-      console.error('[home] getPublishedByCategory(tutoriels) failed:', err);
-      return [];
-    });
-
-  const tutorials: ArticleCardData[] = tutorialDocs.map((a) => ({
-    slug: a.slug,
-    title: a.title,
-    excerpt: a.excerpt,
-    coverImageURL: a.coverImageURL,
-    category: a.category,
-    videoUrl: a.videoUrl,
-    videoCoverURL: a.videoCoverURL,
-    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
-    authorName: a.authorName,
-  }));
-
+  // Une seule page d'accueil, traduite en cinq langues (dictionnaire
+  // `landing`) : /, /en, /it, /pt, /de rendent le même composant, la langue
+  // vient du middleware. Les captures et les vidéos restent en français.
+  // Le sous-titre d'une vidéo (« Beauté & Esthétique · lyon ») est enregistré
+  // en français par l'admin ; la catégorie, elle, a un libellé dans chaque
+  // langue (businessCategories). On la retraduit à la volée, la ville reste.
+  const tCategories = await getTranslations('businessCategories');
+  const videos = (await chargerVideosAccueil()).map((video) => {
+    if (!video.subtitle) return video;
+    const [categorie, ...reste] = video.subtitle.split(' · ');
+    const id = CATEGORIES.find((c) => c.label === categorie)?.id;
+    return id ? { ...video, subtitle: [tCategories(id), ...reste].join(' · ') } : video;
+  });
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LandingPage tutorials={tutorials} />
+      <LandingV1 videos={videos} />
     </>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Volume2, VolumeX } from 'lucide-react';
 import s from './v1.module.css';
 
@@ -32,6 +33,7 @@ function loadAPI() {
 }
 
 export function YouTubeVideo({ id, title, active, onPlay }: { id: string; title: string; active: boolean; onPlay?: () => void }) {
+  const t = useTranslations('landing.videos');
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<Player | null>(null);
   const wantsPlayback = useRef(active);
@@ -98,9 +100,9 @@ export function YouTubeVideo({ id, title, active, onPlay }: { id: string; title:
   };
   return <>
     <div ref={host} className={s.youtubeHost} />
-    {ready && !failed && <button type="button" className={s.soundToggle} onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Couper le son' : 'Activer le son'}>
+    {ready && !failed && <button type="button" className={s.soundToggle} onClick={toggleSound} aria-pressed={sound} aria-label={sound ? t('mute') : t('unmute')}>
       {sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}
     </button>}
-    {failed && <div className={s.youtubeError}><p>Cette vidéo ne peut pas être lue ici.</p><a href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer">Voir sur YouTube</a></div>}
+    {failed && <div className={s.youtubeError}><p>{t('cannotPlay')}</p><a href={`https://www.youtube.com/watch?v=${id}`} target="_blank" rel="noopener noreferrer">{t('onYoutube')}</a></div>}
   </>;
 }

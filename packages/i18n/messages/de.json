@@ -50,10 +50,10 @@
   },
   "seo": {
     "home": {
-      "title": "Opatam — Online-Terminbuchung für Selbstständige | Ohne Provision",
-      "description": "Opatam ist die provisionsfreie Online-Buchungsplattform für Beauty, Wellness, Coaching und Dienstleistungen. Online-Kalender, automatische Erinnerungen, eigene Buchungsseite. Kostenlos testen.",
-      "ogTitle": "Opatam — Online-Terminbuchung ohne Provision",
-      "ogDescription": "Verwalten Sie Ihre Termine online, gewinnen Sie neue Kunden und bauen Sie Ihr Geschäft aus. 0 % Provision. Kostenlos testen.",
+      "title": "Opatam — Die Online-Buchung, die Ihren Kalender füllt",
+      "description": "Opatam ist die Online-Buchungsplattform für Beauty, Wellness, Coaching und Dienstleistungen. Buchungsseite, Kalender in der App, automatische Erinnerungen. Kostenlos testen, ohne Kreditkarte.",
+      "ogTitle": "Opatam — Die Online-Buchung, die Ihren Kalender füllt",
+      "ogDescription": "Ihre Kunden buchen rund um die Uhr auf Ihrer Seite. Ihr Kalender begleitet Sie in der App. Kostenlos testen, ohne Kreditkarte.",
       "orgDescription": "Provisionsfreie Online-Buchungsplattform für Dienstleister."
     },
     "booking": {
@@ -492,5 +492,334 @@
     "pets": "Tiere",
     "arts": "Kunst & Freizeit",
     "other": "Weitere Dienstleistungen"
+  },
+  "landing": {
+    "skip": "Zum Inhalt springen",
+    "brandAria": "Opatam, Startseite",
+    "mainNav": "Hauptnavigation",
+    "mobileNav": "Mobile Navigation",
+    "nav": {
+      "how": "So funktioniert’s",
+      "pricing": "Preise",
+      "trades": "Ihre Berufe",
+      "login": "Anmelden",
+      "create": "Meine Seite erstellen",
+      "openMenu": "Menü öffnen",
+      "closeMenu": "Menü schließen",
+      "menu": "Menü",
+      "networks": "Ihre Netzwerke",
+      "words": "Ihre Worte",
+      "download": "App herunterladen",
+      "createWeb": "Meine Webseite erstellen",
+      "loginLong": "Ich habe schon ein Konto · Anmelden",
+      "trial": "{days} Tage kostenlos · Ohne Kreditkarte"
+    },
+    "hero": {
+      "eyebrow": "FÜR SELBSTSTÄNDIGE & KLEINE TEAMS",
+      "title1": "Online-Buchung,",
+      "title2": "die Ihren",
+      "title3": "Kalender füllt.",
+      "lead": "Ihre Kunden buchen rund um die Uhr auf Ihrer Seite. Ihr Kalender begleitet Sie in der App. Sie behalten die Kontrolle über Ihr Geschäft.",
+      "create": "Meine Seite erstellen",
+      "demo": "Demo ausprobieren",
+      "trial": "{days} Tage kostenlos",
+      "noCard": "Ohne Kreditkarte",
+      "app": "Die App:",
+      "chipReady": "Startklar in",
+      "chipReadyStrong": "5 Min.",
+      "chipBookings": "Buchungen",
+      "chipBookingsStrong": "rund um die Uhr",
+      "chipReminders": "Erinnerungen",
+      "chipRemindersStrong": "automatisch",
+      "previewAria": "Vorschau des Kundenwegs in der App",
+      "chooseScreen": "Bildschirm wählen",
+      "credit": "In der Opatam-App · Cam Beauty Studio"
+    },
+    "trades": {
+      "aria": "Die Berufe, die Opatam nutzen können",
+      "lead": "Sie haben das Können",
+      "strong": "Wir kümmern uns um die Termine.",
+      "beauty": "Beauty & Friseur",
+      "wellness": "Wellness",
+      "sport": "Sport & Coaching",
+      "audiovisual": "Foto & Kreation",
+      "artisan": "Handwerk"
+    },
+    "videos": {
+      "eyebrow": "IHR HANDWERK IM VORDERGRUND",
+      "title1": "Handgriffe. Talent.",
+      "title2": "Und Zeit für ihren Beruf.",
+      "lead": "Tauchen Sie ein in die Welt der Profis, die Opatam nutzen. Entdecken Sie ihr Können und finden Sie ihre Leistungen auf ihrer Buchungsseite.",
+      "explore": "Ihre Welten entdecken",
+      "prev": "Vorherige Videos",
+      "next": "Nächste Videos",
+      "carousel": "Karussell",
+      "regionAria": "Videos der Dienstleister",
+      "videoLabel": "Video: {name}",
+      "playLabel": "Video von {name} abspielen",
+      "watch": "Video ansehen",
+      "play": "Video abspielen",
+      "error": "Dieses Video kann gerade nicht geladen werden.",
+      "cta": "Zur Buchungsseite",
+      "ctaAria": "Buchungsseite von {name} ansehen",
+      "mute": "Ton aus",
+      "unmute": "Ton an",
+      "cannotPlay": "Dieses Video kann hier nicht abgespielt werden.",
+      "onYoutube": "Auf YouTube ansehen"
+    },
+    "how": {
+      "eyebrow": "WAS SICH ÄNDERT",
+      "title1": "Weniger Verwaltung.",
+      "title2": "Mehr Termine.",
+      "lead": "Eine Seite, um gebucht zu werden. Eine App, um alles zu verwalten."
+    },
+    "features": {
+      "eyebrow": "IHRE PRO-APP",
+      "title1": "Ihr Tag.",
+      "title2": "Auf einen Blick.",
+      "lead": "Die Buchungen kommen online herein. Sie gewinnen eine klare Organisation, ohne den ganzen Tag zwischen Nachrichten zu jonglieren.",
+      "b1Title": "Ein Kalender, der sich anpasst",
+      "b1Text": "Tag, Woche oder Monat: Wählen Sie die Ansicht, die Ihnen beim Organisieren hilft.",
+      "b2Title": "Ihr Team an einem Ort",
+      "b2Text": "Filtern Sie nach Mitglied und Kategorie, um die Termine zu sehen, die Sie betreffen.",
+      "b3Title": "Erinnerungen, ohne daran zu denken",
+      "b3Text": "Automatische Erinnerungen per E-Mail und Benachrichtigung begleiten Ihre Kunden vor ihrem Termin.",
+      "download": "App herunterladen",
+      "agendaCaption": "Tagesansicht · Profi-App",
+      "agendaEnlarge": "Screenshot des Pro-Kalenders vergrößern",
+      "agendaTitle": "Ihr Pro-Kalender"
+    },
+    "gallery": {
+      "eyebrow": "IHR GESCHÄFT, VON BEIDEN SEITEN",
+      "clientTitle": "Ihre Welt. Ihr nächster Termin.",
+      "clientLead": "Eine Seite in Ihrem Stil und ein geführter Ablauf, von der Leistung bis zur Anzahlung.",
+      "proTitle": "Ihr ganzer Terminplan. Griffbereit.",
+      "proLead": "Derselbe Kalender, ob Sie allein oder im Team arbeiten.",
+      "sideAria": "Seite des Produkts wählen",
+      "clientSide": "Der Kundenweg",
+      "proSide": "Die Pro-App",
+      "prevStep": "Vorheriger Schritt",
+      "stepsAria": "Schritte des Kundenwegs",
+      "stepAria": "Schritt {n}: {title}",
+      "stepCount": "Schritt {n} / {total}",
+      "next": "Nächster Schritt",
+      "replay": "Nochmal ansehen",
+      "jumpAria": "Direkt zu einem Schritt springen",
+      "sizeAria": "Größe des Geschäfts",
+      "seePage": "Ihre Webseite live ansehen",
+      "note": "Screenshots der Opatam-App. Der Link öffnet die echte Webseite von Braidztouch.",
+      "clientLabel": "KUNDENSEITE",
+      "proLabel": "PRO-SEITE",
+      "app": "OPATAM-APP",
+      "enlarge": "Vergrößern",
+      "enlargeAria": "Vergrößern: {title}"
+    },
+    "screens": {
+      "vitrine": {
+        "title": "Ihre Seite",
+        "alt": "Braidztouch-Seite in der Opatam-App: Foto, Bewertungen und Treuekarte",
+        "description": "Ihre Welt, Ihre Fotos, Ihre Bewertungen und Ihre Treuekarte, vereint auf Ihrer Seite."
+      },
+      "prestations": {
+        "title": "Die Leistungen",
+        "alt": "Liste der Braidztouch-Leistungen mit Preisen, Dauer und Aktionen",
+        "description": "Ihre Leistungen im Detail, mit Dauer, Preis und laufenden Aktionen."
+      },
+      "options": {
+        "title": "Die Optionen",
+        "alt": "Auswahl der Länge und der Optionen einer Leistung in Opatam",
+        "description": "Längen, Varianten, Optionen: Preis und Dauer aktualisieren sich laufend."
+      },
+      "creneaux": {
+        "title": "Der Termin",
+        "alt": "Kalender und verfügbare Uhrzeiten einer Leistung in Opatam",
+        "description": "Ihre Kunden sehen die ausgebuchten Tage und wählen eine Uhrzeit aus denen, die Sie freigeben."
+      },
+      "recapitulatif": {
+        "title": "Die Übersicht",
+        "alt": "Zusammenfassung einer Opatam-Buchung vor der Bestätigung",
+        "description": "Leistung, Datum, Profi und Ort: Alles wird vor der Bestätigung noch einmal geprüft."
+      },
+      "acompte": {
+        "title": "Die Anzahlung",
+        "alt": "Auswahl der Zahlungsmethode für eine Anzahlung in Opatam",
+        "description": "Wenn Sie eine Anzahlung verlangen, wird sie sofort bezahlt — Karte, Apple Pay oder Ratenzahlung."
+      },
+      "camProfil": {
+        "title": "Ihre Seite",
+        "alt": "Profil von Cam Beauty Studio in der Opatam-App"
+      },
+      "camPrestations": {
+        "title": "Die Leistungen",
+        "alt": "Liste der Leistungen und Preise von Cam Beauty Studio in Opatam"
+      },
+      "camCreneaux": {
+        "title": "Die Verfügbarkeiten",
+        "alt": "Auswahl von Datum und Uhrzeit in der Opatam-App"
+      },
+      "solo": {
+        "title": "Allein",
+        "alt": "Opatam-Kalender eines Einzelunternehmers, Tagesansicht",
+        "description": "Allein passt Ihr Tag in eine Spalte: Ihre Termine, der Reihe nach, mit Leistung und Kunde."
+      },
+      "equipe": {
+        "title": "Im Team",
+        "alt": "Opatam-Kalender eines Teams, eine Spalte pro Mitglied in der Tagesansicht",
+        "description": "Im Team hat jedes Mitglied seine Spalte. Filtern Sie nach Person oder Kategorie, um nur zu sehen, was Sie betrifft."
+      }
+    },
+    "stories": {
+      "eyebrow": "IHR BERUF HAT VIEL ZU ERZÄHLEN",
+      "title1": "Inhalte zum Teilen.",
+      "title2": "Ein Publikum zum Binden.",
+      "lead": "Verfügbarkeiten, Arbeiten, Bewertungen: Machen Sie aus Ihrem Alltag Inhalte für Ihre sozialen Netzwerke. Weniger Zeit fürs Erstellen Ihrer Storys, mehr Regelmäßigkeit, um mit Ihrer Community in Kontakt zu bleiben.",
+      "tabsAria": "Story-Arten",
+      "cta": "App entdecken",
+      "small": "In Opatam erstellen. In Ihren Netzwerken teilen.",
+      "enlargeAria": "Vergrößern: {title}",
+      "alt": "Opatam-Story: {title}",
+      "dispos": {
+        "label": "Verfügbarkeiten",
+        "title": "Ein freier Termin? Sagen Sie es weiter.",
+        "description": "Teilen Sie Ihre Verfügbarkeiten des Tages oder der Woche. Ihr Publikum sieht, wann es buchen kann, ohne Nachrichten hin und her.",
+        "screen1": "Die freien Termine heute",
+        "screen2": "Die freien Termine der Woche"
+      },
+      "prestations": {
+        "label": "Leistungen",
+        "title": "Machen Sie Lust, Ihre Leistungen zu entdecken.",
+        "description": "Zeigen Sie Ihr Angebot und Ihre Preise in einer fertigen Story. Bleiben Sie mit Ihrer Community in Kontakt, ohne bei null anzufangen.",
+        "screen1": "Ihre Leistungen · Vorschau 1",
+        "screen2": "Ihre Leistungen · Vorschau 2"
+      },
+      "realisations": {
+        "label": "Arbeiten",
+        "title": "Ihre Arbeit ist Ihr bester Inhalt.",
+        "description": "Rücken Sie Ihre Arbeiten ins Licht und zeigen Sie, was Ihr Können einzigartig macht.",
+        "screen1": "Ihre Arbeiten · Vorschau 1",
+        "screen2": "Ihre Arbeiten · Vorschau 2"
+      },
+      "avantApres": {
+        "label": "Vorher / nachher",
+        "title": "Zeigen Sie den Unterschied, den Sie machen.",
+        "description": "Kombinieren Sie Ihre Vorher- und Nachher-Fotos, um das Ergebnis Ihrer Arbeit zu zeigen.",
+        "screen1": "Vorher / nachher · Vorschau 1",
+        "screen2": "Vorher / nachher · Vorschau 2"
+      },
+      "avis": {
+        "label": "Kundenbewertungen",
+        "title": "Ihre Worte schaffen Vertrauen.",
+        "description": "Teilen Sie eine Kundenbewertung oder Ihre Gesamtnote. Ein einfacher Weg, um neue Interessenten zu beruhigen.",
+        "screen1": "Eine Kundenbewertung",
+        "screen2": "Ihre Gesamtnote"
+      },
+      "fidelite": {
+        "label": "Treue",
+        "title": "Geben Sie ihnen einen Grund, wiederzukommen.",
+        "description": "Machen Sie Ihr Treueprogramm bekannt und pflegen Sie die Beziehung zu den Kunden, die Ihnen folgen.",
+        "screen1": "Ihre Treue · Vorschau 1",
+        "screen2": "Ihre Treue · Vorschau 2"
+      },
+      "page": {
+        "label": "Ihre Seite",
+        "title": "Ein direkter Weg zur Buchung.",
+        "description": "Teilen Sie Ihre Seite und ihren QR-Code, damit Ihr Publikum Ihre Leistungen leicht findet.",
+        "screen1": "Ihre Seite · Vorschau 1",
+        "screen2": "Ihre Seite · Vorschau 2"
+      }
+    },
+    "reviews": {
+      "eyebrow": "SIE HABEN DEN ERSTEN SCHRITT GEMACHT",
+      "title1": "Ihr Beruf.",
+      "title2": "Ihre Worte.",
+      "lead1": "Selbstständige, die sich für",
+      "lead2": "eine andere Art der Terminverwaltung entschieden haben."
+    },
+    "pricing": {
+      "eyebrow": "EINFACH, BIS ZUM PREIS",
+      "title1": "Ihr Geschäft wächst.",
+      "title2": "Unsere Provisionen nicht.",
+      "lead": "Ein fester Abopreis. Keine Provision auf Ihre Buchungen.",
+      "periodAria": "Abrechnungszeitraum",
+      "yearly": "Jährlich",
+      "yearlyBadge": "2 Monate geschenkt",
+      "monthly": "Monatlich",
+      "proAudience": "Ihr Geschäft, allein.",
+      "studioAudience": "Ein Kollektiv. Ein Rhythmus.",
+      "proTag": "FÜR SELBSTSTÄNDIGE",
+      "studioTag": "FÜR KLEINE TEAMS",
+      "perMonth": "/ Monat",
+      "billedYearly": "{total} jährlich abgerechnet",
+      "billedMonthly": "Monatliche Abrechnung · Ohne Bindung",
+      "cta": "Meine {name}-Seite erstellen",
+      "pro1": "Ihre persönliche Buchungsseite",
+      "pro2": "Unbegrenzte Buchungen, ohne Provision",
+      "pro3": "Kalender im Web und in der App",
+      "pro4": "Automatische Erinnerungen per E-Mail und Push",
+      "pro5": "1 Profi · 1 Standort",
+      "studio1": "Alles aus Pro",
+      "studio2": "Bis zu 10 synchronisierte Kalender",
+      "studio3": "Leistungen pro Mitglied zugewiesen",
+      "studio4": "Bis zu 10 Standorte",
+      "studio5": "Eine öffentliche Seite für Ihr Team",
+      "note": "{days} Tage zum Testen. Ohne Kreditkarte.",
+      "mobileQ": "Lieber auf dem Handy starten?",
+      "mobileCta": "App herunterladen"
+    },
+    "faq": {
+      "eyebrow": "WIR ANTWORTEN",
+      "title1": "Noch eine",
+      "title2": "kurze Frage?",
+      "talk": "Sprechen wir darüber",
+      "items": [
+        {
+          "question": "Muss ich mich zwischen App und Website entscheiden?",
+          "answer": "Beide ergänzen sich: Über Ihre Webseite buchen Ihre Kunden, und in Ihrem Profibereich verwalten Sie Ihr Geschäft am Computer oder in der App."
+        },
+        {
+          "question": "Müssen meine Kunden eine App herunterladen?",
+          "answer": "Nein. Sie öffnen Ihren Link, wählen eine Leistung und eine Uhrzeit und geben Name, E-Mail und Telefonnummer an. Sie können direkt im Web buchen, ohne Konto."
+        },
+        {
+          "question": "Wie läuft die kostenlose Testphase ab?",
+          "answer": "Sie haben {days} Tage, um Opatam ohne Kreditkarte zu testen. Danach wählen Sie das passende Paket für Ihr Geschäft, wenn Sie weitermachen möchten."
+        },
+        {
+          "question": "Eignet es sich für ein kleines Team?",
+          "answer": "Ja. Mit dem Studio-Paket verwalten Sie bis zu 10 Mitglieder und 10 Standorte. Jedes Mitglied hat seinen eigenen Plan und seine Leistungen, und Sie behalten den Überblick."
+        },
+        {
+          "question": "Nimmt Opatam eine Provision?",
+          "answer": "Opatam nimmt keine Provision auf Ihre Buchungen. Die Pakete beruhen auf einem festen Abo. Wenn Sie einen Online-Zahlungsdienst aktivieren, bleiben die anfallenden Bearbeitungsgebühren davon getrennt."
+        }
+      ]
+    },
+    "download": {
+      "eyebrow": "DER NÄCHSTE TERMIN BEGINNT HIER",
+      "title1": "Schaffen Sie Platz",
+      "title2": "für Ihren Beruf.",
+      "lead1": "Auf Ihrem Handy oder Ihrem Computer:",
+      "lead2": "Ihre neue Organisation beginnt mit Opatam.",
+      "pocket": "Ihr Geschäft in der Tasche.",
+      "page": "Ihre Seite, bereit zum Teilen.",
+      "appStoreSmall": "Laden im",
+      "playStoreSmall": "Jetzt bei",
+      "appStoreAria": "Opatam im App Store laden",
+      "playStoreAria": "Opatam bei Google Play laden"
+    },
+    "footer": {
+      "tagline": "Ihr Können verdient Zeit.",
+      "linksAria": "Nützliche Links",
+      "find": "Einen Profi finden",
+      "blog": "Tipps & Tutorials",
+      "contact": "Kontakt",
+      "legal": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen"
+    },
+    "viewer": {
+      "close": "Vergrößerung schließen",
+      "region": "Vergrößerter Screenshot, vertikales Scrollen"
+    }
   }
 }

@@ -492,5 +492,334 @@
     "pets": "Animaux",
     "arts": "Art & Loisirs",
     "other": "Autres services"
+  },
+  "landing": {
+    "skip": "Aller au contenu",
+    "brandAria": "Opatam, accueil",
+    "mainNav": "Navigation principale",
+    "mobileNav": "Navigation mobile",
+    "nav": {
+      "how": "Comment ça marche",
+      "pricing": "Tarifs",
+      "trades": "Leurs métiers",
+      "login": "Connexion",
+      "create": "Créer ma page",
+      "openMenu": "Ouvrir le menu",
+      "closeMenu": "Fermer le menu",
+      "menu": "Menu",
+      "networks": "Vos réseaux",
+      "words": "Leurs mots",
+      "download": "Télécharger l’app",
+      "createWeb": "Créer ma page web",
+      "loginLong": "J’ai déjà un compte · Connexion",
+      "trial": "{days} jours gratuits · Sans carte bancaire"
+    },
+    "hero": {
+      "eyebrow": "POUR LES INDÉPENDANTS & PETITES ÉQUIPES",
+      "title1": "La réservation",
+      "title2": "en ligne,",
+      "title3": "qui remplit votre agenda.",
+      "lead": "Vos clients réservent 24 h/24 sur votre page. Votre agenda vous suit dans l’app. Vous gardez la main sur votre activité.",
+      "create": "Créer ma vitrine",
+      "demo": "Essayer la démo",
+      "trial": "{days} jours gratuits",
+      "noCard": "Sans carte bancaire",
+      "app": "L’application :",
+      "chipReady": "Prêt en",
+      "chipReadyStrong": "5 min",
+      "chipBookings": "Réservations",
+      "chipBookingsStrong": "24 h/24",
+      "chipReminders": "Rappels",
+      "chipRemindersStrong": "automatiques",
+      "previewAria": "Aperçu du parcours client dans l’application",
+      "chooseScreen": "Choisir un écran",
+      "credit": "Dans l’app Opatam · Cam Beauty Studio"
+    },
+    "trades": {
+      "aria": "Les métiers qui peuvent utiliser Opatam",
+      "lead": "Vous avez le savoir-faire",
+      "strong": "On s’occupe des rendez-vous.",
+      "beauty": "Beauté & coiffure",
+      "wellness": "Bien-être",
+      "sport": "Sport & coaching",
+      "audiovisual": "Photo & création",
+      "artisan": "Artisanat"
+    },
+    "videos": {
+      "eyebrow": "LEUR MÉTIER, AU PREMIER PLAN",
+      "title1": "Des gestes. Du talent.",
+      "title2": "Et du temps pour leur métier.",
+      "lead": "Entrez dans l’univers des professionnels qui utilisent Opatam. Découvrez leur savoir-faire, puis retrouvez leurs prestations sur leur page de réservation.",
+      "explore": "Explorez leurs univers",
+      "prev": "Vidéos précédentes",
+      "next": "Vidéos suivantes",
+      "carousel": "carrousel",
+      "regionAria": "Vidéos des prestataires",
+      "videoLabel": "Vidéo : {name}",
+      "playLabel": "Lire la vidéo de {name}",
+      "watch": "Voir la vidéo",
+      "play": "Lire la vidéo",
+      "error": "Cette vidéo ne peut pas être chargée pour le moment.",
+      "cta": "Voir sa page de réservation",
+      "ctaAria": "Voir la page de réservation de {name}",
+      "mute": "Couper le son",
+      "unmute": "Activer le son",
+      "cannotPlay": "Cette vidéo ne peut pas être lue ici.",
+      "onYoutube": "Voir sur YouTube"
+    },
+    "how": {
+      "eyebrow": "CE QUE ÇA CHANGE",
+      "title1": "Moins d’administratif.",
+      "title2": "Plus de rendez-vous.",
+      "lead": "Une page pour être réservé. Une application pour tout gérer."
+    },
+    "features": {
+      "eyebrow": "VOTRE APPLICATION PRO",
+      "title1": "Votre journée.",
+      "title2": "En un coup d’œil.",
+      "lead": "Les réservations arrivent en ligne. Vous retrouvez une organisation claire, sans passer votre journée à jongler entre les messages.",
+      "b1Title": "Un agenda qui s’adapte",
+      "b1Text": "Jour, semaine ou mois : choisissez la vue qui vous aide à organiser votre activité.",
+      "b2Title": "Votre équipe, au même endroit",
+      "b2Text": "Filtrez par membre et par catégorie pour voir les rendez-vous qui vous concernent.",
+      "b3Title": "Les rappels, sans y penser",
+      "b3Text": "Les rappels automatiques par email et notification accompagnent vos clients avant leur rendez-vous.",
+      "download": "Télécharger l’application",
+      "agendaCaption": "Vue journée · Application professionnelle",
+      "agendaEnlarge": "Agrandir la capture de l’agenda pro",
+      "agendaTitle": "Votre agenda pro"
+    },
+    "gallery": {
+      "eyebrow": "VOTRE ACTIVITÉ, DES DEUX CÔTÉS",
+      "clientTitle": "Votre univers. Leur prochain rendez-vous.",
+      "clientLead": "Une page à votre image et un parcours guidé, de la prestation au paiement de l’acompte.",
+      "proTitle": "Tout votre planning. À portée de main.",
+      "proLead": "Le même agenda, que vous travailliez seul ou à plusieurs.",
+      "sideAria": "Choisir le côté du produit",
+      "clientSide": "Le parcours client",
+      "proSide": "L’application pro",
+      "prevStep": "Étape précédente",
+      "stepsAria": "Étapes du parcours client",
+      "stepAria": "Étape {n} : {title}",
+      "stepCount": "Étape {n} / {total}",
+      "next": "Étape suivante",
+      "replay": "Revoir",
+      "jumpAria": "Aller directement à une étape",
+      "sizeAria": "Taille de l’activité",
+      "seePage": "Voir sa page web en ligne",
+      "note": "Captures de l’application Opatam. Le lien ouvre la vraie page web de Braidztouch.",
+      "clientLabel": "CÔTÉ CLIENT",
+      "proLabel": "CÔTÉ PRO",
+      "app": "APP OPATAM",
+      "enlarge": "Agrandir",
+      "enlargeAria": "Agrandir : {title}"
+    },
+    "screens": {
+      "vitrine": {
+        "title": "Votre vitrine",
+        "alt": "Page Braidztouch dans l’application Opatam : photo, avis et carte de fidélité",
+        "description": "Votre univers, vos photos, vos avis et votre carte de fidélité, réunis sur votre page."
+      },
+      "prestations": {
+        "title": "Les prestations",
+        "alt": "Liste des prestations Braidztouch avec tarifs, durées et promotions",
+        "description": "Vos prestations détaillées, avec leur durée, leur tarif et vos promotions en cours."
+      },
+      "options": {
+        "title": "Les options",
+        "alt": "Choix de la longueur et des options d’une prestation dans Opatam",
+        "description": "Longueurs, variantes, options : le tarif et la durée se mettent à jour au fur et à mesure."
+      },
+      "creneaux": {
+        "title": "La date",
+        "alt": "Calendrier et horaires disponibles d’une prestation dans Opatam",
+        "description": "Vos clients voient les jours complets et choisissent un horaire parmi ceux que vous laissez ouverts."
+      },
+      "recapitulatif": {
+        "title": "Le récapitulatif",
+        "alt": "Récapitulatif d’une réservation Opatam avant confirmation",
+        "description": "Prestation, date, professionnel et lieu : tout est relu avant de confirmer."
+      },
+      "acompte": {
+        "title": "L’acompte",
+        "alt": "Choix du moyen de paiement pour régler un acompte dans Opatam",
+        "description": "Si vous demandez un acompte, il se règle dans la foulée — carte, Apple Pay ou paiement en plusieurs fois."
+      },
+      "camProfil": {
+        "title": "Votre vitrine",
+        "alt": "Profil Cam Beauty Studio dans l’application Opatam"
+      },
+      "camPrestations": {
+        "title": "Les prestations",
+        "alt": "Liste des prestations et tarifs de Cam Beauty Studio dans Opatam"
+      },
+      "camCreneaux": {
+        "title": "Les disponibilités",
+        "alt": "Sélection d’une date et d’un horaire dans l’application Opatam"
+      },
+      "solo": {
+        "title": "En solo",
+        "alt": "Agenda Opatam d’un professionnel seul, en vue journée",
+        "description": "En solo, votre journée tient sur une colonne : vos rendez-vous, dans l’ordre, avec la prestation et le client."
+      },
+      "equipe": {
+        "title": "En équipe",
+        "alt": "Agenda Opatam d’une équipe, une colonne par membre en vue journée",
+        "description": "En équipe, chaque membre a sa colonne. Filtrez par personne ou par catégorie pour ne voir que ce qui vous concerne."
+      }
+    },
+    "stories": {
+      "eyebrow": "VOTRE MÉTIER A DE QUOI FAIRE PARLER",
+      "title1": "Du contenu à partager.",
+      "title2": "Une audience à fidéliser.",
+      "lead": "Disponibilités, réalisations, avis : transformez votre quotidien en contenu pour vos réseaux sociaux. Moins de temps à créer vos stories, plus de régularité pour garder le lien avec votre communauté.",
+      "tabsAria": "Types de stories",
+      "cta": "Découvrir l’application",
+      "small": "Créez dans Opatam. Partagez sur vos réseaux.",
+      "enlargeAria": "Agrandir : {title}",
+      "alt": "Story Opatam : {title}",
+      "dispos": {
+        "label": "Disponibilités",
+        "title": "Un créneau libre ? Faites-le savoir.",
+        "description": "Partagez vos disponibilités du jour ou de la semaine. Votre audience voit quand réserver, sans échange de messages.",
+        "screen1": "Les dispos du jour",
+        "screen2": "Les dispos de la semaine"
+      },
+      "prestations": {
+        "label": "Prestations",
+        "title": "Donnez envie de découvrir vos prestations.",
+        "description": "Présentez votre carte et vos tarifs dans une story prête à publier. Gardez le lien avec votre communauté, sans repartir d’une page blanche.",
+        "screen1": "Vos prestations · aperçu 1",
+        "screen2": "Vos prestations · aperçu 2"
+      },
+      "realisations": {
+        "label": "Réalisations",
+        "title": "Votre travail est votre meilleur contenu.",
+        "description": "Mettez vos réalisations en lumière et montrez ce qui rend votre savoir-faire unique.",
+        "screen1": "Vos réalisations · aperçu 1",
+        "screen2": "Vos réalisations · aperçu 2"
+      },
+      "avantApres": {
+        "label": "Avant / après",
+        "title": "Montrez la différence que vous faites.",
+        "description": "Associez vos photos avant et après pour donner à voir le résultat de votre travail.",
+        "screen1": "Avant / après · aperçu 1",
+        "screen2": "Avant / après · aperçu 2"
+      },
+      "avis": {
+        "label": "Avis clients",
+        "title": "Leurs mots donnent confiance.",
+        "description": "Partagez un avis client ou votre note globale. Une façon simple de rassurer les personnes qui vous découvrent.",
+        "screen1": "Un avis client",
+        "screen2": "Votre note globale"
+      },
+      "fidelite": {
+        "label": "Fidélité",
+        "title": "Donnez-leur une raison de revenir.",
+        "description": "Faites connaître votre programme de fidélité et entretenez la relation avec les clients qui vous suivent.",
+        "screen1": "Votre fidélité · aperçu 1",
+        "screen2": "Votre fidélité · aperçu 2"
+      },
+      "page": {
+        "label": "Votre page",
+        "title": "Un chemin direct vers la réservation.",
+        "description": "Partagez votre page et son QR code pour que votre audience retrouve facilement vos prestations.",
+        "screen1": "Votre page · aperçu 1",
+        "screen2": "Votre page · aperçu 2"
+      }
+    },
+    "reviews": {
+      "eyebrow": "ILS ONT FAIT LE PREMIER PAS",
+      "title1": "Leur métier.",
+      "title2": "Leurs mots.",
+      "lead1": "Des indépendantes qui ont choisi",
+      "lead2": "une autre façon de gérer leurs rendez-vous."
+    },
+    "pricing": {
+      "eyebrow": "SIMPLE, JUSQU’AU TARIF",
+      "title1": "Votre activité grandit.",
+      "title2": "Pas nos commissions.",
+      "lead": "Un abonnement fixe. Aucune commission sur vos réservations.",
+      "periodAria": "Période de facturation",
+      "yearly": "Annuel",
+      "yearlyBadge": "2 mois offerts",
+      "monthly": "Mensuel",
+      "proAudience": "Votre activité, en solo.",
+      "studioAudience": "Un collectif. Un même rythme.",
+      "proTag": "POUR LES INDÉPENDANTS",
+      "studioTag": "POUR LES PETITES ÉQUIPES",
+      "perMonth": "/ mois",
+      "billedYearly": "{total} facturés par an",
+      "billedMonthly": "Facturation mensuelle · Sans engagement",
+      "cta": "Créer ma page {name}",
+      "pro1": "Votre page de réservation personnalisée",
+      "pro2": "Réservations illimitées, sans commission",
+      "pro3": "Agenda sur le web et dans l’app",
+      "pro4": "Rappels automatiques email et push",
+      "pro5": "1 professionnel · 1 lieu",
+      "studio1": "Tout ce qui est inclus dans Pro",
+      "studio2": "Jusqu’à 10 agendas synchronisés",
+      "studio3": "Prestations attribuées par membre",
+      "studio4": "Jusqu’à 10 lieux d’exercice",
+      "studio5": "Une page publique pour votre équipe",
+      "note": "{days} jours pour essayer. Sans carte bancaire.",
+      "mobileQ": "Vous préférez commencer sur mobile ?",
+      "mobileCta": "Téléchargez l’app"
+    },
+    "faq": {
+      "eyebrow": "ON VOUS RÉPOND",
+      "title1": "Encore une",
+      "title2": "petite question ?",
+      "talk": "Parlons-en",
+      "items": [
+        {
+          "question": "Faut-il choisir entre l’application et le site web ?",
+          "answer": "Les deux se complètent : votre page web permet à vos clients de réserver, et votre espace professionnel vous permet de gérer votre activité sur ordinateur ou depuis l’application."
+        },
+        {
+          "question": "Mes clients doivent-ils télécharger une application ?",
+          "answer": "Non. Ils ouvrent votre lien, choisissent une prestation et un créneau, puis renseignent leur nom, leur email et leur téléphone. Ils peuvent réserver directement sur le web, sans compte."
+        },
+        {
+          "question": "Comment se passe l’essai gratuit ?",
+          "answer": "Vous disposez de {days} jours pour essayer Opatam, sans carte bancaire. Vous choisissez ensuite la formule adaptée à votre activité si vous souhaitez continuer."
+        },
+        {
+          "question": "Est-ce adapté à une petite équipe ?",
+          "answer": "Oui. La formule Studio permet de gérer jusqu’à 10 membres et 10 lieux. Chaque membre possède son planning et ses prestations, et vous gardez une vue d’ensemble."
+        },
+        {
+          "question": "Opatam prend-il une commission ?",
+          "answer": "Opatam ne prélève aucune commission sur vos réservations. Les formules reposent sur un abonnement fixe. Si vous activez un service de paiement en ligne, les frais de traitement applicables restent distincts."
+        }
+      ]
+    },
+    "download": {
+      "eyebrow": "LE PROCHAIN RENDEZ-VOUS COMMENCE ICI",
+      "title1": "Faites de la place",
+      "title2": "à votre métier.",
+      "lead1": "Sur votre téléphone ou votre ordinateur,",
+      "lead2": "votre nouvelle organisation commence avec Opatam.",
+      "pocket": "Votre activité dans la poche.",
+      "page": "Votre page, prête à être partagée.",
+      "appStoreSmall": "Télécharger sur",
+      "playStoreSmall": "Disponible sur",
+      "appStoreAria": "Télécharger Opatam sur l’App Store",
+      "playStoreAria": "Télécharger Opatam sur Google Play"
+    },
+    "footer": {
+      "tagline": "Votre savoir-faire mérite du temps.",
+      "linksAria": "Liens utiles",
+      "find": "Trouver un professionnel",
+      "blog": "Conseils & tutoriels",
+      "contact": "Contact",
+      "legal": "Mentions légales",
+      "privacy": "Confidentialité",
+      "terms": "CGU"
+    },
+    "viewer": {
+      "close": "Fermer l’agrandissement",
+      "region": "Capture agrandie, défilement vertical"
+    }
   }
 }

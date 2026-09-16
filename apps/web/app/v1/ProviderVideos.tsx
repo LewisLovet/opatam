@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Play } from 'lucide-react';
 import type { LandingVideoItem } from '@booking-app/shared';
 import { extractYouTubeId } from '@/lib/youtube';
@@ -14,6 +15,7 @@ import s from './v1.module.css';
 export type ProviderVideo = Pick<LandingVideoItem, 'id' | 'kind' | 'src' | 'youtubeId' | 'poster' | 'providerSlug' | 'businessName' | 'subtitle' | 'photoURL' | 'quote'>;
 
 export function ProviderVideos({ items }: { items: ProviderVideo[] }) {
+  const t = useTranslations('landing.videos');
   const rail = useRef<HTMLDivElement>(null);
   const requested = useRef<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -55,9 +57,9 @@ export function ProviderVideos({ items }: { items: ProviderVideo[] }) {
   if (!items.length) return null;
   return <section id="videos" className={s.providerSection}>
     <div className={s.wrap}>
-      <div className={s.providerHeading} data-reveal><div><p className={s.eyebrow}>LEUR MÉTIER, AU PREMIER PLAN</p><h2>Des gestes. Du talent.<br /><em>Et du temps pour leur métier.</em></h2></div><p>Entrez dans l’univers des professionnels qui utilisent Opatam. Découvrez leur savoir-faire, puis retrouvez leurs prestations sur leur page de réservation.</p></div>
-      <div className={s.carouselToolbar}><p>Explorez leurs univers</p><div><button onClick={() => move(-1)} disabled={edges.start} aria-label="Vidéos précédentes" aria-controls="provider-carousel"><ArrowLeft size={21} /></button><button onClick={() => move(1)} disabled={edges.end} aria-label="Vidéos suivantes" aria-controls="provider-carousel"><ArrowRight size={21} /></button></div></div>
-      <div ref={rail} id="provider-carousel" className={s.providerRail} role="region" aria-roledescription="carrousel" aria-label="Vidéos des prestataires" tabIndex={0} onPointerDown={() => { requested.current = null; }} onWheel={() => { requested.current = null; }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1); } }}>{items.map(item => <VideoCard key={item.id} item={item} selected={activeId === item.id} onActivate={() => setActiveId(item.id)} />)}</div>
+      <div className={s.providerHeading} data-reveal><div><p className={s.eyebrow}>{t('eyebrow')}</p><h2>{t('title1')}<br /><em>{t('title2')}</em></h2></div><p>{t('lead')}</p></div>
+      <div className={s.carouselToolbar}><p>{t('explore')}</p><div><button onClick={() => move(-1)} disabled={edges.start} aria-label={t('prev')} aria-controls="provider-carousel"><ArrowLeft size={21} /></button><button onClick={() => move(1)} disabled={edges.end} aria-label={t('next')} aria-controls="provider-carousel"><ArrowRight size={21} /></button></div></div>
+      <div ref={rail} id="provider-carousel" className={s.providerRail} role="region" aria-roledescription={t('carousel')} aria-label={t('regionAria')} tabIndex={0} onPointerDown={() => { requested.current = null; }} onWheel={() => { requested.current = null; }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1); } }}>{items.map(item => <VideoCard key={item.id} item={item} selected={activeId === item.id} onActivate={() => setActiveId(item.id)} />)}</div>
     </div>
   </section>;
 }
@@ -72,6 +74,7 @@ function youtubeIdFromUrl(src: string) {
 }
 
 function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; selected: boolean; onActivate: () => void }) {
+  const t = useTranslations('landing.videos');
   const media = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const [visible, setVisible] = useState(false);
@@ -125,14 +128,14 @@ function VideoCard({ item, selected, onActivate }: { item: ProviderVideo; select
   };
   return <figure className={s.providerCard} data-video-id={item.id} data-selected={selected}>
     <div ref={media} className={s.providerMedia}>{loaded ? id
-      ? <YouTubeVideo id={id} title={`Vidéo : ${item.businessName}`} active={active} onPlay={onActivate} />
-      : <video ref={video} src={item.src} poster={item.poster || undefined} muted playsInline controls preload="metadata" onPlay={onActivate} onError={() => setFailed(true)} aria-label={`Vidéo : ${item.businessName}`} />
-      : <button onClick={play} aria-label={`Lire la vidéo de ${item.businessName}`}>{poster ? <Image src={poster} alt="" fill sizes="(max-width: 760px) 85vw, 33vw" /> : <span className={s.noPoster}>{item.businessName}</span>}<span className={s.providerPlay}><Play size={25} fill="currentColor" /></span><span className={s.watchLabel}>Voir la vidéo</span></button>}
-      {blocked && !failed && <button className={s.autoplayFallback} onClick={play}>Lire la vidéo <Play size={18} /></button>}
+      ? <YouTubeVideo id={id} title={t('videoLabel', { name: item.businessName })} active={active} onPlay={onActivate} />
+      : <video ref={video} src={item.src} poster={item.poster || undefined} muted playsInline controls preload="metadata" onPlay={onActivate} onError={() => setFailed(true)} aria-label={t('videoLabel', { name: item.businessName })} />
+      : <button onClick={play} aria-label={t('playLabel', { name: item.businessName })}>{poster ? <Image src={poster} alt="" fill sizes="(max-width: 760px) 85vw, 33vw" /> : <span className={s.noPoster}>{item.businessName}</span>}<span className={s.providerPlay}><Play size={25} fill="currentColor" /></span><span className={s.watchLabel}>{t('watch')}</span></button>}
+      {blocked && !failed && <button className={s.autoplayFallback} onClick={play}>{t('play')} <Play size={18} /></button>}
     </div>
-    {failed && <p className={s.videoError} role="status">Cette vidéo ne peut pas être chargée pour le moment.</p>}
+    {failed && <p className={s.videoError} role="status">{t('error')}</p>}
     <figcaption>{item.quote && <blockquote>« {item.quote} »</blockquote>}<div className={s.providerIdentity}>{item.photoURL && <Image src={item.photoURL} alt="" width={44} height={44} />}<div><strong>{item.businessName}</strong>{item.subtitle && <span>{item.subtitle}</span>}</div></div>
-      {item.providerSlug && <a className={s.providerCta} href={`https://opatam.com/p/${encodeURIComponent(item.providerSlug)}`} target="_blank" rel="noopener noreferrer" onClick={() => trackSite('video:provider')} aria-label={`Voir la page de réservation de ${item.businessName}`}>Voir sa page de réservation <ArrowUpRight size={19} /></a>}
+      {item.providerSlug && <a className={s.providerCta} href={`https://opatam.com/p/${encodeURIComponent(item.providerSlug)}`} target="_blank" rel="noopener noreferrer" onClick={() => trackSite('video:provider')} aria-label={t('ctaAria', { name: item.businessName })}>{t('cta')} <ArrowUpRight size={19} /></a>}
     </figcaption>
   </figure>;
 }

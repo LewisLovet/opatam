@@ -50,10 +50,10 @@
   },
   "seo": {
     "home": {
-      "title": "Opatam — Online booking for professionals | Commission-free",
-      "description": "Opatam is the commission-free online booking platform for beauty, wellness, coaching and service professionals. Online calendar, automatic reminders, booking page. Free trial.",
-      "ogTitle": "Opatam — Commission-free online booking",
-      "ogDescription": "Manage your appointments online, attract new clients and grow your business. 0% commission. Free trial.",
+      "title": "Opatam — Online booking that fills your calendar",
+      "description": "Opatam is the online booking platform for beauty, wellness, coaching and service professionals. Booking page, calendar in the app, automatic reminders. Free trial, no credit card.",
+      "ogTitle": "Opatam — Online booking that fills your calendar",
+      "ogDescription": "Your clients book 24/7 on your page. Your calendar follows you in the app. Free trial, no credit card.",
       "orgDescription": "Commission-free online booking platform for service professionals."
     },
     "booking": {
@@ -492,5 +492,334 @@
     "pets": "Pets",
     "arts": "Arts & Leisure",
     "other": "Other Services"
+  },
+  "landing": {
+    "skip": "Skip to content",
+    "brandAria": "Opatam, home",
+    "mainNav": "Main navigation",
+    "mobileNav": "Mobile navigation",
+    "nav": {
+      "how": "How it works",
+      "pricing": "Pricing",
+      "trades": "Their craft",
+      "login": "Log in",
+      "create": "Create my page",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "menu": "Menu",
+      "networks": "Your social media",
+      "words": "Their words",
+      "download": "Download the app",
+      "createWeb": "Create my web page",
+      "loginLong": "I already have an account · Log in",
+      "trial": "{days} days free · No credit card"
+    },
+    "hero": {
+      "eyebrow": "FOR INDEPENDENTS & SMALL TEAMS",
+      "title1": "Online booking",
+      "title2": "that fills",
+      "title3": "your calendar.",
+      "lead": "Your clients book 24/7 on your page. Your calendar follows you in the app. You stay in control of your business.",
+      "create": "Create my page",
+      "demo": "Try the demo",
+      "trial": "{days} days free",
+      "noCard": "No credit card",
+      "app": "The app:",
+      "chipReady": "Ready in",
+      "chipReadyStrong": "5 min",
+      "chipBookings": "Bookings",
+      "chipBookingsStrong": "24/7",
+      "chipReminders": "Reminders",
+      "chipRemindersStrong": "automatic",
+      "previewAria": "Preview of the client journey in the app",
+      "chooseScreen": "Choose a screen",
+      "credit": "In the Opatam app · Cam Beauty Studio"
+    },
+    "trades": {
+      "aria": "The trades that can use Opatam",
+      "lead": "You have the skills",
+      "strong": "We handle the appointments.",
+      "beauty": "Beauty & hair",
+      "wellness": "Wellness",
+      "sport": "Sport & coaching",
+      "audiovisual": "Photo & creative",
+      "artisan": "Crafts"
+    },
+    "videos": {
+      "eyebrow": "THEIR CRAFT, FRONT AND CENTRE",
+      "title1": "Skill. Talent.",
+      "title2": "And time for what they do best.",
+      "lead": "Step into the world of the professionals who use Opatam. Discover their craft, then find their services on their booking page.",
+      "explore": "Explore their worlds",
+      "prev": "Previous videos",
+      "next": "Next videos",
+      "carousel": "carousel",
+      "regionAria": "Provider videos",
+      "videoLabel": "Video: {name}",
+      "playLabel": "Play the video of {name}",
+      "watch": "Watch the video",
+      "play": "Play the video",
+      "error": "This video can’t be loaded right now.",
+      "cta": "See their booking page",
+      "ctaAria": "See the booking page of {name}",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "cannotPlay": "This video can’t be played here.",
+      "onYoutube": "Watch on YouTube"
+    },
+    "how": {
+      "eyebrow": "WHAT CHANGES",
+      "title1": "Less admin.",
+      "title2": "More appointments.",
+      "lead": "One page to get booked. One app to manage everything."
+    },
+    "features": {
+      "eyebrow": "YOUR PRO APP",
+      "title1": "Your day.",
+      "title2": "At a glance.",
+      "lead": "Bookings come in online. You get a clear organisation, without spending your day juggling messages.",
+      "b1Title": "A calendar that adapts",
+      "b1Text": "Day, week or month: choose the view that helps you organise your business.",
+      "b2Title": "Your team, in one place",
+      "b2Text": "Filter by member and by category to see the appointments that concern you.",
+      "b3Title": "Reminders, without thinking about it",
+      "b3Text": "Automatic email and push reminders accompany your clients before their appointment.",
+      "download": "Download the app",
+      "agendaCaption": "Day view · Professional app",
+      "agendaEnlarge": "Enlarge the pro calendar screenshot",
+      "agendaTitle": "Your pro calendar"
+    },
+    "gallery": {
+      "eyebrow": "YOUR BUSINESS, FROM BOTH SIDES",
+      "clientTitle": "Your world. Their next appointment.",
+      "clientLead": "A page in your image and a guided journey, from the service to the deposit payment.",
+      "proTitle": "Your whole schedule. Within reach.",
+      "proLead": "The same calendar, whether you work alone or as a team.",
+      "sideAria": "Choose the side of the product",
+      "clientSide": "The client journey",
+      "proSide": "The pro app",
+      "prevStep": "Previous step",
+      "stepsAria": "Steps of the client journey",
+      "stepAria": "Step {n}: {title}",
+      "stepCount": "Step {n} / {total}",
+      "next": "Next step",
+      "replay": "Replay",
+      "jumpAria": "Jump straight to a step",
+      "sizeAria": "Size of the business",
+      "seePage": "See their live web page",
+      "note": "Screenshots of the Opatam app. The link opens Braidztouch’s real web page.",
+      "clientLabel": "CLIENT SIDE",
+      "proLabel": "PRO SIDE",
+      "app": "OPATAM APP",
+      "enlarge": "Enlarge",
+      "enlargeAria": "Enlarge: {title}"
+    },
+    "screens": {
+      "vitrine": {
+        "title": "Your page",
+        "alt": "Braidztouch page in the Opatam app: photo, reviews and loyalty card",
+        "description": "Your world, your photos, your reviews and your loyalty card, together on your page."
+      },
+      "prestations": {
+        "title": "The services",
+        "alt": "List of Braidztouch services with prices, durations and promotions",
+        "description": "Your services in detail, with their duration, price and current promotions."
+      },
+      "options": {
+        "title": "The options",
+        "alt": "Choosing the length and options of a service in Opatam",
+        "description": "Lengths, variants, options: price and duration update as you go."
+      },
+      "creneaux": {
+        "title": "The date",
+        "alt": "Calendar and available times for a service in Opatam",
+        "description": "Your clients see which days are full and pick a time among those you leave open."
+      },
+      "recapitulatif": {
+        "title": "The summary",
+        "alt": "Summary of an Opatam booking before confirmation",
+        "description": "Service, date, professional and location: everything is reviewed before confirming."
+      },
+      "acompte": {
+        "title": "The deposit",
+        "alt": "Choosing a payment method to pay a deposit in Opatam",
+        "description": "If you ask for a deposit, it is paid right away — card, Apple Pay or instalments."
+      },
+      "camProfil": {
+        "title": "Your page",
+        "alt": "Cam Beauty Studio profile in the Opatam app"
+      },
+      "camPrestations": {
+        "title": "The services",
+        "alt": "List of Cam Beauty Studio services and prices in Opatam"
+      },
+      "camCreneaux": {
+        "title": "Availability",
+        "alt": "Selecting a date and time in the Opatam app"
+      },
+      "solo": {
+        "title": "Solo",
+        "alt": "Opatam calendar of a solo professional, day view",
+        "description": "Solo, your day fits in one column: your appointments, in order, with the service and the client."
+      },
+      "equipe": {
+        "title": "As a team",
+        "alt": "Opatam calendar of a team, one column per member in day view",
+        "description": "As a team, each member has their own column. Filter by person or by category to see only what concerns you."
+      }
+    },
+    "stories": {
+      "eyebrow": "YOUR CRAFT IS WORTH TALKING ABOUT",
+      "title1": "Content to share.",
+      "title2": "An audience to keep.",
+      "lead": "Availability, work, reviews: turn your everyday into content for your social media. Less time creating your stories, more consistency to stay connected with your community.",
+      "tabsAria": "Story types",
+      "cta": "Discover the app",
+      "small": "Create in Opatam. Share on your social media.",
+      "enlargeAria": "Enlarge: {title}",
+      "alt": "Opatam story: {title}",
+      "dispos": {
+        "label": "Availability",
+        "title": "A free slot? Let them know.",
+        "description": "Share your availability for the day or the week. Your audience sees when to book, with no back-and-forth.",
+        "screen1": "Today’s availability",
+        "screen2": "This week’s availability"
+      },
+      "prestations": {
+        "label": "Services",
+        "title": "Make them want to discover your services.",
+        "description": "Show your menu and prices in a ready-to-post story. Stay connected with your community without starting from a blank page.",
+        "screen1": "Your services · preview 1",
+        "screen2": "Your services · preview 2"
+      },
+      "realisations": {
+        "label": "Work",
+        "title": "Your work is your best content.",
+        "description": "Put your work in the spotlight and show what makes your craft unique.",
+        "screen1": "Your work · preview 1",
+        "screen2": "Your work · preview 2"
+      },
+      "avantApres": {
+        "label": "Before / after",
+        "title": "Show the difference you make.",
+        "description": "Pair your before and after photos to show the result of your work.",
+        "screen1": "Before / after · preview 1",
+        "screen2": "Before / after · preview 2"
+      },
+      "avis": {
+        "label": "Client reviews",
+        "title": "Their words build trust.",
+        "description": "Share a client review or your overall rating. A simple way to reassure people discovering you.",
+        "screen1": "A client review",
+        "screen2": "Your overall rating"
+      },
+      "fidelite": {
+        "label": "Loyalty",
+        "title": "Give them a reason to come back.",
+        "description": "Promote your loyalty programme and nurture the relationship with the clients who follow you.",
+        "screen1": "Your loyalty · preview 1",
+        "screen2": "Your loyalty · preview 2"
+      },
+      "page": {
+        "label": "Your page",
+        "title": "A direct path to booking.",
+        "description": "Share your page and its QR code so your audience can easily find your services.",
+        "screen1": "Your page · preview 1",
+        "screen2": "Your page · preview 2"
+      }
+    },
+    "reviews": {
+      "eyebrow": "THEY TOOK THE FIRST STEP",
+      "title1": "Their craft.",
+      "title2": "Their words.",
+      "lead1": "Independents who chose",
+      "lead2": "a different way to manage their appointments."
+    },
+    "pricing": {
+      "eyebrow": "SIMPLE, DOWN TO THE PRICE",
+      "title1": "Your business grows.",
+      "title2": "Not our commissions.",
+      "lead": "A flat subscription. No commission on your bookings.",
+      "periodAria": "Billing period",
+      "yearly": "Yearly",
+      "yearlyBadge": "2 months free",
+      "monthly": "Monthly",
+      "proAudience": "Your business, solo.",
+      "studioAudience": "A collective. One rhythm.",
+      "proTag": "FOR INDEPENDENTS",
+      "studioTag": "FOR SMALL TEAMS",
+      "perMonth": "/ month",
+      "billedYearly": "{total} billed per year",
+      "billedMonthly": "Monthly billing · No commitment",
+      "cta": "Create my {name} page",
+      "pro1": "Your personalised booking page",
+      "pro2": "Unlimited bookings, no commission",
+      "pro3": "Calendar on the web and in the app",
+      "pro4": "Automatic email and push reminders",
+      "pro5": "1 professional · 1 location",
+      "studio1": "Everything included in Pro",
+      "studio2": "Up to 10 synced calendars",
+      "studio3": "Services assigned per member",
+      "studio4": "Up to 10 locations",
+      "studio5": "One public page for your team",
+      "note": "{days} days to try. No credit card.",
+      "mobileQ": "Prefer to start on mobile?",
+      "mobileCta": "Download the app"
+    },
+    "faq": {
+      "eyebrow": "WE ANSWER",
+      "title1": "One more",
+      "title2": "quick question?",
+      "talk": "Let’s talk",
+      "items": [
+        {
+          "question": "Do I have to choose between the app and the website?",
+          "answer": "They complement each other: your web page lets your clients book, and your professional space lets you manage your business on a computer or from the app."
+        },
+        {
+          "question": "Do my clients need to download an app?",
+          "answer": "No. They open your link, choose a service and a time slot, then enter their name, email and phone number. They can book directly on the web, without an account."
+        },
+        {
+          "question": "How does the free trial work?",
+          "answer": "You have {days} days to try Opatam, with no credit card. You then choose the plan that suits your business if you wish to continue."
+        },
+        {
+          "question": "Is it suitable for a small team?",
+          "answer": "Yes. The Studio plan lets you manage up to 10 members and 10 locations. Each member has their own schedule and services, and you keep an overview."
+        },
+        {
+          "question": "Does Opatam take a commission?",
+          "answer": "Opatam takes no commission on your bookings. Plans are based on a flat subscription. If you enable an online payment service, the applicable processing fees remain separate."
+        }
+      ]
+    },
+    "download": {
+      "eyebrow": "THE NEXT APPOINTMENT STARTS HERE",
+      "title1": "Make room",
+      "title2": "for your craft.",
+      "lead1": "On your phone or your computer,",
+      "lead2": "your new organisation starts with Opatam.",
+      "pocket": "Your business in your pocket.",
+      "page": "Your page, ready to share.",
+      "appStoreSmall": "Download on the",
+      "playStoreSmall": "Get it on",
+      "appStoreAria": "Download Opatam on the App Store",
+      "playStoreAria": "Download Opatam on Google Play"
+    },
+    "footer": {
+      "tagline": "Your expertise deserves time.",
+      "linksAria": "Useful links",
+      "find": "Find a professional",
+      "blog": "Tips & tutorials",
+      "contact": "Contact",
+      "legal": "Legal notice",
+      "privacy": "Privacy",
+      "terms": "Terms of use"
+    },
+    "viewer": {
+      "close": "Close the enlarged view",
+      "region": "Enlarged screenshot, vertical scroll"
+    }
   }
 }

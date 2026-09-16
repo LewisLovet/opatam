@@ -50,10 +50,10 @@
   },
   "seo": {
     "home": {
-      "title": "Opatam — Marcações online para profissionais | Sem comissões",
-      "description": "O Opatam é a plataforma de marcações online sem comissões para profissionais de beleza, bem-estar, coaching e serviços. Agenda online, lembretes automáticos, página de marcações. Teste grátis.",
-      "ogTitle": "Opatam — Marcações online sem comissões",
-      "ogDescription": "Faça a gestão das suas marcações online, atraia novos clientes e faça crescer o seu negócio. 0% de comissão. Teste grátis.",
+      "title": "Opatam — As marcações online que enchem a sua agenda",
+      "description": "O Opatam é a plataforma de marcações online para profissionais de beleza, bem-estar, coaching e serviços. Página de marcações, agenda na app, lembretes automáticos. Teste grátis, sem cartão de crédito.",
+      "ogTitle": "Opatam — As marcações online que enchem a sua agenda",
+      "ogDescription": "Os seus clientes marcam 24 h/24 na sua página. A sua agenda acompanha-o na app. Teste grátis, sem cartão de crédito.",
       "orgDescription": "Plataforma de marcações online sem comissões para profissionais de serviços."
     },
     "booking": {
@@ -492,5 +492,334 @@
     "pets": "Animais",
     "arts": "Arte & Lazer",
     "other": "Outros serviços"
+  },
+  "landing": {
+    "skip": "Ir para o conteúdo",
+    "brandAria": "Opatam, início",
+    "mainNav": "Navegação principal",
+    "mobileNav": "Navegação móvel",
+    "nav": {
+      "how": "Como funciona",
+      "pricing": "Preços",
+      "trades": "As suas profissões",
+      "login": "Iniciar sessão",
+      "create": "Criar a minha página",
+      "openMenu": "Abrir o menu",
+      "closeMenu": "Fechar o menu",
+      "menu": "Menu",
+      "networks": "As suas redes",
+      "words": "As palavras deles",
+      "download": "Descarregar a app",
+      "createWeb": "Criar a minha página web",
+      "loginLong": "Já tenho conta · Iniciar sessão",
+      "trial": "{days} dias grátis · Sem cartão de crédito"
+    },
+    "hero": {
+      "eyebrow": "PARA INDEPENDENTES E PEQUENAS EQUIPAS",
+      "title1": "As marcações",
+      "title2": "online",
+      "title3": "que enchem a sua agenda.",
+      "lead": "Os seus clientes marcam 24 h/24 na sua página. A sua agenda acompanha-o na app. Você mantém o controlo do seu negócio.",
+      "create": "Criar a minha montra",
+      "demo": "Experimentar a demo",
+      "trial": "{days} dias grátis",
+      "noCard": "Sem cartão de crédito",
+      "app": "A aplicação:",
+      "chipReady": "Pronto em",
+      "chipReadyStrong": "5 min",
+      "chipBookings": "Marcações",
+      "chipBookingsStrong": "24 h/24",
+      "chipReminders": "Lembretes",
+      "chipRemindersStrong": "automáticos",
+      "previewAria": "Pré-visualização do percurso do cliente na aplicação",
+      "chooseScreen": "Escolher um ecrã",
+      "credit": "Na app Opatam · Cam Beauty Studio"
+    },
+    "trades": {
+      "aria": "As profissões que podem usar o Opatam",
+      "lead": "Você tem o saber-fazer",
+      "strong": "Nós tratamos das marcações.",
+      "beauty": "Beleza & cabeleireiro",
+      "wellness": "Bem-estar",
+      "sport": "Desporto & coaching",
+      "audiovisual": "Foto & criação",
+      "artisan": "Artesanato"
+    },
+    "videos": {
+      "eyebrow": "A PROFISSÃO DELES, EM PRIMEIRO PLANO",
+      "title1": "Gestos. Talento.",
+      "title2": "E tempo para a sua profissão.",
+      "lead": "Entre no universo dos profissionais que usam o Opatam. Descubra o seu saber-fazer e depois encontre os seus serviços na sua página de marcações.",
+      "explore": "Explore os seus universos",
+      "prev": "Vídeos anteriores",
+      "next": "Vídeos seguintes",
+      "carousel": "carrossel",
+      "regionAria": "Vídeos dos profissionais",
+      "videoLabel": "Vídeo: {name}",
+      "playLabel": "Reproduzir o vídeo de {name}",
+      "watch": "Ver o vídeo",
+      "play": "Reproduzir o vídeo",
+      "error": "Este vídeo não pode ser carregado neste momento.",
+      "cta": "Ver a sua página de marcações",
+      "ctaAria": "Ver a página de marcações de {name}",
+      "mute": "Desativar o som",
+      "unmute": "Ativar o som",
+      "cannotPlay": "Este vídeo não pode ser reproduzido aqui.",
+      "onYoutube": "Ver no YouTube"
+    },
+    "how": {
+      "eyebrow": "O QUE MUDA",
+      "title1": "Menos administrativo.",
+      "title2": "Mais marcações.",
+      "lead": "Uma página para ser reservado. Uma aplicação para gerir tudo."
+    },
+    "features": {
+      "eyebrow": "A SUA APP PRO",
+      "title1": "O seu dia.",
+      "title2": "Num relance.",
+      "lead": "As marcações chegam online. Recupera uma organização clara, sem passar o dia a saltar entre mensagens.",
+      "b1Title": "Uma agenda que se adapta",
+      "b1Text": "Dia, semana ou mês: escolha a vista que o ajuda a organizar a sua atividade.",
+      "b2Title": "A sua equipa, no mesmo sítio",
+      "b2Text": "Filtre por membro e por categoria para ver as marcações que lhe dizem respeito.",
+      "b3Title": "Os lembretes, sem pensar nisso",
+      "b3Text": "Os lembretes automáticos por email e notificação acompanham os seus clientes antes da marcação.",
+      "download": "Descarregar a aplicação",
+      "agendaCaption": "Vista do dia · Aplicação profissional",
+      "agendaEnlarge": "Ampliar a captura da agenda pro",
+      "agendaTitle": "A sua agenda pro"
+    },
+    "gallery": {
+      "eyebrow": "O SEU NEGÓCIO, DOS DOIS LADOS",
+      "clientTitle": "O seu universo. A próxima marcação deles.",
+      "clientLead": "Uma página à sua imagem e um percurso guiado, do serviço ao pagamento do sinal.",
+      "proTitle": "Todo o seu planeamento. Ao alcance da mão.",
+      "proLead": "A mesma agenda, quer trabalhe sozinho ou em equipa.",
+      "sideAria": "Escolher o lado do produto",
+      "clientSide": "O percurso do cliente",
+      "proSide": "A aplicação pro",
+      "prevStep": "Passo anterior",
+      "stepsAria": "Passos do percurso do cliente",
+      "stepAria": "Passo {n}: {title}",
+      "stepCount": "Passo {n} / {total}",
+      "next": "Passo seguinte",
+      "replay": "Rever",
+      "jumpAria": "Ir diretamente para um passo",
+      "sizeAria": "Dimensão da atividade",
+      "seePage": "Ver a sua página web online",
+      "note": "Capturas da aplicação Opatam. O link abre a verdadeira página web da Braidztouch.",
+      "clientLabel": "LADO CLIENTE",
+      "proLabel": "LADO PRO",
+      "app": "APP OPATAM",
+      "enlarge": "Ampliar",
+      "enlargeAria": "Ampliar: {title}"
+    },
+    "screens": {
+      "vitrine": {
+        "title": "A sua montra",
+        "alt": "Página Braidztouch na aplicação Opatam: foto, avaliações e cartão de fidelidade",
+        "description": "O seu universo, as suas fotos, as suas avaliações e o seu cartão de fidelidade, reunidos na sua página."
+      },
+      "prestations": {
+        "title": "Os serviços",
+        "alt": "Lista dos serviços Braidztouch com preços, durações e promoções",
+        "description": "Os seus serviços em detalhe, com a duração, o preço e as promoções em curso."
+      },
+      "options": {
+        "title": "As opções",
+        "alt": "Escolha do comprimento e das opções de um serviço no Opatam",
+        "description": "Comprimentos, variantes, opções: o preço e a duração atualizam-se à medida."
+      },
+      "creneaux": {
+        "title": "A data",
+        "alt": "Calendário e horários disponíveis de um serviço no Opatam",
+        "description": "Os seus clientes veem os dias cheios e escolhem um horário entre os que deixa abertos."
+      },
+      "recapitulatif": {
+        "title": "O resumo",
+        "alt": "Resumo de uma marcação Opatam antes da confirmação",
+        "description": "Serviço, data, profissional e local: tudo é relido antes de confirmar."
+      },
+      "acompte": {
+        "title": "O sinal",
+        "alt": "Escolha do método de pagamento para pagar um sinal no Opatam",
+        "description": "Se pedir um sinal, é pago de imediato — cartão, Apple Pay ou pagamento em prestações."
+      },
+      "camProfil": {
+        "title": "A sua montra",
+        "alt": "Perfil Cam Beauty Studio na aplicação Opatam"
+      },
+      "camPrestations": {
+        "title": "Os serviços",
+        "alt": "Lista dos serviços e preços de Cam Beauty Studio no Opatam"
+      },
+      "camCreneaux": {
+        "title": "As disponibilidades",
+        "alt": "Seleção de uma data e de um horário na aplicação Opatam"
+      },
+      "solo": {
+        "title": "A solo",
+        "alt": "Agenda Opatam de um profissional sozinho, vista do dia",
+        "description": "A solo, o seu dia cabe numa coluna: as suas marcações, por ordem, com o serviço e o cliente."
+      },
+      "equipe": {
+        "title": "Em equipa",
+        "alt": "Agenda Opatam de uma equipa, uma coluna por membro na vista do dia",
+        "description": "Em equipa, cada membro tem a sua coluna. Filtre por pessoa ou por categoria para ver só o que lhe diz respeito."
+      }
+    },
+    "stories": {
+      "eyebrow": "A SUA PROFISSÃO DÁ QUE FALAR",
+      "title1": "Conteúdo para partilhar.",
+      "title2": "Um público para fidelizar.",
+      "lead": "Disponibilidades, trabalhos, avaliações: transforme o seu dia a dia em conteúdo para as suas redes sociais. Menos tempo a criar as suas stories, mais regularidade para manter a ligação com a sua comunidade.",
+      "tabsAria": "Tipos de stories",
+      "cta": "Descobrir a aplicação",
+      "small": "Crie no Opatam. Partilhe nas suas redes.",
+      "enlargeAria": "Ampliar: {title}",
+      "alt": "Story Opatam: {title}",
+      "dispos": {
+        "label": "Disponibilidades",
+        "title": "Uma vaga livre? Faça saber.",
+        "description": "Partilhe as suas disponibilidades do dia ou da semana. O seu público vê quando marcar, sem troca de mensagens.",
+        "screen1": "As vagas de hoje",
+        "screen2": "As vagas da semana"
+      },
+      "prestations": {
+        "label": "Serviços",
+        "title": "Dê vontade de descobrir os seus serviços.",
+        "description": "Apresente a sua carta e os seus preços numa story pronta a publicar. Mantenha a ligação com a sua comunidade, sem partir de uma página em branco.",
+        "screen1": "Os seus serviços · pré-visualização 1",
+        "screen2": "Os seus serviços · pré-visualização 2"
+      },
+      "realisations": {
+        "label": "Trabalhos",
+        "title": "O seu trabalho é o seu melhor conteúdo.",
+        "description": "Destaque os seus trabalhos e mostre o que torna o seu saber-fazer único.",
+        "screen1": "Os seus trabalhos · pré-visualização 1",
+        "screen2": "Os seus trabalhos · pré-visualização 2"
+      },
+      "avantApres": {
+        "label": "Antes / depois",
+        "title": "Mostre a diferença que faz.",
+        "description": "Associe as suas fotos de antes e depois para dar a ver o resultado do seu trabalho.",
+        "screen1": "Antes / depois · pré-visualização 1",
+        "screen2": "Antes / depois · pré-visualização 2"
+      },
+      "avis": {
+        "label": "Avaliações",
+        "title": "As palavras deles dão confiança.",
+        "description": "Partilhe uma avaliação de cliente ou a sua nota global. Uma forma simples de tranquilizar quem o descobre.",
+        "screen1": "Uma avaliação de cliente",
+        "screen2": "A sua nota global"
+      },
+      "fidelite": {
+        "label": "Fidelidade",
+        "title": "Dê-lhes uma razão para voltar.",
+        "description": "Dê a conhecer o seu programa de fidelidade e cultive a relação com os clientes que o seguem.",
+        "screen1": "A sua fidelidade · pré-visualização 1",
+        "screen2": "A sua fidelidade · pré-visualização 2"
+      },
+      "page": {
+        "label": "A sua página",
+        "title": "Um caminho direto para a marcação.",
+        "description": "Partilhe a sua página e o seu código QR para que o seu público encontre facilmente os seus serviços.",
+        "screen1": "A sua página · pré-visualização 1",
+        "screen2": "A sua página · pré-visualização 2"
+      }
+    },
+    "reviews": {
+      "eyebrow": "ELAS DERAM O PRIMEIRO PASSO",
+      "title1": "A sua profissão.",
+      "title2": "As suas palavras.",
+      "lead1": "Independentes que escolheram",
+      "lead2": "outra forma de gerir as suas marcações."
+    },
+    "pricing": {
+      "eyebrow": "SIMPLES, ATÉ NO PREÇO",
+      "title1": "O seu negócio cresce.",
+      "title2": "As nossas comissões, não.",
+      "lead": "Uma subscrição fixa. Nenhuma comissão sobre as suas marcações.",
+      "periodAria": "Período de faturação",
+      "yearly": "Anual",
+      "yearlyBadge": "2 meses grátis",
+      "monthly": "Mensal",
+      "proAudience": "O seu negócio, a solo.",
+      "studioAudience": "Um coletivo. Um mesmo ritmo.",
+      "proTag": "PARA INDEPENDENTES",
+      "studioTag": "PARA PEQUENAS EQUIPAS",
+      "perMonth": "/ mês",
+      "billedYearly": "{total} faturados por ano",
+      "billedMonthly": "Faturação mensal · Sem compromisso",
+      "cta": "Criar a minha página {name}",
+      "pro1": "A sua página de marcações personalizada",
+      "pro2": "Marcações ilimitadas, sem comissão",
+      "pro3": "Agenda na web e na app",
+      "pro4": "Lembretes automáticos por email e push",
+      "pro5": "1 profissional · 1 local",
+      "studio1": "Tudo o que está incluído no Pro",
+      "studio2": "Até 10 agendas sincronizadas",
+      "studio3": "Serviços atribuídos por membro",
+      "studio4": "Até 10 locais",
+      "studio5": "Uma página pública para a sua equipa",
+      "note": "{days} dias para experimentar. Sem cartão de crédito.",
+      "mobileQ": "Prefere começar no telemóvel?",
+      "mobileCta": "Descarregue a app"
+    },
+    "faq": {
+      "eyebrow": "NÓS RESPONDEMOS",
+      "title1": "Mais uma",
+      "title2": "pequena questão?",
+      "talk": "Vamos falar",
+      "items": [
+        {
+          "question": "É preciso escolher entre a aplicação e o site?",
+          "answer": "Complementam-se: a sua página web permite aos seus clientes marcar, e o seu espaço profissional permite-lhe gerir o seu negócio no computador ou a partir da aplicação."
+        },
+        {
+          "question": "Os meus clientes têm de descarregar uma aplicação?",
+          "answer": "Não. Abrem o seu link, escolhem um serviço e um horário e indicam o nome, o email e o telefone. Podem marcar diretamente na web, sem conta."
+        },
+        {
+          "question": "Como funciona o período de teste gratuito?",
+          "answer": "Tem {days} dias para experimentar o Opatam, sem cartão de crédito. Depois escolhe o plano adequado ao seu negócio se quiser continuar."
+        },
+        {
+          "question": "É adequado para uma pequena equipa?",
+          "answer": "Sim. O plano Studio permite gerir até 10 membros e 10 locais. Cada membro tem o seu horário e os seus serviços, e você mantém uma visão de conjunto."
+        },
+        {
+          "question": "O Opatam cobra comissão?",
+          "answer": "O Opatam não cobra nenhuma comissão sobre as suas marcações. Os planos assentam numa subscrição fixa. Se ativar um serviço de pagamento online, as taxas de processamento aplicáveis mantêm-se à parte."
+        }
+      ]
+    },
+    "download": {
+      "eyebrow": "A PRÓXIMA MARCAÇÃO COMEÇA AQUI",
+      "title1": "Faça espaço",
+      "title2": "para a sua profissão.",
+      "lead1": "No seu telemóvel ou no seu computador,",
+      "lead2": "a sua nova organização começa com o Opatam.",
+      "pocket": "O seu negócio no bolso.",
+      "page": "A sua página, pronta a partilhar.",
+      "appStoreSmall": "Descarregar na",
+      "playStoreSmall": "Disponível no",
+      "appStoreAria": "Descarregar o Opatam na App Store",
+      "playStoreAria": "Descarregar o Opatam no Google Play"
+    },
+    "footer": {
+      "tagline": "O seu saber-fazer merece tempo.",
+      "linksAria": "Links úteis",
+      "find": "Encontrar um profissional",
+      "blog": "Dicas & tutoriais",
+      "contact": "Contacto",
+      "legal": "Avisos legais",
+      "privacy": "Privacidade",
+      "terms": "Termos de utilização"
+    },
+    "viewer": {
+      "close": "Fechar a ampliação",
+      "region": "Captura ampliada, deslocamento vertical"
+    }
   }
 }
