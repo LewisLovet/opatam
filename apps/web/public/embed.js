@@ -82,10 +82,137 @@
     return iframe;
   }
 
-  // ─── Auto-size inline iframes via postMessage ─────────────────────────────
+  // ─── Loader ───────────────────────────────────────────────────────────────
+  // Le temps que le widget arrive, un visiteur voyait un rectangle blanc de
+  // 520 px sans rien comprendre. On pose une attente discrète (spinner +
+  // « Chargement de l'agenda… ») par-dessus l'iframe, et l'iframe reste
+  // invisible jusqu'au signal « prêt » de la page embarquée — ou à sa première
+  // hauteur annoncée, ou après 10 s quoi qu'il arrive (message bloqué : le
+  // widget doit rester utilisable).
+  function createLoader(options) {
+    var color = options.primary
+      ? (String(options.primary).charAt(0) === '#' ? options.primary : '#' + options.primary)
+      : '#2563eb';
+    var dark = options.theme === 'dark';
+    var bg = dark ? '#0f172a' : '#ffffff';
+    var bone = dark ? '#1e293b' : '#eef2f7';
+    var sheen = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.7)';
+    var text = dark ? '#94a3b8' : '#64748b';
+
+    var loader = document.createElement('div');
+    loader.setAttribute('data-opatam-loader', '1');
+    loader.setAttribute('role', 'status');
+    loader.setAttribute('aria-live', 'polite');
+    loader.style.cssText =
+      'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+      'padding:24px;background:' + bg + ';color:' + text + ';' +
+      'font:500 13px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;' +
+      'transition:opacity 0.3s ease-out;pointer-events:none;';
+
+    // Le monogramme, au centre d'un anneau qui tourne dans la couleur du widget.
+    var badge = document.createElement('div');
+    badge.style.cssText = 'position:relative;width:72px;height:72px;margin-bottom:22px;';
+    var ring = document.createElement('div');
+    ring.style.cssText =
+      'position:absolute;inset:0;border-radius:50%;' +
+      'background:conic-gradient(from 0deg,' + color + ' 0 25%,transparent 25% 100%);' +
+      '-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));' +
+      'mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));' +
+      'animation:opatam-spin 1.1s linear infinite;';
+    var disc = document.createElement('div');
+    disc.style.cssText =
+      'position:absolute;inset:8px;border-radius:50%;background:' + (dark ? '#1e293b' : '#f8fafc') + ';' +
+      'display:flex;align-items:center;justify-content:center;animation:opatam-breathe 1.6s ease-in-out infinite;';
+    var logo = document.createElement('img');
+    logo.src = BASE_URL + '/logo-opatam.png';
+    logo.alt = '';
+    logo.setAttribute('aria-hidden', 'true');
+    logo.style.cssText = 'width:38px;height:38px;object-fit:contain;' + (dark ? 'filter:brightness(0) invert(1);' : '');
+    disc.appendChild(logo);
+    badge.appendChild(ring);
+    badge.appendChild(disc);
+    loader.appendChild(badge);
+
+    // Une esquisse de l'agenda qui arrive : trois lignes de prestations qui
+    // scintillent. Le visiteur comprend ce qu'il attend.
+    var sketch = document.createElement('div');
+    sketch.style.cssText = 'width:min(100%,360px);display:flex;flex-direction:column;gap:10px;margin-bottom:22px;';
+    function bone_(w, h, extra) {
+      var b = document.createElement('div');
+      b.style.cssText =
+        'height:' + h + 'px;width:' + w + ';border-radius:6px;background:' + bone + ';position:relative;overflow:hidden;' + (extra || '');
+      var shine = document.createElement('div');
+      shine.style.cssText =
+        'position:absolute;inset:0;transform:translateX(-100%);' +
+        'background:linear-gradient(90deg,transparent,' + sheen + ',transparent);' +
+        'animation:opatam-shimmer 1.4s ease-in-out infinite;';
+      b.appendChild(shine);
+      return b;
+    }
+    sketch.appendChild(bone_('46%', 12, 'margin-bottom:4px;'));
+    for (var i = 0; i < 3; i++) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;';
+      row.appendChild(bone_('44px', 44, 'flex:0 0 44px;border-radius:10px;'));
+      var lines = document.createElement('div');
+      lines.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:7px;';
+      lines.appendChild(bone_((62 - i * 8) + '%', 11));
+      lines.appendChild(bone_('38%', 9));
+      row.appendChild(lines);
+      row.appendChild(bone_('48px', 22, 'flex:0 0 48px;border-radius:999px;'));
+      sketch.appendChild(row);
+    }
+    loader.appendChild(sketch);
+
+    // Le mot, puis une barre qui avance sans fin dans la couleur du widget.
+    var label = document.createElement('div');
+    label.textContent = 'Votre agenda arrive…';
+    label.style.cssText = 'margin-bottom:10px;letter-spacing:0.01em;';
+    loader.appendChild(label);
+    var bar = document.createElement('div');
+    bar.style.cssText = 'width:140px;height:3px;border-radius:999px;background:' + bone + ';overflow:hidden;';
+    var fill = document.createElement('div');
+    fill.style.cssText =
+      'width:40%;height:100%;border-radius:999px;background:' + color + ';' +
+      'animation:opatam-slide 1.2s ease-in-out infinite;';
+    bar.appendChild(fill);
+    loader.appendChild(bar);
+    return loader;
+  }
+
+  function attachLoader(container, iframe, options) {
+    var loader = createLoader(options);
+    container.appendChild(loader);
+    iframe.style.opacity = '0';
+    iframe.style.transition = 'opacity 0.25s ease-out';
+    var done = false;
+    function reveal() {
+      if (done) return;
+      done = true;
+      iframe.style.opacity = '1';
+      loader.style.opacity = '0';
+      setTimeout(function () { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 300);
+    }
+    iframe.setAttribute('data-opatam-loading', '1');
+    iframe.__opatamReveal = reveal;
+    setTimeout(reveal, 10000);
+  }
+
+  function revealIframe(iframe) {
+    if (iframe && typeof iframe.__opatamReveal === 'function') iframe.__opatamReveal();
+  }
+
+  // ─── Messages from the embedded page ──────────────────────────────────────
   window.addEventListener('message', function (event) {
     var data = event.data;
     if (!data || typeof data !== 'object') return;
+    if (data.type === 'opatam-embed-ready') {
+      var readyFrames = document.querySelectorAll('iframe[data-opatam-slug]');
+      for (var r = 0; r < readyFrames.length; r++) {
+        if (readyFrames[r].contentWindow === event.source) revealIframe(readyFrames[r]);
+      }
+      return;
+    }
     if (data.type !== 'opatam-embed-height') return;
     var height = data.height;
     if (typeof height !== 'number' || height <= 0) return;
@@ -95,6 +222,7 @@
     for (var i = 0; i < iframes.length; i++) {
       var iframe = iframes[i];
       if (iframe.contentWindow !== event.source) continue;
+      revealIframe(iframe);
       var h = Math.ceil(height);
       if (iframe.getAttribute('data-opatam-mode') === 'modal') {
         // La boîte de la modale suit le contenu : plus de moitié vide à la
@@ -127,8 +255,12 @@
       if (!slug) continue;
       var options = readOptions(target);
       var iframe = createIframe(slug, options, 'inline');
+      var holder = document.createElement('div');
+      holder.style.cssText = 'position:relative;';
+      holder.appendChild(iframe);
       target.innerHTML = '';
-      target.appendChild(iframe);
+      target.appendChild(holder);
+      attachLoader(holder, iframe, options);
       target.setAttribute('data-opatam-initialized', '1');
     }
   }
@@ -254,8 +386,9 @@
     iframe.style.width = '100%';
     iframe.style.height = '100%';
 
-    frame.appendChild(closeBtn);
     frame.appendChild(iframe);
+    attachLoader(frame, iframe, options);
+    frame.appendChild(closeBtn);
     overlay.appendChild(frame);
 
     function close() {
@@ -295,7 +428,12 @@
     style.id = 'opatam-embed-style';
     style.textContent =
       '@keyframes opatam-fade-in{from{opacity:0}to{opacity:1}}' +
-      '@keyframes opatam-pop-in{from{transform:scale(0.96);opacity:0}to{transform:scale(1);opacity:1}}';
+      '@keyframes opatam-pop-in{from{transform:scale(0.96);opacity:0}to{transform:scale(1);opacity:1}}' +
+      '@keyframes opatam-spin{to{transform:rotate(360deg)}}' +
+      '@keyframes opatam-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}' +
+      '@keyframes opatam-shimmer{to{transform:translateX(100%)}}' +
+      '@keyframes opatam-slide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}' +
+      '@media (prefers-reduced-motion:reduce){[data-opatam-loader] *{animation-duration:2.5s!important}}';
     document.head.appendChild(style);
   }
 
