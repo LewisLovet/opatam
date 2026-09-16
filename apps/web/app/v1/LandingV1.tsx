@@ -7,6 +7,7 @@ import { ArrowRight, Check, Globe, Menu, Play, Plus, Smartphone, Users, X } from
 import { APP_CONFIG, SUBSCRIPTION_PLANS } from '@booking-app/shared/constants';
 import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/store-links';
 import { trackSite } from '@/lib/trackSite';
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher';
 import { memoriserCampagne, suffixeCampagne } from '@/lib/campaign';
 import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
 import s from './v1.module.css';
@@ -135,7 +136,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
       <div className={`${s.wrap} ${s.nav}`}>
         <Link href="/" className={s.brand} aria-label="Opatam, accueil"><Image src="/logo-opatam-blanc.png" alt="" width={34} height={34} />OPATAM</Link>
         <nav className={s.desktopNav} aria-label="Navigation principale"><a href="#fonctionnement">Comment ça marche</a><a href="#tarifs">Tarifs</a><a href="#videos">Leurs métiers</a></nav>
-        <div className={s.navActions}><Link href="/login" className={s.login}>Connexion</Link><Link href={inscription} className={s.buttonSmall} onClick={clicVitrine}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
+        <div className={s.navActions}><LanguageSwitcher className={s.langue} /><Link href="/login" className={s.login}>Connexion</Link><Link href={inscription} className={s.buttonSmall} onClick={clicVitrine}>Créer ma page <ArrowRight size={15} /></Link><button className={s.menuButton} onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="v1-menu" aria-label={menu ? 'Fermer le menu' : 'Ouvrir le menu'}>{menu ? <X /> : <Menu />}</button></div>
       </div>
     </header>
       {/* Le panneau est un FRÈRE de l'en-tête, pas un enfant : le
@@ -175,6 +176,7 @@ export default function LandingV1({ videos = [] }: { videos?: ProviderVideo[] })
             <Link href="/login" className={s.drawerLogin} tabIndex={menu ? 0 : -1} onClick={() => setMenu(false)}>
               J’ai déjà un compte · Connexion
             </Link>
+            <div className={s.drawerLangue}><LanguageSwitcher /></div>
             <small>{APP_CONFIG.trialDays} jours gratuits · Sans carte bancaire</small>
           </div>
         </nav>

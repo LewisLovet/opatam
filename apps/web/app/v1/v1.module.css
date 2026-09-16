@@ -43,6 +43,11 @@
 .secondary:hover { background: #e7eff3; transform: translateY(-2px); }
 .buttonSmall { min-height: 43px; padding: 9px 16px; font-size: 14px; }
 .menuButton { display: none; padding: 8px; border: 0; color: var(--ink); background: transparent; }
+/* Sélecteur de langue : le composant commun à tout le site, posé dans le
+   bandeau. Sur mobile il vit dans le panneau latéral, pas dans le bandeau. */
+.langue { display: inline-block; }
+.drawerLangue { display: flex; justify-content: center; padding-top: 4px; }
+@media (max-width: 900px) { .langue { display: none; } }
 
 /* ── Panneau latéral mobile ──
    Monté en permanence et masqué par `visibility` : il peut ainsi glisser
