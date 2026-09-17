@@ -104,6 +104,10 @@ interface EmbedBookingFlowProps {
   showHeader?: boolean;
   /** Demo mode — don't hit the real booking API. */
   isDemo?: boolean;
+  /** Depuis le widget « vue semaine » : jour et heure visés, membre fixé. */
+  initialDate?: string | null;
+  initialTime?: string | null;
+  initialMemberId?: string | null;
 }
 
 type Step = 'services' | 'member' | 'slot' | 'confirm' | 'success';
@@ -120,6 +124,9 @@ export function EmbedBookingFlow({
   preselectedServiceId = null,
   showHeader = false,
   isDemo = false,
+  initialDate = null,
+  initialTime = null,
+  initialMemberId = null,
 }: EmbedBookingFlowProps) {
   const t = useTranslations('booking');
   const locale = useLocale();
@@ -140,9 +147,11 @@ export function EmbedBookingFlow({
     return null;
   }, [preselectedServiceId, services]);
 
-  const [step, setStep] = useState<Step>(initialServiceId ? (isTeam ? 'member' : 'slot') : 'services');
+  // Membre fixé par le widget « vue semaine » : on saute son choix.
+  const membreInitial = initialMemberId && members.some((m) => m.id === initialMemberId) ? initialMemberId : null;
+  const [step, setStep] = useState<Step>(initialServiceId ? (isTeam && !membreInitial ? 'member' : 'slot') : 'services');
   const [serviceId, setServiceId] = useState<string | null>(initialServiceId);
-  const [memberId, setMemberId] = useState<string | null>(null);
+  const [memberId, setMemberId] = useState<string | null>(membreInitial);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [slot, setSlot] = useState<TimeSlotWithDate | null>(null);
   const [clientInfo, setClientInfo] = useState({ name: '', email: '', phone: '' });
@@ -433,6 +442,8 @@ export function EmbedBookingFlow({
           onBack={handleBack}
           openDays={openDays}
           isDemo={isDemo}
+          initialDate={initialDate}
+          initialTime={initialTime}
         />
       )}
 

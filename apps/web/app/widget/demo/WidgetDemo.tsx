@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Calendar, ChevronDown, ChevronUp, LayoutGrid, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, ChevronDown, ChevronUp, LayoutGrid, X } from 'lucide-react';
 import { PROVIDER_THEMES } from '@booking-app/shared/constants';
+import type { CaseOccupation, EtatCase, OccupationPayload } from '@/lib/occupation-types';
+import { SemaineWidget } from '@/components/widget/SemaineWidget';
 import d from '../../ecran/demo/demo.module.css';
 import s from './widget.module.css';
 
 /**
- * Données fictives, mais stables : la même grille à chaque rendu, pour
- * pouvoir en discuter. Aucune donnée réelle, aucun appel réseau.
+ * Démonstration du widget « vue semaine » : le même composant que la page
+ * embarquée, nourri de données fictives mais stables, dans un faux site de
+ * salon, avec un panneau pour essayer les options.
  */
 
 type Mode = 'solo' | 'equipe' | 'membre';
-type Etat = 'ferme' | 'passe' | 'libre' | 'partiel' | 'complet';
-type Cellule = { etat: Etat; libres: number; total: number; categorie: string | null; heure: string };
 
 const COULEURS_DEMO = ['bleu', 'noir', 'emeraude', 'terracotta', 'rouge', 'prune'];
 const MEMBRES = ['Camille', 'Inès', 'Sofia'];
@@ -24,8 +25,6 @@ const CATEGORIES = [
   { id: 'ongles', label: 'Ongles', color: '#d97706' },
 ];
 const PRESTATIONS = ['Coupe + brushing · 45 min', 'Couleur · 1 h 30', 'Soin profond · 30 min'];
-const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 /** Ouverture par jour (0 = lundi) : plages en minutes. Dimanche fermé. */
 const OUVERTURE: [number, number][][] = [
@@ -45,8 +44,8 @@ function hasard(...graines: number[]): number {
   h ^= h >>> 13; h = Math.imul(h, 1274126177); h ^= h >>> 16;
   return (h >>> 0) / 4294967295;
 }
-
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const cleJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function lundi(decalageSemaines: number): Date {
   const d = new Date();
@@ -55,38 +54,38 @@ function lundi(decalageSemaines: number): Date {
   return d;
 }
 
-function construireSemaine(semaine: number, mode: Mode, membreFixe: number, pas: number, maintenant: Date) {
+function construire(semaine: number, mode: Mode, membreFixe: number, pas: number, nom: string, maintenant: Date): OccupationPayload {
   const debutSemaine = lundi(semaine);
-  const membres = mode === 'equipe' ? MEMBRES.length : 1;
-  const jours = JOURS.map((nom, j) => {
-    const date = new Date(debutSemaine); date.setDate(date.getDate() + j);
-    const estAujourdhui = date.toDateString() === maintenant.toDateString();
-    const estPasse = date < new Date(maintenant.toDateString());
-    return { nom, date, estAujourdhui, estPasse, plages: OUVERTURE[j] };
-  });
-  // Amplitude de la grille : de la première ouverture à la dernière fermeture.
-  let debut = 24 * 60, fin = 0;
-  for (const j of jours) for (const [a, b] of j.plages) { debut = Math.min(debut, a); fin = Math.max(fin, b); }
+  const membres = mode === 'equipe' ? MEMBRES.map((name, i) => ({ id: `m${i}`, name })) : [{ id: `m${mode === 'membre' ? membreFixe : 0}`, name: MEMBRES[mode === 'membre' ? membreFixe : 0] }];
+  const nb = membres.length;
   const creneaux: number[] = [];
-  for (let m = debut; m < fin; m += pas) creneaux.push(m);
+  for (let m = 9 * 60; m < 20 * 60; m += pas) creneaux.push(m);
   const minNow = maintenant.getHours() * 60 + maintenant.getMinutes();
-  const cellules: Cellule[][] = jours.map((jour, j) => creneaux.map((m) => {
-    const ouvert = jour.plages.some(([a, b]) => m >= a && m + pas <= b);
-    if (!ouvert) return { etat: 'ferme', libres: 0, total: 0, categorie: null, heure: hhmm(m) };
-    if (jour.estPasse || (jour.estAujourdhui && m < minNow)) return { etat: 'passe', libres: 0, total: 0, categorie: null, heure: hhmm(m) };
-    let libres = 0; let categorie: string | null = null;
-    for (let k = 0; k < membres; k++) {
-      const idx = mode === 'equipe' ? k : mode === 'membre' ? membreFixe : 0;
-      const r = hasard(semaine, j, m, idx);
-      // Plus rempli en fin de journée et le samedi : ça se voit dans la grille.
-      const seuil = 0.42 + (m > 15 * 60 ? 0.15 : 0) + (j === 5 ? 0.15 : 0);
-      if (r < seuil) categorie = CATEGORIES[Math.floor(hasard(semaine, j, m, idx, 7) * CATEGORIES.length)].id;
-      else libres++;
-    }
-    const etat: Etat = libres === 0 ? 'complet' : libres === membres ? 'libre' : 'partiel';
-    return { etat, libres, total: membres, categorie: libres === 0 ? categorie : null, heure: hhmm(m) };
-  }));
-  return { jours, creneaux, cellules, membres };
+  const aujourdhui = cleJour(maintenant);
+  const jours = Array.from({ length: 7 }, (_, j) => {
+    const date = new Date(debutSemaine); date.setDate(date.getDate() + j);
+    const cle = cleJour(date);
+    const plages = OUVERTURE[j];
+    const cases: CaseOccupation[] = creneaux.map((m) => {
+      const ouvert = plages.some(([a, b]) => m >= a && m + pas <= b);
+      if (!ouvert) return { etat: 'ferme', libres: 0, total: 0, cat: null };
+      if (cle < aujourdhui || (cle === aujourdhui && m < minNow)) return { etat: 'passe', libres: 0, total: nb, cat: null };
+      let libres = 0; let cat: string | null = null;
+      for (let k = 0; k < nb; k++) {
+        const idx = mode === 'equipe' ? k : mode === 'membre' ? membreFixe : 0;
+        const seuil = 0.42 + (m > 15 * 60 ? 0.15 : 0) + (j === 5 ? 0.15 : 0);
+        if (hasard(semaine, j, m, idx) < seuil) cat = CATEGORIES[Math.floor(hasard(semaine, j, m, idx, 7) * CATEGORIES.length)].id;
+        else libres++;
+      }
+      const etat: EtatCase = libres === 0 ? 'complet' : libres === nb ? 'libre' : 'partiel';
+      return { etat, libres, total: nb, cat: libres === 0 ? cat : null };
+    });
+    return { date: cle, ouvert: plages.length > 0, cases };
+  });
+  return {
+    slug: 'demo', businessName: nom, themeId: null, membres, membreFixe: mode === 'membre' ? `m${membreFixe}` : null,
+    semaine, lundi: cleJour(debutSemaine), pas, creneaux: creneaux.map(hhmm), jours, categories: nb === 1 ? CATEGORIES : [], genereLe: maintenant.toISOString(),
+  };
 }
 
 export function WidgetDemo() {
@@ -99,142 +98,26 @@ export function WidgetDemo() {
   const [legende, setLegende] = useState(true);
   const [semaine, setSemaine] = useState(0);
   const [ouvert, setOuvert] = useState(true);
+  const [choix, setChoix] = useState<{ date: string; heure: string } | null>(null);
+  const [maintenant] = useState(() => new Date());
   // Sur téléphone, le panneau d'options démarre replié : il couvrirait le widget.
   useEffect(() => { if (window.innerWidth < 640) setOuvert(false); }, []);
-  const [choix, setChoix] = useState<{ jour: string; heure: string } | null>(null);
-  // Vue téléphone : un jour à la fois, choisi dans la bande du haut.
-  const [jourSel, setJourSel] = useState<number | null>(null);
-  // Téléphone : la semaine entière en carte de chaleur, ou un jour détaillé.
-  const [vueMobile, setVueMobile] = useState<'semaine' | 'jour'>('semaine');
-  const [maintenant] = useState(() => new Date());
-  // Sur un écran étroit, la grille défile d'elle-même jusqu'à aujourd'hui :
-  // les jours passés de la semaine ne doivent pas cacher les créneaux utiles.
-  const defilement = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const zone = defilement.current;
-    const cible = zone?.querySelector<HTMLElement>('[data-aujourdhui="true"]');
-    if (!zone || !cible || zone.scrollWidth <= zone.clientWidth) return;
-    zone.scrollTo({ left: Math.max(0, cible.offsetLeft - 60), behavior: 'auto' });
-  }, [semaine, pas]);
   const primaire = `rgb(${PROVIDER_THEMES.find((t) => t.id === themeId)?.ramp[5] ?? '37 99 235'})`;
-
-  const { jours, creneaux, cellules, membres } = useMemo(() => construireSemaine(semaine, mode, membreFixe, pas, maintenant), [semaine, mode, membreFixe, pas, maintenant]);
-  const parCategorie = mode !== 'equipe';
-  // Jour affiché sur téléphone : aujourd'hui s'il est dans la semaine, sinon
-  // le premier jour ouvert ; remis à zéro quand on change de semaine.
-  const jourParDefaut = Math.max(0, jours.findIndex((j) => j.estAujourdhui) >= 0 ? jours.findIndex((j) => j.estAujourdhui) : jours.findIndex((j) => j.plages.length && !j.estPasse));
-  const jourMobile = jourSel ?? jourParDefaut;
-  const resumeJour = (c: number) => {
-    const ouverts = cellules[c].filter((x) => x.etat !== 'ferme' && x.etat !== 'passe');
-    const libres = ouverts.filter((x) => x.etat === 'libre' || x.etat === 'partiel').length;
-    return { ouverts: ouverts.length, libres, taux: ouverts.length ? 1 - libres / ouverts.length : 0 };
-  };
-  const libelleEtat = (cel: Cellule) => cel.etat === 'libre' ? 'Libre' : cel.etat === 'partiel' ? `${cel.libres} place${cel.libres > 1 ? 's' : ''} sur ${cel.total}` : cel.etat === 'complet' ? 'Complet' : cel.etat === 'passe' ? 'Passé' : '';
-  const libelleSemaine = `${jours[0].date.getDate()} ${MOIS[jours[0].date.getMonth()]} – ${jours[6].date.getDate()} ${MOIS[jours[6].date.getMonth()]}`;
-  const libelleJour = (j: (typeof jours)[number]) => `${['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'][(j.date.getDay() + 6) % 7]} ${j.date.getDate()} ${MOIS[j.date.getMonth()]}`;
+  const donnees = useMemo(() => construire(semaine, mode, membreFixe, pas, 'Maison Amélie', maintenant), [semaine, mode, membreFixe, pas, maintenant]);
+  const jourChoisi = choix ? (() => { const l = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }).format(new Date(`${choix.date}T12:00:00`)); return l.charAt(0).toUpperCase() + l.slice(1); })() : '';
 
   return <div className={s.site} data-theme={theme}>
     {/* Le faux site du salon, pour voir le widget là où il vivra. */}
     <header className={s.siteEntete}><strong>Maison Amélie</strong><nav><span>Le salon</span><span>Prestations</span><span>Réserver</span><span>Contact</span></nav></header>
     <section className={s.siteHero}><h1>Un créneau libre ? Il est à vous.</h1><p>Consultez nos disponibilités de la semaine et réservez en deux clics. Sans compte, sans appel.</p></section>
 
-    <div className={s.widget} style={{ '--p': primaire, '--r': `${rayon}px` } as React.CSSProperties}>
-      <div className={s.barre}>
-        <div className={s.titre}><Calendar size={18} /><div><strong>Disponibilités</strong><span>{mode === 'membre' ? `Avec ${MEMBRES[membreFixe]}` : mode === 'equipe' ? `${membres} professionnelles` : 'Maison Amélie'}</span></div></div>
-        <div className={s.nav}>
-          <button type="button" onClick={() => { setSemaine(0); setJourSel(null); }} aria-pressed={semaine === 0}>Cette semaine</button>
-          <button type="button" onClick={() => { setSemaine(1); setJourSel(null); }} aria-pressed={semaine === 1}>La suivante</button>
-          <span>{libelleSemaine}</span>
-          <button type="button" className={s.fleche} onClick={() => { setSemaine(0); setJourSel(null); }} disabled={semaine === 0} aria-label="Semaine précédente"><ArrowLeft size={16} /></button>
-          <button type="button" className={s.fleche} onClick={() => { setSemaine(1); setJourSel(null); }} disabled={semaine === 1} aria-label="Semaine suivante"><ArrowRight size={16} /></button>
-        </div>
-      </div>
-
-      {/* Téléphone : la bande des jours, puis les créneaux du jour choisi en
-          grandes lignes tactiles. Le même contenu que la grille, présenté
-          pour un pouce et un écran étroit. */}
-      <div className={s.mobile}>
-        <div className={s.mobileBascule} role="group" aria-label="Affichage">
-          <button type="button" aria-pressed={vueMobile === 'semaine'} onClick={() => setVueMobile('semaine')}>Semaine</button>
-          <button type="button" aria-pressed={vueMobile === 'jour'} onClick={() => setVueMobile('jour')}>Jour</button>
-        </div>
-        {vueMobile === 'semaine' && <div className={s.mobileSemaine}>
-          <div className={s.mobileGrille} style={{ gridTemplateColumns: `2.6rem repeat(7, minmax(0, 1fr))` }} data-pas={pas}>
-            <div />
-            {jours.map((j, c) => <button type="button" key={j.nom} className={s.mobileJourTete} data-aujourdhui={j.estAujourdhui} data-ferme={!j.plages.length || j.estPasse} onClick={() => { setJourSel(c); setVueMobile('jour'); }} aria-label={`Voir ${libelleJour(j)} en détail`}><span>{j.nom.replace('.', '')}</span><strong>{j.date.getDate()}</strong></button>)}
-            {creneaux.map((m, r) => <div key={m} style={{ display: 'contents' }}>
-              <div className={s.mobileHeure}>{m % 60 === 0 ? hhmm(m) : ''}</div>
-              {jours.map((j, c) => { const cel = cellules[c][r]; const cat = cel.categorie ? CATEGORIES.find((x) => x.id === cel.categorie) : null; const cliquable = cel.etat === 'libre' || cel.etat === 'partiel';
-                return <button type="button" key={j.nom} className={s.mobileCase} data-etat={cel.etat} disabled={!cliquable} onClick={() => setChoix({ jour: libelleJour(j), heure: cel.heure })} style={parCategorie && cat ? { '--cat': cat.color } as React.CSSProperties : undefined} aria-label={`${libelleJour(j)} ${cel.heure} : ${libelleEtat(cel) || 'fermé'}`} />; })}
-            </div>)}
-          </div>
-          <p className={s.mobileAide}>Touchez un créneau libre pour réserver, ou un jour pour le détailler.</p>
-        </div>}
-        {vueMobile === 'jour' && <div className={s.jourBande} role="tablist" aria-label="Jour">
-          {jours.map((j, c) => { const r = resumeJour(c); return <button type="button" role="tab" key={j.nom} aria-selected={jourMobile === c} data-aujourdhui={j.estAujourdhui} data-ferme={!j.plages.length || j.estPasse} onClick={() => setJourSel(c)}>
-            <span>{j.nom}</span><strong>{j.date.getDate()}</strong>
-            {j.plages.length && !j.estPasse ? <i aria-hidden="true"><b style={{ width: `${Math.round(r.taux * 100)}%` }} /></i> : <em>{j.estPasse ? 'passé' : 'fermé'}</em>}
-          </button>; })}
-        </div>}
-        {vueMobile === 'jour' && (() => {
-          const j = jours[jourMobile]; const r = resumeJour(jourMobile);
-          const toutes = cellules[jourMobile].map((cel, i) => ({ cel, m: creneaux[i] })).filter((x) => x.cel.etat !== 'ferme');
-          // Aujourd'hui, les créneaux déjà passés ne font que pousser les
-          // utiles hors de l'écran : on les résume en une ligne.
-          const passees = toutes.filter((x) => x.cel.etat === 'passe').length;
-          const lignes = toutes.filter((x) => x.cel.etat !== 'passe');
-          if (!toutes.length) return <p className={s.mobileVide}>{j.estPasse ? 'Ce jour est passé.' : 'Fermé ce jour.'}</p>;
-          if (!lignes.length) return <p className={s.mobileVide}>La journée est terminée.</p>;
-          const matin = lignes.filter((x) => x.m < 13 * 60), aprem = lignes.filter((x) => x.m >= 13 * 60);
-          return <div className={s.mobileJour}>
-            <p className={s.mobileTitre}><strong>{libelleJour(j)}</strong><span>{r.ouverts ? `${r.libres} créneau${r.libres > 1 ? 'x' : ''} disponible${r.libres > 1 ? 's' : ''}` : ''}</span></p>
-            {passees > 0 && <p className={s.mobilePasse}>{passees} créneau{passees > 1 ? 'x' : ''} déjà passé{passees > 1 ? 's' : ''} aujourd’hui</p>}
-            {[['Matin', matin], ['Après-midi', aprem]].map(([titre, groupe]) => (groupe as typeof lignes).length ? <div key={String(titre)} className={s.mobileGroupe}>
-              <h4>{String(titre)}</h4>
-              {(groupe as typeof lignes).map(({ cel }) => { const cat = cel.categorie ? CATEGORIES.find((x) => x.id === cel.categorie) : null; const cliquable = cel.etat === 'libre' || cel.etat === 'partiel';
-                return <button type="button" key={cel.heure} className={s.mobileLigne} data-etat={cel.etat} disabled={!cliquable} onClick={() => setChoix({ jour: libelleJour(j), heure: cel.heure })} style={parCategorie && cat ? { '--cat': cat.color } as React.CSSProperties : undefined}>
-                  <time>{cel.heure}</time><span>{parCategorie && cat ? cat.label : libelleEtat(cel)}</span>{cliquable && <ArrowRight size={16} />}
-                </button>; })}
-            </div> : null)}
-          </div>;
-        })()}
-      </div>
-
-      <div className={`${s.defilement} ${s.bureau}`} ref={defilement}>
-        <div className={s.grille} style={{ gridTemplateColumns: `3.4rem repeat(7, minmax(4.6rem, 1fr))` }}>
-          <div />
-          {jours.map((j) => <div key={j.nom} className={s.jour} data-aujourdhui={j.estAujourdhui} data-ferme={!j.plages.length}><span>{j.nom}</span><strong>{j.date.getDate()}</strong></div>)}
-          {creneaux.map((m, r) => <div key={m} className={s.ligne} style={{ display: 'contents' }}>
-            <div className={s.heure}>{m % 60 === 0 ? hhmm(m) : ''}</div>
-            {jours.map((j, c) => {
-              const cel = cellules[c][r];
-              const cat = cel.categorie ? CATEGORIES.find((x) => x.id === cel.categorie) : null;
-              const cliquable = cel.etat === 'libre' || cel.etat === 'partiel';
-              return <button type="button" key={j.nom} className={s.cellule} data-etat={cel.etat} data-aujourdhui={j.estAujourdhui} disabled={!cliquable} onClick={() => setChoix({ jour: libelleJour(j), heure: cel.heure })}
-                style={parCategorie && cat ? { '--cat': cat.color } as React.CSSProperties : undefined}
-                aria-label={cliquable ? `${libelleJour(j)} ${cel.heure} : ${cel.etat === 'libre' ? 'libre' : `${cel.libres} sur ${cel.total} disponibles`}` : `${libelleJour(j)} ${cel.heure} : ${cel.etat === 'complet' ? 'complet' : cel.etat === 'passe' ? 'passé' : 'fermé'}`}>
-                {cel.etat === 'partiel' && <span>{cel.libres}/{cel.total}</span>}
-              </button>;
-            })}
-          </div>)}
-        </div>
-      </div>
-
-      {legende && <div className={s.legende}>
-        <span><i data-etat="libre" /> Libre</span>
-        {!parCategorie && <span><i data-etat="partiel" /> Partiellement pris</span>}
-        {parCategorie
-          ? CATEGORIES.map((c) => <span key={c.id}><i style={{ background: c.color }} /> {c.label}</span>)
-          : <span><i data-etat="complet" /> Complet</span>}
-        <span><i data-etat="passe" /> Passé</span>
-      </div>}
-      <div className={s.pied}><span>Cliquez un créneau libre pour réserver.</span><span>Propulsé par <b>Opatam</b></span></div>
-
-      {choix && <div className={s.voile} role="dialog" aria-label="Réservation">
+    <div className={s.cadre}>
+      <SemaineWidget donnees={donnees} options={{ theme, primaire, rayon, legende, lang: 'fr' }} semaine={semaine} onSemaine={setSemaine} onChoisir={(date, heure) => setChoix({ date, heure })} aujourdhui={cleJour(maintenant)} />
+      {choix && <div className={s.voile} role="dialog" aria-label="Réservation" style={{ '--p': primaire } as React.CSSProperties}>
         <div className={s.modale}>
           <button type="button" className={s.fermer} onClick={() => setChoix(null)} aria-label="Fermer"><X size={18} /></button>
           <p className={s.modaleSur}>Réserver</p>
-          <h3>{choix.jour} · {choix.heure}</h3>
+          <h3>{jourChoisi} · {choix.heure}</h3>
           <p>Choisissez votre prestation :</p>
           <div className={s.prestations}>{PRESTATIONS.map((p) => <button type="button" key={p} onClick={() => setChoix(null)}>{p}<ArrowRight size={16} /></button>)}</div>
           <small>Dans la vraie version, c'est la modale de réservation Opatam qui s'ouvre ici, déjà positionnée sur ce créneau ; la prestation, puis le nom et le téléphone, comme aujourd'hui.</small>
@@ -267,7 +150,7 @@ export function WidgetDemo() {
         </div></div>
         <label>Arrondi des angles <b>{rayon} px</b><input type="range" min={0} max={24} value={rayon} onChange={(e) => setRayon(Number(e.target.value))} /></label>
         <label className={d.case}><input type="checkbox" checked={legende} onChange={(e) => setLegende(e.target.checked)} /> Afficher la légende</label>
-        <p>Données fictives. Le vrai widget lira l'occupation réelle, mise en cache quelques minutes.</p>
+        <p>Données fictives. Le vrai widget lit l'occupation réelle, mise en cache quelques minutes.</p>
       </div>}
     </aside>
   </div>;

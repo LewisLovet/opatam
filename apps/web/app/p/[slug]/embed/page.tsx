@@ -56,6 +56,10 @@ interface PageProps {
     mode?: string;
     /** Pre-select a service by id. */
     service?: string;
+    /** Depuis le widget « vue semaine » : jour (YYYY-MM-DD), heure (HH:mm) et membre visés. */
+    date?: string;
+    time?: string;
+    member?: string;
     /** Widget language ('en' — anything else = French). Explicit param
      *  because the embed lives in a cross-site iframe where our locale
      *  cookie is unreliable; the embedding pro decides. */
@@ -93,6 +97,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
   const theme = parseTheme(sp.theme);
   const showHeader = sp.mode === 'modal';
   const preselectedServiceId = sp.service || null;
+  const initialDate = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : null;
+  const initialTime = sp.time && /^\d{2}:\d{2}$/.test(sp.time) ? sp.time : null;
+  const initialMemberId = sp.member || null;
   // Explicit widget language: ?lang=en|it, anything else → French.
   // ALWAYS wrapped in a scoped provider — without it the embed would fall
   // through to the root layout provider and inherit the visitor's
@@ -132,6 +139,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
           members={demoBookingMembers}
           availabilities={demoBookingAvailabilities}
           preselectedServiceId={preselectedServiceId}
+          initialDate={initialDate}
+          initialTime={initialTime}
+          initialMemberId={initialMemberId}
           showHeader={showHeader}
           isDemo
         />
@@ -261,6 +271,9 @@ export default async function ProviderEmbedPage({ params, searchParams }: PagePr
         members={serializedMembers}
         availabilities={serializedAvailabilities}
         preselectedServiceId={preselectedServiceId}
+          initialDate={initialDate}
+          initialTime={initialTime}
+          initialMemberId={initialMemberId}
         showHeader={showHeader}
       />
     </EmbedShell>

@@ -115,11 +115,16 @@ function jourSemaineLocal(instant: Date, fuseau: string): number {
  * Indépendant du fuseau de la machine (Vercel tourne en UTC).
  */
 export function bornesDuJour(maintenant: Date, fuseau: string): { debut: Date; fin: Date; jour: string; dow: number } {
-  const jour = jourLocal(maintenant, fuseau);
+  return bornesDeJour(jourLocal(maintenant, fuseau), fuseau);
+}
+
+/** Bornes réelles (UTC) et jour de semaine d'une date locale « YYYY-MM-DD ». */
+export function bornesDeJour(jour: string, fuseau: string): { debut: Date; fin: Date; jour: string; dow: number } {
   const minuitNaif = new Date(`${jour}T00:00:00Z`);
   const debut = new Date(minuitNaif.getTime() - decalage(minuitNaif, fuseau));
   const fin = new Date(debut.getTime() + 24 * 3600 * 1000 - 1);
-  return { debut, fin, jour, dow: jourSemaineLocal(maintenant, fuseau) };
+  // Midi local : à l'abri des changements d'heure pour lire le jour de semaine.
+  return { debut, fin, jour, dow: jourSemaineLocal(new Date(debut.getTime() + 12 * 3600 * 1000), fuseau) };
 }
 
 type Doc = FirebaseFirestore.DocumentSnapshot;

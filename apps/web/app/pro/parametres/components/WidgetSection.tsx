@@ -15,11 +15,12 @@ import {
   ArrowRight,
   AlertCircle,
   Lightbulb,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { serviceRepository } from '@booking-app/firebase';
+import { memberRepository, serviceRepository } from '@booking-app/firebase';
 
-type WidgetMode = 'inline' | 'popup' | 'floating';
+type WidgetMode = 'inline' | 'popup' | 'floating' | 'semaine';
 type FloatingPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 
 interface WidgetConfig {
@@ -30,6 +31,10 @@ interface WidgetConfig {
   position: FloatingPosition;
   /** Prestation présélectionnée : le widget saute le choix et ouvre le calendrier. '' = aucune. */
   serviceId: string;
+  /** Vue semaine : membre fixé ('' = toute l'équipe), pas de la grille, légende. */
+  memberId: string;
+  pas: 30 | 60;
+  legend: boolean;
 }
 
 const DEFAULT_CONFIG: WidgetConfig = {
@@ -39,6 +44,9 @@ const DEFAULT_CONFIG: WidgetConfig = {
   buttonLabel: 'Prendre rendez-vous',
   position: 'bottom-right',
   serviceId: '',
+  memberId: '',
+  pas: 30,
+  legend: true,
 };
 
 const MODE_OPTIONS: { id: WidgetMode; label: string; description: string; icon: typeof Laptop }[] = [
@@ -60,6 +68,12 @@ const MODE_OPTIONS: { id: WidgetMode; label: string; description: string; icon: 
     description: 'Un bouton toujours visible dans un coin de votre site.',
     icon: MousePointerClick,
   },
+  {
+    id: 'semaine',
+    label: 'Vue semaine',
+    description: 'Vos créneaux libres de la semaine, en un coup d’œil. Un clic sur un créneau ouvre la réservation.',
+    icon: CalendarDays,
+  },
 ];
 
 export function WidgetSection() {
@@ -75,6 +89,17 @@ export function WidgetSection() {
     serviceRepository
       .getActiveByProvider(provider.id)
       .then((list) => { if (!cancelled) setServices(list.map((s) => ({ id: s.id, name: s.name }))); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [provider?.id]);
+  // Les membres actifs, pour fixer la vue semaine sur une personne.
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (!provider?.id) return;
+    let cancelled = false;
+    memberRepository
+      .getActiveByProvider(provider.id)
+      .then((list) => { if (!cancelled) setMembers(list.map((m) => ({ id: m.id, name: m.name }))); })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [provider?.id]);
@@ -97,12 +122,18 @@ export function WidgetSection() {
     params.set('radius', String(config.radius));
     // Popup + floating modes render inside a modal over the host site — show the
     // mini-header in the preview too so the pro sees exactly what their clients will.
+    if (config.mode === 'semaine') {
+      if (config.memberId) params.set('member', config.memberId);
+      if (config.pas === 60) params.set('pas', '60');
+      if (!config.legend) params.set('legend', '0');
+      return `${origin}/p/${slug}/embed/semaine?${params.toString()}`;
+    }
     if (config.serviceId) params.set('service', config.serviceId);
     if (config.mode !== 'inline') {
       params.set('mode', 'modal');
     }
     return `${origin}/p/${slug}/embed?${params.toString()}`;
-  }, [slug, origin, config.primary, config.radius, config.mode, config.serviceId]);
+  }, [slug, origin, config.primary, config.radius, config.mode, config.serviceId, config.memberId, config.pas, config.legend]);
 
   // Generated snippet based on current tab + config
   const snippet = useMemo(() => {
@@ -114,6 +145,16 @@ export function WidgetSection() {
       ...(config.serviceId ? [`  data-service="${config.serviceId}"`] : []),
     ].join('\n');
 
+    if (snippetTab === 'semaine') {
+      const attrs = [
+        `  data-primary="#${color}"`,
+        `  data-radius="${config.radius}"`,
+        ...(config.memberId ? [`  data-member="${config.memberId}"`] : []),
+        ...(config.pas === 60 ? ['  data-pas="60"'] : []),
+        ...(!config.legend ? ['  data-legend="0"'] : []),
+      ].join('\n');
+      return `<div data-opatam-semaine="${slug}"\n${attrs}></div>\n<script src="${origin}/embed.js" async></script>`;
+    }
     if (snippetTab === 'inline') {
       return `<div data-opatam-embed="${slug}"\n${dataAttrs}></div>\n<script src="${origin}/embed.js" async></script>`;
     }
@@ -300,8 +341,50 @@ export function WidgetSection() {
               </div>
             </div>
 
+            {/* Vue semaine : membre, pas, légende */}
+            {config.mode === 'semaine' && (
+              <div className="space-y-3">
+                {members.length > 1 && (
+                  <div>
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      Membre affiché
+                    </div>
+                    <select
+                      value={config.memberId}
+                      onChange={(e) => setConfig((c) => ({ ...c, memberId: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    >
+                      <option value="">Toute l’équipe — niveau de remplissage</option>
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name} — créneaux et couleurs des prestations</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                      Toute l’équipe : chaque créneau indique combien de personnes sont encore libres, sans dire qui. Un membre : ses créneaux, avec la couleur de ses prestations.
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Pas de la grille</div>
+                  <div className="flex gap-2">
+                    {([30, 60] as const).map((p) => (
+                      <button key={p} type="button" onClick={() => setConfig((c) => ({ ...c, pas: p }))}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${config.pas === p ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>
+                        {p === 30 ? '30 minutes' : '1 heure'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={config.legend} onChange={(e) => setConfig((c) => ({ ...c, legend: e.target.checked }))} className="w-4 h-4" />
+                  Afficher la légende
+                </label>
+              </div>
+            )}
+
             {/* Prestation présélectionnée */}
-            {services.length > 0 && (
+            {config.mode !== 'semaine' && services.length > 0 && (
               <div>
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -456,7 +539,7 @@ export function WidgetSection() {
             Votre code à copier
           </h4>
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            {(['inline', 'popup', 'floating'] as const).map((m) => (
+            {(['inline', 'popup', 'floating', 'semaine'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -470,6 +553,7 @@ export function WidgetSection() {
                 {m === 'inline' && 'Intégré'}
                 {m === 'popup' && 'Popup'}
                 {m === 'floating' && 'Flottant'}
+                {m === 'semaine' && 'Vue semaine'}
               </button>
             ))}
           </div>

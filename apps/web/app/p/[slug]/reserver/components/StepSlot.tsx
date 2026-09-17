@@ -37,6 +37,10 @@ interface StepSlotProps {
   /** Prestations secondaires du panier — elles restreignent les jours. */
   extraServiceIds?: string[];
   isDemo?: boolean;
+  /** Jour visé (YYYY-MM-DD) : ouvert d'emblée s'il a encore de la place. */
+  initialDate?: string | null;
+  /** Heure visée (HH:mm) : mise en avant dans la liste, sans forcer le choix. */
+  initialTime?: string | null;
 }
 
 // Local YYYY-MM-DD — must match the server's key (toISOString would shift to UTC).
@@ -60,6 +64,8 @@ export function StepSlot({
   serviceDays,
   extraServiceIds,
   isDemo = false,
+  initialDate = null,
+  initialTime = null,
 }: StepSlotProps) {
   const t = useTranslations('booking.slot');
   const tService = useTranslations('booking.slot');
@@ -115,11 +121,14 @@ export function StepSlot({
     const buildAndSet = (entries: Record<string, DayInfo>) => {
       if (cancelled) return;
       setSummary(entries);
-      // Auto-select the first day with real capacity (once).
+      // Auto-select the first day with real capacity (once) — ou le jour
+      // demandé par le widget « vue semaine », s'il a encore de la place.
       if (!autoSelectedRef.current) {
-        const firstKey = Object.keys(entries)
-          .filter((k) => entries[k].capacity > 0)
-          .sort()[0];
+        const firstKey = (initialDate && entries[initialDate]?.capacity > 0)
+          ? initialDate
+          : Object.keys(entries)
+            .filter((k) => entries[k].capacity > 0)
+            .sort()[0];
         if (firstKey) {
           const [y, m, d] = firstKey.split('-').map(Number);
           const first = new Date(y, m - 1, d);
@@ -424,14 +433,20 @@ export function StepSlot({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {selectedInfo.slots.map((slot) => {
                     const selected = selectedSlot?.datetime === slot.datetime;
+                    // L'heure demandée par le widget « vue semaine » : mise en
+                    // avant, le client confirme d'un clic.
+                    const visee = !selected && Boolean(initialTime) && slot.start === initialTime && selectedDate !== null && dateKey(selectedDate) === initialDate;
                     return (
                       <button
                         key={slot.datetime}
                         onClick={() => onSelect(slot)}
+                        ref={visee ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
                         className={`relative py-3 px-4 rounded-lg border-2 transition-all ${
                           selected
                             ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
+                            : visee
+                              ? 'border-primary-400 bg-primary-50/60 dark:bg-primary-900/10 ring-2 ring-primary-200 dark:ring-primary-800'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-700'
                         }`}
                       >
                         {selected && (

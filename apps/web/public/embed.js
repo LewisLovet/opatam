@@ -57,6 +57,24 @@
     if (options.service) {
       params.push('service=' + encodeURIComponent(options.service));
     }
+    // Depuis la vue semaine : le créneau visé et le membre fixé.
+    if (options.date) params.push('date=' + encodeURIComponent(options.date));
+    if (options.time) params.push('time=' + encodeURIComponent(options.time));
+    if (options.member) params.push('member=' + encodeURIComponent(options.member));
+    return params.length > 0 ? url + '?' + params.join('&') : url;
+  }
+
+  // ─── Vue semaine : URL de la grille de disponibilités ────────────────────
+  function buildSemaineUrl(slug, options) {
+    var url = BASE_URL + '/p/' + encodeURIComponent(slug) + '/embed/semaine';
+    var params = [];
+    if (options.primary) params.push('primary=' + encodeURIComponent(String(options.primary).replace(/^#/, '')));
+    if (options.radius != null && options.radius !== '') params.push('radius=' + encodeURIComponent(options.radius));
+    if (options.theme) params.push('theme=' + encodeURIComponent(options.theme));
+    if (options.member) params.push('member=' + encodeURIComponent(options.member));
+    if (options.pas) params.push('pas=' + encodeURIComponent(options.pas));
+    if (options.legend === '0' || options.legend === 'false') params.push('legend=0');
+    if (options.lang) params.push('lang=' + encodeURIComponent(options.lang));
     return params.length > 0 ? url + '?' + params.join('&') : url;
   }
 
@@ -206,6 +224,22 @@
   window.addEventListener('message', function (event) {
     var data = event.data;
     if (!data || typeof data !== 'object') return;
+    // Vue semaine : un créneau libre cliqué → la modale de réservation,
+    // positionnée sur ce jour et cette heure. On n'écoute que nos propres
+    // iframes de vue semaine.
+    if (data.type === 'opatam-embed-reserver' && data.slug) {
+      var semaineFrames = document.querySelectorAll('iframe[data-opatam-mode="semaine"]');
+      for (var q = 0; q < semaineFrames.length; q++) {
+        if (semaineFrames[q].contentWindow !== event.source) continue;
+        var base = semaineFrames[q].__opatamOptions || {};
+        openModal(String(data.slug), {
+          primary: base.primary, radius: base.radius, theme: base.theme, lang: base.lang,
+          date: data.date, time: data.time, member: data.member || base.member,
+        });
+        return;
+      }
+      return;
+    }
     if (data.type === 'opatam-embed-ready') {
       var readyFrames = document.querySelectorAll('iframe[data-opatam-slug]');
       for (var r = 0; r < readyFrames.length; r++) {
@@ -255,6 +289,34 @@
       if (!slug) continue;
       var options = readOptions(target);
       var iframe = createIframe(slug, options, 'inline');
+      var holder = document.createElement('div');
+      holder.style.cssText = 'position:relative;';
+      holder.appendChild(iframe);
+      target.innerHTML = '';
+      target.appendChild(holder);
+      attachLoader(holder, iframe, options);
+      target.setAttribute('data-opatam-initialized', '1');
+    }
+  }
+
+  // ─── Vue semaine (grille de disponibilités) ───────────────────────────────
+  function initSemaine() {
+    var targets = document.querySelectorAll('[data-opatam-semaine]');
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      if (target.getAttribute('data-opatam-initialized') === '1') continue;
+      var slug = target.getAttribute('data-opatam-semaine');
+      if (!slug) continue;
+      var options = readOptions(target);
+      var iframe = document.createElement('iframe');
+      iframe.src = buildSemaineUrl(slug, options);
+      iframe.setAttribute('title', 'Disponibilités');
+      iframe.setAttribute('loading', 'lazy');
+      iframe.setAttribute('data-opatam-slug', slug);
+      iframe.setAttribute('data-opatam-mode', 'semaine');
+      iframe.setAttribute('data-opatam-floor', '160');
+      iframe.style.cssText = 'width:100%;border:0;display:block;background:transparent;min-height:420px;';
+      iframe.__opatamOptions = options;
       var holder = document.createElement('div');
       holder.style.cssText = 'position:relative;';
       holder.appendChild(iframe);
@@ -419,6 +481,11 @@
       theme: el.getAttribute('data-theme'),
       service: el.getAttribute('data-service'),
       minHeight: el.getAttribute('data-min-height'),
+      // Vue semaine.
+      member: el.getAttribute('data-member'),
+      pas: el.getAttribute('data-pas'),
+      legend: el.getAttribute('data-legend'),
+      lang: el.getAttribute('data-lang'),
     };
   }
 
@@ -440,6 +507,7 @@
   // ─── Kick it off ──────────────────────────────────────────────────────────
   function init() {
     initInline();
+    initSemaine();
     initPopup();
     initFloating();
   }
