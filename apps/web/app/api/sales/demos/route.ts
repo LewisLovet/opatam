@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateProviderPublicPages } from '@/lib/revalidate';
 import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -277,6 +278,7 @@ export async function PATCH(request: NextRequest) {
     updatedAt: FieldValue.serverTimestamp(),
     expiresAt, // retravaillée = prospect vivant : 30 jours repartent
   });
+  revalidateProviderPublicPages(`demo-${id}`);
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://opatam.com';
   return NextResponse.json({

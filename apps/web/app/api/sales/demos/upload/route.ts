@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateProviderPublicPages } from '@/lib/revalidate';
 import { randomUUID } from 'crypto';
 import { requireStaff } from '@/lib/admin-auth';
 import { getAdminFirestore, getAdminStorage } from '@/lib/firebase-admin';
@@ -76,5 +77,6 @@ export async function POST(request: NextRequest) {
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(chemin)}?alt=media&token=${token}`;
 
   await ref.update({ [`photos.${kind}`]: url });
+  revalidateProviderPublicPages(`demo-${ref.id}`);
   return NextResponse.json({ success: true, kind, url });
 }

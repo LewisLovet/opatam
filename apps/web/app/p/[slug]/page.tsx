@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { unstable_noStore as noStore } from 'next/cache';
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ogLocale, localeUrl } from '@/lib/ogLocale';
@@ -265,6 +266,10 @@ export default async function ProviderPage({ params }: PageProps) {
   // aucune écriture, mode isDemo de bout en bout.
   const demoId = demoIdFromSlug(slug);
   if (demoId) {
+    // Jamais de cache pour une démo : le commercial la retouche (photos,
+    // prestations) après avoir envoyé le lien, et le prospect doit voir la
+    // version du moment, pas celle figée 30 s plus tôt par l'ISR.
+    noStore();
     const demo = await loadDemo(demoId);
     if (!demo) notFound(); // inexistante ou expirée (30 j)
     compterVueDemo(demoId); // signal commercial : le prospect a ouvert le lien
