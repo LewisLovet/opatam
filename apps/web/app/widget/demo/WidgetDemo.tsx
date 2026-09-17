@@ -104,6 +104,8 @@ export function WidgetDemo() {
   const [choix, setChoix] = useState<{ jour: string; heure: string } | null>(null);
   // Vue téléphone : un jour à la fois, choisi dans la bande du haut.
   const [jourSel, setJourSel] = useState<number | null>(null);
+  // Téléphone : la semaine entière en carte de chaleur, ou un jour détaillé.
+  const [vueMobile, setVueMobile] = useState<'semaine' | 'jour'>('semaine');
   const [maintenant] = useState(() => new Date());
   // Sur un écran étroit, la grille défile d'elle-même jusqu'à aujourd'hui :
   // les jours passés de la semaine ne doivent pas cacher les créneaux utiles.
@@ -152,13 +154,29 @@ export function WidgetDemo() {
           grandes lignes tactiles. Le même contenu que la grille, présenté
           pour un pouce et un écran étroit. */}
       <div className={s.mobile}>
-        <div className={s.jourBande} role="tablist" aria-label="Jour">
+        <div className={s.mobileBascule} role="group" aria-label="Affichage">
+          <button type="button" aria-pressed={vueMobile === 'semaine'} onClick={() => setVueMobile('semaine')}>Semaine</button>
+          <button type="button" aria-pressed={vueMobile === 'jour'} onClick={() => setVueMobile('jour')}>Jour</button>
+        </div>
+        {vueMobile === 'semaine' && <div className={s.mobileSemaine}>
+          <div className={s.mobileGrille} style={{ gridTemplateColumns: `2.6rem repeat(7, minmax(0, 1fr))` }} data-pas={pas}>
+            <div />
+            {jours.map((j, c) => <button type="button" key={j.nom} className={s.mobileJourTete} data-aujourdhui={j.estAujourdhui} data-ferme={!j.plages.length || j.estPasse} onClick={() => { setJourSel(c); setVueMobile('jour'); }} aria-label={`Voir ${libelleJour(j)} en détail`}><span>{j.nom.replace('.', '')}</span><strong>{j.date.getDate()}</strong></button>)}
+            {creneaux.map((m, r) => <div key={m} style={{ display: 'contents' }}>
+              <div className={s.mobileHeure}>{m % 60 === 0 ? hhmm(m) : ''}</div>
+              {jours.map((j, c) => { const cel = cellules[c][r]; const cat = cel.categorie ? CATEGORIES.find((x) => x.id === cel.categorie) : null; const cliquable = cel.etat === 'libre' || cel.etat === 'partiel';
+                return <button type="button" key={j.nom} className={s.mobileCase} data-etat={cel.etat} disabled={!cliquable} onClick={() => setChoix({ jour: libelleJour(j), heure: cel.heure })} style={parCategorie && cat ? { '--cat': cat.color } as React.CSSProperties : undefined} aria-label={`${libelleJour(j)} ${cel.heure} : ${libelleEtat(cel) || 'fermé'}`} />; })}
+            </div>)}
+          </div>
+          <p className={s.mobileAide}>Touchez un créneau libre pour réserver, ou un jour pour le détailler.</p>
+        </div>}
+        {vueMobile === 'jour' && <div className={s.jourBande} role="tablist" aria-label="Jour">
           {jours.map((j, c) => { const r = resumeJour(c); return <button type="button" role="tab" key={j.nom} aria-selected={jourMobile === c} data-aujourdhui={j.estAujourdhui} data-ferme={!j.plages.length || j.estPasse} onClick={() => setJourSel(c)}>
             <span>{j.nom}</span><strong>{j.date.getDate()}</strong>
             {j.plages.length && !j.estPasse ? <i aria-hidden="true"><b style={{ width: `${Math.round(r.taux * 100)}%` }} /></i> : <em>{j.estPasse ? 'passé' : 'fermé'}</em>}
           </button>; })}
-        </div>
-        {(() => {
+        </div>}
+        {vueMobile === 'jour' && (() => {
           const j = jours[jourMobile]; const r = resumeJour(jourMobile);
           const toutes = cellules[jourMobile].map((cel, i) => ({ cel, m: creneaux[i] })).filter((x) => x.cel.etat !== 'ferme');
           // Aujourd'hui, les créneaux déjà passés ne font que pousser les

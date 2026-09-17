@@ -83,7 +83,28 @@
   .optionsCote { left: auto; right: 1rem; transform: none; width: 22rem; }
 }
 
-/* ---- Vue téléphone : un jour à la fois ---- */
+/* ---- Vue téléphone ---- */
+.mobileBascule { display: inline-flex; margin: 0.7rem 0.8rem 0; border: 1px solid var(--trait); border-radius: calc(var(--r) * 0.6); overflow: hidden; }
+.mobileBascule button { padding: 0.4rem 1rem; border: 0; background: transparent; color: var(--texte); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.mobileBascule button[aria-pressed='true'] { background: var(--p); color: #fff; }
+/* Semaine entière : une carte de chaleur, sans texte dans les cases. */
+.mobileSemaine { padding: 0.6rem 0.8rem 0.2rem; }
+.mobileGrille { display: grid; gap: 2px; align-items: stretch; }
+.mobileJourTete { display: flex; flex-direction: column; align-items: center; padding: 0.2rem 0 0.35rem; border: 0; background: transparent; color: var(--muet); font: inherit; font-size: 0.68rem; cursor: pointer; }
+.mobileJourTete strong { color: var(--texte); font-size: 0.95rem; }
+.mobileJourTete[data-aujourdhui='true'] strong { background: var(--p); color: #fff; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: grid; place-items: center; }
+.mobileJourTete[data-ferme='true'] { opacity: 0.45; }
+.mobileHeure { color: var(--muet); font-size: 0.62rem; font-variant-numeric: tabular-nums; transform: translateY(-0.45em); }
+.mobileCase { height: 0.78rem; border: 0; border-radius: 3px; padding: 0; background: var(--case); cursor: default; }
+.mobileGrille[data-pas='60'] .mobileCase { height: 1.35rem; }
+.mobileCase[data-etat='ferme'] { background: transparent; }
+.mobileCase[data-etat='passe'] { background: var(--passe); }
+.mobileCase[data-etat='libre'] { background: color-mix(in srgb, var(--p) 22%, var(--fond)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 40%, transparent); cursor: pointer; }
+.mobileCase[data-etat='partiel'] { background: color-mix(in srgb, var(--p) 55%, var(--fond)); cursor: pointer; }
+.mobileCase[data-etat='complet'] { background: repeating-linear-gradient(135deg, var(--case) 0 3px, color-mix(in srgb, var(--muet) 28%, var(--case)) 3px 4px); }
+.mobileCase[data-etat='complet'][style] { background: var(--cat); opacity: 0.9; }
+.mobileAide { margin: 0.5rem 0 0; color: var(--muet); font-size: 0.72rem; }
+
 .mobile { display: none; }
 .jourBande { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0.7rem 0.7rem 0.4rem; }
 .jourBande button { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.45rem 0.1rem 0.4rem; border: 1px solid var(--trait); background: transparent; color: var(--texte); border-radius: calc(var(--r) * 0.6); font: inherit; cursor: pointer; }
