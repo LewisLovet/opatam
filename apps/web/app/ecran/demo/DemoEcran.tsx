@@ -63,7 +63,7 @@ function construire(opts: { theme: 'dark' | 'light'; themeId: string; nbMembres:
   rendezVous.sort((a, b) => a.debut.localeCompare(b.debut));
   return {
     ecran: { id: 'demo', label: 'TV de l’accueil', upcomingCount: opts.upcomingCount, showCounters: opts.showCounters, theme: opts.theme },
-    provider: { businessName: opts.nom, photoURL: null, themeId: opts.themeId },
+    provider: { businessName: opts.nom, photoURL: null, themeId: opts.themeId, slug: 'demo' },
     lieu: { id: 'l1', name: 'Salon du centre' },
     fuseau: 'Europe/Paris',
     jour: JOUR,

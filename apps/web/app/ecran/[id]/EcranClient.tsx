@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { EcranMembre, EcranPayload, EcranRendezVous } from '@/lib/ecran';
 import s from './ecran.module.css';
 
@@ -143,6 +144,10 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
           : <span className={s.logoLettres}>{initiales(provider.businessName)}</span>}
         <div><h1>{provider.businessName}</h1>{lieu.name && <p>{lieu.name}</p>}</div>
       </div>
+      <div className={s.opatam} aria-label="Opatam">
+        <Image src={ecran.theme === 'dark' ? '/logo-opatam-blanc.png' : '/logo-opatam.png'} alt="" width={30} height={30} />
+        <span>OPATAM</span>
+      </div>
       <div className={s.horloge}>
         <p className={s.date}>{dateLongue}</p>
         <p className={s.heure} aria-live="off">{heureNow}</p>
@@ -208,6 +213,14 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
           <div><b>{compteurs.total}</b><span>aujourd’hui</span></div>
           <div><b>{compteurs.enCours + compteurs.restants}</b><span>à venir</span></div>
           <div><b>{compteurs.termines}</b><span>terminés</span></div>
+        </section>}
+        {provider.slug && <section className={s.qr} aria-label="Réserver en ligne">
+          <div className={s.qrCode}><QRCodeSVG value={`https://opatam.com/p/${provider.slug}`} size={128} level="M" bgColor="#ffffff" fgColor="#0b1020" /></div>
+          <div>
+            <strong>Prenez rendez-vous</strong>
+            <span>Scannez pour réserver en ligne, 24 h/24.</span>
+            <small>opatam.com/p/{provider.slug}</small>
+          </div>
         </section>}
       </aside>}
     </main>

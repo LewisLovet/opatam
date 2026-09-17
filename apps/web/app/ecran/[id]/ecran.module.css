@@ -39,6 +39,8 @@
 .logoLettres { display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 800; font-size: 1.3em; }
 .marque h1 { margin: 0; font-size: 1.6em; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .marque p { margin: 0; color: var(--muet); font-size: 0.95em; }
+.opatam { display: flex; align-items: center; gap: 0.5rem; color: var(--muet); font-weight: 800; letter-spacing: 0.18em; font-size: 0.85em; }
+.opatam img { width: 1.7em; height: 1.7em; opacity: 0.85; }
 .horloge { text-align: right; }
 .date { margin: 0; color: var(--muet); text-transform: capitalize; font-size: 1em; }
 .heure { margin: 0; font-size: 2.6em; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
@@ -119,7 +121,7 @@
 .maintenant span { position: absolute; left: -0.2rem; top: -0.75em; transform: translateX(-100%); background: var(--accent); color: #fff; font-size: 0.75em; font-weight: 700; padding: 0.1em 0.45em; border-radius: 0.4em; font-variant-numeric: tabular-nums; }
 
 /* Panneau latéral */
-.panneau { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 1rem; padding: 1rem 1.25rem 1rem 0; min-height: 0; }
+.panneau { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: 0.8rem; padding: 1rem 1.25rem 1rem 0; min-height: 0; }
 .panneau > section { background: var(--carte); border-radius: 1rem; padding: 1rem 1.1rem; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .panneau h2 { margin: 0 0 0.7rem; font-size: 0.85em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muet); font-weight: 700; }
 .liste { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(var(--n, 6), minmax(0, 1fr)); gap: 0.45rem; }
@@ -154,6 +156,17 @@
 .compteurs b { font-size: 2em; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .compteurs div:first-child b { color: var(--accent); }
 .compteurs span { color: var(--muet); font-size: 0.72em; margin-top: 0.35em; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+
+/* QR code vers la page de réservation : fond blanc quel que soit le thème,
+   c'est ce que les téléphones lisent le mieux. */
+.qr { display: grid !important; grid-template-columns: auto 1fr; align-items: center; gap: 0.9rem; padding: 0.8rem !important; }
+.qrCode { background: #fff; border-radius: 0.7rem; padding: 0.4rem; display: grid; line-height: 0; }
+.qrCode svg { width: clamp(4.5rem, 7vw, 7rem); height: auto; }
+.qr div:last-child { display: flex; flex-direction: column; gap: 0.2em; min-width: 0; }
+.qr strong { font-size: 1.05em; font-weight: 800; letter-spacing: -0.01em; }
+.qr span { color: var(--muet); font-size: 0.85em; }
+.qr small { color: var(--accent); font-weight: 700; font-size: 0.8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.3em; }
+@media (max-width: 1100px) { .opatam { display: none; } }
 
 .vide { color: var(--muet); margin: 0.5rem 0; }
 .agenda > .vide { position: absolute; inset: 0; display: grid; place-items: center; }

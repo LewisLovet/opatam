@@ -58,7 +58,7 @@ export interface EcranIndispo {
 
 export interface EcranPayload {
   ecran: { id: string; label: string; upcomingCount: number; showCounters: boolean; theme: 'dark' | 'light' };
-  provider: { businessName: string; photoURL: string | null; themeId: string | null };
+  provider: { businessName: string; photoURL: string | null; themeId: string | null; /** Adresse publique de réservation (page publiée), sinon null. */ slug: string | null };
   lieu: { id: string; name: string };
   fuseau: string;
   /** « YYYY-MM-DD » du jour affiché, dans le fuseau. */
@@ -252,7 +252,7 @@ export async function chargerEcran(id: string, secret: string, maintenant = new 
 
   return {
     ecran: { id: ecran.id, label: ecran.label, upcomingCount: ecran.upcomingCount, showCounters: ecran.showCounters, theme: ecran.theme },
-    provider: { businessName: String(provider.businessName ?? ''), photoURL: typeof provider.photoURL === 'string' ? provider.photoURL : null, themeId: typeof provider.themeId === 'string' ? provider.themeId : null },
+    provider: { businessName: String(provider.businessName ?? ''), photoURL: typeof provider.photoURL === 'string' ? provider.photoURL : null, themeId: typeof provider.themeId === 'string' ? provider.themeId : null, slug: provider.isPublished && typeof provider.slug === 'string' ? provider.slug : null },
     lieu: { id: ecran.locationId, name: String(lieu?.name ?? '') },
     fuseau,
     jour,
