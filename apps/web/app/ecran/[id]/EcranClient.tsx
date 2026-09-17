@@ -158,7 +158,7 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
     </header>
 
     <main className={s.corps}>
-      <section className={s.agenda} aria-label="Agenda du jour">
+      <section className={s.agenda} aria-label="Agenda du jour" style={{ '--membres': Math.max(1, membres.length), '--heures': heures.length } as React.CSSProperties}>
         <div className={s.colonnesTitres} style={{ gridTemplateColumns: `var(--axe) repeat(${Math.max(1, membres.length)}, minmax(0, 1fr))` }}>
           <div />
           {/* La cellule mesure sa largeur ; la carte à l'intérieur s'y adapte
