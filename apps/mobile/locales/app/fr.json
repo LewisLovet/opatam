@@ -2542,6 +2542,7 @@
       "changePhoto": "Changer",
       "fromPrice": "à partir de {{price}}",
       "noService": "Sans prestation",
+      "fromRecentBooking": "Ou depuis un rendez-vous récent",
       "showPrice": "Afficher le prix",
       "bannerPosition": "Bandeau",
       "bannerTop": "En haut",

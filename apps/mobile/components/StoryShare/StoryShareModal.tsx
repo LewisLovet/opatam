@@ -43,6 +43,7 @@ try {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
+  bookingRepository,
   catalogService,
   memberService,
   schedulingService,
@@ -59,7 +60,7 @@ import {
   getServiceMinDuration,
 } from '@booking-app/shared';
 import { hasSeenStoryConsent, setStoryConsentSeen } from '../../utils/storage';
-import type { Service, Member } from '@booking-app/shared';
+import type { Booking, Service, Member } from '@booking-app/shared';
 import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt } from '@booking-app/shared';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
@@ -398,6 +399,24 @@ export function StoryShareModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, initialServiceId]);
   const depuisRendezVous = Boolean(initialServiceId);
+  // Les dix derniers rendez-vous honorés : un raccourci vers la prestation,
+  // comme le choix d'un avis pour la story d'avis.
+  const [rdvRecents, setRdvRecents] = useState<WithId<Booking>[]>([]);
+  const [rdvChoisiId, setRdvChoisiId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!visible || !provider) return;
+    let annule = false;
+    bookingRepository
+      .getByProvider(provider.id, { status: 'confirmed', endDate: new Date(), limit: 10 })
+      .then((liste) => { if (!annule) setRdvRecents(liste); })
+      .catch((err) => console.warn('[StoryShare] rendez-vous récents indisponibles :', err));
+    return () => { annule = true; };
+  }, [visible, provider]);
+  const choisirRdv = (b: WithId<Booking>) => {
+    const premier = b.items?.[0];
+    setRdvChoisiId(b.id);
+    setRealServiceId(premier?.serviceId ?? b.serviceId);
+  };
   const modesProposes = depuisRendezVous
     ? DISPLAY_MODES.filter((m) => m.key === 'realisation' || m.key === 'avantApres')
     : DISPLAY_MODES;
@@ -1880,6 +1899,41 @@ export function StoryShareModal({
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </Pressable>
+                {rdvRecents.length > 0 && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={[styles.rdvRecentsTitre, { color: colors.textSecondary }]}>
+                      {t('storyShare.realisation.fromRecentBooking')}
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rdvRecentsRow}>
+                      {rdvRecents.map((b) => {
+                        const actif = rdvChoisiId === b.id;
+                        const prestation = b.items?.[0]?.serviceName ?? b.serviceName;
+                        const prenom = (b.clientInfo?.name ?? '').trim().split(/\s+/)[0] ?? '';
+                        const quand = new Date(b.datetime).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+                        return (
+                          <Pressable
+                            key={b.id}
+                            onPress={() => choisirRdv(b)}
+                            style={[
+                              styles.rdvChip,
+                              {
+                                backgroundColor: actif ? colors.primary : colors.surface,
+                                borderColor: actif ? colors.primary : colors.border,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.rdvChipTitre, { color: actif ? '#fff' : colors.text }]} numberOfLines={1}>
+                              {prestation}
+                            </Text>
+                            <Text style={[styles.rdvChipSous, { color: actif ? 'rgba(255,255,255,0.85)' : colors.textSecondary }]} numberOfLines={1}>
+                              {prenom ? `${prenom} · ${quand}` : quand}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
                 {realService && (
                   <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.switchRow}>
@@ -2163,6 +2217,7 @@ export function StoryShareModal({
           currentServiceId={realServiceId}
           onApply={(sid) => {
             setRealServiceId(sid);
+            setRdvChoisiId(null);
             setRealPickerOpen(false);
           }}
         />
@@ -2755,6 +2810,11 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 4,
   },
+  rdvRecentsTitre: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  rdvRecentsRow: { gap: 8, paddingRight: 8 },
+  rdvChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: 190 },
+  rdvChipTitre: { fontSize: 13, fontWeight: '700' },
+  rdvChipSous: { fontSize: 11, marginTop: 2 },
   serviceCheckRow: {
     flexDirection: 'row',
     alignItems: 'center',

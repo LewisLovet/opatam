@@ -2542,6 +2542,7 @@
       "changePhoto": "Ändern",
       "fromPrice": "ab {{price}}",
       "noService": "Ohne Leistung",
+      "fromRecentBooking": "Oder aus einem der letzten Termine",
       "showPrice": "Preis anzeigen",
       "bannerPosition": "Banner",
       "bannerTop": "Oben",

@@ -2542,6 +2542,7 @@
       "changePhoto": "Change",
       "fromPrice": "from {{price}}",
       "noService": "No service",
+      "fromRecentBooking": "Or from a recent appointment",
       "showPrice": "Show the price",
       "bannerPosition": "Banner",
       "bannerTop": "Top",
