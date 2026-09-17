@@ -82,3 +82,45 @@
 @media (min-width: 1180px) {
   .optionsCote { left: auto; right: 1rem; transform: none; width: 22rem; }
 }
+
+/* ---- Vue téléphone : un jour à la fois ---- */
+.mobile { display: none; }
+.jourBande { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0.7rem 0.7rem 0.4rem; }
+.jourBande button { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; padding: 0.45rem 0.1rem 0.4rem; border: 1px solid var(--trait); background: transparent; color: var(--texte); border-radius: calc(var(--r) * 0.6); font: inherit; cursor: pointer; }
+.jourBande button span { font-size: 0.68rem; color: var(--muet); }
+.jourBande button strong { font-size: 1.05rem; line-height: 1.1; }
+.jourBande button i { display: block; width: 70%; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--p) 18%, var(--fond)); overflow: hidden; margin-top: 0.15rem; }
+.jourBande button i b { display: block; height: 100%; background: var(--p); }
+.jourBande button em { font-style: normal; font-size: 0.6rem; color: var(--muet); margin-top: 0.15rem; }
+.jourBande button[aria-selected='true'] { border-color: var(--p); box-shadow: inset 0 0 0 1px var(--p); }
+.jourBande button[aria-selected='true'] strong { color: var(--p); }
+.jourBande button[data-aujourdhui='true'] strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--p); }
+.jourBande button[data-ferme='true'] { opacity: 0.5; }
+.mobileJour { padding: 0.2rem 0.8rem 0.6rem; }
+.mobileTitre { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; margin: 0.4rem 0 0.6rem; }
+.mobileTitre strong { font-size: 1rem; }
+.mobileTitre span { color: var(--muet); font-size: 0.78rem; text-align: right; }
+.mobileGroupe h4 { margin: 0.6rem 0 0.35rem; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muet); font-weight: 700; }
+.mobileLigne { display: grid; grid-template-columns: 3.4rem 1fr auto; align-items: center; gap: 0.6rem; width: 100%; margin: 0 0 0.35rem; padding: 0.7rem 0.8rem; border: 0; border-radius: calc(var(--r) * 0.6); font: inherit; text-align: left; color: var(--texte); background: var(--case); position: relative; }
+.mobileLigne time { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 1rem; }
+.mobileLigne span { font-size: 0.9rem; }
+.mobileLigne svg { color: var(--p); }
+.mobileLigne[data-etat='libre'] { background: color-mix(in srgb, var(--p) 12%, var(--fond)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 35%, transparent); cursor: pointer; }
+.mobileLigne[data-etat='libre'] span { color: var(--p); font-weight: 700; }
+.mobileLigne[data-etat='partiel'] { background: color-mix(in srgb, var(--p) 12%, var(--fond)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 35%, transparent); cursor: pointer; }
+.mobileLigne[data-etat='partiel'] span { font-weight: 600; }
+.mobileLigne[data-etat='complet'] { color: var(--muet); background: repeating-linear-gradient(135deg, var(--case) 0 6px, color-mix(in srgb, var(--muet) 18%, var(--case)) 6px 7px); }
+.mobileLigne[data-etat='complet'][style] { background: var(--case); color: var(--texte); }
+.mobileLigne[data-etat='complet'][style]::before { content: ''; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 4px; border-radius: 2px; background: var(--cat); }
+.mobileLigne[data-etat='passe'] { color: var(--muet); opacity: 0.6; }
+.mobilePasse { margin: 0 0 0.3rem; color: var(--muet); font-size: 0.78rem; }
+.mobileVide { padding: 1.2rem 1rem 1.4rem; color: var(--muet); text-align: center; margin: 0; }
+
+@media (max-width: 640px) {
+  .bureau { display: none; }
+  .mobile { display: block; }
+  .barre { padding: 0.8rem 0.8rem; }
+  .nav > span { order: -1; width: 100%; margin: 0 0 0.1rem; }
+  .voile { position: fixed; z-index: 60; }
+  .legende { padding: 0.4rem 0.8rem 0; }
+}
