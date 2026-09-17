@@ -352,7 +352,8 @@
      débordait de l'écran — la capture sortait par la droite. */
   .demo { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
   .demoIntro, .demoSteps, .demo > figure { grid-column: 1; grid-row: auto; min-width: 0; }
-  .demoIntro { order: 1; padding: 32px 32px 0; }
+  /* 26 px en bas : un peu d'air entre les deux boutons de choix et la scène bleue. */
+  .demoIntro { order: 1; padding: 32px 32px 26px; }
   .demo > figure { order: 2; }
   .demoSteps { order: 3; padding: 0 32px 32px; }
   .demoSteps .screenDescription { min-height: 0; }
