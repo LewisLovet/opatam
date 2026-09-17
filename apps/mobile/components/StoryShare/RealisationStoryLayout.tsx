@@ -270,8 +270,8 @@ export function RealisationStoryLayout({
         {realisation.bannerPosition === 'bottom' ? bandeau : null}
 
         {/* Pied : le salon, puis l'adresse de sa page — en texte, rien n'est
-            cliquable. En avant / après empilé, le pied tombe au milieu de la
-            photo du bas : version compacte, sur une ligne. */}
+            cliquable. En avant / après empilé, il se pose sur la photo du
+            bas : version compacte, pour lui voler le moins de place possible. */}
         {empile ? (
           <View style={s.footerCompact}>
             <View style={s.footerSalon}>
@@ -333,13 +333,14 @@ const s = StyleSheet.create({
   scrimBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 300 },
   scrimBottomCompact: { height: 170 },
 
-  // Zones sûres Instagram : 64 en haut (barre + nom), 88 en bas (réponse).
+  // Zone sûre Instagram en haut seulement (barre de progression + nom).
+  // En bas, Instagram affiche l'image entière au-dessus de sa barre de
+  // réponse : un pied à 88 flottait au tiers de la photo pour rien. Il est
+  // désormais au ras du bord bas, avec une marge de respiration.
   content: {
     ...StyleSheet.absoluteFillObject,
-    // Sous la barre de progression Instagram, mais sans manger la photo :
-    // l'en-tête est petit et collé en haut à gauche.
     paddingTop: 46,
-    paddingBottom: 88,
+    paddingBottom: 26,
     paddingHorizontal: 22,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -407,15 +408,12 @@ const s = StyleSheet.create({
   avatarInitial: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   footerName: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', flexShrink: 1 },
   // Même mise en forme que le pied des stories de disponibilités : 13 px,
-  // gras, une seule couleur. Le `marginBottom` négatif la fait descendre au
-  // ras du bord bas, en mordant un peu sur la zone de réponse Instagram —
-  // assumé pour cette seule ligne, le nom du salon restant au-dessus.
+  // gras, une seule couleur.
   footerBrand: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
-    marginTop: 14,
-    marginBottom: -16,
+    marginTop: 8,
   },
   footerCompact: { alignItems: 'center', gap: 6 },
   avatarSmall: {
@@ -431,5 +429,5 @@ const s = StyleSheet.create({
   },
   avatarInitialSmall: { color: '#FFFFFF', fontSize: 9, fontWeight: '800' },
   footerNameSmall: { color: '#FFFFFF', fontSize: 10.5, fontWeight: '700', flexShrink: 1 },
-  footerBrandSmall: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', marginBottom: -12 },
+  footerBrandSmall: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
 });
