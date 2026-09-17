@@ -127,12 +127,10 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
     const total = rendezVous.length;
     const termines = memeJour ? rendezVous.filter((r) => minutes(r.finLocal) <= minNow).length : 0;
     const enCours = memeJour ? rendezVous.filter((r) => minutes(r.debutLocal) <= minNow && minutes(r.finLocal) > minNow).length : 0;
-    let ouvert = 0, occupe = 0;
-    for (const m of membres) for (const h of m.horaires) ouvert += Math.max(0, minutes(h.end) - minutes(h.start));
-    for (const r of rendezVous) occupe += Math.max(0, minutes(r.finLocal) - minutes(r.debutLocal));
-    const remplissage = ouvert > 0 ? Math.min(100, Math.round((occupe / ouvert) * 100)) : null;
-    return { total, termines, enCours, restants: total - termines - enCours, remplissage };
-  }, [rendezVous, membres, minNow, memeJour]);
+    // Pas de taux de remplissage : l'écran est visible du public, et le
+    // client ne veut pas donner cette information.
+    return { total, termines, enCours, restants: total - termines - enCours };
+  }, [rendezVous, minNow, memeJour]);
 
   const dateLongue = new Intl.DateTimeFormat('fr-FR', { timeZone: fuseau, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${donnees.jour}T12:00:00Z`));
   const avecPanneau = ecran.upcomingCount > 0 || ecran.showCounters;
@@ -155,11 +153,13 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
       <section className={s.agenda} aria-label="Agenda du jour">
         <div className={s.colonnesTitres} style={{ gridTemplateColumns: `var(--axe) repeat(${Math.max(1, membres.length)}, minmax(0, 1fr))` }}>
           <div />
-          {membres.map((m, i) => <div key={m.id} className={s.membreTitre} style={{ '--c': couleurMembre(m, i) } as React.CSSProperties}>
+          {/* La cellule mesure sa largeur ; la carte à l'intérieur s'y adapte
+              (une règle @container ne peut pas styler son propre conteneur). */}
+          {membres.map((m, i) => <div key={m.id} className={s.membreCellule}><div className={s.membreTitre} style={{ '--c': couleurMembre(m, i) } as React.CSSProperties}>
             {m.photoURL ? <Image src={m.photoURL} alt="" width={40} height={40} unoptimized /> : <span>{initiales(m.name)}</span>}
             <strong>{m.name}</strong>
             <small>{m.horaires.length ? m.horaires.map((h) => `${h.start}–${h.end}`).join(' · ') : 'Fermé'}</small>
-          </div>)}
+          </div></div>)}
         </div>
         <div className={s.grille} style={{ gridTemplateColumns: `var(--axe) repeat(${Math.max(1, membres.length)}, minmax(0, 1fr))` }}>
           <div className={s.axe}>{heures.map((h) => <span key={h} style={{ top: pct(h) }}>{hhmm(h)}</span>)}</div>
@@ -180,9 +180,7 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
                 const enCours = memeJour && d <= minNow && f > minNow;
                 const passe = memeJour && f <= minNow;
                 return <article key={r.id} className={s.rdv} data-encours={enCours} data-passe={passe} data-attente={r.statut === 'pending'} style={{ top: pct(d), height: `calc(${pct(f)} - ${pct(d)})`, '--c': r.color || couleurs.get(m.id) } as React.CSSProperties}>
-                  <time>{r.debutLocal}</time>
-                  <strong>{r.client}</strong>
-                  <span>{r.service}</span>
+                  <div><time>{r.debutLocal}</time><strong>{r.client}</strong><span>{r.service}</span></div>
                 </article>;
               })}
             </div>;
@@ -196,7 +194,7 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
         {ecran.upcomingCount > 0 && <section aria-label="Prochains rendez-vous">
           <h2>{compteurs.enCours ? 'En cours et à venir' : 'Prochains rendez-vous'}</h2>
           {aVenir.length
-            ? <ol className={s.liste}>{aVenir.map((r) => {
+            ? <ol className={s.liste} style={{ '--n': aVenir.length } as React.CSSProperties}>{aVenir.map((r) => {
               const enCours = memeJour && minutes(r.debutLocal) <= minNow && minutes(r.finLocal) > minNow;
               return <li key={r.id} data-encours={enCours} style={{ '--c': couleurs.get(r.memberId ?? '') ?? PALETTE[0] } as React.CSSProperties}>
                 <time>{r.debutLocal}<small>{r.finLocal}</small></time>
@@ -207,10 +205,9 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
             : <p className={s.vide}>{rendezVous.length ? 'La journée est terminée.' : 'Aucun rendez-vous aujourd’hui.'}</p>}
         </section>}
         {ecran.showCounters && <section className={s.compteurs} aria-label="Chiffres du jour">
-          <div><b>{compteurs.total}</b><span>rendez-vous</span></div>
-          <div><b>{compteurs.restants}</b><span>à venir</span></div>
+          <div><b>{compteurs.total}</b><span>aujourd’hui</span></div>
+          <div><b>{compteurs.enCours + compteurs.restants}</b><span>à venir</span></div>
           <div><b>{compteurs.termines}</b><span>terminés</span></div>
-          <div><b>{compteurs.remplissage === null ? '–' : `${compteurs.remplissage} %`}</b><span>remplissage</span></div>
         </section>}
       </aside>}
     </main>
