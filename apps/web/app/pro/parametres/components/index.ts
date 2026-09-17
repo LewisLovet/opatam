@@ -6,3 +6,4 @@ export { ShareSection } from './ShareSection';
 export { WidgetSection } from './WidgetSection';
 export { PaymentsSection } from './PaymentsSection';
 export { SubscriptionSuccessModal } from './SubscriptionSuccessModal';
+export { EcranSection } from './EcranSection';

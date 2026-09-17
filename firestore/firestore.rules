@@ -161,6 +161,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Écrans du salon (lien de lecture seule pour une TV/tablette) : créés,
+    // lus et révoqués par les routes /api/pro/ecrans et /api/ecran (Admin
+    // SDK). Le secret ne doit jamais être lisible par le SDK client.
+    match /salonScreens/{screenId} {
+      allow read, write: if false;
+    }
+
     // === STORIES ===
     //
     // Un événement par story effectivement partagée. Sert deux choses : le

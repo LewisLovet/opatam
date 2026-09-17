@@ -158,7 +158,7 @@ export function MetaPixel() {
     if (!META_PIXEL_ID) return;
     // Jamais dans le widget embarqué sur un site tiers : cookies tiers
     // bloqués ou cloisonnés par les navigateurs, et pas de bannière là-bas.
-    if (pathname.endsWith('/embed')) return;
+    if (pathname.endsWith('/embed') || pathname.startsWith('/ecran/')) return;
     if (status === 'denied') {
       setPixelConsent(false);
       return;

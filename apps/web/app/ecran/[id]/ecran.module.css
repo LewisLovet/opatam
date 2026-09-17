@@ -1,0 +1,111 @@
+/* Écran du salon — plein écran, lisible à trois mètres, sans défilement.
+   L'accent vient du thème du prestataire (--color-primary-*, canaux RGB). */
+
+.ecran {
+  --fond: #0b1020;
+  --carte: #151c31;
+  --carte2: #1c2440;
+  --trait: rgba(255, 255, 255, 0.08);
+  --texte: #f5f7ff;
+  --muet: rgba(245, 247, 255, 0.55);
+  --accent: rgb(var(--color-primary-400));
+  --axe: 4.5rem;
+  --entete: 6.25rem;
+  --pied: 2.25rem;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--entete) minmax(0, 1fr) var(--pied);
+  background: var(--fond);
+  color: var(--texte);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: clamp(14px, 1.15vw, 22px);
+  overflow: hidden;
+}
+.ecran[data-theme='light'] {
+  --fond: #f3f5fb;
+  --carte: #ffffff;
+  --carte2: #eef1f8;
+  --trait: rgba(15, 23, 42, 0.1);
+  --texte: #0f172a;
+  --muet: rgba(15, 23, 42, 0.55);
+  --accent: rgb(var(--color-primary-600));
+}
+
+/* En-tête */
+.entete { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; border-bottom: 1px solid var(--trait); }
+.marque { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.logo, .logoLettres { width: 3.5rem; height: 3.5rem; border-radius: 1rem; object-fit: cover; flex: none; }
+.logoLettres { display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 800; font-size: 1.3em; }
+.marque h1 { margin: 0; font-size: 1.6em; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.marque p { margin: 0; color: var(--muet); font-size: 0.95em; }
+.horloge { text-align: right; }
+.date { margin: 0; color: var(--muet); text-transform: capitalize; font-size: 1em; }
+.heure { margin: 0; font-size: 2.6em; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+
+/* Corps */
+.corps { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+.ecran[data-panneau='true'] .corps { grid-template-columns: minmax(0, 1fr) clamp(18rem, 26vw, 30rem); }
+
+.agenda { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; padding: 1rem 1.25rem 1rem 1rem; position: relative; }
+.colonnesTitres { display: grid; gap: 0.6rem; padding-bottom: 0.6rem; }
+.membreTitre { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.6rem; align-items: center; background: var(--carte); border-radius: 0.9rem; padding: 0.55rem 0.8rem; border-left: 5px solid var(--c); min-width: 0; }
+.membreTitre img, .membreTitre > span { grid-row: 1 / 3; width: 2.4rem; height: 2.4rem; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--c); color: #fff; font-weight: 700; font-size: 0.9em; }
+.membreTitre strong { font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.membreTitre small { color: var(--muet); font-size: 0.8em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.grille { display: grid; gap: 0.6rem; position: relative; min-height: 0; }
+.axe { position: relative; }
+.axe span { position: absolute; right: 0.6rem; transform: translateY(-50%); color: var(--muet); font-size: 0.85em; font-variant-numeric: tabular-nums; }
+.colonne { position: relative; background: var(--carte); border-radius: 0.9rem; overflow: hidden; }
+.ligneHeure { position: absolute; left: 0; right: 0; border-top: 1px solid var(--trait); }
+.ferme { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, transparent 0 8px, var(--trait) 8px 9px); }
+.indispo { position: absolute; left: 4px; right: 4px; border-radius: 0.5rem; background: var(--carte2); border: 1px dashed var(--trait); display: grid; place-items: center; color: var(--muet); font-size: 0.85em; overflow: hidden; }
+
+.rdv {
+  position: absolute; left: 4px; right: 4px;
+  border-radius: 0.55rem; padding: 0.3rem 0.55rem;
+  background: color-mix(in srgb, var(--c) 22%, var(--carte));
+  border-left: 5px solid var(--c);
+  display: flex; flex-direction: column; gap: 0; overflow: hidden; line-height: 1.2;
+}
+.rdv time { font-size: 0.78em; color: var(--muet); font-variant-numeric: tabular-nums; }
+.rdv strong { font-size: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdv span { font-size: 0.82em; color: var(--muet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdv[data-encours='true'] { background: color-mix(in srgb, var(--c) 45%, var(--carte)); box-shadow: 0 0 0 2px var(--c); }
+.rdv[data-passe='true'] { opacity: 0.45; }
+.rdv[data-attente='true'] { border-left-style: dashed; }
+
+.maintenant { position: absolute; left: calc(var(--axe) + 0.6rem); right: 0; height: 0; border-top: 2px solid var(--accent); z-index: 2; pointer-events: none; }
+.maintenant span { position: absolute; left: -0.2rem; top: -0.75em; transform: translateX(-100%); background: var(--accent); color: #fff; font-size: 0.75em; font-weight: 700; padding: 0.1em 0.45em; border-radius: 0.4em; font-variant-numeric: tabular-nums; }
+
+/* Panneau latéral */
+.panneau { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 1rem; padding: 1rem 1.25rem 1rem 0; min-height: 0; }
+.panneau > section { background: var(--carte); border-radius: 1rem; padding: 1rem 1.1rem; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.panneau h2 { margin: 0 0 0.7rem; font-size: 0.85em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muet); font-weight: 700; }
+.liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; overflow: hidden; }
+.liste li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.8rem; padding: 0.55rem 0.7rem; border-radius: 0.7rem; background: var(--carte2); border-left: 5px solid var(--c); }
+.liste time { display: flex; flex-direction: column; font-weight: 800; font-size: 1.15em; line-height: 1; font-variant-numeric: tabular-nums; }
+.liste time small { font-weight: 500; font-size: 0.65em; color: var(--muet); margin-top: 0.2em; }
+.liste li > div { min-width: 0; display: flex; flex-direction: column; }
+.liste strong { font-size: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.liste span { font-size: 0.85em; color: var(--muet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.liste em { font-style: normal; font-size: 0.75em; color: var(--c); font-weight: 600; }
+.liste b { font-size: 0.7em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #fff; background: var(--c); padding: 0.25em 0.55em; border-radius: 0.4em; }
+.liste li[data-encours='true'] { box-shadow: 0 0 0 2px var(--c); }
+
+.compteurs { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+.compteurs div { background: var(--carte2); border-radius: 0.7rem; padding: 0.6rem 0.8rem; display: flex; flex-direction: column; }
+.compteurs b { font-size: 1.9em; font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.compteurs span { color: var(--muet); font-size: 0.8em; margin-top: 0.25em; }
+
+.vide { color: var(--muet); margin: 0.5rem 0; }
+.agenda > .vide { position: absolute; inset: 0; display: grid; place-items: center; }
+
+.pied { display: flex; justify-content: space-between; align-items: center; padding: 0 2rem; border-top: 1px solid var(--trait); color: var(--muet); font-size: 0.8em; }
+
+/* Tablette en portrait : le panneau passe dessous. */
+@media (max-aspect-ratio: 4/5) {
+  .ecran[data-panneau='true'] .corps { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
+  .panneau { padding: 0 1.25rem 1rem 1rem; }
+}

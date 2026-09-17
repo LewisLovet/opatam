@@ -1343,6 +1343,34 @@ export interface BlockedSlot {
 //   confirmed       → fully confirmed
 //   cancelled       → cancelled by client or pro
 //   noshow          → marked as no-show after the appointment
+/**
+ * Écran du salon — un lien de lecture seule, affiché en grand sur une TV
+ * ou une tablette dans le lieu : l'agenda du jour par membre et les
+ * prochains rendez-vous. Stocké dans la collection racine `salonScreens`,
+ * écrite et lue par l'Admin SDK uniquement (aucune règle client).
+ *
+ * Le secret est stocké tel quel, comme le jeton du flux d'agenda : le pro
+ * doit pouvoir réafficher le lien et son QR code. Révoquer = supprimer.
+ */
+export interface SalonScreen {
+  providerId: string;
+  /** Libellé choisi par le pro (« TV accueil », « Tablette comptoir »). */
+  label: string;
+  /** Un écran par lieu : les membres et les rendez-vous de CE lieu. */
+  locationId: string;
+  /** Membres affichés ; null = tous les membres actifs du lieu. */
+  memberIds: string[] | null;
+  /** Nombre de prochains rendez-vous dans le panneau latéral (4 à 10). */
+  upcomingCount: number;
+  /** Compteurs du jour (rendez-vous, restants, remplissage). */
+  showCounters: boolean;
+  theme: 'dark' | 'light';
+  /** Secret aléatoire de l'URL (`?k=`). */
+  secret: string;
+  createdAt: Date;
+  lastAccessAt: Date | null;
+}
+
 export type BookingStatus =
   | 'pending_payment'
   | 'pending'

@@ -9,6 +9,7 @@ import {
   Settings,
   Bell,
   Code,
+  Monitor,
 } from 'lucide-react';
 import {
   ReservationSettingsForm,
@@ -16,6 +17,7 @@ import {
   AccountForm,
   ShareSection,
   WidgetSection,
+  EcranSection,
 } from './components';
 
 // Note: Abonnement and Paiements were extracted into their own
@@ -55,6 +57,12 @@ const tabs = [
     label: 'Widget',
     description: 'Intégrer sur votre site',
     icon: Code,
+  },
+  {
+    id: 'ecran',
+    label: 'Écran du salon',
+    description: 'Le planning du jour sur une TV ou une tablette',
+    icon: Monitor,
   },
 ];
 
@@ -191,6 +199,7 @@ export default function SettingsPage() {
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'partage' && <ShareSection />}
             {activeTab === 'widget' && <WidgetSection />}
+          {activeTab === 'ecran' && <EcranSection />}
           </div>
         </div>
       </div>
