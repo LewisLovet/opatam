@@ -1,0 +1,84 @@
+/* Démonstration du widget de remplissage : un faux site de salon autour,
+   et le widget lui-même (variables --p couleur principale, --r arrondi). */
+
+.site { min-height: 100dvh; background: #f7f7f5; color: #1f2937; font-family: var(--font-inter), system-ui, sans-serif; padding-bottom: 6rem; }
+.siteEntete { max-width: 960px; margin: 0 auto; padding: 1.2rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+.siteEntete strong { font-size: 1.15rem; letter-spacing: -0.01em; }
+.siteEntete nav { display: flex; gap: 1.2rem; color: #6b7280; font-size: 0.9rem; }
+.siteHero { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 1.5rem; }
+.siteHero h1 { margin: 0 0 0.4rem; font-size: clamp(1.6rem, 3.6vw, 2.4rem); letter-spacing: -0.02em; }
+.siteHero p { margin: 0; color: #6b7280; max-width: 34rem; }
+.siteSuite { max-width: 960px; margin: 0 auto; padding: 2.5rem 1rem; color: #6b7280; }
+.siteSuite h2 { color: #1f2937; margin: 0 0 0.4rem; font-size: 1.25rem; }
+@media (max-width: 640px) { .siteEntete nav { display: none; } }
+
+/* ---- Le widget ---- */
+.widget {
+  --fond: #ffffff; --texte: #111827; --muet: #6b7280; --trait: #e5e7eb; --case: #f3f4f6; --passe: #f9fafb;
+  position: relative; max-width: 960px; margin: 0 auto; background: var(--fond); color: var(--texte);
+  border: 1px solid var(--trait); border-radius: var(--r); box-shadow: 0 10px 40px rgba(17, 24, 39, 0.08); overflow: hidden;
+  font-size: 14px;
+}
+.site[data-theme='dark'] .widget { --fond: #111827; --texte: #f9fafb; --muet: #9ca3af; --trait: #1f2937; --case: #1f2937; --passe: #151d2e; }
+
+.barre { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--trait); flex-wrap: wrap; }
+.titre { display: flex; align-items: center; gap: 0.6rem; color: var(--p); }
+.titre div { display: flex; flex-direction: column; line-height: 1.15; }
+.titre strong { color: var(--texte); font-size: 1rem; }
+.titre span { color: var(--muet); font-size: 0.8rem; }
+.nav { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.nav > button { border: 1px solid var(--trait); background: transparent; color: var(--texte); border-radius: calc(var(--r) * 0.6); padding: 0.35rem 0.7rem; font: inherit; font-size: 0.85rem; cursor: pointer; }
+.nav > button[aria-pressed='true'] { background: var(--p); border-color: var(--p); color: #fff; }
+.nav > span { color: var(--muet); font-size: 0.85rem; margin: 0 0.3rem; }
+.fleche { width: 2rem; height: 2rem; padding: 0 !important; display: grid; place-items: center; }
+.fleche:disabled { opacity: 0.35; cursor: default; }
+
+.defilement { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.grille { display: grid; gap: 3px; padding: 0.7rem 0.8rem 0.4rem; min-width: 640px; align-items: stretch; }
+.jour { display: flex; flex-direction: column; align-items: center; padding: 0.3rem 0; color: var(--muet); font-size: 0.78rem; }
+.jour strong { color: var(--texte); font-size: 1.05rem; }
+.jour[data-aujourdhui='true'] strong { background: var(--p); color: #fff; width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center; }
+.jour[data-ferme='true'] { opacity: 0.45; }
+.heure { color: var(--muet); font-size: 0.72rem; font-variant-numeric: tabular-nums; align-self: start; transform: translateY(-0.5em); position: sticky; left: 0; background: var(--fond); z-index: 1; padding-right: 0.3rem; }
+
+.cellule {
+  height: 1.55rem; border: 0; border-radius: calc(var(--r) * 0.35); padding: 0; font: inherit; font-size: 0.7rem; font-weight: 700;
+  background: var(--case); color: var(--texte); cursor: default; position: relative;
+}
+.cellule[data-etat='ferme'] { background: transparent; }
+.cellule[data-etat='passe'] { background: var(--passe); }
+.cellule[data-etat='libre'] { background: color-mix(in srgb, var(--p) 14%, var(--fond)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 35%, transparent); cursor: pointer; }
+.cellule[data-etat='partiel'] { background: color-mix(in srgb, var(--p) 45%, var(--fond)); color: #fff; cursor: pointer; }
+.cellule[data-etat='complet'] { background: repeating-linear-gradient(135deg, var(--case) 0 5px, color-mix(in srgb, var(--muet) 25%, var(--case)) 5px 6px); }
+.cellule[data-etat='complet'][style] { background: var(--cat); opacity: 0.9; }
+.cellule[data-etat='libre']:hover, .cellule[data-etat='partiel']:hover { filter: brightness(0.92); box-shadow: inset 0 0 0 2px var(--p); }
+.cellule[data-aujourdhui='true'][data-etat='libre'] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 60%, transparent); }
+.site[data-theme='dark'] .cellule[data-etat='complet'] { background: repeating-linear-gradient(135deg, var(--case) 0 5px, #374151 5px 6px); }
+.site[data-theme='dark'] .cellule[data-etat='complet'][style] { background: var(--cat); }
+
+.legende { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; padding: 0.5rem 1rem 0.2rem; color: var(--muet); font-size: 0.78rem; }
+.legende span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.legende i { width: 0.95rem; height: 0.95rem; border-radius: 0.25rem; background: var(--case); display: inline-block; }
+.legende i[data-etat='libre'] { background: color-mix(in srgb, var(--p) 14%, var(--fond)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 35%, transparent); }
+.legende i[data-etat='partiel'] { background: color-mix(in srgb, var(--p) 45%, var(--fond)); }
+.legende i[data-etat='complet'] { background: repeating-linear-gradient(135deg, var(--case) 0 4px, color-mix(in srgb, var(--muet) 25%, var(--case)) 4px 5px); }
+.legende i[data-etat='passe'] { background: var(--passe); box-shadow: inset 0 0 0 1px var(--trait); }
+.pied { display: flex; justify-content: space-between; gap: 1rem; padding: 0.6rem 1rem 0.8rem; color: var(--muet); font-size: 0.75rem; flex-wrap: wrap; }
+.pied b { color: var(--p); }
+
+/* La « modale » de réservation, simulée dans le cadre du widget. */
+.voile { position: absolute; inset: 0; background: rgba(17, 24, 39, 0.45); display: grid; place-items: center; padding: 1rem; backdrop-filter: blur(2px); }
+.modale { position: relative; background: var(--fond); color: var(--texte); border-radius: var(--r); padding: 1.4rem 1.4rem 1.1rem; width: min(100%, 26rem); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); }
+.fermer { position: absolute; top: 0.7rem; right: 0.7rem; border: 0; background: var(--case); color: var(--texte); width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+.modaleSur { margin: 0; color: var(--p); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.modale h3 { margin: 0.2rem 0 0.8rem; font-size: 1.15rem; }
+.modale p { margin: 0 0 0.5rem; color: var(--muet); font-size: 0.9rem; }
+.prestations { display: grid; gap: 0.4rem; }
+.prestations button { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--trait); background: transparent; color: var(--texte); border-radius: calc(var(--r) * 0.6); padding: 0.6rem 0.8rem; font: inherit; cursor: pointer; }
+.prestations button:hover { border-color: var(--p); color: var(--p); }
+.modale small { display: block; margin-top: 0.9rem; color: var(--muet); font-size: 0.75rem; line-height: 1.4; }
+
+/* Sur grand écran, le panneau d'options se range à droite, hors de la grille. */
+@media (min-width: 1180px) {
+  .optionsCote { left: auto; right: 1rem; transform: none; width: 22rem; }
+}
