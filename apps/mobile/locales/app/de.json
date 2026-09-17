@@ -1274,6 +1274,7 @@
       "decline": "Ablehnen",
       "reviewReceived": "Bewertung erhalten",
       "requestReview": "Bewertung anfragen",
+      "createStory": "Story erstellen",
       "reviewRequestSentLabel": "Bewertungsanfrage gesendet"
     },
     "activity": {
@@ -2516,6 +2517,7 @@
     },
     "chooser": {
       "title": "Was möchten Sie posten?",
+      "fromBooking": "Für die Leistung „{{service}}“: Wählen Sie das Format Ihrer Story.",
       "loyaltyOff": "Treueprogramm nicht eingerichtet",
       "why": {
         "services": "Ihre Leistungen und Preise auf einen Blick — damit man sieht, was Sie anbieten.",

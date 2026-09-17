@@ -33,7 +33,14 @@ import type {
 } from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { NativeModuleBoundary } from '../../../components/StoryShare/NativeModuleBoundary';
+
+// Chargée à la demande : la modale de story tire des modules natifs lourds
+// (capture, partage) inutiles tant qu'on ne crée pas de story.
+const LazyStoryShareModal = lazy(() =>
+  import('../../../components/StoryShare/StoryShareModal').then((m) => ({ default: m.StoryShareModal }))
+);
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -572,6 +579,15 @@ export default function ProBookingsScreen() {
   );
 
   const [reviewRequestLoadingId, setReviewRequestLoadingId] = useState<string | null>(null);
+  // Story créée depuis un rendez-vous passé : la prestation vient du rendez-vous.
+  const [storyDepuisRdv, setStoryDepuisRdv] = useState<{ serviceId: string; serviceName: string } | null>(null);
+  const ouvrirStoryDepuisRdv = useCallback((booking: WithId<Booking>) => {
+    const premier = booking.items?.[0];
+    setStoryDepuisRdv({
+      serviceId: premier?.serviceId ?? booking.serviceId,
+      serviceName: premier?.serviceName ?? booking.serviceName,
+    });
+  }, []);
 
   const handleReviewRequest = useCallback(
     async (bookingId: string) => {
@@ -895,6 +911,38 @@ export default function ProBookingsScreen() {
             </Pressable>
           )}
 
+          {/* Story photo depuis le rendez-vous : la prestation est déjà choisie,
+              reste la photo (client, 2026-09-17). */}
+          {isPastConfirmed && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                ouvrirStoryDepuisRdv(booking);
+              }}
+              style={({ pressed }) => [
+                styles.quickActionsRow,
+                {
+                  borderTopWidth: 1,
+                  borderTopColor: colors.divider,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  justifyContent: 'center',
+                  backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                },
+              ]}
+            >
+              <Ionicons
+                name="images-outline"
+                size={16}
+                color={colors.primary}
+                style={{ marginRight: spacing.xs }}
+              />
+              <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                {t('proBookings.card.createStory')}
+              </Text>
+            </Pressable>
+          )}
+
           {/* Review request already sent indicator (only if no review yet) */}
           {isPastConfirmed && !clientAlreadyReviewed && !!booking.reviewRequestSentAt && (
             <View
@@ -923,7 +971,7 @@ export default function ProBookingsScreen() {
         </Pressable>
       );
     },
-    [colors, spacing, radius, shadows, navigateToBooking, handleConfirm, handleCancel, handleReviewRequest, reviewRequestLoadingId, hasClientReviewed],
+    [colors, spacing, radius, shadows, navigateToBooking, handleConfirm, handleCancel, handleReviewRequest, reviewRequestLoadingId, hasClientReviewed, ouvrirStoryDepuisRdv, t],
   );
 
   /**
@@ -1545,6 +1593,19 @@ export default function ProBookingsScreen() {
         }
         contentContainerStyle={styles.listContent}
       />
+
+      {/* Story depuis un rendez-vous passé : prestation préremplie, choix
+          limité aux stories photo. Même garde que sur l'accueil pro. */}
+      <NativeModuleBoundary resetKey={storyDepuisRdv}>
+        <Suspense fallback={null}>
+          <LazyStoryShareModal
+            visible={storyDepuisRdv !== null}
+            initialServiceId={storyDepuisRdv?.serviceId ?? null}
+            initialServiceName={storyDepuisRdv?.serviceName ?? null}
+            onClose={() => setStoryDepuisRdv(null)}
+          />
+        </Suspense>
+      </NativeModuleBoundary>
     </View>
   );
 }

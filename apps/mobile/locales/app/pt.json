@@ -1274,6 +1274,7 @@
       "decline": "Recusar",
       "reviewReceived": "Avaliação recebida",
       "requestReview": "Pedir uma avaliação",
+      "createStory": "Criar uma story",
       "reviewRequestSentLabel": "Pedido de avaliação enviado"
     },
     "activity": {
@@ -2516,6 +2517,7 @@
     },
     "chooser": {
       "title": "O que quer publicar?",
+      "fromBooking": "Para o serviço “{{service}}”: escolha o formato da sua story.",
       "loyaltyOff": "Programa de fidelidade não configurado",
       "why": {
         "services": "Os seus serviços e preços num relance — para dar a conhecer o que propõe.",

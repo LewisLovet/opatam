@@ -1274,6 +1274,7 @@
       "decline": "Rifiuta",
       "reviewReceived": "Recensione ricevuta",
       "requestReview": "Chiedi una recensione",
+      "createStory": "Crea una storia",
       "reviewRequestSentLabel": "Richiesta di recensione inviata"
     },
     "activity": {
@@ -2516,6 +2517,7 @@
     },
     "chooser": {
       "title": "Cosa vuoi pubblicare?",
+      "fromBooking": "Per il servizio “{{service}}”: scegli il formato della storia.",
       "loyaltyOff": "Programma fedeltà non configurato",
       "why": {
         "services": "I tuoi servizi e i prezzi a colpo d’occhio — per far scoprire cosa proponi.",

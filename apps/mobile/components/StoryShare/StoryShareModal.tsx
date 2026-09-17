@@ -199,6 +199,13 @@ interface StoryShareModalProps {
   initialDisplayMode?: DisplayMode;
   /** Avis à mettre en avant d'emblée. Ignoré s'il n'a pas de commentaire. */
   initialReviewId?: string | null;
+  /**
+   * Ouverture depuis un rendez-vous passé : la prestation est déjà choisie,
+   * et le choix se limite aux deux stories photo (réalisation, avant/après).
+   */
+  initialServiceId?: string | null;
+  /** Nom de la prestation, affiché tout de suite sans attendre le chargement. */
+  initialServiceName?: string | null;
 }
 
 interface SocialNetwork {
@@ -306,6 +313,8 @@ export function StoryShareModal({
   onClose,
   initialDisplayMode,
   initialReviewId,
+  initialServiceId,
+  initialServiceName,
 }: StoryShareModalProps) {
   const { colors } = useTheme();
   const router = useRouter();
@@ -381,6 +390,17 @@ export function StoryShareModal({
       setStep('choose');
     }
   }, [visible, initialDisplayMode]);
+  // Depuis un rendez-vous : la prestation du rendez-vous, à chaque ouverture
+  // (rien n'est remis à zéro à la fermeture, un autre rendez-vous doit
+  // pouvoir suivre).
+  useEffect(() => {
+    if (visible && initialServiceId) setRealServiceId(initialServiceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, initialServiceId]);
+  const depuisRendezVous = Boolean(initialServiceId);
+  const modesProposes = depuisRendezVous
+    ? DISPLAY_MODES.filter((m) => m.key === 'realisation' || m.key === 'avantApres')
+    : DISPLAY_MODES;
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(new Set());
   const [showLinkReminder, setShowLinkReminder] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -1204,11 +1224,13 @@ export function StoryShareModal({
                 {t('storyShare.chooser.title')}
               </Text>
               <Text style={[styles.chooserLead, { color: colors.textSecondary }]}>
-                {t('storyShare.chooser.intro')}
+                {depuisRendezVous
+                  ? t('storyShare.chooser.fromBooking', { service: initialServiceName ?? realService?.name ?? '' })
+                  : t('storyShare.chooser.intro')}
               </Text>
             </View>
 
-            {DISPLAY_MODES.map((mode) => {
+            {modesProposes.map((mode) => {
               // Un contenu sans matière reste VISIBLE mais éteint, avec la
               // raison : le masquer ferait croire que la fonction n'existe
               // pas, alors qu'il suffit d'un avis ou d'un programme.
@@ -1719,6 +1741,41 @@ export function StoryShareModal({
           {/* ── Stories photo : la ou les photos, la prestation, le bandeau ── */}
           {estPhotoMode && (
             <>
+              {/* La disposition d'abord : elle décide du format des photos
+                  à choisir ensuite (client, 2026-09-17). */}
+              {displayMode === 'avantApres' && (
+                <View style={styles.sectionSpacing}>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                    {t('storyShare.realisation.splitLayout')}
+                  </Text>
+                  <View style={styles.modeRow}>
+                    {([
+                      { key: 'sideBySide' as const, icon: 'tablet-portrait-outline', label: t('storyShare.realisation.splitSideBySide') },
+                      { key: 'stacked' as const, icon: 'tablet-landscape-outline', label: t('storyShare.realisation.splitStacked') },
+                    ]).map((opt) => {
+                      const isActive = realSplit === opt.key;
+                      return (
+                        <Pressable
+                          key={opt.key}
+                          onPress={() => changerDisposition(opt.key)}
+                          style={[
+                            styles.modeButton,
+                            {
+                              backgroundColor: isActive ? colors.primary : colors.surface,
+                              borderWidth: 1,
+                              borderColor: isActive ? colors.primary : colors.border,
+                            },
+                          ]}
+                        >
+                          <Ionicons name={opt.icon as any} size={18} color={isActive ? '#fff' : colors.textSecondary} />
+                          <Text style={[styles.modeLabel, { color: isActive ? '#fff' : colors.text }]}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                   {t(displayMode === 'avantApres' ? 'storyShare.sections.photos' : 'storyShare.sections.photo')}
@@ -1839,38 +1896,6 @@ export function StoryShareModal({
                 )}
               </View>
 
-              {displayMode === 'avantApres' && (
-                <View style={styles.sectionSpacing}>
-                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                    {t('storyShare.realisation.splitLayout')}
-                  </Text>
-                  <View style={styles.modeRow}>
-                    {([
-                      { key: 'sideBySide' as const, icon: 'tablet-portrait-outline', label: t('storyShare.realisation.splitSideBySide') },
-                      { key: 'stacked' as const, icon: 'tablet-landscape-outline', label: t('storyShare.realisation.splitStacked') },
-                    ]).map((opt) => {
-                      const isActive = realSplit === opt.key;
-                      return (
-                        <Pressable
-                          key={opt.key}
-                          onPress={() => changerDisposition(opt.key)}
-                          style={[
-                            styles.modeButton,
-                            {
-                              backgroundColor: isActive ? colors.primary : colors.surface,
-                              borderWidth: 1,
-                              borderColor: isActive ? colors.primary : colors.border,
-                            },
-                          ]}
-                        >
-                          <Ionicons name={opt.icon as any} size={18} color={isActive ? '#fff' : colors.textSecondary} />
-                          <Text style={[styles.modeLabel, { color: isActive ? '#fff' : colors.text }]}>{opt.label}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
 
               <View style={styles.sectionSpacing}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>

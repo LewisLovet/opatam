@@ -1274,6 +1274,7 @@
       "decline": "Decline",
       "reviewReceived": "Review received",
       "requestReview": "Request a review",
+      "createStory": "Create a story",
       "reviewRequestSentLabel": "Review request sent"
     },
     "activity": {
@@ -2516,6 +2517,7 @@
     },
     "chooser": {
       "title": "What do you want to post?",
+      "fromBooking": "For the service “{{service}}”: choose your story format.",
       "loyaltyOff": "Loyalty programme not set up",
       "why": {
         "services": "Your services and prices at a glance — to show what you offer.",
