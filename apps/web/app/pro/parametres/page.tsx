@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Calendar,
   User,
@@ -26,6 +27,11 @@ import {
 // emails, Stripe portal returns, etc.) are redirected from this
 // page's effect below — we don't need to import those sections
 // here anymore.
+
+// Écran du salon : en avant-première, visible seulement pour les comptes
+// admin et pour le salon de démonstration, le temps de la validation.
+// Retirer ce filtre pour l'ouvrir à tous.
+const ECRAN_AVANT_PREMIERE = new Set(['67urFFyBFlUHd9Oa1QF8C2fcQha2']);
 
 const tabs = [
   {
@@ -106,7 +112,10 @@ export default function SettingsPage() {
     router.replace(`/pro/parametres?tab=${tabId}`, { scroll: false });
   };
 
-  const currentTab = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const { provider, isAdmin } = useAuth();
+  const ecranVisible = isAdmin || (provider?.id ? ECRAN_AVANT_PREMIERE.has(provider.id) : false);
+  const tabsVisibles = tabs.filter((t) => t.id !== 'ecran' || ecranVisible);
+  const currentTab = tabsVisibles.find((t) => t.id === activeTab) ?? tabsVisibles[0];
 
   return (
     <div>
@@ -129,7 +138,7 @@ export default function SettingsPage() {
           {/* Sidebar navigation */}
           <nav className="lg:w-60 flex-shrink-0 bg-gray-50 dark:bg-gray-800/50 lg:border-r border-b lg:border-b-0 border-gray-200 dark:border-gray-700">
             <ul className="flex lg:flex-col gap-0 overflow-x-auto lg:overflow-x-visible p-2 lg:p-3">
-              {tabs.map((tab) => {
+              {tabsVisibles.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -199,7 +208,7 @@ export default function SettingsPage() {
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'partage' && <ShareSection />}
             {activeTab === 'widget' && <WidgetSection />}
-          {activeTab === 'ecran' && <EcranSection />}
+          {activeTab === 'ecran' && ecranVisible && <EcranSection />}
           </div>
         </div>
       </div>
