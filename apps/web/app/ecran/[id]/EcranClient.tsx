@@ -135,6 +135,9 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
 
   const dateLongue = new Intl.DateTimeFormat('fr-FR', { timeZone: fuseau, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${donnees.jour}T12:00:00Z`));
   const avecPanneau = ecran.upcomingCount > 0 || ecran.showCounters;
+  // Ce qu'on montre du client : le prénom, la prestation, ou les deux.
+  const montrerPrenom = ecran.clientDisplay !== 'service';
+  const montrerPrestation = ecran.clientDisplay !== 'name';
 
   return <div className={s.ecran} data-theme={ecran.theme} data-panneau={avecPanneau}>
     <header className={s.entete}>
@@ -185,7 +188,7 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
                 const enCours = memeJour && d <= minNow && f > minNow;
                 const passe = memeJour && f <= minNow;
                 return <article key={r.id} className={s.rdv} data-encours={enCours} data-passe={passe} data-attente={r.statut === 'pending'} style={{ top: pct(d), height: `calc(${pct(f)} - ${pct(d)})`, '--c': r.color || couleurs.get(m.id) } as React.CSSProperties}>
-                  <div><time>{r.debutLocal}</time><strong>{r.client}</strong><span>{r.service}</span></div>
+                  <div><time>{r.debutLocal}</time><strong>{montrerPrenom ? r.client : r.service}</strong>{montrerPrenom && montrerPrestation && <span>{r.service}</span>}</div>
                 </article>;
               })}
             </div>;
@@ -203,7 +206,7 @@ export function EcranClient({ initial, id, secret, demo }: { initial: EcranPaylo
               const enCours = memeJour && minutes(r.debutLocal) <= minNow && minutes(r.finLocal) > minNow;
               return <li key={r.id} data-encours={enCours} style={{ '--c': couleurs.get(r.memberId ?? '') ?? PALETTE[0] } as React.CSSProperties}>
                 <time>{r.debutLocal}<small>{r.finLocal}</small></time>
-                <div><strong>{r.client}</strong><span>{r.service}</span>{membres.length > 1 && r.memberId && <em>{nomMembre.get(r.memberId)}</em>}</div>
+                <div><strong>{montrerPrenom ? r.client : r.service}</strong>{montrerPrenom && montrerPrestation && <span>{r.service}</span>}{membres.length > 1 && r.memberId && <em>{nomMembre.get(r.memberId)}</em>}</div>
                 {enCours && <b>En cours</b>}
               </li>;
             })}</ol>

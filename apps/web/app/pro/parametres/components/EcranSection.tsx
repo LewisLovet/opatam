@@ -19,7 +19,13 @@ import type { EcranResume } from '@/app/api/pro/ecrans/route';
  * supprime le lien ; l'écran affiche alors une page introuvable.
  */
 
-type Brouillon = { label: string; locationId: string; memberIds: string[]; upcomingCount: number; showCounters: boolean; theme: 'dark' | 'light' };
+type Brouillon = { label: string; locationId: string; memberIds: string[]; upcomingCount: number; showCounters: boolean; clientDisplay: 'name' | 'service' | 'both'; theme: 'dark' | 'light' };
+
+const AFFICHAGE_CLIENT: { id: Brouillon['clientDisplay']; label: string; aide: string }[] = [
+  { id: 'both', label: 'Prénom et prestation', aide: '« Sarah M. · Balayage »' },
+  { id: 'name', label: 'Prénom seul', aide: '« Sarah M. »' },
+  { id: 'service', label: 'Prestation seule', aide: '« Balayage », sans nom' },
+];
 
 async function appel<T>(chemin: string, init?: RequestInit): Promise<T> {
   const user = firebaseAuth.currentUser;
@@ -49,7 +55,7 @@ export function EcranSection() {
   const [creation, setCreation] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [copie, setCopie] = useState<string | null>(null);
-  const [brouillon, setBrouillon] = useState<Brouillon>({ label: '', locationId: '', memberIds: [], upcomingCount: 6, showCounters: true, theme: 'dark' });
+  const [brouillon, setBrouillon] = useState<Brouillon>({ label: '', locationId: '', memberIds: [], upcomingCount: 6, showCounters: true, clientDisplay: 'both', theme: 'dark' });
 
   useEffect(() => {
     if (!provider?.id) return;
@@ -145,7 +151,7 @@ export function EcranSection() {
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2"><Monitor className="w-4 h-4 text-gray-400" />{ecran.label}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {nomLieu(ecran.locationId)} · {ecran.memberIds ? `${ecran.memberIds.length} membre${ecran.memberIds.length > 1 ? 's' : ''}` : 'toute l’équipe'} · {ecran.upcomingCount} prochains{ecran.showCounters ? ' · compteurs' : ''} · {ecran.theme === 'dark' ? 'sombre' : 'clair'}
+                      {nomLieu(ecran.locationId)} · {ecran.memberIds ? `${ecran.memberIds.length} membre${ecran.memberIds.length > 1 ? 's' : ''}` : 'toute l’équipe'} · {ecran.upcomingCount} prochains{ecran.showCounters ? ' · compteurs' : ''} · {AFFICHAGE_CLIENT.find((a) => a.id === ecran.clientDisplay)?.label.toLowerCase()} · {ecran.theme === 'dark' ? 'sombre' : 'clair'}
                     </p>
                     <p className="text-xs text-gray-500">{relatif(ecran.lastAccessAt)}</p>
                   </div>
@@ -195,6 +201,20 @@ export function EcranSection() {
               </div>
             </fieldset>
           )}
+
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">Sur chaque rendez-vous, afficher</legend>
+            <div className="mt-2 grid sm:grid-cols-3 gap-2">
+              {AFFICHAGE_CLIENT.map((a) => (
+                <label key={a.id} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm ${brouillon.clientDisplay === a.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600'}`}>
+                  <input type="radio" name="clientDisplay" className="sr-only" checked={brouillon.clientDisplay === a.id} onChange={() => setBrouillon({ ...brouillon, clientDisplay: a.id })} />
+                  <span className="block font-medium text-gray-900 dark:text-white">{a.label}</span>
+                  <span className="block text-xs text-gray-500">{a.aide}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Les prénoms des membres de l’équipe sont toujours affichés.</p>
+          </fieldset>
 
           <div className="grid sm:grid-cols-3 gap-4">
             <label className="block">

@@ -57,7 +57,7 @@ export interface EcranIndispo {
 }
 
 export interface EcranPayload {
-  ecran: { id: string; label: string; upcomingCount: number; showCounters: boolean; theme: 'dark' | 'light' };
+  ecran: { id: string; label: string; upcomingCount: number; showCounters: boolean; clientDisplay: 'name' | 'service' | 'both'; theme: 'dark' | 'light' };
   provider: { businessName: string; photoURL: string | null; themeId: string | null; /** Adresse publique de réservation (page publiée), sinon null. */ slug: string | null };
   lieu: { id: string; name: string };
   fuseau: string;
@@ -68,6 +68,11 @@ export interface EcranPayload {
   indispos: EcranIndispo[];
   /** Instant du calcul, ISO. */
   genereLe: string;
+}
+
+export type AffichageClient = 'name' | 'service' | 'both';
+export function lireAffichageClient(v: unknown): AffichageClient {
+  return v === 'name' || v === 'service' ? v : 'both';
 }
 
 export function genererSecretEcran(): string {
@@ -134,6 +139,7 @@ export async function lireEcran(id: string, secret: string): Promise<(SalonScree
     memberIds: Array.isArray(data.memberIds) ? (data.memberIds as string[]) : null,
     upcomingCount: Number(data.upcomingCount ?? 6),
     showCounters: data.showCounters !== false,
+    clientDisplay: lireAffichageClient(data.clientDisplay),
     theme: data.theme === 'light' ? 'light' : 'dark',
     secret: String(data.secret),
     createdAt: versDate(data.createdAt) ?? new Date(0),
@@ -251,7 +257,7 @@ export async function chargerEcran(id: string, secret: string, maintenant = new 
   }
 
   return {
-    ecran: { id: ecran.id, label: ecran.label, upcomingCount: ecran.upcomingCount, showCounters: ecran.showCounters, theme: ecran.theme },
+    ecran: { id: ecran.id, label: ecran.label, upcomingCount: ecran.upcomingCount, showCounters: ecran.showCounters, clientDisplay: ecran.clientDisplay, theme: ecran.theme },
     provider: { businessName: String(provider.businessName ?? ''), photoURL: typeof provider.photoURL === 'string' ? provider.photoURL : null, themeId: typeof provider.themeId === 'string' ? provider.themeId : null, slug: provider.isPublished && typeof provider.slug === 'string' ? provider.slug : null },
     lieu: { id: ecran.locationId, name: String(lieu?.name ?? '') },
     fuseau,

@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
-import { COLLECTION_ECRANS, UPCOMING_MAX, UPCOMING_MIN, genererSecretEcran } from '@/lib/ecran';
+import { COLLECTION_ECRANS, UPCOMING_MAX, UPCOMING_MIN, genererSecretEcran, lireAffichageClient } from '@/lib/ecran';
 
 const MAX_ECRANS = 10;
 
@@ -42,6 +42,7 @@ export interface EcranResume {
   memberIds: string[] | null;
   upcomingCount: number;
   showCounters: boolean;
+  clientDisplay: 'name' | 'service' | 'both';
   theme: 'dark' | 'light';
   url: string;
   createdAt: string;
@@ -58,6 +59,7 @@ function resumer(req: NextRequest, doc: FirebaseFirestore.QueryDocumentSnapshot)
     memberIds: Array.isArray(d.memberIds) ? d.memberIds : null,
     upcomingCount: Number(d.upcomingCount ?? 6),
     showCounters: d.showCounters !== false,
+    clientDisplay: lireAffichageClient(d.clientDisplay),
     theme: d.theme === 'light' ? 'light' : 'dark',
     url: urlEcran(req, doc.id, String(d.secret)),
     createdAt: versIso(d.createdAt) ?? new Date(0).toISOString(),
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
   const providerId = await requireProvider(req);
   if (!providerId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
   const corps = (await req.json().catch(() => null)) as Partial<{
-    label: string; locationId: string; memberIds: string[] | null; upcomingCount: number; showCounters: boolean; theme: string;
+    label: string; locationId: string; memberIds: string[] | null; upcomingCount: number; showCounters: boolean; clientDisplay: string; theme: string;
   }> | null;
   const label = (corps?.label ?? '').trim().slice(0, 60);
   const locationId = (corps?.locationId ?? '').trim();
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
   await ref.set({
     providerId, label, locationId, memberIds, upcomingCount,
     showCounters: corps?.showCounters !== false,
+    clientDisplay: lireAffichageClient(corps?.clientDisplay),
     theme: corps?.theme === 'light' ? 'light' : 'dark',
     secret, createdAt: maintenant, lastAccessAt: null,
   });

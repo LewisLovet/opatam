@@ -1362,8 +1362,10 @@ export interface SalonScreen {
   memberIds: string[] | null;
   /** Nombre de prochains rendez-vous dans le panneau latéral (4 à 10). */
   upcomingCount: number;
-  /** Compteurs du jour (rendez-vous, restants, remplissage). */
+  /** Compteurs du jour (rendez-vous, à venir, terminés). */
   showCounters: boolean;
+  /** Ce qu'on affiche du client : prénom, prestation, ou les deux. Les prénoms des membres sont toujours affichés. */
+  clientDisplay: 'name' | 'service' | 'both';
   theme: 'dark' | 'light';
   /** Secret aléatoire de l'URL (`?k=`). */
   secret: string;

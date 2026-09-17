@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Monitor } from 'lucide-react';
-import { PROVIDER_THEMES, THEME_FAMILIES } from '@booking-app/shared/constants';
+import { PROVIDER_THEMES } from '@booking-app/shared/constants';
 import type { EcranPayload, EcranRendezVous } from '@/lib/ecran';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { EcranClient } from '../[id]/EcranClient';
@@ -44,7 +44,11 @@ const AGENDAS: [number, number][][] = [
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const iso = (m: number) => `${JOUR}T${hhmm(m)}:00+02:00`;
 
-function construire(opts: { theme: 'dark' | 'light'; themeId: string; nbMembres: number; upcomingCount: number; showCounters: boolean; nom: string }): EcranPayload {
+type AffichageClient = 'name' | 'service' | 'both';
+// Une gamme par famille : assez pour voir l'effet, sans noyer la démo.
+const COULEURS_DEMO = ['noir', 'bleu', 'emeraude', 'terracotta', 'rouge', 'prune'];
+
+function construire(opts: { theme: 'dark' | 'light'; themeId: string; nbMembres: number; upcomingCount: number; showCounters: boolean; clientDisplay: AffichageClient; nom: string }): EcranPayload {
   const membres = MEMBRES.slice(0, opts.nbMembres).map((m) => ({ ...m, photoURL: null }));
   const rendezVous: EcranRendezVous[] = [];
   let k = 0;
@@ -62,7 +66,7 @@ function construire(opts: { theme: 'dark' | 'light'; themeId: string; nbMembres:
   });
   rendezVous.sort((a, b) => a.debut.localeCompare(b.debut));
   return {
-    ecran: { id: 'demo', label: 'TV de l’accueil', upcomingCount: opts.upcomingCount, showCounters: opts.showCounters, theme: opts.theme },
+    ecran: { id: 'demo', label: 'TV de l’accueil', upcomingCount: opts.upcomingCount, showCounters: opts.showCounters, clientDisplay: opts.clientDisplay, theme: opts.theme },
     provider: { businessName: opts.nom, photoURL: null, themeId: opts.themeId, slug: 'demo' },
     lieu: { id: 'l1', name: 'Salon du centre' },
     fuseau: 'Europe/Paris',
@@ -80,9 +84,10 @@ export function DemoEcran() {
   const [nbMembres, setNbMembres] = useState(4);
   const [upcomingCount, setUpcomingCount] = useState(6);
   const [showCounters, setShowCounters] = useState(true);
+  const [clientDisplay, setClientDisplay] = useState<AffichageClient>('both');
   const [nom, setNom] = useState('Maison Amélie');
   const [ouvert, setOuvert] = useState(true);
-  const donnees = useMemo(() => construire({ theme, themeId, nbMembres, upcomingCount, showCounters, nom }), [theme, themeId, nbMembres, upcomingCount, showCounters, nom]);
+  const donnees = useMemo(() => construire({ theme, themeId, nbMembres, upcomingCount, showCounters, clientDisplay, nom }), [theme, themeId, nbMembres, upcomingCount, showCounters, clientDisplay, nom]);
 
   return <div data-provider-theme>
     <ProviderThemeStyle themeId={themeId} />
@@ -97,12 +102,14 @@ export function DemoEcran() {
           <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>Sombre</button>
           <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>Clair</button>
         </div></div>
-        {/* Les mêmes 24 gammes que le sélecteur de thème du profil, par famille. */}
-        <div className={s.groupe}><span>Couleur du salon <small>{PROVIDER_THEMES.find((t) => t.id === themeId)?.label}</small></span>
-          {THEME_FAMILIES.map((famille) => <div key={famille.id} className={s.famille}><em>{famille.label}</em><div className={s.couleurs}>
-            {PROVIDER_THEMES.filter((t) => t.family === famille.id).map((t) => <button type="button" key={t.id} title={t.label} aria-label={t.label} aria-pressed={themeId === t.id} onClick={() => setThemeId(t.id)} style={{ background: `rgb(${t.ramp[5]})` }} />)}
-          </div></div>)}
-        </div>
+        <div className={s.groupe}><span>Couleur du salon <small>{PROVIDER_THEMES.find((t) => t.id === themeId)?.label}</small></span><div className={s.couleurs}>
+          {COULEURS_DEMO.map((id) => PROVIDER_THEMES.find((t) => t.id === id)).filter((t): t is (typeof PROVIDER_THEMES)[number] => Boolean(t)).map((t) => <button type="button" key={t.id} title={t.label} aria-label={t.label} aria-pressed={themeId === t.id} onClick={() => setThemeId(t.id)} style={{ background: `rgb(${t.ramp[5]})` }} />)}
+        </div></div>
+        <div className={s.groupe}><span>Sur chaque rendez-vous</span><div className={s.segments}>
+          <button type="button" aria-pressed={clientDisplay === 'both'} onClick={() => setClientDisplay('both')}>Prénom + prestation</button>
+          <button type="button" aria-pressed={clientDisplay === 'name'} onClick={() => setClientDisplay('name')}>Prénom</button>
+          <button type="button" aria-pressed={clientDisplay === 'service'} onClick={() => setClientDisplay('service')}>Prestation</button>
+        </div></div>
         <label>Membres affichés <b>{nbMembres}</b><input type="range" min={1} max={10} value={nbMembres} onChange={(e) => setNbMembres(Number(e.target.value))} /></label>
         <label>Prochains rendez-vous <b>{upcomingCount}</b><input type="range" min={4} max={10} value={upcomingCount} onChange={(e) => setUpcomingCount(Number(e.target.value))} /></label>
         <label className={s.case}><input type="checkbox" checked={showCounters} onChange={(e) => setShowCounters(e.target.checked)} /> Chiffres du jour</label>
