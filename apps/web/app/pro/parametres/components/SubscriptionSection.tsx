@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui';
 import { getDaysRemaining } from '@/lib/date-utils';
-import { APP_CONFIG, PLAN_LIMITS } from '@booking-app/shared';
+import { APP_CONFIG, PLAN_LIMITS, isAccessOverrideActive } from '@booking-app/shared';
 import { memberService, locationService } from '@booking-app/firebase';
 import {
   Clock,
@@ -86,9 +86,15 @@ function computeYearlySaving(
 function CurrentStatusCard() {
   const { provider } = useAuth();
 
-  const plan = provider?.plan || 'trial';
+  // Accès offert : la carte parle du droit accordé (Pro / Studio), pas de
+  // l'essai sous-jacent que l'octroi ne modifie pas.
+  const comp = isAccessOverrideActive(provider?.accessOverride);
+  const plan = comp ? (provider?.accessOverride?.plan === 'team' ? 'team' : 'solo') : (provider?.plan || 'trial');
   const subscription = provider?.subscription;
   const status = subscription?.status || 'trialing';
+  const compJusquAu = comp && provider?.accessOverride?.until
+    ? new Date(provider.accessOverride.until as unknown as string | number | Date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
   const daysRemaining = subscription?.validUntil
     ? getDaysRemaining(subscription.validUntil)
@@ -125,6 +131,7 @@ function CurrentStatusCard() {
   const isPaidPlan = plan === 'solo' || plan === 'team' || plan === 'test';
 
   const getPlanBadgeVariant = () => {
+    if (comp) return 'success' as const;
     if (status === 'cancelled') return 'error' as const;
     if (status === 'past_due') return 'warning' as const;
     if (plan === 'trial') return 'warning' as const;
@@ -133,6 +140,7 @@ function CurrentStatusCard() {
   };
 
   const getBadgeLabel = () => {
+    if (comp) return compJusquAu ? `Accès offert jusqu’au ${compJusquAu}` : 'Accès offert';
     if (status === 'cancelled') return 'Annulé';
     if (status === 'past_due') return 'Paiement en attente';
     if (plan === 'trial') {

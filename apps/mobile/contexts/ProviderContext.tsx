@@ -109,14 +109,15 @@ export function useSubscriptionStatus() {
   const overrideActive = entitlements.compActive;
 
   const isActive = overrideActive || subscription?.status === 'active';
-  const isTrialing = (plan === 'solo' || plan === 'team') && subscription?.status === 'trialing';
+  const isTrialing = !overrideActive && (plan === 'solo' || plan === 'team') && subscription?.status === 'trialing';
 
   const isTest = plan === 'test';
   const needsSubscription = !entitlements.canAccessPro && !isTest;
 
   // Calculate days remaining for trial
   let daysRemaining: number | null = null;
-  if (plan === 'trial' && subscription?.validUntil) {
+  // Accès offert : pas de compte-à-rebours d'essai, l'accès ne s'arrête pas avec lui.
+  if (!overrideActive && plan === 'trial' && subscription?.validUntil) {
     const raw = subscription.validUntil;
     const validDate = raw instanceof Date
       ? raw
@@ -130,7 +131,7 @@ export function useSubscriptionStatus() {
 
   return {
     isActive,
-    isTrialing: isTrialing || entitlements.source === 'trial',
+    isTrialing: isTrialing || (!overrideActive && entitlements.source === 'trial'),
     isExpired: needsSubscription,
     needsSubscription,
     plan: (overrideActive ? provider.accessOverride?.plan ?? plan : plan) || null,

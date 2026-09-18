@@ -29,7 +29,7 @@ import {
   analyticsService,
 } from '@booking-app/firebase';
 import type { Booking, Member, Location, Service, PageViewStats } from '@booking-app/shared';
-import { isTeamTier, hasDepositAccess } from '@booking-app/shared';
+import { isTeamTier, hasDepositAccess, isAccessOverrideActive } from '@booking-app/shared';
 import { BookingDetailModal } from '@/components/booking';
 import { CreateBookingModal } from './calendrier/components/CreateBookingModal';
 import {
@@ -131,7 +131,8 @@ export default function DashboardPage() {
       }
 
       // 2. Trial period
-      if (provider.subscription?.plan === 'trial' && provider.subscription?.validUntil) {
+      // Pas d'alerte d'essai pour un accès offert : il ne dépend pas de l'essai.
+      if (provider.subscription?.plan === 'trial' && provider.subscription?.validUntil && !isAccessOverrideActive(provider.accessOverride)) {
         const daysRemaining = getDaysRemaining(provider.subscription.validUntil);
         if (daysRemaining <= 14) {
           alerts.push({

@@ -17,7 +17,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Percent, CalendarCheck, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { SUBSCRIPTION_PLANS } from '@booking-app/shared';
+import { SUBSCRIPTION_PLANS, isAccessOverrideActive } from '@booking-app/shared';
 import {
   SubscriptionSection,
   SubscriptionSuccessModal,
@@ -39,7 +39,8 @@ export default function AbonnementPage() {
     setShowSuccessModal(searchParams.get('success') === 'true');
   }, [searchParams]);
 
-  const providerPlan = provider?.plan as keyof typeof SUBSCRIPTION_PLANS | undefined;
+  // Accès offert : la formule affichée est celle accordée par l'admin.
+  const providerPlan = (isAccessOverrideActive(provider?.accessOverride) ? provider?.accessOverride?.plan : provider?.plan) as keyof typeof SUBSCRIPTION_PLANS | undefined;
   const planConfig =
     providerPlan && providerPlan in SUBSCRIPTION_PLANS
       ? SUBSCRIPTION_PLANS[providerPlan as 'solo' | 'team' | 'test']

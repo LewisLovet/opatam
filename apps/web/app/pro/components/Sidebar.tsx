@@ -35,6 +35,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useNewFeatures, type NewFeatureKey } from '@/hooks/useNewFeatures';
 import { Logo, LogoWhite } from '@/components/ui';
 import { APP_CONFIG } from '@booking-app/shared/constants';
+import { isAccessOverrideActive } from '@booking-app/shared';
 
 interface NavItem {
   label: string;
@@ -92,6 +93,9 @@ const navGroups: NavGroup[] = [
 ];
 
 function TrialBanner({ collapsed, provider }: { collapsed?: boolean; provider: any }) {
+  // Accès offert par l'admin : le compte-à-rebours de l'essai n'a plus de
+  // sens, l'accès ne s'arrête pas avec l'essai (l'octroi ne touche pas `plan`).
+  if (isAccessOverrideActive(provider?.accessOverride)) return null;
   if (provider?.plan !== 'trial' || !provider?.subscription?.validUntil) return null;
 
   const daysLeft = getDaysRemaining(provider.subscription.validUntil);
