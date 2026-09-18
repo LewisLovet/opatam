@@ -2,7 +2,7 @@
 process.env.TZ = 'Europe/Paris';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { schedulingService, memberRepository } from '@booking-app/firebase';
+import { schedulingService, memberRepository, serviceRepository } from '@booking-app/firebase';
 
 const STATUS_RANK: Record<string, number> = { closed: 0, full: 1, almost_full: 2, available: 3 };
 
@@ -70,8 +70,14 @@ export async function GET(request: NextRequest) {
     } else {
       // No member → aggregate across the team: best status per day, capacities
       // summed (team-wide bookable count), slots concatenated.
+      // Seuls les membres qui PROPOSENT la prestation comptent : sinon le
+      // calendrier montrait des jours « disponibles » grâce à un collègue
+      // qui ne fait pas cette prestation, et le client tombait ensuite sur
+      // des journées fermées (cas du compte Studio, salles sans horaires).
+      const service = await serviceRepository.getById(providerId, serviceId).catch(() => null);
+      const autorises = service?.memberIds?.length ? new Set(service.memberIds) : null;
       const members = (await memberRepository.getByProvider(providerId)).filter(
-        (m) => m.isActive !== false,
+        (m) => m.isActive !== false && (!autorises || autorises.has(m.id)),
       );
       const acc = new Map<string, Day>();
       for (const m of members) {
