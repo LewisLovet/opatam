@@ -206,7 +206,11 @@ export function computeEntitlements(
     depositsFlagTrustworthy;
 
   return {
-    source: paidUnderneath ? 'paid' : trialActive ? 'trial' : compActive ? 'comp' : 'none',
+    // Le comp passe AVANT l'essai : un accès offert pendant l'essai est un
+    // droit explicite de l'admin, l'essai n'est qu'un défaut automatique.
+    // Sinon, un Studio offert restait classé « essai » jusqu'à la fin de
+    // l'essai — limites Solo dans Lieux/Équipe (cas du 2026-09-18).
+    source: paidUnderneath ? 'paid' : compActive ? 'comp' : trialActive ? 'trial' : 'none',
     effectivePlan: hasAccess ? effectivePlan : null,
     canAccessPro: hasAccess,
     canPublish: hasAccess,
