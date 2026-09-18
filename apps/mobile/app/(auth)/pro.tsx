@@ -120,6 +120,8 @@ interface WizardData {
   postalCode: string;
   city: string;
   geopoint: { latitude: number; longitude: number } | null;
+  /** Région renvoyée par la recherche d'adresse (Google) ; sinon le serveur la déduit du code postal. */
+  region: string | null;
   // Step 3 — Services (multiple)
   services: WizardService[];
   // Step 4 — Schedule
@@ -162,6 +164,7 @@ const DEFAULT_DATA: WizardData = {
   postalCode: '',
   city: '',
   geopoint: null,
+  region: null,
   services: [{ name: '', duration: 60, price: '', description: '', category: '', variations: [], options: [], infoFields: [] }],
   availability: DEFAULT_AVAILABILITY,
   displayName: '',
@@ -363,7 +366,7 @@ async function searchAddress(query: string, countryCode: string = 'fr', limit = 
 }
 
 async function fetchPlaceDetails(placeId: string): Promise<{
-  city: string; postcode: string; coordinates: { latitude: number; longitude: number } | null; formattedAddress: string;
+  city: string; postcode: string; coordinates: { latitude: number; longitude: number } | null; formattedAddress: string; region: string;
 } | null> {
   if (!GOOGLE_API_KEY || !placeId) return null;
   const response = await fetch(
@@ -375,9 +378,11 @@ async function fetchPlaceDetails(placeId: string): Promise<{
   const getComp = (type: string) => components.find((c: any) => c.types?.includes(type));
   const locality = getComp('locality') ?? getComp('postal_town') ?? getComp('administrative_area_level_3');
   const postalCode = getComp('postal_code');
+  const adminArea1 = getComp('administrative_area_level_1');
   return {
     city: locality?.longText ?? '',
     postcode: postalCode?.longText ?? '',
+    region: adminArea1?.longText ?? '',
     formattedAddress: place.formattedAddress ?? '',
     coordinates: place.location ? { latitude: place.location.latitude, longitude: place.location.longitude } : null,
   };
@@ -629,6 +634,7 @@ export default function ProRegisterScreen() {
             city: details.city,
             postalCode: details.postcode,
             geopoint: details.coordinates,
+            region: details.region || null,
           });
           return;
         }
@@ -1040,6 +1046,7 @@ export default function ProRegisterScreen() {
         country: 'France',
         countryCode: data.countryCode,
         geopoint: data.geopoint,
+        region: data.region,
         description: null,
         type: data.locationType,
         travelRadius: data.locationType === 'mobile' ? 20 : null,

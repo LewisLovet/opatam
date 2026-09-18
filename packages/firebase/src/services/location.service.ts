@@ -5,7 +5,7 @@ import {
   createLocationSchema,
   updateLocationSchema,
   normalizeCity,
-  getCityRegion,
+  getCityRegion, getRegionFromPostalCode,
   getRegionFromCoords,
   PLAN_LIMITS,
   type CreateLocationInput,
@@ -313,6 +313,13 @@ export class LocationService {
     if (!region && countryCode === 'FR') {
       const defaultCity = defaultLocation?.city || activeLocations[0]?.city || null;
       region = defaultCity ? getCityRegion(defaultCity) : null;
+      // Le code postal d'abord : la liste de villes ne connaît que les
+      // grandes, et le géocodage manque souvent (adresse saisie à la main,
+      // inscription « ville seule »). Le département, lui, ne ment pas.
+      if (!region) {
+        const cp = defaultLocation?.postalCode || activeLocations.find((l) => l.postalCode)?.postalCode || null;
+        region = getRegionFromPostalCode(cp);
+      }
       if (!region && geopoint) {
         region = getRegionFromCoords(geopoint.latitude, geopoint.longitude);
       }
