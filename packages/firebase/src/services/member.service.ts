@@ -11,6 +11,13 @@ import {
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
+/** Lundi–vendredi 9 h–18 h, week-end fermé — la même proposition que les éditeurs d'horaires. */
+const HORAIRES_PAR_DEFAUT = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+  dayOfWeek,
+  isOpen: dayOfWeek >= 1 && dayOfWeek <= 5,
+  slots: dayOfWeek >= 1 && dayOfWeek <= 5 ? [{ start: '09:00', end: '18:00' }] : [],
+}));
+
 /**
  * NOUVEAU MODÈLE: 1 membre = 1 lieu = 1 agenda
  * - locationId (singulier) remplace locationIds (pluriel)
@@ -58,6 +65,17 @@ export class MemberService {
       isActive: true,
       sortOrder,
     });
+
+    // Horaires par défaut ENREGISTRÉS dès la création : l'éditeur affichait
+    // déjà « lun–ven 9 h–18 h » pour un membre sans horaires, mais rien
+    // n'existait en base tant qu'on n'enregistrait pas — le membre paraissait
+    // configuré et n'avait aucun créneau (compte Studio, 2026-09-18).
+    await availabilityRepository.setWeeklySchedule(
+      providerId,
+      memberId,
+      validated.locationId,
+      HORAIRES_PAR_DEFAUT,
+    );
 
     const member = await memberRepository.getById(providerId, memberId);
     if (!member) {

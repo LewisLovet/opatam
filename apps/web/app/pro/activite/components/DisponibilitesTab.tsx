@@ -8,7 +8,7 @@ import {
   locationService,
   memberService,
 } from '@booking-app/firebase';
-import { Loader2, Clock, Users } from 'lucide-react';
+import { Loader2, Clock, Users, AlertTriangle } from 'lucide-react';
 import { DayRow } from './DayRow';
 import { MemberPills } from './MemberPills';
 import { QuickTemplates } from './QuickTemplates';
@@ -95,6 +95,8 @@ export function DisponibilitesTab() {
     }
   }, [provider, selectedMemberId, toast]);
 
+  const [sansHoraires, setSansHoraires] = useState(false);
+
   // Fetch availability for selected member and load into reducer
   const fetchAvailability = useCallback(async () => {
     if (!provider || !selectedMemberId) return;
@@ -104,6 +106,9 @@ export function DisponibilitesTab() {
         provider.id,
         selectedMemberId
       );
+      // Rien en base pour ce membre : ce qu'on affiche est une proposition,
+      // pas ses horaires. Sans enregistrement, il n'a AUCUN créneau.
+      setSansHoraires(availabilityData.length === 0);
 
       const defaultSchedule: DaySchedule[] = [
         { dayOfWeek: 0, isOpen: false, slots: [] },
@@ -309,6 +314,16 @@ export function DisponibilitesTab() {
       <div className="xl:grid xl:grid-cols-[minmax(0,420px)_1fr] xl:gap-8">
         {/* Left column — editor (compact) */}
         <div className="space-y-4">
+          {sansHoraires && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                Aucun horaire enregistré pour ce membre : les horaires affichés sont une proposition.
+                Tant qu’ils ne sont pas enregistrés, ce membre n’a aucun créneau réservable.
+              </span>
+            </div>
+          )}
+
           {/* Quick templates */}
           <QuickTemplates onApply={applyTemplate} />
 
