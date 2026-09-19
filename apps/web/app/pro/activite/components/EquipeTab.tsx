@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import {
@@ -8,6 +9,7 @@ import {
   locationService,
   catalogService,
   availabilityRepository,
+  schedulingService,
   bookingRepository,
   uploadFile,
   storagePaths,
@@ -23,6 +25,7 @@ type WithId<T> = { id: string } & T;
 
 export function EquipeTab() {
   const { provider } = useAuth();
+  const router = useRouter();
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -97,6 +100,79 @@ export function EquipeTab() {
       setUpcomingBookingsCount(0);
     }
   }, [provider]);
+
+  // Diagnostic de chaque membre — une seule fois, partagé par l'affichage
+  // et par le comptage des créneaux.
+  const etats = useMemo(
+    () => new Map(members.map((m) => [m.id, diagnostiquerMembre(m, services, availabilities)])),
+    [members, services, availabilities],
+  );
+
+  // Créneaux réservables sur 7 jours, par membre. C'est LE chiffre qui parle
+  // au professionnel : « 0 créneau » se comprend sans lire, là où « horaires
+  // non configurés » demande de savoir ce que ça implique. Calculé avec la
+  // plus COURTE de ses prestations, donc la capacité maximale.
+  const [creneaux, setCreneaux] = useState<Record<string, number | null>>({});
+  useEffect(() => {
+    if (!provider || members.length === 0) return;
+    let annule = false;
+    const debut = new Date();
+    debut.setHours(0, 0, 0, 0);
+    const fin = new Date(debut);
+    fin.setDate(fin.getDate() + 7);
+
+    (async () => {
+      const entrees = await Promise.all(
+        members.map(async (m): Promise<[string, number | null]> => {
+          const etat = etats.get(m.id);
+          if (!m.isActive || !etat || !etat.reservable) return [m.id, 0];
+          const presta = services
+            .filter((svc) => etat.prestations.includes(svc.id))
+            .sort(
+              (a, b) =>
+                a.duration + (a.bufferTime ?? 0) - (b.duration + (b.bufferTime ?? 0)),
+            )[0];
+          if (!presta) return [m.id, 0];
+          try {
+            const jours = await schedulingService.getAvailabilitySummary({
+              providerId: provider.id,
+              serviceId: presta.id,
+              memberId: m.id,
+              startDate: debut,
+              endDate: fin,
+            });
+            return [m.id, jours.reduce((n, j) => n + j.capacity, 0)];
+          } catch {
+            // Un comptage impossible ne doit pas faire croire à un blocage :
+            // `null` masque le chiffre, la ligne reste lisible.
+            return [m.id, null];
+          }
+        }),
+      );
+      if (!annule) setCreneaux(Object.fromEntries(entrees));
+    })();
+
+    return () => {
+      annule = true;
+    };
+  }, [provider, members, services, etats]);
+
+  // Ce qui coince remonte en haut : un zéro doit être la première chose vue.
+  // Les membres désactivés ferment la liste, ils ne sont pas un problème.
+  const membresTries = useMemo(
+    () =>
+      [...members].sort((a, b) => {
+        if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+        // Le diagnostic est connu dès le premier rendu, le comptage arrive
+        // après : trier d'abord sur lui évite que la liste se réorganise
+        // sous les yeux du professionnel quand les chiffres tombent.
+        const bloqueA = etats.get(a.id)?.reservable === false ? 0 : 1;
+        const bloqueB = etats.get(b.id)?.reservable === false ? 0 : 1;
+        if (bloqueA !== bloqueB) return bloqueA - bloqueB;
+        return (creneaux[a.id] ?? 0) - (creneaux[b.id] ?? 0);
+      }),
+    [members, creneaux, etats],
+  );
 
   // Get services assigned to a member (memberIds is null = all members, or includes memberId)
   const getMemberServiceIds = useCallback((memberId: string): string[] => {
@@ -414,17 +490,26 @@ export function EquipeTab() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {members.map((member) => (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {membresTries.map((member) => (
             <MemberCard
               key={member.id}
               member={member}
               locations={locations}
               services={services}
-              etat={diagnostiquerMembre(member, services, availabilities)}
+              etat={etats.get(member.id)}
+              creneaux={creneaux[member.id] ?? null}
               memberServiceIds={getMemberServiceIds(member.id)}
               onToggleActive={handleToggleActive}
               onClick={() => handleOpenEdit(member)}
+              onCorriger={() => {
+                const etat = etats.get(member.id);
+                if (etat?.blocages.includes('sansHoraires')) {
+                  router.push('/pro/activite?tab=disponibilites');
+                } else {
+                  handleOpenEdit(member);
+                }
+              }}
             />
           ))}
         </div>

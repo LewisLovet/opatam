@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Badge, Switch, useToast } from '@/components/ui';
-import { Eye, EyeOff, Copy, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Copy } from 'lucide-react';
 import type { Member, Location, Service, EtatMembre, BlocageMembre } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -14,6 +14,10 @@ interface MemberCardProps {
   memberServiceIds: string[];
   /** Peut-il recevoir des réservations, et sinon pourquoi (voir diagnostiquerMembre). */
   etat?: EtatMembre;
+  /** Rendez-vous encore possibles sur 7 jours. `null` = comptage indisponible. */
+  creneaux?: number | null;
+  /** Emmène le professionnel là où le blocage se répare. */
+  onCorriger?: () => void;
   onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
   onClick: () => void;
 }
@@ -62,8 +66,10 @@ export function MemberCard({
   services,
   memberServiceIds,
   etat,
+  creneaux = null,
   onToggleActive,
   onClick,
+  onCorriger,
 }: MemberCardProps) {
   const toast = useToast();
   const [toggling, setToggling] = useState(false);
@@ -117,128 +123,124 @@ export function MemberCard({
   const avatarColor = member.color ? '' : getAvatarColor(member.name);
   const initials = getInitials(member.name);
 
+  const nombre = creneaux;
+  const bloque = member.isActive && etat ? !etat.reservable : false;
+  const manque = etat ? etat.blocages.filter((b) => b !== 'inactif').map((b) => MANQUES[b]).join(', ') : '';
+
   return (
     <div
       className={`
-        group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
-        transition-all duration-200 cursor-pointer
-        hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md
+        group relative flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3.5
+        transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40
         ${!member.isActive ? 'opacity-60' : ''}
       `}
       onClick={onClick}
     >
-      <div className="p-4">
-        <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div
-            className={`
-              w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0
-              ${avatarColor}
-            `}
-            style={member.color ? { backgroundColor: member.color } : undefined}
-          >
-            {member.photoURL ? (
-              <img
-                src={member.photoURL}
-                alt={member.name}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              initials
-            )}
+      {/* Avatar */}
+      <div
+        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${avatarColor}`}
+        style={member.color ? { backgroundColor: member.color } : undefined}
+      >
+        {member.photoURL ? (
+          <img src={member.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+        ) : (
+          initials
+        )}
+      </div>
+
+      {/* Identité et chiffre. Côte à côte dès qu'il y a la place ; empilés
+          sur téléphone, sinon le nom et le lieu se font tronquer par le
+          chiffre alors qu'ils sont ce qu'on cherche des yeux. */}
+      <div className="flex-1 min-w-0 sm:flex sm:items-center sm:gap-4">
+        <div className="min-w-0 sm:flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{member.name}</h3>
+            {!member.isActive && <Badge variant="default">Inactif</Badge>}
           </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            {/* Name and status */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                {member.name}
-              </h3>
-              <Badge variant={member.isActive ? 'success' : 'default'}>
-                {member.isActive ? 'Actif' : 'Inactif'}
-              </Badge>
-              {/* L'état RÉEL, calculé sur la base : actif ne veut pas dire
-                  réservable. Masqué pour un membre désactivé, dont le
-                  badge ci-dessus dit déjà tout. */}
-              {member.isActive && etat && (
-                <Badge variant={etat.reservable ? 'success' : 'warning'}>
-                  {etat.reservable ? (
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Réservable
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> À compléter
-                    </span>
-                  )}
-                </Badge>
-              )}
-            </div>
-
-            {member.isActive && etat && !etat.reservable && (
-              <p className="mt-1 text-xs font-medium text-warning-700 dark:text-warning-400">
-                Aucun créneau proposé : {etat.blocages.map((b) => MANQUES[b]).join(', ')}.
-              </p>
-            )}
-
-            {/* Email */}
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">
-              {member.email}
-            </p>
-
-            {/* Assigned location (NOUVEAU MODÈLE: 1 membre = 1 lieu) */}
-            {assignedLocation && (
-              <div className="mt-2">
-                <span className="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
-                  {assignedLocation.name}
-                </span>
-              </div>
-            )}
-
-            {/* Assigned services */}
-            {servicesDisplay && (
-              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 truncate">
-                Prestations : {servicesDisplay}
-              </p>
-            )}
-
-            {/* Access code */}
-            <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono">
-                <span className="text-gray-700 dark:text-gray-300">
-                  {showCode ? member.accessCode : '••••••••'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleToggleShowCode}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                title={showCode ? 'Masquer le code' : 'Voir le code'}
-              >
-                {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                title="Copier le code"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Toggle switch */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <Switch
-              checked={member.isActive}
-              onChange={(e) => handleToggle(e.target.checked)}
-              disabled={toggling}
-              aria-label={member.isActive ? 'Désactiver' : 'Activer'}
-            />
-          </div>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">
+            {assignedLocation ? assignedLocation.name : 'Aucun lieu'}
+            {' · '}
+            {assignedServices.length} prestation{assignedServices.length > 1 ? 's' : ''}
+          </p>
         </div>
+
+        {/* LE chiffre : combien de rendez-vous cette personne peut encore
+            recevoir cette semaine. Un zéro en orange se repère sans lire. */}
+        {member.isActive && (
+          <div className="mt-1 sm:mt-0 flex-shrink-0 sm:text-right">
+            {nombre === null ? (
+              <span className="text-sm text-gray-400">—</span>
+            ) : (
+              <>
+                <p
+                  className={`text-base sm:text-lg font-semibold leading-tight ${
+                    nombre === 0
+                      ? 'text-warning-700 dark:text-warning-400'
+                      : 'text-gray-900 dark:text-white'
+                  }`}
+                >
+                  {nombre} créneau{nombre > 1 ? 'x' : ''}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {bloque ? manque : 'cette semaine'}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bouton d'action SEULEMENT là où il y a quelque chose à corriger. */}
+      {bloque && onCorriger && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCorriger();
+          }}
+          className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg border border-warning-300 text-warning-800 hover:bg-warning-50 dark:border-warning-800 dark:text-warning-300 dark:hover:bg-warning-950/20"
+        >
+          Corriger
+        </button>
+      )}
+
+      {/* Code d'accès, replié : utile, mais il ne doit pas occuper la ligne. */}
+      <div className="flex-shrink-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        {showCode && (
+          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-700 dark:text-gray-300">
+            {member.accessCode}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleToggleShowCode}
+          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          title={showCode ? 'Masquer le code d’accès' : 'Voir le code d’accès'}
+          aria-label={showCode ? 'Masquer le code d’accès' : 'Voir le code d’accès'}
+        >
+          {showCode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+        {showCode && (
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            title="Copier le code"
+            aria-label="Copier le code d’accès"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Activer / désactiver */}
+      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <Switch
+          checked={member.isActive}
+          onChange={(e) => handleToggle(e.target.checked)}
+          disabled={toggling}
+          aria-label={member.isActive ? 'Désactiver' : 'Activer'}
+        />
       </div>
     </div>
   );
