@@ -69,12 +69,46 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
   // même nonce échoue à la création et ne compte rien.
   const nonceOk = typeof nonce === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(nonce);
   const eventRef = nonceOk ? db.collection('storyEvents').doc(`${providerId}_${nonce}`) : db.collection('storyEvents').doc();
+
+  // L'événement ET le compteur dans UNE transaction. En deux écritures
+  // successives, un échec du compteur laissait l'événement seul : la
+  // relance avec le même nonce était considérée comme un doublon et le
+  // partage n'était jamais compté. Les deux passent ou aucun.
   try {
-    await eventRef.create({
-      providerId,
-      content,
-      channel,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    await db.runTransaction(async (tx) => {
+      const existant = await tx.get(eventRef);
+      if (existant.exists) {
+        const err = new Error('ALREADY_RECORDED');
+        (err as { code?: number }).code = 6;
+        throw err;
+      }
+      tx.create(eventRef, {
+        providerId,
+        content,
+        channel,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(
+        providerRef,
+        {
+          stats: {
+            stories: {
+              lastContent: content,
+              lastChannel: channel,
+              shared: admin.firestore.FieldValue.increment(1),
+              lastSharedAt: admin.firestore.FieldValue.serverTimestamp(),
+              // Compteurs par type et par période — base des objectifs de
+              // partage (packages/shared utils/storyGoals). Mêmes clés que
+              // storyWeekKey / storyMonthKey, recopiées ici pour ne pas
+              // dépendre du build partagé.
+              byContent: { [String(content)]: admin.firestore.FieldValue.increment(1) },
+              byWeek: { [weekKey(new Date())]: admin.firestore.FieldValue.increment(1) },
+              byMonth: { [monthKey(new Date())]: admin.firestore.FieldValue.increment(1) },
+            },
+          },
+        },
+        { merge: true },
+      );
     });
   } catch (e: unknown) {
     if ((e as { code?: number }).code === 6 /* ALREADY_EXISTS */) {
@@ -82,21 +116,6 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
     }
     throw e;
   }
-
-  await Promise.all([
-    providerRef.update({
-      'stats.stories.lastContent': content,
-      'stats.stories.lastChannel': channel,
-      'stats.stories.shared': admin.firestore.FieldValue.increment(1),
-      'stats.stories.lastSharedAt': admin.firestore.FieldValue.serverTimestamp(),
-      // Compteurs par type et par période — base des objectifs de partage
-      // (packages/shared utils/storyGoals). Mêmes clés que storyWeekKey /
-      // storyMonthKey, recopiées ici pour ne pas dépendre du build partagé.
-      [`stats.stories.byContent.${content}`]: admin.firestore.FieldValue.increment(1),
-      [`stats.stories.byWeek.${weekKey(new Date())}`]: admin.firestore.FieldValue.increment(1),
-      [`stats.stories.byMonth.${monthKey(new Date())}`]: admin.firestore.FieldValue.increment(1),
-    }),
-  ]);
 
   return { success: true };
 });

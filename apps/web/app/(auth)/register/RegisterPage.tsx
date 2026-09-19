@@ -716,21 +716,22 @@ export default function RegisterPage() {
       await createProviderWithData(user.id);
 
       // Send welcome email (fire-and-forget)
-      fetch('/api/auth/welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
+      // Le destinataire et l'identifiant viennent du jeton côté serveur :
+      // la route n'accepte plus d'adresse dans le corps de la requête.
+      void getAuth().currentUser?.getIdToken().then((token) =>
+        fetch('/api/auth/welcome-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
           displayName: data.displayName,
           businessName: data.businessName,
-          // Pour la conversion serveur TikTok (voir la route).
-          uid: user.id,
           ttclid: (() => {
             const a = attributionInscription(typeof window !== 'undefined' ? window.location.search : '');
             return a?.clickId === 'ttclid' ? a.clickIdValue ?? null : null;
           })(),
+          }),
         }),
-      }).catch(() => {});
+      ).catch(() => {});
 
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem('register-step');

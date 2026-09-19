@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { sendTikTokEvent } from '@/lib/tiktok-events-api';
 import {
   resend,
@@ -9,39 +10,58 @@ import {
 } from '@/lib/resend';
 
 interface WelcomeEmailRequest {
-  /** Identifiant du compte créé — pour la conversion serveur TikTok. */
-  uid?: string;
   /** Identifiant de clic TikTok du lien d'arrivée, s'il y en avait un. */
   ttclid?: string | null;
-  email: string;
   displayName: string;
   businessName: string;
 }
 
+/**
+ * Échappement HTML — ces valeurs viennent du formulaire d'inscription et
+ * sont réinjectées dans le corps du message. Sans échappement, un nom
+ * pouvait contenir du balisage et transformer un e-mail Opatam en support
+ * de contenu trompeur (audit 2026-09-19).
+ */
+function echapper(v: unknown, max = 120): string {
+  return String(v ?? '')
+    .slice(0, max)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Version texte : pas de balisage à échapper, mais on borne quand même. */
+function texteSimple(v: unknown, max = 120): string {
+  return String(v ?? '').slice(0, max).replace(/[\r\n]+/g, ' ');
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body: WelcomeEmailRequest = await request.json();
-    const { email, displayName, businessName, uid, ttclid } = body;
-
-    // Conversion « inscription terminée » vers TikTok, côté serveur — même
-    // event_id que le pixel (`CompleteRegistration:<uid>`), donc comptée une
-    // seule fois quand les deux arrivent, et comptée quand même si un
-    // bloqueur a tu le pixel. Fire-and-forget : l'e-mail n'attend pas.
-    if (typeof uid === 'string' && uid) {
-      void sendTikTokEvent({
-        event: 'CompleteRegistration',
-        eventId: `CompleteRegistration:${uid}`,
-        url: 'https://opatam.com/register',
-        user: {
-          email,
-          externalId: uid,
-          ttclid: typeof ttclid === 'string' && ttclid ? ttclid.slice(0, 200) : null,
-          ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
-          userAgent: request.headers.get('user-agent'),
-        },
-        properties: { contents: [{ content_id: 'pro', content_type: 'product', content_name: 'Compte prestataire' }] },
-      });
+    // Authentification OBLIGATOIRE : la route envoyait un e-mail Opatam à
+    // n'importe quelle adresse fournie dans le corps de la requête. Le
+    // destinataire et l'identifiant viennent désormais du jeton vérifié,
+    // jamais du corps — seul le compte qui vient d'être créé peut
+    // déclencher SON e-mail de bienvenue.
+    const header = request.headers.get('authorization') ?? '';
+    if (!header.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
     }
+    let uid: string;
+    let email: string | undefined;
+    try {
+      const decoded = await getAdminAuth().verifyIdToken(header.slice(7));
+      uid = decoded.uid;
+      email = decoded.email;
+    } catch {
+      return NextResponse.json({ error: 'Jeton invalide ou expiré' }, { status: 401 });
+    }
+
+    const body: WelcomeEmailRequest = await request.json();
+    const { ttclid } = body;
+    const displayName = texteSimple(body.displayName);
+    const businessName = texteSimple(body.businessName);
 
     if (!email || !displayName || !businessName) {
       return NextResponse.json(
@@ -57,15 +77,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Conversion « inscription terminée » vers TikTok, côté serveur — même
+    // event_id que le pixel (`CompleteRegistration:<uid>`), donc comptée une
+    // seule fois quand les deux arrivent, et comptée quand même si un
+    // bloqueur a tu le pixel. APRÈS validation : un corps invalide ne doit
+    // pas produire de conversion. Fire-and-forget : l'e-mail n'attend pas.
+    void sendTikTokEvent({
+      event: 'CompleteRegistration',
+      eventId: `CompleteRegistration:${uid}`,
+      url: 'https://opatam.com/register',
+      user: {
+        email,
+        externalId: uid,
+        ttclid: typeof ttclid === 'string' && ttclid ? ttclid.slice(0, 200) : null,
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+        userAgent: request.headers.get('user-agent'),
+      },
+      properties: { contents: [{ content_id: 'pro', content_type: 'product', content_name: 'Compte prestataire' }] },
+    });
+
     const html = getEmailWrapperHtml(`
       <!-- Content -->
       <tr>
         <td style="padding: 0 32px 24px;">
           <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-            Bonjour ${displayName},
+            Bonjour ${echapper(displayName)},
           </p>
           <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">
-            Bienvenue sur <strong>${appConfig.name}</strong> ! Votre compte pour <strong>${businessName}</strong> a bien été créé.
+            Bienvenue sur <strong>${appConfig.name}</strong> ! Votre compte pour <strong>${echapper(businessName)}</strong> a bien été créé.
           </p>
 
           <!-- What's next box -->
@@ -144,7 +183,7 @@ L'équipe ${appConfig.name}
       from: emailConfig.from,
       to: email,
       replyTo: emailConfig.replyTo,
-      subject: `Bienvenue sur ${appConfig.name}, ${displayName} !`,
+      subject: `Bienvenue sur ${appConfig.name}, ${displayName} !`.slice(0, 180),
       html,
       text,
     });

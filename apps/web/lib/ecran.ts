@@ -13,7 +13,7 @@
 
 import { randomBytes } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
-import type { SalonScreen } from '@booking-app/shared';
+import { isPubliclyVisible, type SalonScreen } from '@booking-app/shared';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
 export const COLLECTION_ECRANS = 'salonScreens';
@@ -122,7 +122,12 @@ export function bornesDuJour(maintenant: Date, fuseau: string): { debut: Date; f
 export function bornesDeJour(jour: string, fuseau: string): { debut: Date; fin: Date; jour: string; dow: number } {
   const minuitNaif = new Date(`${jour}T00:00:00Z`);
   const debut = new Date(minuitNaif.getTime() - decalage(minuitNaif, fuseau));
-  const fin = new Date(debut.getTime() + 24 * 3600 * 1000 - 1);
+  // Fin = minuit du LENDEMAIN local moins 1 ms, jamais « début + 24 h » :
+  // les deux dimanches de changement d'heure durent 23 h ou 25 h, et la
+  // journée finissait une heure trop tôt ou mordait sur le lendemain.
+  const minuitSuivantNaif = new Date(minuitNaif.getTime() + 24 * 3600 * 1000);
+  const debutSuivant = new Date(minuitSuivantNaif.getTime() - decalage(minuitSuivantNaif, fuseau));
+  const fin = new Date(debutSuivant.getTime() - 1);
   // Midi local : à l'abri des changements d'heure pour lire le jour de semaine.
   return { debut, fin, jour, dow: jourSemaineLocal(new Date(debut.getTime() + 12 * 3600 * 1000), fuseau) };
 }
@@ -256,14 +261,17 @@ export async function chargerEcran(id: string, secret: string, maintenant = new 
 
   // Trace de la dernière consultation, au plus une fois par minute — pour
   // que le pro voie dans ses paramètres si l'écran est bien branché.
+  // Toutes les 15 min, pas à chaque interrogation : l'écran interroge le
+  // serveur chaque minute, ce qui faisait 1 440 écritures par jour et par
+  // écran pour une information dont la précision à la minute est inutile.
   const dernier = ecran.lastAccessAt?.getTime() ?? 0;
-  if (maintenant.getTime() - dernier > 60_000) {
+  if (maintenant.getTime() - dernier > 15 * 60_000) {
     void db.collection(COLLECTION_ECRANS).doc(ecran.id).update({ lastAccessAt: Timestamp.fromDate(maintenant) }).catch(() => undefined);
   }
 
   return {
     ecran: { id: ecran.id, label: ecran.label, upcomingCount: ecran.upcomingCount, showCounters: ecran.showCounters, clientDisplay: ecran.clientDisplay, theme: ecran.theme },
-    provider: { businessName: String(provider.businessName ?? ''), photoURL: typeof provider.photoURL === 'string' ? provider.photoURL : null, themeId: typeof provider.themeId === 'string' ? provider.themeId : null, slug: provider.isPublished && typeof provider.slug === 'string' ? provider.slug : null },
+    provider: { businessName: String(provider.businessName ?? ''), photoURL: typeof provider.photoURL === 'string' ? provider.photoURL : null, themeId: typeof provider.themeId === 'string' ? provider.themeId : null, slug: typeof provider.slug === 'string' && isPubliclyVisible(provider as Parameters<typeof isPubliclyVisible>[0]) ? provider.slug : null },
     lieu: { id: ecran.locationId, name: String(lieu?.name ?? '') },
     fuseau,
     jour,

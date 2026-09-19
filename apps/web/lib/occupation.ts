@@ -12,6 +12,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { isPubliclyVisible } from '@booking-app/shared';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { bornesDeJour, heureLocale, jourLocal } from '@/lib/ecran';
 import type { CaseOccupation, CategorieOccupation, JourOccupation, OccupationPayload } from '@/lib/occupation-types';
@@ -55,7 +56,10 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
   if (provSnap.empty) return null;
   const provDoc = provSnap.docs[0];
   const provider = provDoc.data() as Record<string, unknown>;
-  if (provider.isPublished !== true) return null;
+  // Les DROITS, pas seulement le drapeau : une fiche restée publiée alors
+  // que l'abonnement a expiré ne doit pas continuer d'exposer ses
+  // disponibilités sur le site d'un tiers (audit 2026-09-19).
+  if (!isPubliclyVisible(provider as Parameters<typeof isPubliclyVisible>[0])) return null;
   const providerId = provDoc.id;
   const settings = (provider.settings ?? {}) as { timezone?: string; minBookingNotice?: number; maxBookingAdvance?: number };
   const fuseau = settings.timezone || FUSEAU_DEFAUT;

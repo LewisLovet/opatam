@@ -134,7 +134,15 @@ export function useSubscriptionStatus() {
     isTrialing: isTrialing || (!overrideActive && entitlements.source === 'trial'),
     isExpired: needsSubscription,
     needsSubscription,
-    plan: (overrideActive ? provider.accessOverride?.plan ?? plan : plan) || null,
+    // L'UNION des droits pour un compte payant ou offert : un Studio payant
+    // doublé d'un accès offert Solo restait vu comme Solo (limites d'équipe
+    // rétrogradées). L'ESSAI garde son plan brut — `effectivePlan` le classe
+    // 'team' pour l'interface, ce qui lèverait sa limite d'un membre. Même
+    // règle que EquipeTab / LieuxTab côté web.
+    plan:
+      (entitlements.source === 'paid' || entitlements.source === 'comp'
+        ? entitlements.effectivePlan
+        : plan) || null,
     status: subscription?.status || null,
     daysRemaining,
     paymentSource: subscription?.paymentSource || null,

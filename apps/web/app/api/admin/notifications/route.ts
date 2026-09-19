@@ -91,8 +91,14 @@ function buildDoc(body: any) {
 }
 
 // GET — list notifications + tutorials for the CTA dropdown.
-export async function GET() {
+// Réservé aux admins : la liste contient les brouillons, les cibles
+// nominatives et le contenu interne, et partait sans authentification
+// (audit 2026-09-19).
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     const db = getAdminFirestore();
     const [notifsSnap, tutosSnap] = await Promise.all([
       db.collection('appNotifications').orderBy('createdAt', 'desc').get(),

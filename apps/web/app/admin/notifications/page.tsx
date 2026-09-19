@@ -358,7 +358,7 @@ export default function AdminNotificationsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/notifications');
+      const res = await fetch('/api/admin/notifications', { headers: await adminHeaders() });
       const json = await res.json();
       setRows(Array.isArray(json.notifications) ? json.notifications : []);
       setTutorials(Array.isArray(json.tutorials) ? json.tutorials : []);

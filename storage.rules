@@ -11,6 +11,13 @@ service firebase.storage {
       return request.auth.uid == userId;
     }
 
+    // Administrateur Opatam — même source que les règles Firestore et que
+    // `requireAdmin` côté serveur : le document utilisateur.
+    function isAdminUser() {
+      return isAuthenticated()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     function isImageType() {
       return request.resource.contentType.matches('image/.*');
     }
@@ -59,25 +66,25 @@ service firebase.storage {
     // through the AdminGuard wrapper on the admin pages.
     match /landing/galleries/{slug}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+      allow write: if isAdminUser() && isImageType() && isUnder5MB();
     }
 
     // Vidéos de prestataires mises en avant sur l'accueil, envoyées depuis
     // /admin/videos — la vidéo ET son affiche. Lecture publique (la page
-    // d'accueil l'est) ; écriture authentifiée, l'autorité admin étant
-    // portée par l'AdminGuard de la page.
+    // d'accueil l'est) ; écriture RÉSERVÉE AUX ADMINS : l'AdminGuard ne
+    // protège que l'interface, et `isAuthenticated()` laissait n'importe
+    // quel compte envoyer 60 Mo ici (audit 2026-09-19).
     match /landing/videos/{slug}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated()
+      allow write: if isAdminUser()
         && ((isImageType() && isUnder5MB()) || (isVideoType() && isUnder60MB()));
     }
 
     // In-app notification images (uploaded from /admin/notifications).
-    // Public read (shown in the app); authenticated image writes,
-    // admin authority enforced by the AdminGuard on the admin page.
+    // Public read (shown in the app); admin-only writes.
     match /app-notifications/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+      allow write: if isAdminUser() && isImageType() && isUnder5MB();
     }
   }
 }

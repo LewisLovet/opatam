@@ -145,14 +145,32 @@ export function EquipeTab() {
       }
     }
 
+    // `memberIds === null` signifie « tous les membres ». Décocher une telle
+    // prestation ne changeait RIEN : la boucle l'ignorait, la case se
+    // décochait à l'écran et l'attribution restait intacte. On matérialise
+    // donc la liste (tous les membres actifs sauf celui-ci) avant de retirer.
+    //
+    // Et comme une liste vide vaut elle aussi « tous les membres » partout
+    // dans le code, retirer le DERNIER membre rendait la prestation à toute
+    // l'équipe. On refuse plutôt, en le disant.
+    const refusees: string[] = [];
     for (const serviceId of servicesToRemove) {
       const service = services.find((s) => s.id === serviceId);
-      if (service && service.memberIds !== null) {
-        const newMemberIds = service.memberIds.filter((id) => id !== memberId);
-        await catalogService.updateService(provider!.id, serviceId, {
-          memberIds: newMemberIds.length > 0 ? newMemberIds : null,
-        });
+      if (!service) continue;
+      const actuels = service.memberIds ?? activeMembers.map((m) => m.id);
+      const newMemberIds = actuels.filter((id) => id !== memberId);
+      if (newMemberIds.length === 0) {
+        refusees.push(service.name);
+        continue;
       }
+      await catalogService.updateService(provider!.id, serviceId, {
+        memberIds: newMemberIds,
+      });
+    }
+    if (refusees.length > 0) {
+      toast.error(
+        `Une prestation doit rester attribuée à au moins un membre : ${refusees.join(', ')}`,
+      );
     }
   };
 
@@ -164,13 +182,16 @@ export function EquipeTab() {
       let memberId: string;
 
       if (selectedMember) {
-        // Update member
+        // Le lieu est volontairement ABSENT d'`updateMember` : c'est
+        // `changeLocation` qui l'écrit, et il commence par vérifier que le
+        // lieu change vraiment. En l'écrivant ici d'abord, cette garde
+        // voyait le nouveau lieu déjà posé, sortait aussitôt, et les
+        // documents de disponibilité restaient sur l'ancien lieu.
         await memberService.updateMember(provider.id, selectedMember.id, {
           name: data.name,
           email: data.email,
           phone: data.phone,
           color: data.color,
-          locationId: data.locationId, // NOUVEAU MODÈLE: 1 membre = 1 lieu
         });
         memberId = selectedMember.id;
 

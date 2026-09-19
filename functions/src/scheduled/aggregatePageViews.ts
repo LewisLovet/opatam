@@ -93,6 +93,21 @@ export const aggregatePageViews = onSchedule(
         }
 
         try {
+          // 0. On RÉSERVE la journée avant de compter quoi que ce soit.
+          //
+          //    Le marqueur était écrit en dernier : une panne entre les
+          //    incréments et lui laissait la journée non marquée, et la
+          //    relance comptait tout une deuxième fois (total gonflé,
+          //    `today` décrémenté deux fois). En le posant d'abord, une
+          //    panne ne fait que REPORTER la journée : les vues restent
+          //    dans `today` et sont versées le lendemain. Le total reste
+          //    juste, seule la ventilation par jour glisse — c'est le sens
+          //    de l'erreur acceptable quand ces chiffres servent de preuve.
+          await db.collection('providers').doc(providerId).update({
+            'stats.pageViews.lastAggregatedDate': yesterdayStr,
+          });
+          serverTracker.trackWrite('providers', 1);
+
           // 1. Save yesterday's views into daily doc (increment to handle multiple calls)
           if (todayViews > 0) {
             const dailyDocId = `${providerId}_${yesterdayStr}`;
@@ -147,7 +162,6 @@ export const aggregatePageViews = onSchedule(
             'stats.pageViews.storyToday': FieldValue.increment(-storyToday),
             'stats.pageViews.last7Days': last7Days,
             'stats.pageViews.last30Days': last30Days,
-            'stats.pageViews.lastAggregatedDate': yesterdayStr,
           });
           serverTracker.trackWrite('providers', 1);
 

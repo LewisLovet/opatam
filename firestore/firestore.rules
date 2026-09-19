@@ -12,6 +12,15 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Administrateur Opatam — lu sur le document utilisateur, la seule
+    // source de vérité (mêmes données que `requireAdmin` côté serveur).
+    // Coûte une lecture, réservée aux écritures d'administration.
+    function isAdminUser() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     function isProviderAdmin(providerId) {
       // Provider.id === User.id, pas besoin de get() supplémentaire
       return isAuthenticated() && request.auth.uid == providerId;
@@ -492,12 +501,13 @@ service cloud.firestore {
     // === VIDÉOS DE PRESTATAIRES EN PAGE D'ACCUEIL ===
     //
     // Un doc par emplacement (id = `home`), liste ordonnée des vidéos mises
-    // en avant. Mêmes règles que les galeries : lecture publique (la page
-    // d'accueil l'est), écriture bloquée aux anonymes — l'autorité admin
-    // est portée par l'AdminGuard qui enveloppe /admin/videos.
+    // en avant. Lecture publique (la page d'accueil l'est) ; écriture
+    // RÉSERVÉE AUX ADMINS : l'AdminGuard ne protège que l'interface, et
+    // `isAuthenticated()` laissait n'importe quel compte client remplacer
+    // les vidéos de la page d'accueil (audit 2026-09-19).
     match /landingVideos/{slug} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdminUser();
     }
 
     // === PAGE VIEWS DAILY (read-only by provider, written by Cloud Function) ===

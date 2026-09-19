@@ -94,8 +94,12 @@ export function useProviderNotifications(): UseProviderNotificationsResult {
         const list = snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as AppNotification) }))
           .filter((n) => {
-            if (n.audience === 'pros' || n.audience === 'all') return true;
+            // La garde de version d'abord, POUR TOUTES les audiences : elle
+            // était testée après le cas « pros / all », c'est-à-dire après
+            // la quasi-totalité des annonces de nouveautés. Une app trop
+            // ancienne annonçait donc une fonction qu'elle n'avait pas.
             if (!bundleAssezRecent((n as { minUpdateAt?: unknown }).minUpdateAt)) return false;
+            if (n.audience === 'pros' || n.audience === 'all') return true;
             if (n.audience === 'admins') return isAdmin;
             if (n.audience === 'specific') return !!uid && n.targetUserId === uid;
             return false;
