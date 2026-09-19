@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Badge, Switch, useToast } from '@/components/ui';
-import { Eye, EyeOff, Copy, Mail } from 'lucide-react';
-import type { Member, Location, Service } from '@booking-app/shared';
+import { Eye, EyeOff, Copy, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import type { Member, Location, Service, EtatMembre, BlocageMembre } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -12,9 +12,22 @@ interface MemberCardProps {
   locations: WithId<Location>[];
   services: WithId<Service>[];
   memberServiceIds: string[];
+  /** Peut-il recevoir des réservations, et sinon pourquoi (voir diagnostiquerMembre). */
+  etat?: EtatMembre;
   onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
   onClick: () => void;
 }
+
+/**
+ * Ce qui manque, dit simplement. Un membre « actif » sans horaires
+ * enregistrés n'a AUCUN créneau, et rien ne le signalait : l'éditeur
+ * d'horaires affiche des horaires par défaut même quand la base est vide.
+ */
+const MANQUES: Record<BlocageMembre, string> = {
+  inactif: 'désactivé',
+  sansHoraires: 'aucun horaire enregistré',
+  sansPrestation: 'aucune prestation attribuée',
+};
 
 // Generate a consistent color based on the name
 function getAvatarColor(name: string): string {
@@ -48,6 +61,7 @@ export function MemberCard({
   locations,
   services,
   memberServiceIds,
+  etat,
   onToggleActive,
   onClick,
 }: MemberCardProps) {
@@ -144,7 +158,29 @@ export function MemberCard({
               <Badge variant={member.isActive ? 'success' : 'default'}>
                 {member.isActive ? 'Actif' : 'Inactif'}
               </Badge>
+              {/* L'état RÉEL, calculé sur la base : actif ne veut pas dire
+                  réservable. Masqué pour un membre désactivé, dont le
+                  badge ci-dessus dit déjà tout. */}
+              {member.isActive && etat && (
+                <Badge variant={etat.reservable ? 'success' : 'warning'}>
+                  {etat.reservable ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Réservable
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> À compléter
+                    </span>
+                  )}
+                </Badge>
+              )}
             </div>
+
+            {member.isActive && etat && !etat.reservable && (
+              <p className="mt-1 text-xs font-medium text-warning-700 dark:text-warning-400">
+                Aucun créneau proposé : {etat.blocages.map((b) => MANQUES[b]).join(', ')}.
+              </p>
+            )}
 
             {/* Email */}
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">

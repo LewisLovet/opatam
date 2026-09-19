@@ -7,6 +7,7 @@ import {
   memberService,
   locationService,
   catalogService,
+  availabilityRepository,
   bookingRepository,
   uploadFile,
   storagePaths,
@@ -15,7 +16,7 @@ import { Loader2, Users, Plus } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import type { Member, Location, Service } from '@booking-app/shared';
-import { PLAN_LIMITS, computeEntitlements } from '@booking-app/shared';
+import { PLAN_LIMITS, computeEntitlements, diagnostiquerMembre } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
 type WithId<T> = { id: string } & T;
@@ -28,6 +29,9 @@ export function EquipeTab() {
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [services, setServices] = useState<WithId<Service>[]>([]);
+  // Horaires de TOUTE l'équipe, en une lecture : avec les prestations, ils
+  // décident si un membre peut réellement recevoir des réservations.
+  const [availabilities, setAvailabilities] = useState<{ memberId: string; isOpen: boolean; slots: { start: string; end: string }[] }[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<WithId<Member> | null>(null);
   const [selectedMemberServiceIds, setSelectedMemberServiceIds] = useState<string[]>([]);
@@ -54,15 +58,17 @@ export function EquipeTab() {
 
     setLoading(true);
     try {
-      const [membersData, locationsData, servicesData] = await Promise.all([
+      const [membersData, locationsData, servicesData, availabilitiesData] = await Promise.all([
         memberService.getByProvider(provider.id),
         locationService.getByProvider(provider.id),
         catalogService.getByProvider(provider.id),
+        availabilityRepository.getByProvider(provider.id),
       ]);
 
       setMembers(membersData);
       setLocations(locationsData);
       setServices(servicesData);
+      setAvailabilities(availabilitiesData);
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Erreur lors du chargement des membres');
@@ -415,6 +421,7 @@ export function EquipeTab() {
               member={member}
               locations={locations}
               services={services}
+              etat={diagnostiquerMembre(member, services, availabilities)}
               memberServiceIds={getMemberServiceIds(member.id)}
               onToggleActive={handleToggleActive}
               onClick={() => handleOpenEdit(member)}
