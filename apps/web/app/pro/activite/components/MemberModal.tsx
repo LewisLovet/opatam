@@ -32,6 +32,8 @@ interface MemberModalProps {
   onRegenerateCode?: (memberId: string) => Promise<string>;
   onSendCode?: (memberId: string) => Promise<void>;
   upcomingBookingsCount?: number;
+  /** Lieu présélectionné à la création, quand on part d'une section de lieu. */
+  lieuParDefaut?: string;
   /** Il existe déjà au moins un membre : avertir qu'un membre = un agenda
    *  réservable EN PARALLÈLE (cas Coiffeuse Masquée : deux membres pour une
    *  seule personne → doubles réservations). */
@@ -63,6 +65,7 @@ export function MemberModal({
   onSendCode,
   upcomingBookingsCount = 0,
   estMembreSupplementaire = false,
+  lieuParDefaut,
 }: MemberModalProps) {
   const toast = useToast();
   const { provider } = useAuth();
@@ -138,8 +141,10 @@ export function MemberModal({
         setPhotoURL(member.photoURL || null);
         setActiveTab('info');
       } else {
-        // Default to first active location for new members
-        const firstActiveLocation = locations.find((loc) => loc.isActive);
+        // Le lieu d'où vient le clic gagne : « Ajouter un prestataire à ce
+        // lieu » doit ouvrir sur CE lieu, pas sur le premier de la liste.
+        const lieuDemande = locations.find((loc) => loc.id === lieuParDefaut && loc.isActive);
+        const firstActiveLocation = lieuDemande ?? locations.find((loc) => loc.isActive);
         const defaultLocationId = firstActiveLocation?.id || '';
         // Default to all available services for that location
         const availableServiceIds = services
@@ -161,7 +166,7 @@ export function MemberModal({
       setShowDeleteConfirm(false);
       setShowRegenerateConfirm(false);
     }
-  }, [isOpen, member, locations, services, memberServiceIds]);
+  }, [isOpen, member, locations, services, memberServiceIds, lieuParDefaut]);
 
   // When location changes, remove services that are no longer available
   useEffect(() => {

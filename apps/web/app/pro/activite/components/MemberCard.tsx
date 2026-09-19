@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Badge, Switch, useToast } from '@/components/ui';
-import { Eye, EyeOff, Copy } from 'lucide-react';
+import { Switch, useToast } from '@/components/ui';
+import { AlertTriangle, CheckCircle2, Copy, Eye, EyeOff } from 'lucide-react';
 import type { Member, Location, Service, EtatMembre, BlocageMembre } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -14,8 +14,12 @@ interface MemberCardProps {
   memberServiceIds: string[];
   /** Peut-il recevoir des réservations, et sinon pourquoi (voir diagnostiquerMembre). */
   etat?: EtatMembre;
-  /** Rendez-vous encore possibles sur 7 jours. `null` = comptage indisponible. */
+  /** Rendez-vous encore possibles sur 7 jours. `null` = comptage en cours. */
   creneaux?: number | null;
+  /** « Lun–Ven · 9h–18h », ou `null` si aucun horaire n'est enregistré. */
+  resumeHoraires?: string | null;
+  /** Dans une section de lieu, le lieu est déjà dans l'en-tête : ne pas le répéter. */
+  masquerLieu?: boolean;
   /** Emmène le professionnel là où le blocage se répare. */
   onCorriger?: () => void;
   onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
@@ -33,30 +37,19 @@ const MANQUES: Record<BlocageMembre, string> = {
   sansPrestation: 'aucune prestation attribuée',
 };
 
-// Generate a consistent color based on the name
 function getAvatarColor(name: string): string {
   const colors = [
-    'bg-primary-500',
-    'bg-secondary-500',
-    'bg-accent-500',
-    'bg-success-500',
-    'bg-warning-500',
-    'bg-error-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-indigo-500',
-    'bg-teal-500',
+    'bg-primary-500', 'bg-secondary-500', 'bg-accent-500', 'bg-success-500',
+    'bg-warning-500', 'bg-error-500', 'bg-purple-500', 'bg-pink-500',
+    'bg-indigo-500', 'bg-teal-500',
   ];
   const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
 
-// Get initials from name (max 2 characters)
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
 
@@ -67,6 +60,8 @@ export function MemberCard({
   memberServiceIds,
   etat,
   creneaux = null,
+  resumeHoraires = null,
+  masquerLieu = false,
   onToggleActive,
   onClick,
   onCorriger,
@@ -94,38 +89,28 @@ export function MemberCard({
     }
   };
 
-  const handleToggleShowCode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowCode(!showCode);
-  };
-
-  // Get assigned location (NOUVEAU MODÈLE: 1 membre = 1 lieu)
   const assignedLocation = locations.find((loc) => loc.id === member.locationId);
+  const assignedServices = services.filter((svc) => memberServiceIds.includes(svc.id));
 
-  // Get assigned services
-  const assignedServices = services.filter((svc) =>
-    memberServiceIds.includes(svc.id)
-  );
-
-  // Format services display (max 2-3 names then "+X")
-  const formatServicesDisplay = () => {
-    if (assignedServices.length === 0) return null;
-    const maxShow = 2;
-    const shown = assignedServices.slice(0, maxShow).map((s) => s.name);
-    const remaining = assignedServices.length - maxShow;
-    if (remaining > 0) {
-      return `${shown.join(', ')}, +${remaining}`;
-    }
-    return shown.join(', ');
-  };
-
-  const servicesDisplay = formatServicesDisplay();
   const avatarColor = member.color ? '' : getAvatarColor(member.name);
   const initials = getInitials(member.name);
 
   const nombre = creneaux;
   const bloque = member.isActive && etat ? !etat.reservable : false;
-  const manque = etat ? etat.blocages.filter((b) => b !== 'inactif').map((b) => MANQUES[b]).join(', ') : '';
+  const manque = etat
+    ? etat.blocages.filter((b) => b !== 'inactif').map((b) => MANQUES[b]).join(', ')
+    : '';
+
+  // Sous-titre : dans une section de lieu on décrit le travail (prestations
+  // et horaires) ; hors section il faut d'abord dire OÙ se trouve la personne.
+  const nbPrestations = `${assignedServices.length} prestation${assignedServices.length > 1 ? 's' : ''}`;
+  const sousTitre = masquerLieu
+    ? nbPrestations
+    : `${assignedLocation ? assignedLocation.name : 'Aucun lieu'} · ${nbPrestations}`;
+  // Les horaires sont utiles mais secondaires : sur téléphone ils se
+  // faisaient tronquer en « Lun–Ve… », ce qui n'apprend rien. Ils
+  // n'apparaissent donc qu'à partir de la largeur où ils tiennent.
+  const horairesSecondaires = masquerLieu ? (resumeHoraires ?? 'Horaires à configurer') : null;
 
   return (
     <div
@@ -136,7 +121,6 @@ export function MemberCard({
       `}
       onClick={onClick}
     >
-      {/* Avatar */}
       <div
         className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${avatarColor}`}
         style={member.color ? { backgroundColor: member.color } : undefined}
@@ -155,12 +139,23 @@ export function MemberCard({
         <div className="min-w-0 sm:flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white truncate">{member.name}</h3>
-            {!member.isActive && <Badge variant="default">Inactif</Badge>}
+            {!member.isActive ? (
+              <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                Désactivé
+              </span>
+            ) : bloque ? (
+              <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-semibold text-warning-700 dark:bg-warning-900/20 dark:text-warning-400">
+                <AlertTriangle className="h-3 w-3" /> À compléter
+              </span>
+            ) : etat ? (
+              <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-700 dark:bg-success-900/20 dark:text-success-400">
+                <CheckCircle2 className="h-3 w-3" /> Prêt
+              </span>
+            ) : null}
           </div>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">
-            {assignedLocation ? assignedLocation.name : 'Aucun lieu'}
-            {' · '}
-            {assignedServices.length} prestation{assignedServices.length > 1 ? 's' : ''}
+            {sousTitre}
+            {horairesSecondaires && <span className="hidden sm:inline"> · {horairesSecondaires}</span>}
           </p>
         </div>
 
@@ -213,7 +208,10 @@ export function MemberCard({
         )}
         <button
           type="button"
-          onClick={handleToggleShowCode}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowCode(!showCode);
+          }}
           className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           title={showCode ? 'Masquer le code d’accès' : 'Voir le code d’accès'}
           aria-label={showCode ? 'Masquer le code d’accès' : 'Voir le code d’accès'}
@@ -233,7 +231,6 @@ export function MemberCard({
         )}
       </div>
 
-      {/* Activer / désactiver */}
       <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         <Switch
           checked={member.isActive}
