@@ -132,7 +132,34 @@ export function EquipeTab() {
     // Services to remove this member from
     const servicesToRemove = currentServiceIds.filter((id) => !newServiceIds.includes(id));
 
-    // Update services
+    // `memberIds === null` signifie « tous les membres ». Décocher une telle
+    // prestation ne changeait RIEN : la boucle l'ignorait, la case se
+    // décochait à l'écran et l'attribution restait intacte. On matérialise
+    // donc la liste (tous les membres actifs sauf celui-ci) avant de retirer.
+    //
+    // Et comme une liste vide vaut elle aussi « tous les membres » partout
+    // dans le code, retirer le DERNIER membre rendait la prestation à toute
+    // l'équipe. On refuse, et on le fait AVANT la moindre écriture : un
+    // refus au milieu laissait une sauvegarde à moitié faite, suivie d'un
+    // « Membre mis à jour » qui la contredisait.
+    const retraits = servicesToRemove
+      .map((serviceId) => {
+        const service = services.find((s) => s.id === serviceId);
+        if (!service) return null;
+        const actuels = service.memberIds ?? activeMembers.map((m) => m.id);
+        return { service, restants: actuels.filter((id) => id !== memberId) };
+      })
+      .filter((x): x is { service: WithId<Service>; restants: string[] } => x !== null);
+
+    const orphelines = retraits.filter((r) => r.restants.length === 0);
+    if (orphelines.length > 0) {
+      throw new Error(
+        `Une prestation doit rester attribuée à au moins un membre : ${orphelines
+          .map((r) => r.service.name)
+          .join(', ')}`,
+      );
+    }
+
     for (const serviceId of servicesToAdd) {
       const service = services.find((s) => s.id === serviceId);
       if (service) {
@@ -145,32 +172,10 @@ export function EquipeTab() {
       }
     }
 
-    // `memberIds === null` signifie « tous les membres ». Décocher une telle
-    // prestation ne changeait RIEN : la boucle l'ignorait, la case se
-    // décochait à l'écran et l'attribution restait intacte. On matérialise
-    // donc la liste (tous les membres actifs sauf celui-ci) avant de retirer.
-    //
-    // Et comme une liste vide vaut elle aussi « tous les membres » partout
-    // dans le code, retirer le DERNIER membre rendait la prestation à toute
-    // l'équipe. On refuse plutôt, en le disant.
-    const refusees: string[] = [];
-    for (const serviceId of servicesToRemove) {
-      const service = services.find((s) => s.id === serviceId);
-      if (!service) continue;
-      const actuels = service.memberIds ?? activeMembers.map((m) => m.id);
-      const newMemberIds = actuels.filter((id) => id !== memberId);
-      if (newMemberIds.length === 0) {
-        refusees.push(service.name);
-        continue;
-      }
-      await catalogService.updateService(provider!.id, serviceId, {
-        memberIds: newMemberIds,
+    for (const { service, restants } of retraits) {
+      await catalogService.updateService(provider!.id, service.id, {
+        memberIds: restants,
       });
-    }
-    if (refusees.length > 0) {
-      toast.error(
-        `Une prestation doit rester attribuée à au moins un membre : ${refusees.join(', ')}`,
-      );
     }
   };
 

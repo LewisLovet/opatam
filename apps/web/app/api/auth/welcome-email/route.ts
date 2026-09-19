@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { sendTikTokEvent } from '@/lib/tiktok-events-api';
 import {
   resend,
@@ -75,6 +75,24 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid email format' },
         { status: 400 }
       );
+    }
+
+    // Un seul e-mail de bienvenue par compte. Le jeton empêchait déjà
+    // d'écrire à autrui, mais un compte pouvait se renvoyer le message
+    // autant de fois qu'il le voulait. La marque est posée AVANT l'envoi,
+    // dans une transaction : deux appels simultanés n'en produisent qu'un.
+    const refUtilisateur = getAdminFirestore().collection('users').doc(uid);
+    const dejaEnvoye = await getAdminFirestore()
+      .runTransaction(async (tx) => {
+        const snap = await tx.get(refUtilisateur);
+        if (!snap.exists) return false; // compte hors base : on laisse passer
+        if (snap.data()?.welcomeEmailSentAt) return true;
+        tx.update(refUtilisateur, { welcomeEmailSentAt: new Date() });
+        return false;
+      })
+      .catch(() => false); // un souci de base ne doit pas priver d'e-mail
+    if (dejaEnvoye) {
+      return NextResponse.json({ success: true, alreadySent: true });
     }
 
     // Conversion « inscription terminée » vers TikTok, côté serveur — même

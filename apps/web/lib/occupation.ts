@@ -14,7 +14,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { isPubliclyVisible } from '@booking-app/shared';
 import { getAdminFirestore } from '@/lib/firebase-admin';
-import { bornesDeJour, heureLocale, jourLocal } from '@/lib/ecran';
+import { bornesDeJour, heureLocale, instantLocal, jourLocal } from '@/lib/ecran';
 import type { CaseOccupation, CategorieOccupation, JourOccupation, OccupationPayload } from '@/lib/occupation-types';
 
 const FUSEAU_DEFAUT = 'Europe/Paris';
@@ -168,10 +168,13 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
 
   const categories = new Map<string, CategorieOccupation>();
   const jours: JourOccupation[] = dates.map((date) => {
-    const { debut: debutJour, dow } = bornesDeJour(date, fuseau);
+    const { dow } = bornesDeJour(date, fuseau);
     const cases: CaseOccupation[] = creneaux.map((m) => {
       const slot: Intervalle = [m, m + pas];
-      const instant = new Date(debutJour.getTime() + m * 60_000);
+      // Instant réel du créneau — pas « minuit + m minutes », qui se décale
+      // d'une heure les dimanches de changement d'heure et fausserait les
+      // comparaisons de préavis et d'avance maximale.
+      const instant = instantLocal(date, m, fuseau);
       let total = 0, libres = 0; let cat: string | null = null;
       for (const membre of membres) {
         const ouverts = horaires.get(`${membre.id}:${dow}`) ?? [];

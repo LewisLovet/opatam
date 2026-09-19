@@ -76,95 +76,90 @@ export const aggregatePageViews = onSchedule(
 
       await Promise.all(batch.map(async (providerDoc) => {
         const providerId = providerDoc.id;
-        const data = providerDoc.data();
-        const todayViews: number = data?.stats?.pageViews?.today ?? 0;
-        const storyToday: number = data?.stats?.pageViews?.storyToday ?? 0;
-        const currentTotal = data?.stats?.pageViews?.total ?? 0;
-
-        // Garde contre une double exécution (relance manuelle, retry du
-        // scheduler) : le jour est déjà archivé → on ne le compte pas deux fois.
-        if (data?.stats?.pageViews?.lastAggregatedDate === yesterdayStr) {
-          skipped++;
-          return;
-        }
-        if (todayViews === 0 && currentTotal === 0) {
-          skipped++;
-          return;
-        }
+        const providerRef = db.collection('providers').doc(providerId);
+        const monthStr = yesterdayStr.slice(0, 7); // YYYY-MM
+        const dailyRef = db.collection('pageViewsDaily').doc(`${providerId}_${yesterdayStr}`);
+        const monthlyRef = db.collection('pageViewsMonthly').doc(`${providerId}_${monthStr}`);
+        const dailyQuery = db.collection('pageViewsDaily')
+          .where('providerId', '==', providerId)
+          .where('date', '>=', last30Str);
 
         try {
-          // 0. On RÉSERVE la journée avant de compter quoi que ce soit.
+          // TOUT dans UNE transaction par prestataire.
           //
-          //    Le marqueur était écrit en dernier : une panne entre les
-          //    incréments et lui laissait la journée non marquée, et la
-          //    relance comptait tout une deuxième fois (total gonflé,
-          //    `today` décrémenté deux fois). En le posant d'abord, une
-          //    panne ne fait que REPORTER la journée : les vues restent
-          //    dans `today` et sont versées le lendemain. Le total reste
-          //    juste, seule la ventilation par jour glisse — c'est le sens
-          //    de l'erreur acceptable quand ces chiffres servent de preuve.
-          await db.collection('providers').doc(providerId).update({
-            'stats.pageViews.lastAggregatedDate': yesterdayStr,
-          });
-          serverTracker.trackWrite('providers', 1);
+          // Auparavant : garde lue sur un instantané déjà ancien, puis
+          // quatre écritures indépendantes. Deux exécutions concurrentes
+          // passaient donc la garde toutes les deux, et une panne entre les
+          // incréments journaliers et la remise à zéro de `today` faisait
+          // recompter les mêmes vues le lendemain. La transaction rend
+          // l'opération atomique et Firestore rejoue en cas de conflit :
+          // la journée est comptée une fois, ou pas du tout.
+          //
+          // Contrainte Firestore : TOUTES les lectures avant TOUTES les
+          // écritures — d'où le calcul de last7/last30 en mémoire.
+          const issue = await db.runTransaction(async (tx) => {
+            const frais = await tx.get(providerRef);
+            const pv = frais.data()?.stats?.pageViews ?? {};
+            if (pv.lastAggregatedDate === yesterdayStr) return 'skipped';
 
-          // 1. Save yesterday's views into daily doc (increment to handle multiple calls)
-          if (todayViews > 0) {
-            const dailyDocId = `${providerId}_${yesterdayStr}`;
-            await db.collection('pageViewsDaily').doc(dailyDocId).set({
-              providerId,
-              date: yesterdayStr,
-              count: FieldValue.increment(todayViews),
-              ...(storyToday > 0 ? { storyCount: FieldValue.increment(storyToday) } : {}),
-            }, { merge: true });
-            serverTracker.trackWrite('pageViewsDaily', 1);
+            const todayViews: number = pv.today ?? 0;
+            const storyToday: number = pv.storyToday ?? 0;
+            const currentTotal: number = pv.total ?? 0;
+            if (todayViews === 0 && currentTotal === 0) return 'skipped';
 
-            // 1b. Roll into the monthly counter (indefinite retention).
-            //     Increment-based so the monthly doc stays correct
-            //     even if this cron runs twice on the same day.
-            const monthStr = yesterdayStr.slice(0, 7); // YYYY-MM
-            const monthlyDocId = `${providerId}_${monthStr}`;
-            await db.collection('pageViewsMonthly').doc(monthlyDocId).set({
-              providerId,
-              month: monthStr,
-              count: FieldValue.increment(todayViews),
-              updatedAt: FieldValue.serverTimestamp(),
-            }, { merge: true });
-            serverTracker.trackWrite('pageViewsMonthly', 1);
-          }
+            const dailySnap = await tx.get(dailyQuery);
 
-          // 2. Query daily docs for last 30 days to recalculate
-          const dailySnap = await db.collection('pageViewsDaily')
-            .where('providerId', '==', providerId)
-            .where('date', '>=', last30Str)
-            .get();
-          serverTracker.trackRead('pageViewsDaily', dailySnap.size);
-
-          let last7Days = 0;
-          let last30Days = 0;
-
-          for (const dailyDoc of dailySnap.docs) {
-            const d = dailyDoc.data();
-            const count = d.count ?? 0;
-            last30Days += count;
-            if (d.date >= last7Str) {
-              last7Days += count;
+            let last7Days = 0;
+            let last30Days = 0;
+            for (const dailyDoc of dailySnap.docs) {
+              const d = dailyDoc.data();
+              const count = d.count ?? 0;
+              last30Days += count;
+              if (d.date >= last7Str) last7Days += count;
             }
-          }
+            // Les vues d'hier ne sont pas encore dans les documents lus :
+            // hier appartient aux deux fenêtres, on l'ajoute aux deux.
+            last7Days += todayViews;
+            last30Days += todayViews;
 
-          // 3. Update provider — en INCRÉMENTS RELATIFS : une vue arrivée
-          //    entre la lecture et cette écriture n'est ni perdue (today
-          //    n'est pas remis à 0 en absolu) ni doublée.
-          await db.collection('providers').doc(providerId).update({
-            'stats.pageViews.total': FieldValue.increment(todayViews),
-            'stats.pageViews.today': FieldValue.increment(-todayViews),
-            'stats.pageViews.storyTotal': FieldValue.increment(storyToday),
-            'stats.pageViews.storyToday': FieldValue.increment(-storyToday),
-            'stats.pageViews.last7Days': last7Days,
-            'stats.pageViews.last30Days': last30Days,
+            if (todayViews > 0) {
+              tx.set(dailyRef, {
+                providerId,
+                date: yesterdayStr,
+                count: FieldValue.increment(todayViews),
+                ...(storyToday > 0 ? { storyCount: FieldValue.increment(storyToday) } : {}),
+              }, { merge: true });
+
+              // Compteur mensuel, conservé sans limite de durée.
+              tx.set(monthlyRef, {
+                providerId,
+                month: monthStr,
+                count: FieldValue.increment(todayViews),
+                updatedAt: FieldValue.serverTimestamp(),
+              }, { merge: true });
+            }
+
+            // Incréments RELATIFS sur le prestataire : une vue arrivée
+            // pendant la transaction n'est ni perdue ni doublée.
+            tx.update(providerRef, {
+              'stats.pageViews.total': FieldValue.increment(todayViews),
+              'stats.pageViews.today': FieldValue.increment(-todayViews),
+              'stats.pageViews.storyTotal': FieldValue.increment(storyToday),
+              'stats.pageViews.storyToday': FieldValue.increment(-storyToday),
+              'stats.pageViews.last7Days': last7Days,
+              'stats.pageViews.last30Days': last30Days,
+              'stats.pageViews.lastAggregatedDate': yesterdayStr,
+            });
+            return 'processed';
           });
-          serverTracker.trackWrite('providers', 1);
 
+          if (issue === 'skipped') {
+            skipped++;
+            return;
+          }
+          serverTracker.trackWrite('providers', 1);
+          serverTracker.trackWrite('pageViewsDaily', 1);
+          serverTracker.trackWrite('pageViewsMonthly', 1);
           processed++;
         } catch (err) {
           console.error(`Error processing provider ${providerId}:`, err);

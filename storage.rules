@@ -52,11 +52,14 @@ service firebase.storage {
       allow write: if isOwner(userId) && isImageType() && isUnder5MB();
     }
 
-    // Provider photos (profile, cover, portfolio)
+    // Provider photos (profile, cover, portfolio, membres, prestations)
     match /providers/{providerId}/{allPaths=**} {
       allow read: if true;
-      // Write requires being the provider admin - checked via Firestore rules
-      allow write: if isAuthenticated() && isImageType() && isUnder5MB();
+      // Le commentaire annonçait « checked via Firestore rules », mais rien
+      // ne vérifiait le propriétaire ICI : tout compte connecté pouvait
+      // écraser les photos d'un AUTRE prestataire. `Provider.id === User.id`,
+      // donc le propriétaire se lit directement sur le chemin.
+      allow write: if (isOwner(providerId) || isAdminUser()) && isImageType() && isUnder5MB();
     }
 
     // Vertical-landing gallery photos (one folder per vertical:

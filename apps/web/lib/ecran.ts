@@ -104,6 +104,17 @@ export function heureLocale(instant: Date, fuseau: string): string {
   return new Intl.DateTimeFormat('fr-FR', { timeZone: fuseau, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(instant);
 }
 
+/**
+ * Instant réel correspondant à « ce jour local, à tant de minutes après
+ * minuit local ». Passer par `début du jour + minutes` se décale d'une
+ * heure les deux dimanches de changement d'heure, puisque la journée ne
+ * dure alors pas 24 h : on applique le décalage valable À CET instant.
+ */
+export function instantLocal(jour: string, minutes: number, fuseau: string): Date {
+  const naif = new Date(new Date(`${jour}T00:00:00Z`).getTime() + minutes * 60_000);
+  return new Date(naif.getTime() - decalage(naif, fuseau));
+}
+
 /** Jour de la semaine (0 = dimanche) d'un instant dans le fuseau. */
 function jourSemaineLocal(instant: Date, fuseau: string): number {
   const nom = new Intl.DateTimeFormat('en-US', { timeZone: fuseau, weekday: 'short' }).format(instant);
