@@ -124,58 +124,57 @@ export function EquipeTab() {
   };
 
   // Update service memberIds based on form selection
-  const updateServiceMemberAssignments = async (memberId: string, newServiceIds: string[]) => {
-    const currentServiceIds = getMemberServiceIds(memberId);
+  type PlanAttributions = {
+    ajouts: { serviceId: string; memberIds: string[] }[];
+    retraits: { serviceId: string; memberIds: string[] }[];
+  };
 
-    // Services to add this member to
+  /**
+   * Calcule ce qu'il faut écrire sur les prestations, SANS rien écrire, et
+   * lève si le résultat est invalide. Appelé tout au début de la
+   * sauvegarde : un refus ne doit laisser aucune écriture derrière lui,
+   * pas même le nom ou le lieu du membre.
+   */
+  const planifierAttributions = (memberId: string, newServiceIds: string[]): PlanAttributions => {
+    const currentServiceIds = getMemberServiceIds(memberId);
     const servicesToAdd = newServiceIds.filter((id) => !currentServiceIds.includes(id));
-    // Services to remove this member from
     const servicesToRemove = currentServiceIds.filter((id) => !newServiceIds.includes(id));
 
-    // `memberIds === null` signifie « tous les membres ». Décocher une telle
-    // prestation ne changeait RIEN : la boucle l'ignorait, la case se
-    // décochait à l'écran et l'attribution restait intacte. On matérialise
-    // donc la liste (tous les membres actifs sauf celui-ci) avant de retirer.
-    //
-    // Et comme une liste vide vaut elle aussi « tous les membres » partout
-    // dans le code, retirer le DERNIER membre rendait la prestation à toute
-    // l'équipe. On refuse, et on le fait AVANT la moindre écriture : un
-    // refus au milieu laissait une sauvegarde à moitié faite, suivie d'un
-    // « Membre mis à jour » qui la contredisait.
-    const retraits = servicesToRemove
-      .map((serviceId) => {
-        const service = services.find((s) => s.id === serviceId);
-        if (!service) return null;
-        const actuels = service.memberIds ?? activeMembers.map((m) => m.id);
-        return { service, restants: actuels.filter((id) => id !== memberId) };
-      })
-      .filter((x): x is { service: WithId<Service>; restants: string[] } => x !== null);
+    const ajouts = servicesToAdd.flatMap((serviceId) => {
+      const service = services.find((s) => s.id === serviceId);
+      if (!service) return [];
+      // `memberIds === null` = « tous les membres » : on matérialise.
+      return [{ serviceId, memberIds: service.memberIds === null ? [memberId] : [...service.memberIds, memberId] }];
+    });
 
-    const orphelines = retraits.filter((r) => r.restants.length === 0);
+    // Décocher une prestation à `memberIds === null` ne changeait RIEN : la
+    // boucle l'ignorait, la case se décochait à l'écran et l'attribution
+    // restait intacte. On matérialise donc la liste avant de retirer.
+    const candidats = servicesToRemove.flatMap((serviceId) => {
+      const service = services.find((s) => s.id === serviceId);
+      if (!service) return [];
+      const actuels = service.memberIds ?? activeMembers.map((m) => m.id);
+      return [{ service, restants: actuels.filter((id) => id !== memberId) }];
+    });
+
+    // Une liste vide vaut elle aussi « tous les membres » partout dans le
+    // code : retirer le DERNIER membre rendrait la prestation à toute
+    // l'équipe. On refuse plutôt, et le message dit lesquelles.
+    const orphelines = candidats.filter((c) => c.restants.length === 0);
     if (orphelines.length > 0) {
       throw new Error(
         `Une prestation doit rester attribuée à au moins un membre : ${orphelines
-          .map((r) => r.service.name)
+          .map((c) => c.service.name)
           .join(', ')}`,
       );
     }
 
-    for (const serviceId of servicesToAdd) {
-      const service = services.find((s) => s.id === serviceId);
-      if (service) {
-        const newMemberIds = service.memberIds === null
-          ? [memberId]
-          : [...service.memberIds, memberId];
-        await catalogService.updateService(provider!.id, serviceId, {
-          memberIds: newMemberIds,
-        });
-      }
-    }
+    return { ajouts, retraits: candidats.map((c) => ({ serviceId: c.service.id, memberIds: c.restants })) };
+  };
 
-    for (const { service, restants } of retraits) {
-      await catalogService.updateService(provider!.id, service.id, {
-        memberIds: restants,
-      });
+  const appliquerAttributions = async (plan: PlanAttributions) => {
+    for (const { serviceId, memberIds } of [...plan.ajouts, ...plan.retraits]) {
+      await catalogService.updateService(provider!.id, serviceId, { memberIds });
     }
   };
 
@@ -187,6 +186,11 @@ export function EquipeTab() {
       let memberId: string;
 
       if (selectedMember) {
+        // Les attributions sont CALCULÉES ET VALIDÉES avant la première
+        // écriture : un refus ne doit pas laisser le nom, la couleur ou le
+        // lieu déjà enregistrés pendant que la modale affiche une erreur.
+        const plan = planifierAttributions(selectedMember.id, data.serviceIds);
+
         // Le lieu est volontairement ABSENT d'`updateMember` : c'est
         // `changeLocation` qui l'écrit, et il commence par vérifier que le
         // lieu change vraiment. En l'écrivant ici d'abord, cette garde
@@ -205,8 +209,7 @@ export function EquipeTab() {
           await memberService.changeLocation(provider.id, memberId, data.locationId);
         }
 
-        // Update service assignments
-        await updateServiceMemberAssignments(memberId, data.serviceIds);
+        await appliquerAttributions(plan);
 
         toast.success('Membre mis à jour');
       } else {
@@ -233,8 +236,10 @@ export function EquipeTab() {
           }
         }
 
-        // Update service assignments for new member (already included above, but keep for safety)
-        await updateServiceMemberAssignments(memberId, data.serviceIds);
+        // Filet pour le nouveau membre : `createMember` a déjà reçu les
+        // prestations, on recale au cas où. Rien à valider ici — un membre
+        // qu'on vient de créer ne peut pas laisser une prestation orpheline.
+        await appliquerAttributions(planifierAttributions(memberId, data.serviceIds));
 
         toast.success('Membre créé');
       }
