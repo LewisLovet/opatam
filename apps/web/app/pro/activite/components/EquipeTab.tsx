@@ -29,7 +29,11 @@ import {
 import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import { LieuSection } from './organisation/LieuSection';
-import { AffectationsMatrice, type GroupeLieu } from './organisation/AffectationsMatrice';
+import {
+  AffectationsMatrice,
+  sansPrestataire,
+  type GroupeLieu,
+} from './organisation/AffectationsMatrice';
 import { MembrePanneau } from './organisation/MembrePanneau';
 import { horairesEnVigueur, preparerCopieHoraires, resumerHoraires } from './organisation/horaires';
 import type { Member, Location, Service, Availability } from '@booking-app/shared';
@@ -467,6 +471,40 @@ export function EquipeTab() {
     });
   };
 
+  /**
+   * Rattacher quelqu'un à un autre lieu.
+   *
+   * `changeLocation` déplace aussi ses documents de disponibilité : ce
+   * n'est pas un simple champ qu'on change, d'où la confirmation.
+   */
+  const demanderDeplacement = (memberId: string, locationId: string) => {
+    const membre = members.find((m) => m.id === memberId);
+    const lieu = locations.find((l) => l.id === locationId);
+    if (!membre || !lieu) return;
+    const ancien = locations.find((l) => l.id === membre.locationId)?.name ?? 'son lieu actuel';
+
+    setConfirmation({
+      titre: `Rattacher ${membre.name} à ${lieu.name} ?`,
+      variante: 'warning',
+      libelle: 'Rattacher ici',
+      message: (
+        <>
+          <p>
+            {membre.name} quittera <strong>{ancien}</strong> pour <strong>{lieu.name}</strong>. Ses
+            horaires suivent.
+          </p>
+          <p className="mt-2">
+            Les prestations qu’il réalise dépendent aussi du lieu : certaines peuvent ne plus lui
+            être proposées, d’autres le devenir.
+          </p>
+        </>
+      ),
+      agir: async () => {
+        await changerLieu(memberId, locationId);
+      },
+    });
+  };
+
   const handleOpenCreate = (locationId?: string) => {
     if (isAtMemberLimit) {
       setUpgradeModalOpen(true);
@@ -496,88 +534,120 @@ export function EquipeTab() {
   };
 
   type PlanAttributions = {
-    ajouts: { serviceId: string; memberIds: string[] }[];
-    retraits: { serviceId: string; memberIds: string[] }[];
+    ecritures: { serviceId: string; patch: { memberIds: string[]; isActive?: boolean } }[];
+    /** Prestations que plus personne ne réalisera, pour le dire au pro. */
+    orphelines: string[];
   };
 
   /**
-   * Calcule ce qu'il faut écrire sur les prestations, SANS rien écrire, et
-   * lève si le résultat est invalide. Appelé tout au début de la
-   * sauvegarde : un refus ne doit laisser aucune écriture derrière lui,
-   * pas même le nom ou le lieu du membre.
+   * Calcule ce qu'il faut écrire sur les prestations, SANS rien écrire.
+   *
+   * Une liste de membres vide vaut « tous ceux que le lieu autorise » : on
+   * ne peut donc pas se contenter de la vider quand on retire la dernière
+   * personne. La prestation est désactivée, ce qui la sort vraiment de la
+   * réservation en ligne, et le pro en est informé par son nom.
    */
   const planifierAttributions = (memberId: string, newServiceIds: string[]): PlanAttributions => {
     const currentServiceIds = getMemberServiceIds(memberId);
     const servicesToAdd = newServiceIds.filter((id) => !currentServiceIds.includes(id));
     const servicesToRemove = currentServiceIds.filter((id) => !newServiceIds.includes(id));
 
-    const ajouts = servicesToAdd.flatMap((serviceId) => {
-      const service = services.find((s) => s.id === serviceId);
-      if (!service) return [];
-      return [{ serviceId, memberIds: [...new Set([...membresRealisant(service), memberId])] }];
-    });
+    const ecritures: PlanAttributions['ecritures'] = [];
+    const orphelines: string[] = [];
 
-    const candidats = servicesToRemove.flatMap((serviceId) => {
+    for (const serviceId of servicesToAdd) {
       const service = services.find((s) => s.id === serviceId);
-      if (!service) return [];
-      return [{ service, restants: membresRealisant(service).filter((id) => id !== memberId) }];
-    });
-
-    // Une liste vide vaut elle aussi « tous les membres » partout dans le
-    // code : retirer le DERNIER membre rendrait la prestation à toute
-    // l'équipe. On refuse plutôt, et le message dit lesquelles.
-    const orphelines = candidats.filter((c) => c.restants.length === 0);
-    if (orphelines.length > 0) {
-      throw new Error(
-        `Une prestation doit rester attribuée à au moins un membre : ${orphelines
-          .map((c) => c.service.name)
-          .join(', ')}`,
-      );
+      if (!service) continue;
+      const memberIds = [...new Set([...membresRealisant(service), memberId])];
+      ecritures.push({
+        serviceId,
+        // Réattribuer une prestation restée sans personne la remet en ligne.
+        patch: sansPrestataire(service)
+          ? { memberIds: [memberId], isActive: true }
+          : { memberIds },
+      });
     }
 
-    return { ajouts, retraits: candidats.map((c) => ({ serviceId: c.service.id, memberIds: c.restants })) };
+    for (const serviceId of servicesToRemove) {
+      const service = services.find((s) => s.id === serviceId);
+      if (!service) continue;
+      const restants = membresRealisant(service).filter((id) => id !== memberId);
+      if (restants.length === 0) {
+        orphelines.push(service.name);
+        ecritures.push({ serviceId, patch: { memberIds: [], isActive: false } });
+      } else {
+        ecritures.push({ serviceId, patch: { memberIds: restants } });
+      }
+    }
+
+    return { ecritures, orphelines };
   };
 
   const appliquerAttributions = async (plan: PlanAttributions) => {
-    for (const { serviceId, memberIds } of [...plan.ajouts, ...plan.retraits]) {
-      await catalogService.updateService(provider!.id, serviceId, { memberIds });
+    for (const { serviceId, patch } of plan.ecritures) {
+      await catalogService.updateService(provider!.id, serviceId, patch);
+    }
+    if (plan.orphelines.length > 0) {
+      toast.error(
+        `Plus personne ne réalise : ${plan.orphelines.join(', ')}. ${
+          plan.orphelines.length > 1 ? 'Ces prestations sont retirées' : 'Cette prestation est retirée'
+        } de la réservation en ligne.`,
+      );
     }
   };
 
-  /** Une case de la matrice. Écriture immédiate, affichage optimiste. */
+  /**
+   * Une case de la matrice ou du panneau. Écriture immédiate, affichage
+   * optimiste.
+   *
+   * Retirer la DERNIÈRE personne n'est plus refusé. Comme une liste de
+   * membres vide veut dire « tous ceux que le lieu autorise », on ne peut
+   * pas se contenter de la vider : la prestation est désactivée, ce qui la
+   * sort réellement de la réservation en ligne. Cocher quelqu'un la
+   * remet en ligne.
+   */
   const basculerAttribution = async (serviceId: string, memberId: string) => {
     if (!provider) return;
     const service = services.find((s) => s.id === serviceId);
     const membre = members.find((m) => m.id === memberId);
     if (!service || !membre) return;
 
+    const orpheline = sansPrestataire(service);
     // On bascule ce qui est AFFICHÉ, pas le contenu brut du champ : une
     // prestation limitée à un autre lieu apparaît décochée alors que
     // l'identifiant du membre peut figurer dans la liste matérialisée.
-    const affichee = membreRealisePrestation(service, memberId, membre.locationId);
-    const actuels = membresRealisant(service);
+    const affichee = orpheline
+      ? false
+      : membreRealisePrestation(service, memberId, membre.locationId);
+    const actuels = orpheline ? [] : membresRealisant(service);
     const nouveaux = affichee
       ? actuels.filter((id) => id !== memberId)
       : [...new Set([...actuels, memberId])];
 
+    let patch: { memberIds: string[]; isActive?: boolean };
+    let annonce: string | null = null;
     if (nouveaux.length === 0) {
-      toast.error(
-        `« ${service.name} » doit rester attribuée à au moins une personne. Attribuez-la ailleurs avant de la retirer ici.`,
-      );
-      return;
+      patch = { memberIds: [], isActive: false };
+      annonce = `« ${service.name} » n’est plus réalisée par personne : elle est retirée de la réservation en ligne.`;
+    } else if (orpheline) {
+      patch = { memberIds: nouveaux, isActive: true };
+      annonce = `« ${service.name} » est de nouveau réservable en ligne.`;
+    } else {
+      patch = { memberIds: nouveaux };
     }
 
     const cle = `${serviceId}:${memberId}`;
-    const avant = service.memberIds;
+    const avant = { memberIds: service.memberIds, isActive: service.isActive };
     setEcritures((prev) => new Set(prev).add(cle));
     setServices((prev) =>
-      prev.map((s) => (s.id === serviceId ? { ...s, memberIds: nouveaux } : s)),
+      prev.map((s) => (s.id === serviceId ? { ...s, ...patch } : s)),
     );
     try {
-      await catalogService.updateService(provider.id, serviceId, { memberIds: nouveaux });
+      await catalogService.updateService(provider.id, serviceId, patch);
+      if (annonce) toast.success(annonce);
     } catch (error) {
       console.error('Attribution error:', error);
-      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, memberIds: avant } : s)));
+      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, ...avant } : s)));
       toast.error('L’attribution n’a pas pu être enregistrée');
     } finally {
       setEcritures((prev) => {
@@ -905,29 +975,59 @@ export function EquipeTab() {
           )}
 
           {/* Deux façons de regarder la même chose : par lieu, ou par prestation. */}
-          <div className="inline-flex w-fit rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            <button
-              type="button"
-              onClick={() => setVue('organisation')}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                vue === 'organisation'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              }`}
-            >
-              <Building2 className="h-4 w-4" /> Par lieu
-            </button>
-            <button
-              type="button"
-              onClick={() => setVue('affectations')}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                vue === 'affectations'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              }`}
-            >
-              <Grid3X3 className="h-4 w-4" /> Qui fait quoi
-            </button>
+          {/* Deux façons de regarder la même chose. Pleine largeur : c'est
+              le choix structurant de la page, il doit se voir. */}
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+            {(
+              [
+                {
+                  cle: 'organisation' as const,
+                  icone: Building2,
+                  titre: 'Par lieu',
+                  detail: 'Qui travaille où',
+                },
+                {
+                  cle: 'affectations' as const,
+                  icone: Grid3X3,
+                  titre: 'Qui fait quoi',
+                  detail: 'Prestations par personne',
+                },
+              ]
+            ).map((o) => (
+              <button
+                key={o.cle}
+                type="button"
+                onClick={() => setVue(o.cle)}
+                aria-pressed={vue === o.cle}
+                className={`flex items-center justify-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors ${
+                  vue === o.cle
+                    ? 'bg-white shadow-sm dark:bg-gray-700'
+                    : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <o.icone
+                  className={`h-5 w-5 flex-none ${
+                    vue === o.cle
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                  }`}
+                />
+                <span className="min-w-0 text-left">
+                  <span
+                    className={`block truncate text-sm font-semibold ${
+                      vue === o.cle
+                        ? 'text-gray-900 dark:text-white'
+                        : 'text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {o.titre}
+                  </span>
+                  <span className="hidden truncate text-xs text-gray-500 sm:block dark:text-gray-400">
+                    {o.detail}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* `min-w-0` sur les colonnes : sans lui une colonne de grille
@@ -952,6 +1052,21 @@ export function EquipeTab() {
                       )
                     }
                     onAjouter={g.lieu ? () => handleOpenCreate(g.lieu!.id) : undefined}
+                    deplacables={
+                      g.lieu
+                        ? members
+                            .filter((m) => m.isActive && m.locationId !== g.lieu!.id)
+                            .map((m) => ({
+                              id: m.id,
+                              name: m.name,
+                              lieuNom:
+                                locations.find((l) => l.id === m.locationId)?.name ?? 'sans lieu',
+                            }))
+                        : []
+                    }
+                    onDeplacerIci={
+                      g.lieu ? (memberId) => demanderDeplacement(memberId, g.lieu!.id) : undefined
+                    }
                   >
                     {trier(g.membres).map((member) => (
                       <MemberCard
@@ -981,6 +1096,8 @@ export function EquipeTab() {
               groupes={groupes.map((g) => ({ ...g, membres: trier(g.membres.filter((m) => m.isActive)) }))}
               onBasculer={basculerAttribution}
               enCours={ecritures}
+              membreSelectionneId={selectionId}
+              onSelectionnerMembre={setSelectionId}
             />
             </div>
           )}
@@ -1002,7 +1119,11 @@ export function EquipeTab() {
                   copieEnCours={copieEnCours}
                   changementLieuEnCours={changementLieuEnCours}
                   onBasculerPrestation={basculerAttribution}
-                  onChangerLieu={changerLieu}
+                  onChangerLieu={async (id, lieuId) => {
+                    // La confirmation porte l'attente : ici on rend la main
+                    // aussitôt pour que le select se rétablisse.
+                    demanderDeplacement(id, lieuId);
+                  }}
                   onCopierHoraires={copierHoraires}
                   onCopierVers={copierVers}
                   onBasculerActif={handleToggleActive}

@@ -14,6 +14,9 @@ interface Props {
   ouvert: boolean;
   onBasculer: () => void;
   onAjouter?: () => void;
+  /** Prestataires rattachés ailleurs, qu'on peut déplacer ici. */
+  deplacables?: { id: string; name: string; lieuNom: string }[];
+  onDeplacerIci?: (memberId: string) => void;
   children: ReactNode;
 }
 
@@ -45,6 +48,8 @@ export function LieuSection({
   ouvert,
   onBasculer,
   onAjouter,
+  deplacables = [],
+  onDeplacerIci,
   children,
 }: Props) {
   const complet = nbMembres > 0 && nbPrets === nbMembres;
@@ -142,6 +147,34 @@ export function LieuSection({
                   Les horaires et les créneaux appartiennent aux prestataires. Tant que
                   personne n’est rattaché ici, ce lieu ne propose aucun rendez-vous.
                 </p>
+
+                {/* Souvent il n'y a personne à AJOUTER : la personne existe
+                    déjà, elle est juste rattachée ailleurs. */}
+                {onDeplacerIci && deplacables.length > 0 && (
+                  <div className="mt-3">
+                    <label
+                      htmlFor={`deplacer-${lieu?.id ?? 'sans-lieu'}`}
+                      className="mb-1 block text-xs font-semibold text-gray-700 dark:text-gray-200"
+                    >
+                      Rattacher quelqu’un qui existe déjà
+                    </label>
+                    <select
+                      id={`deplacer-${lieu?.id ?? 'sans-lieu'}`}
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) onDeplacerIci(e.target.value);
+                      }}
+                      className="w-full rounded-lg border border-warning-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none dark:border-warning-800 dark:bg-gray-900 dark:text-white sm:max-w-xs"
+                    >
+                      <option value="">Choisir un prestataire…</option>
+                      {deplacables.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} — actuellement {m.lieuNom}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

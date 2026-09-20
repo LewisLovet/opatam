@@ -197,6 +197,10 @@ export function MembrePanneau({
             value={membre.locationId ?? ''}
             disabled={changementLieuEnCours}
             onChange={(e) => onChangerLieu(membre.id, e.target.value)}
+            // Une molette au-dessus d'un select natif change sa valeur.
+            // Sur un contrôle qui écrit en base, ça déplace quelqu'un de
+            // lieu sans que personne l'ait demandé : on refuse la molette.
+            onWheel={(e) => e.currentTarget.blur()}
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:ring-primary-900"
           >
             {!membre.locationId && <option value="">Aucun lieu</option>}
