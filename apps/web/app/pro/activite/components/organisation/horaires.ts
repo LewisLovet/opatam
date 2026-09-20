@@ -108,16 +108,31 @@ export interface JourACopier {
  *    de la cible sur le lieu de quelqu'un d'autre.
  *
  * Le lieu de la cible est donc obligatoire : sans lui, on ne copie rien.
+ *
+ * Dès qu'il y a quelque chose à copier, la semaine renvoyée est COMPLÈTE.
+ * On annonce au professionnel que les horaires de la cible sont
+ * « remplacés » : n'envoyer que les jours présents chez la source laissait
+ * en place, chez la cible, les jours que la source ne travaille pas — elle
+ * restait ouverte un dimanche que la personne copiée ne travaille jamais.
+ *
+ * Une source qui n'a AUCUN horaire en vigueur renvoie en revanche une liste
+ * vide : c'est « rien à copier », et l'appelant s'arrête là plutôt que de
+ * fermer la semaine entière de la cible.
  */
 export function preparerCopieHoraires(
   horairesSource: HoraireLu[],
   maintenant = new Date(),
 ): JourACopier[] {
-  return horairesEnVigueur(horairesSource, maintenant)
-    .map((h) => ({
-      dayOfWeek: h.dayOfWeek,
-      slots: [...(h.slots ?? [])],
-      isOpen: h.isOpen === true,
-    }))
-    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  const enVigueur = horairesEnVigueur(horairesSource, maintenant);
+  if (enVigueur.length === 0) return [];
+
+  const source = new Map(enVigueur.map((h) => [h.dayOfWeek, h]));
+  return [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => {
+    const h = source.get(dayOfWeek);
+    return {
+      dayOfWeek,
+      slots: h ? [...(h.slots ?? [])] : [],
+      isOpen: h?.isOpen === true,
+    };
+  });
 }

@@ -149,11 +149,25 @@ export function EquipeTab() {
   // cette semaine s'afficherait « prêt ».
   const horairesActuels = useMemo(() => horairesEnVigueur(availabilities), [availabilities]);
 
+  // Les lieux réellement ouverts. Désactiver un lieu ne détache personne,
+  // et le tunnel de réservation ne lit que les lieux actifs : sans cette
+  // liste, un membre devenu injoignable s'affichait « prêt ».
+  const lieuxActifs = useMemo(
+    () => locations.filter((l) => l.isActive !== false).map((l) => l.id),
+    [locations],
+  );
+
   // Diagnostic de chaque membre — une seule fois, partagé par l'affichage
   // et par le comptage des créneaux.
   const etats = useMemo(
-    () => new Map(members.map((m) => [m.id, diagnostiquerMembre(m, services, horairesActuels)])),
-    [members, services, horairesActuels],
+    () =>
+      new Map(
+        members.map((m) => [
+          m.id,
+          diagnostiquerMembre(m, services, horairesActuels, lieuxActifs),
+        ]),
+      ),
+    [members, services, horairesActuels, lieuxActifs],
   );
 
   // Créneaux réservables sur 7 jours, par membre. C'est LE chiffre qui parle
@@ -165,12 +179,32 @@ export function EquipeTab() {
   // sinon cocher une case relancerait tout le comptage.
   const donneesRef = useRef({ services, etats });
   donneesRef.current = { services, etats };
-  const signatureEtats = members
-    .map((m) => {
-      const e = etats.get(m.id);
-      return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${e?.prestations.length ?? 0}`;
-    })
-    .join('|');
+  // La signature doit contenir tout ce qui fait BOUGER le chiffre, sinon il
+  // reste affiché à sa valeur précédente. Compter les prestations ne
+  // suffisait pas : échanger une prestation d'une heure contre une de
+  // trente minutes double la capacité sans changer leur nombre, et élargir
+  // ses horaires ne la change pas du tout.
+  const signatureEtats = useMemo(() => {
+    const duree = new Map(services.map((s) => [s.id, s.duration + (s.bufferTime ?? 0)]));
+    const semaine = new Map<string, string[]>();
+    for (const h of horairesActuels) {
+      const jour = `${h.dayOfWeek}${h.isOpen ? '' : 'x'}${(h.slots ?? [])
+        .map((s) => `${s.start}-${s.end}`)
+        .join('+')}`;
+      semaine.set(h.memberId, [...(semaine.get(h.memberId) ?? []), jour]);
+    }
+    return members
+      .map((m) => {
+        const e = etats.get(m.id);
+        const prestations = [...(e?.prestations ?? [])]
+          .sort()
+          .map((id) => `${id}@${duree.get(id) ?? '?'}`)
+          .join(',');
+        const horaires = [...(semaine.get(m.id) ?? [])].sort().join(';');
+        return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${prestations}:${horaires}`;
+      })
+      .join('|');
+  }, [members, services, etats, horairesActuels]);
 
   useEffect(() => {
     if (!provider || members.length === 0) return;
@@ -179,7 +213,10 @@ export function EquipeTab() {
     const debut = new Date();
     debut.setHours(0, 0, 0, 0);
     const fin = new Date(debut);
-    fin.setDate(fin.getDate() + 7);
+    // 7 jours, aujourd'hui compris : `getAvailabilitySummary` pousse la
+    // borne de fin à 23h59 et boucle en `<=`, donc « +7 » comptait un
+    // huitième jour et gonflait le chiffre affiché.
+    fin.setDate(fin.getDate() + 6);
 
     (async () => {
       const entrees = await Promise.all(
@@ -299,6 +336,16 @@ export function EquipeTab() {
           detail: 'Aucun créneau ne peut être proposé tant que sa semaine n’est pas définie.',
           action: 'Définir ses horaires',
           faire: () => router.push('/pro/activite?tab=disponibilites'),
+        });
+      }
+      if (etat.blocages.includes('lieuInactif')) {
+        items.push({
+          id: `${m.id}-lieu`,
+          titre: `${m.name} est rattaché·e à un lieu désactivé`,
+          detail:
+            'Les clientes ne voient que les lieux actifs : cette personne n’est réservable nulle part.',
+          action: 'Voir les lieux',
+          faire: () => router.push('/pro/activite?tab=lieux'),
         });
       }
       if (etat.blocages.includes('sansPrestation')) {
@@ -564,6 +611,8 @@ export function EquipeTab() {
     ecritures: { serviceId: string; patch: { memberIds: string[]; isActive?: boolean } }[];
     /** Prestations que plus personne ne réalisera, pour le dire au pro. */
     orphelines: string[];
+    /** Attribuées mais toujours hors ligne : on ne les republie pas d'office. */
+    horsLigne: string[];
   };
 
   /**
@@ -581,17 +630,24 @@ export function EquipeTab() {
 
     const ecritures: PlanAttributions['ecritures'] = [];
     const orphelines: string[] = [];
+    const horsLigne: string[] = [];
 
     for (const serviceId of servicesToAdd) {
       const service = services.find((s) => s.id === serviceId);
       if (!service) continue;
-      const memberIds = [...new Set([...membresRealisant(service), memberId])];
+      if (sansPrestataire(service)) {
+        // On attribue, mais on ne remet PAS en ligne : « sans prestataire »
+        // recouvre aussi les prestations que le pro a volontairement
+        // retirées, et un enregistrement de fiche n'est pas l'endroit pour
+        // republier quelque chose sans le demander. La matrice le propose,
+        // elle, avec une confirmation.
+        ecritures.push({ serviceId, patch: { memberIds: [memberId] } });
+        horsLigne.push(service.name);
+        continue;
+      }
       ecritures.push({
         serviceId,
-        // Réattribuer une prestation restée sans personne la remet en ligne.
-        patch: sansPrestataire(service)
-          ? { memberIds: [memberId], isActive: true }
-          : { memberIds },
+        patch: { memberIds: [...new Set([...membresRealisant(service), memberId])] },
       });
     }
 
@@ -607,7 +663,7 @@ export function EquipeTab() {
       }
     }
 
-    return { ecritures, orphelines };
+    return { ecritures, orphelines, horsLigne };
   };
 
   const appliquerAttributions = async (plan: PlanAttributions) => {
@@ -621,6 +677,13 @@ export function EquipeTab() {
         } de la réservation en ligne.`,
       );
     }
+    if (plan.horsLigne.length > 0) {
+      toast.info(
+        `${plan.horsLigne.join(', ')} ${
+          plan.horsLigne.length > 1 ? 'restent retirées' : 'reste retirée'
+        } de la réservation en ligne. À remettre en ligne depuis « Qui fait quoi ».`,
+      );
+    }
   };
 
   /**
@@ -630,8 +693,8 @@ export function EquipeTab() {
    * Retirer la DERNIÈRE personne n'est plus refusé. Comme une liste de
    * membres vide veut dire « tous ceux que le lieu autorise », on ne peut
    * pas se contenter de la vider : la prestation est désactivée, ce qui la
-   * sort réellement de la réservation en ligne. Cocher quelqu'un la
-   * remet en ligne.
+   * sort réellement de la réservation en ligne. Cocher quelqu'un peut l'y
+   * remettre, mais seulement après confirmation.
    */
   const basculerAttribution = async (serviceId: string, memberId: string) => {
     if (!provider) return;
@@ -651,38 +714,68 @@ export function EquipeTab() {
       ? actuels.filter((id) => id !== memberId)
       : [...new Set([...actuels, memberId])];
 
-    let patch: { memberIds: string[]; isActive?: boolean };
-    let annonce: string | null = null;
-    if (nouveaux.length === 0) {
-      patch = { memberIds: [], isActive: false };
-      annonce = `« ${service.name} » n’est plus réalisée par personne : elle est retirée de la réservation en ligne.`;
-    } else if (orpheline) {
-      patch = { memberIds: nouveaux, isActive: true };
-      annonce = `« ${service.name} » est de nouveau réservable en ligne.`;
-    } else {
-      patch = { memberIds: nouveaux };
-    }
-
     const cle = `${serviceId}:${memberId}`;
     const avant = { memberIds: service.memberIds, isActive: service.isActive };
-    setEcritures((prev) => new Set(prev).add(cle));
-    setServices((prev) =>
-      prev.map((s) => (s.id === serviceId ? { ...s, ...patch } : s)),
-    );
-    try {
-      await catalogService.updateService(provider.id, serviceId, patch);
-      if (annonce) toast.success(annonce);
-    } catch (error) {
-      console.error('Attribution error:', error);
-      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, ...avant } : s)));
-      toast.error('L’attribution n’a pas pu être enregistrée');
-    } finally {
-      setEcritures((prev) => {
-        const suivant = new Set(prev);
-        suivant.delete(cle);
-        return suivant;
-      });
+    const appliquer = async (
+      patch: { memberIds: string[]; isActive?: boolean },
+      annonce: string | null,
+    ) => {
+      setEcritures((prev) => new Set(prev).add(cle));
+      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, ...patch } : s)));
+      try {
+        await catalogService.updateService(provider.id, serviceId, patch);
+        if (annonce) toast.success(annonce);
+      } catch (error) {
+        console.error('Attribution error:', error);
+        setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, ...avant } : s)));
+        toast.error('L’attribution n’a pas pu être enregistrée');
+      } finally {
+        setEcritures((prev) => {
+          const suivant = new Set(prev);
+          suivant.delete(cle);
+          return suivant;
+        });
+      }
+    };
+
+    if (nouveaux.length === 0) {
+      await appliquer(
+        { memberIds: [], isActive: false },
+        `« ${service.name} » n’est plus réalisée par personne : elle est retirée de la réservation en ligne.`,
+      );
+      return;
     }
+
+    if (orpheline) {
+      // « Sans prestataire » recouvre DEUX situations qu'on ne sait pas
+      // distinguer en base : plus personne ne la réalise, ou le
+      // professionnel l'a volontairement retirée de la réservation en
+      // ligne — et c'est le cas le plus fréquent, puisqu'une prestation
+      // qui n'est limitée à personne a justement une liste de membres
+      // vide. On ne la remet donc jamais en ligne sans le demander : la
+      // remise en ligne déclenche aussi l'e-mail de promotion si la
+      // prestation est en réduction.
+      setConfirmation({
+        titre: 'Remettre cette prestation en ligne ?',
+        variante: 'warning',
+        libelle: 'Remettre en ligne',
+        message: (
+          <p>
+            <strong>{service.name}</strong> est actuellement retirée de la réservation en
+            ligne. L’attribuer à {membre.name} la rendra de nouveau réservable par vos
+            clientes.
+          </p>
+        ),
+        agir: () =>
+          appliquer(
+            { memberIds: nouveaux, isActive: true },
+            `« ${service.name} » est de nouveau réservable en ligne.`,
+          ),
+      });
+      return;
+    }
+
+    await appliquer({ memberIds: nouveaux }, null);
   };
 
   const handleSave = async (data: MemberFormData) => {

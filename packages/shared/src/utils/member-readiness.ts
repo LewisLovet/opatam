@@ -36,7 +36,7 @@ export interface HoraireVerifiable {
   slots?: { start: string; end: string }[] | null;
 }
 
-export type BlocageMembre = 'inactif' | 'sansHoraires' | 'sansPrestation';
+export type BlocageMembre = 'inactif' | 'sansHoraires' | 'sansPrestation' | 'lieuInactif';
 
 export interface EtatMembre {
   /** Vrai seulement si AUCUN blocage : des créneaux peuvent exister. */
@@ -75,15 +75,30 @@ export function membreRealisePrestation(
 /**
  * Diagnostic d'un membre. `availabilities` peut contenir les horaires de
  * TOUTE l'équipe : on filtre sur `memberId`.
+ *
+ * `lieuxActifs` est facultatif — les identifiants des lieux actifs. Quand
+ * il est fourni, un membre rattaché à un lieu désactivé est signalé :
+ * désactiver un lieu ne détache personne, et le tunnel de réservation ne
+ * lit que les lieux actifs, si bien que ces membres n'étaient joignables
+ * nulle part tout en affichant « prêt ».
  */
 export function diagnostiquerMembre(
   member: MembreVerifiable,
   services: PrestationVerifiable[],
   availabilities: HoraireVerifiable[],
+  lieuxActifs?: string[] | null,
 ): EtatMembre {
   const blocages: BlocageMembre[] = [];
 
   if (member.isActive === false) blocages.push('inactif');
+
+  // Liste VIDE = « on ne sait pas », comme partout ailleurs ici : c'est
+  // aussi l'état de l'écran tant que les lieux ne sont pas chargés, et
+  // signaler toute l'équipe en « lieu désactivé » pendant une seconde
+  // ferait plus de mal qu'un blocage manqué.
+  if (lieuxActifs?.length && member.locationId && !lieuxActifs.includes(member.locationId)) {
+    blocages.push('lieuInactif');
+  }
 
   // Un jour ouvert SANS plage horaire ne produit aucun créneau : on exige
   // les deux, comme le moteur de disponibilités.

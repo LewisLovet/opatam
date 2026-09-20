@@ -68,6 +68,26 @@ describe('diagnostiquerMembre', () => {
     const e = diagnostiquerMembre({ id: 'm1', isActive: false, locationId: 'l1' }, [], []);
     assert.deepEqual(e.blocages, ['inactif', 'sansHoraires', 'sansPrestation']);
   });
+
+  it('lieu désactivé → bloqué, même si tout le reste est en place', () => {
+    // Désactiver un lieu ne détache personne et le tunnel ne lit que les
+    // lieux actifs : ces membres passaient pour « prêts » sans l'être.
+    const m = { id: 'm1', isActive: true, locationId: 'l1' };
+    const e = diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], ['l2']);
+    assert.equal(e.reservable, false);
+    assert.deepEqual(e.blocages, ['lieuInactif']);
+  });
+
+  it('lieu actif → aucun blocage', () => {
+    const m = { id: 'm1', isActive: true, locationId: 'l1' };
+    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], ['l1']).reservable, true);
+  });
+
+  it('sans liste de lieux, le diagnostic ne change pas', () => {
+    const m = { id: 'm1', isActive: true, locationId: 'l1' };
+    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK]).reservable, true);
+    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], []).reservable, true);
+  });
 });
 
 describe('membreRealisePrestation — cascade du tunnel client', () => {

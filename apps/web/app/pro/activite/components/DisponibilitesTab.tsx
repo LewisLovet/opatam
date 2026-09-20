@@ -123,12 +123,18 @@ export function DisponibilitesTab() {
     if (!provider || !selectedMemberId) return;
 
     try {
-      const availabilityData = await schedulingService.getWeeklySchedule(
+      const tousLesDocuments = await schedulingService.getWeeklySchedule(
         provider.id,
         selectedMemberId
       );
-      // Rien en base pour ce membre : ce qu'on affiche est une proposition,
-      // pas ses horaires. Sans enregistrement, il n'a AUCUN créneau.
+      // Ce que l'éditeur montre, c'est la semaine EN VIGUEUR. Les documents
+      // bruts contiennent aussi les changements programmés pour plus tard ;
+      // le premier trouvé gagnait, si bien qu'on pouvait afficher — et
+      // réenregistrer comme horaires du jour — une semaine future.
+      const availabilityData = horairesEnVigueur(tousLesDocuments);
+      // Rien en vigueur pour ce membre : ce qu'on affiche est une
+      // proposition, pas ses horaires. Sans enregistrement, il n'a AUCUN
+      // créneau.
       setSansHoraires(availabilityData.length === 0);
 
       const defaultSchedule: DaySchedule[] = [

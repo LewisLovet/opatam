@@ -37,6 +37,7 @@ const MANQUES: Record<BlocageMembre, string> = {
   inactif: 'désactivé',
   sansHoraires: 'aucun horaire enregistré',
   sansPrestation: 'aucune prestation attribuée',
+  lieuInactif: 'son lieu est désactivé',
 };
 
 function getAvatarColor(name: string): string {
