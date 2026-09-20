@@ -2938,6 +2938,55 @@
       "actionSchedule": "Imposta gli orari",
       "actionServices": "Assegna servizi",
       "actionAdd": "Aggiungi un collaboratore"
+    },
+    "views": {
+      "byLocation": "Per sede",
+      "byLocationHint": "Chi lavora dove",
+      "whoDoesWhat": "Chi fa cosa",
+      "whoDoesWhatHint": "Servizi per persona"
+    },
+    "stats": {
+      "locations": "Sedi",
+      "locationsNote": "{{count}} con team",
+      "providers": "Collaboratori",
+      "providersNote": "{{count}} pronti",
+      "services": "Servizi",
+      "servicesNote": "a catalogo",
+      "slots": "Slot",
+      "slotsNote": "questa settimana"
+    },
+    "location": {
+      "principal": "Principale",
+      "inactive": "Sede disattivata",
+      "noLocation": "Senza sede",
+      "providersCount_one": "{{count}} collaboratore",
+      "providersCount_other": "{{count}} collaboratori",
+      "readyCount": "{{ready}}/{{total}} pronti",
+      "emptyTitle": "Nessun collaboratore in questa sede",
+      "emptyBody": "Gli orari e gli slot appartengono ai collaboratori. Finché nessuno è collegato qui, questa sede non offre appuntamenti.",
+      "attachExisting": "Collega qualcuno che esiste già",
+      "addHere": "Aggiungi un collaboratore qui",
+      "currentlyAt": "attualmente {{name}}",
+      "noPlace": "senza sede",
+      "moveTitle": "Collegare {{member}} a {{location}}?",
+      "moveBody": "{{member}} lascerà {{from}}. I suoi orari lo seguono e i servizi che esegue dipendono anche dalla sede.",
+      "moveConfirm": "Collega qui",
+      "moved": "Sede aggiornata",
+      "moveError": "Non è stato possibile cambiare sede"
+    },
+    "matrix": {
+      "title": "Chi fa cosa?",
+      "hint": "Tocca un servizio per scegliere chi lo esegue.",
+      "search": "Cerca un servizio",
+      "nobody": "Nessuno · offline",
+      "offlineBanner_one": "{{count}} servizio non è eseguito da nessuno: non è prenotabile online.",
+      "offlineBanner_other": "{{count}} servizi non sono eseguiti da nessuno: non sono prenotabili online.",
+      "assignTitle": "Chi esegue «{{name}}»?",
+      "noServices": "Nessun servizio a catalogo.",
+      "noResult": "Nessun servizio corrisponde.",
+      "wentOffline": "«{{name}}» non è più eseguito da nessuno: è rimosso dalla prenotazione online.",
+      "backOnline": "«{{name}}» è di nuovo prenotabile online.",
+      "emptyLocationInMatrix": "{{name}} non ha collaboratori: questa sede non appare qui."
     }
   },
   "proLocations": {

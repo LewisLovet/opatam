@@ -124,6 +124,14 @@ export default function MembersScreen() {
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [horaires, setHoraires] = useState<WithId<Availability>[]>([]);
 
+  // Deux façons de regarder la même chose, comme sur l'ordinateur.
+  const [vue, setVue] = useState<'lieux' | 'matrice'>('lieux');
+  const [lieuxReplies, setLieuxReplies] = useState<string[]>([]);
+  /** Prestation dont on choisit les prestataires (feuille du bas). */
+  const [prestaEnEdition, setPrestaEnEdition] = useState<string | null>(null);
+  const [recherchePresta, setRecherchePresta] = useState('');
+  const [ecritures, setEcritures] = useState<string[]>([]);
+
   const loadData = useCallback(async () => {
     if (!providerId) return;
     try {
@@ -230,6 +238,47 @@ export default function MembersScreen() {
     [locations, members],
   );
 
+  /** Les membres, groupés par lieu. Un lieu vide reste affiché. */
+  const groupes = React.useMemo(() => {
+    const parLieu = locations.map((lieu) => ({
+      lieu,
+      membres: members.filter((m) => m.locationId === lieu.id),
+    }));
+    const orphelins = members.filter(
+      (m) => !m.locationId || !locations.some((l) => l.id === m.locationId),
+    );
+    return orphelins.length > 0
+      ? [...parLieu, { lieu: null as WithId<Location> | null, membres: orphelins }]
+      : parLieu;
+  }, [locations, members]);
+
+  /** Dans une section : ce qui coince d'abord, les désactivés à la fin. */
+  const trier = React.useCallback(
+    (liste: WithId<Member>[]) => [...liste].sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      const bloqueA = etats.get(a.id)?.reservable === false ? 0 : 1;
+      const bloqueB = etats.get(b.id)?.reservable === false ? 0 : 1;
+      if (bloqueA !== bloqueB) return bloqueA - bloqueB;
+      return a.sortOrder - b.sortOrder;
+    }),
+    [etats],
+  );
+
+  /** Prestataires actifs qu'on peut rattacher à ce lieu. */
+  const deplacablesVers = React.useCallback(
+    (locationId: string) =>
+      members
+        .filter((m) => m.isActive && m.locationId !== locationId)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          lieuNom: locations.find((l) => l.id === m.locationId)?.name
+            ?? t('proMembers.location.noPlace'),
+        })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [members, locations],
+  );
+
   /** Ce qui empêche des rendez-vous d'exister, avec l'écran qui répare. */
   const aRegler = React.useMemo(() => {
     const items: { id: string; titre: string; action: string; faire: () => void }[] = [];
@@ -259,7 +308,7 @@ export default function MembersScreen() {
         id: `${l.id}-vide`,
         titre: t('proMembers.toFix.emptyLocation', { name: l.name }),
         action: t('proMembers.toFix.actionAdd'),
-        faire: () => openCreate(),
+        faire: () => openCreate(l.id),
       });
     }
     return items;
@@ -267,7 +316,7 @@ export default function MembersScreen() {
   }, [members, etats, lieuxVides, t]);
 
   // Modal open — with subscription checks
-  const openCreate = () => {
+  const openCreate = (lieuVoulu?: string) => {
     // Check if subscription is expired
     if (sub.needsSubscription) {
       setShowSubModal(true);
@@ -282,7 +331,9 @@ export default function MembersScreen() {
     setEditingId(null);
     const usedColors = new Set(members.map((m) => m.color).filter(Boolean));
     const firstAvailable = MEMBER_COLORS.find((c) => !usedColors.has(c)) || MEMBER_COLORS[0];
-    const lieuDepart = locations[0]?.id || '';
+    // « Ajouter un prestataire à ce lieu » doit ouvrir sur CE lieu, pas
+    // sur le premier de la liste.
+    const lieuDepart = lieuVoulu || locations[0]?.id || '';
     setForm({
       ...DEFAULT_FORM,
       locationId: lieuDepart,
@@ -368,6 +419,88 @@ export default function MembersScreen() {
       ),
     [services, form.locationId, form.serviceIds],
   );
+
+  /**
+   * Une case de la matrice. Écriture immédiate, affichage optimiste.
+   *
+   * Retirer la DERNIÈRE personne n'est pas refusé : comme une liste de
+   * membres vide veut dire « tous ceux que le lieu autorise », on ne peut
+   * pas se contenter de la vider. La prestation est désactivée, ce qui la
+   * sort réellement de la réservation en ligne.
+   */
+  const basculerAttribution = async (serviceId: string, memberId: string) => {
+    if (!providerId) return;
+    const service = services.find((svc) => svc.id === serviceId);
+    const membre = members.find((m) => m.id === memberId);
+    if (!service || !membre) return;
+
+    const orpheline = prestationSansPrestataire(service);
+    const affichee = orpheline
+      ? false
+      : membreRealisePrestation(service, memberId, membre.locationId);
+    const actuels = orpheline ? [] : membresRealisant(service);
+    const nouveaux = affichee
+      ? actuels.filter((id) => id !== memberId)
+      : [...new Set([...actuels, memberId])];
+
+    let patch: { memberIds: string[]; isActive?: boolean };
+    let annonce: string | null = null;
+    if (nouveaux.length === 0) {
+      patch = { memberIds: [], isActive: false };
+      annonce = t('proMembers.matrix.wentOffline', { name: service.name });
+    } else if (orpheline) {
+      patch = { memberIds: nouveaux, isActive: true };
+      annonce = t('proMembers.matrix.backOnline', { name: service.name });
+    } else {
+      patch = { memberIds: nouveaux };
+    }
+
+    const cle = `${serviceId}:${memberId}`;
+    const avant = { memberIds: service.memberIds, isActive: service.isActive };
+    setEcritures((prev) => [...prev, cle]);
+    setServices((prev) => prev.map((svc) => (svc.id === serviceId ? { ...svc, ...patch } : svc)));
+    try {
+      await catalogService.updateService(providerId, serviceId, patch);
+      if (annonce) {
+        showToast({ variant: nouveaux.length === 0 ? 'error' : 'success', message: annonce });
+      }
+    } catch (err) {
+      setServices((prev) => prev.map((svc) => (svc.id === serviceId ? { ...svc, ...avant } : svc)));
+      showToast({ variant: 'error', message: t('common.error') });
+    } finally {
+      setEcritures((prev) => prev.filter((k) => k !== cle));
+    }
+  };
+
+  /** Rattacher quelqu'un à un autre lieu. Ses horaires suivent. */
+  const demanderDeplacement = (memberId: string, locationId: string) => {
+    if (!providerId) return;
+    const membre = members.find((m) => m.id === memberId);
+    const lieu = locations.find((l) => l.id === locationId);
+    if (!membre || !lieu) return;
+    const ancien = locations.find((l) => l.id === membre.locationId)?.name
+      ?? t('proMembers.location.noPlace');
+
+    Alert.alert(
+      t('proMembers.location.moveTitle', { member: membre.name, location: lieu.name }),
+      t('proMembers.location.moveBody', { member: membre.name, from: ancien }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('proMembers.location.moveConfirm'),
+          onPress: async () => {
+            try {
+              await memberService.changeLocation(providerId, memberId, locationId);
+              showToast({ variant: 'success', message: t('proMembers.location.moved') });
+              loadData();
+            } catch {
+              showToast({ variant: 'error', message: t('proMembers.location.moveError') });
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const openEdit = (member: WithId<Member>) => {
     setEditingId(member.id);
@@ -645,6 +778,323 @@ export default function MembersScreen() {
   const getInitials = (name: string) =>
     name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
+  /**
+   * Une personne, telle qu'elle apparaît DANS la section de son lieu.
+   * Le lieu n'est plus répété sur la ligne : il est déjà dans l'en-tête.
+   */
+  const renderMembre = (member: WithId<Member>) => (
+        <Card key={member.id} padding="none" shadow="sm">
+          {/* Main card content — tap to edit */}
+          <Pressable
+            onPress={() => openEdit(member)}
+            style={({ pressed }) => [{ padding: spacing.md, opacity: pressed ? 0.95 : 1 }]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {/* Avatar */}
+              {member.photoURL ? (
+                <Image
+                  source={{ uri: member.photoURL }}
+                  style={[styles.avatar, { backgroundColor: colors.border }]}
+                />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: member.color || colors.primary }]}>
+                  <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                    {getInitials(member.name)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Info */}
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Text variant="body" style={{ fontWeight: '600' }}>{member.name}</Text>
+                  {member.isDefault && (
+                    <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                      <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>{t('proMembers.badgeYou')}</Text>
+                    </View>
+                  )}
+                  {member.isActive && etats.get(member.id) && (
+                    <View style={[styles.badge, {
+                      backgroundColor: etats.get(member.id)!.reservable
+                        ? (colors.successLight ?? colors.primaryLight)
+                        : (colors.warningLight ?? colors.primaryLight),
+                    }]}>
+                      <Text
+                        variant="caption"
+                        style={{
+                          fontWeight: '600', fontSize: 10,
+                          color: etats.get(member.id)!.reservable ? colors.success : colors.warning,
+                        }}
+                      >
+                        {etats.get(member.id)!.reservable
+                          ? t('proMembers.readiness.ready')
+                          : t('proMembers.readiness.todo')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                  {getLocationName(member.locationId)}
+                  {' · '}
+                  {t('proMembers.readiness.servicesCount', {
+                    count: etats.get(member.id)?.prestations.length ?? 0,
+                  })}
+                </Text>
+                {member.isActive && (
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                    {resumerHoraires(horairesActuels, member.id)
+                      ?? t('proMembers.readiness.scheduleTodo')}
+                  </Text>
+                )}
+                {/* LE chiffre : combien de rendez-vous cette personne
+                    peut encore recevoir. « 0 » se comprend sans rien
+                    savoir du modèle, et dit juste en dessous pourquoi. */}
+                {member.isActive && creneaux[member.id] !== null && creneaux[member.id] !== undefined && (
+                  <Text
+                    variant="bodySmall"
+                    style={{
+                      marginTop: 4, fontWeight: '700',
+                      color: creneaux[member.id] === 0 ? colors.warning : colors.text,
+                    }}
+                  >
+                    {t('proMembers.readiness.slots', { count: creneaux[member.id] as number })}
+                  </Text>
+                )}
+              </View>
+
+              {/* Active/Inactive toggle */}
+              {!member.isDefault && (
+                <View style={{ alignItems: 'center', marginLeft: spacing.sm }}>
+                  <Switch
+                    value={member.isActive}
+                    onValueChange={() => handleToggleActive(member)}
+                    disabled={togglingMember === member.id}
+                    trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
+                    thumbColor={member.isActive ? colors.primary : '#9CA3AF'}
+                    style={{ transform: [{ scale: 0.85 }] }}
+                  />
+                  <Text variant="caption" color={member.isActive ? 'primary' : 'textMuted'} style={{ fontSize: 10, marginTop: 2 }}>
+                    {member.isActive ? t('proMembers.status.active') : t('proMembers.status.inactive')}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Pressable>
+
+          {/* Access code section */}
+          <View style={[styles.codeSection, { borderTopColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="key-outline" size={16} color={colors.textMuted} />
+              <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs }}>
+                {t('proMembers.code.label')}{' '}
+              </Text>
+              <Text variant="bodySmall" style={{ fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
+                {showCodeFor === member.id ? member.accessCode : '••••••••'}
+              </Text>
+              <Pressable
+                onPress={() => setShowCodeFor(showCodeFor === member.id ? null : member.id)}
+                hitSlop={8}
+                style={{ marginLeft: spacing.xs, padding: 4 }}
+              >
+                <Ionicons name={showCodeFor === member.id ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
+              </Pressable>
+              <Pressable
+                onPress={() => handleCopyCode(member.accessCode)}
+                hitSlop={8}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="copy-outline" size={18} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={() => openCodeModal(member)}
+              hitSlop={8}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* Quick action buttons */}
+          <View style={[styles.actionsRow, { borderTopColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}>
+            <Pressable
+              onPress={() => handleSendAgenda(member)}
+              disabled={sendingAgenda === member.id}
+              style={({ pressed }) => [styles.actionBtn, { opacity: pressed || sendingAgenda === member.id ? 0.5 : 1 }]}
+            >
+              {sendingAgenda === member.id ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="mail-outline" size={16} color={colors.primary} />
+              )}
+              <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
+                {t('proMembers.agenda.recapAction')}
+              </Text>
+            </Pressable>
+
+            <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+            <Pressable
+              onPress={() => router.push(`/(pro)/(tabs)/calendar?memberId=${member.id}` as any)}
+              style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1 }]}
+            >
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
+                {t('proMembers.agenda.calendarAction')}
+              </Text>
+            </Pressable>
+
+            {!member.isDefault && (
+              <>
+                <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+                <Pressable
+                  onPress={() => handleDelete(member)}
+                  style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1, flex: 0, paddingHorizontal: 16 }]}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                </Pressable>
+              </>
+            )}
+          </View>
+        </Card>
+  );
+
+  /**
+   * « Qui fait quoi », adapte au telephone.
+   *
+   * Un tableau a double entree ne tient pas sur un ecran de telephone :
+   * chaque prestation devient une ligne qui montre QUI la realise, en
+   * pastilles, et s ouvre pour cocher les personnes.
+   */
+  const renderMatrice = () => {
+    const q = recherchePresta.trim().toLowerCase();
+    const visibles = services.filter(
+      (svc) => svc.isActive !== false || prestationSansPrestataire(svc),
+    );
+    const prestations = q
+      ? visibles.filter((svc) => svc.name.toLowerCase().includes(q))
+      : visibles;
+    const nbOrphelines = prestations.filter(prestationSansPrestataire).length;
+    const lieuxSansMonde = groupes.filter((g) => g.lieu && g.membres.length === 0);
+
+    return (
+      <View style={{ gap: spacing.md }}>
+        <Card padding="md" shadow="sm">
+          <Text variant="body" style={{ fontWeight: '700' }}>{t('proMembers.matrix.title')}</Text>
+          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+            {t('proMembers.matrix.hint')}
+          </Text>
+          <View style={{ marginTop: spacing.sm }}>
+            <Input
+              value={recherchePresta}
+              onChangeText={setRecherchePresta}
+              placeholder={t('proMembers.matrix.search')}
+              leftIcon={<Ionicons name="search" size={18} color={colors.textMuted} />}
+            />
+          </View>
+        </Card>
+
+        {nbOrphelines > 0 && (
+          <View style={{
+            flexDirection: 'row', gap: spacing.xs, padding: spacing.md,
+            backgroundColor: colors.warningLight, borderRadius: radius.lg,
+          }}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+            <Text variant="bodySmall" style={{ flex: 1 }}>
+              {t('proMembers.matrix.offlineBanner', { count: nbOrphelines })}
+            </Text>
+          </View>
+        )}
+
+        {lieuxSansMonde.map((g) => (
+          <Pressable
+            key={g.lieu!.id}
+            onPress={() => setVue('lieux')}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.md,
+              backgroundColor: colors.warningLight, borderRadius: radius.lg,
+            }}
+          >
+            <Ionicons name="location-outline" size={18} color={colors.warning} />
+            <Text variant="bodySmall" style={{ flex: 1 }}>
+              {t('proMembers.matrix.emptyLocationInMatrix', { name: g.lieu!.name })}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </Pressable>
+        ))}
+
+        {prestations.length === 0 ? (
+          <Text variant="bodySmall" color="textSecondary" style={{ textAlign: 'center', paddingVertical: spacing.lg }}>
+            {services.length === 0 ? t('proMembers.matrix.noServices') : t('proMembers.matrix.noResult')}
+          </Text>
+        ) : (
+          <Card padding="none" shadow="sm">
+            {prestations.map((svc, i) => {
+              const orpheline = prestationSansPrestataire(svc);
+              const realisent = members.filter(
+                (m) => m.isActive && !orpheline && membreRealisePrestation(svc, m.id, m.locationId),
+              );
+              return (
+                <Pressable
+                  key={svc.id}
+                  onPress={() => setPrestaEnEdition(svc.id)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+                    padding: spacing.md,
+                    borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.border,
+                    backgroundColor: orpheline ? colors.warningLight : undefined,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" style={{ fontWeight: '500' }}>{svc.name}</Text>
+                    {orpheline ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Ionicons name="alert-circle" size={13} color={colors.warning} />
+                        <Text variant="caption" style={{ color: colors.warning, fontWeight: '600' }}>
+                          {t('proMembers.matrix.nobody')}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                        {svc.duration} min
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={{ flexDirection: 'row' }}>
+                    {realisent.slice(0, 4).map((m, idx) => (
+                      <View
+                        key={m.id}
+                        style={[styles.avatarMini, {
+                          backgroundColor: m.color || colors.primary,
+                          marginLeft: idx === 0 ? 0 : -8,
+                          borderColor: colors.background,
+                        }]}
+                      >
+                        <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 9 }}>
+                          {getInitials(m.name)}
+                        </Text>
+                      </View>
+                    ))}
+                    {realisent.length > 4 && (
+                      <View style={[styles.avatarMini, {
+                        backgroundColor: colors.border, marginLeft: -8, borderColor: colors.background,
+                      }]}>
+                        <Text variant="caption" style={{ fontWeight: '700', fontSize: 9 }}>
+                          +{realisent.length - 4}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </Pressable>
+              );
+            })}
+          </Card>
+        )}
+      </View>
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -876,7 +1326,7 @@ export default function MembersScreen() {
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </Pressable>
           <Text variant="h3" style={{ fontWeight: '600', color: '#FFFFFF' }}>{t('proMembers.title')}</Text>
-          <Pressable onPress={openCreate} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
+          <Pressable onPress={() => openCreate()} style={({ pressed }) => [styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.md, opacity: pressed ? 0.8 : 1 }]}>
             <Ionicons name="add" size={22} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -897,6 +1347,84 @@ export default function MembersScreen() {
           </View>
         ) : (
           <View style={{ gap: spacing.md }}>
+            {/* Les quatre chiffres qui résument la configuration. */}
+            <Card padding="none" shadow="sm">
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {[
+                  { icone: 'business-outline' as const, libelle: t('proMembers.stats.locations'),
+                    valeur: locations.length,
+                    note: t('proMembers.stats.locationsNote', { count: groupes.filter((g) => g.lieu && g.membres.some((m) => m.isActive)).length }) },
+                  { icone: 'people-outline' as const, libelle: t('proMembers.stats.providers'),
+                    valeur: members.filter((m) => m.isActive).length,
+                    note: t('proMembers.stats.providersNote', { count: members.filter((m) => m.isActive && etats.get(m.id)?.reservable).length }) },
+                  { icone: 'pricetag-outline' as const, libelle: t('proMembers.stats.services'),
+                    valeur: services.filter((svc) => svc.isActive !== false).length,
+                    note: t('proMembers.stats.servicesNote') },
+                  { icone: 'calendar-outline' as const, libelle: t('proMembers.stats.slots'),
+                    valeur: members.filter((m) => m.isActive).reduce((n, m) => n + (creneaux[m.id] ?? 0), 0),
+                    note: t('proMembers.stats.slotsNote') },
+                ].map((c, i) => (
+                  <View
+                    key={c.libelle}
+                    style={{
+                      width: '50%', padding: spacing.sm,
+                      borderTopWidth: i > 1 ? 1 : 0, borderTopColor: colors.border,
+                      borderRightWidth: i % 2 === 0 ? 1 : 0, borderRightColor: colors.border,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name={c.icone} size={13} color={colors.primary} />
+                      <Text variant="caption" color="textSecondary" style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                        {c.libelle}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 }}>
+                      <Text variant="body" style={{ fontWeight: '700' }}>{c.valeur}</Text>
+                      <Text variant="caption" color="textSecondary" style={{ fontSize: 10, flex: 1 }} numberOfLines={1}>
+                        {c.note}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+
+            {/* Deux façons de regarder la même chose. Pleine largeur : c'est
+                le choix structurant de l'écran, il doit se voir. */}
+            <View style={{
+              flexDirection: 'row', gap: 4, padding: 4,
+              backgroundColor: colors.secondaryLight, borderRadius: radius.lg,
+            }}>
+              {([
+                { cle: 'lieux' as const, icone: 'business-outline' as const,
+                  titre: t('proMembers.views.byLocation'), detail: t('proMembers.views.byLocationHint') },
+                { cle: 'matrice' as const, icone: 'grid-outline' as const,
+                  titre: t('proMembers.views.whoDoesWhat'), detail: t('proMembers.views.whoDoesWhatHint') },
+              ]).map((o) => (
+                <Pressable
+                  key={o.cle}
+                  onPress={() => setVue(o.cle)}
+                  style={{
+                    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                    gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md,
+                    backgroundColor: vue === o.cle ? colors.background : 'transparent',
+                  }}
+                >
+                  <Ionicons
+                    name={o.icone}
+                    size={18}
+                    color={vue === o.cle ? colors.primary : colors.textMuted}
+                  />
+                  <View style={{ flexShrink: 1 }}>
+                    <Text variant="bodySmall" style={{ fontWeight: '600' }} numberOfLines={1}>{o.titre}</Text>
+                    <Text variant="caption" color="textSecondary" style={{ fontSize: 10 }} numberOfLines={1}>
+                      {o.detail}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+
             {/* Ce qui empêche des rendez-vous d'exister, en clair. Les
                 réglages vivent sur trois écrans différents ; sans ce
                 résumé, rien ne disait lequel ouvrir. */}
@@ -940,181 +1468,128 @@ export default function MembersScreen() {
               </View>
             )}
 
-            {membresTries.map((member) => (
-              <Card key={member.id} padding="none" shadow="sm">
-                {/* Main card content — tap to edit */}
-                <Pressable
-                  onPress={() => openEdit(member)}
-                  style={({ pressed }) => [{ padding: spacing.md, opacity: pressed ? 0.95 : 1 }]}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {/* Avatar */}
-                    {member.photoURL ? (
-                      <Image
-                        source={{ uri: member.photoURL }}
-                        style={[styles.avatar, { backgroundColor: colors.border }]}
-                      />
-                    ) : (
-                      <View style={[styles.avatar, { backgroundColor: member.color || colors.primary }]}>
-                        <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
-                          {getInitials(member.name)}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Info */}
-                    <View style={{ flex: 1, marginLeft: spacing.md }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                        <Text variant="body" style={{ fontWeight: '600' }}>{member.name}</Text>
-                        {member.isDefault && (
-                          <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
-                            <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>{t('proMembers.badgeYou')}</Text>
-                          </View>
+            {vue === 'lieux' ? (
+              <>
+                {groupes.map((g) => {
+                  const cle = g.lieu?.id ?? 'sans-lieu';
+                  const replie = lieuxReplies.includes(cle);
+                  const actifs = g.membres.filter((m) => m.isActive);
+                  const prets = actifs.filter((m) => etats.get(m.id)?.reservable).length;
+                  return (
+                    <Card key={cle} padding="none" shadow="sm">
+                      {/* En-tête du lieu : c'est LUI qui porte l'équipe. */}
+                      <Pressable
+                        onPress={() => setLieuxReplies((prev) =>
+                          prev.includes(cle) ? prev.filter((id) => id !== cle) : [...prev, cle],
                         )}
-                        {member.isActive && etats.get(member.id) && (
-                          <View style={[styles.badge, {
-                            backgroundColor: etats.get(member.id)!.reservable
-                              ? (colors.successLight ?? colors.primaryLight)
-                              : (colors.warningLight ?? colors.primaryLight),
-                          }]}>
-                            <Text
-                              variant="caption"
+                        style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm }}
+                      >
+                        <View style={[styles.avatar, {
+                          backgroundColor: g.lieu ? colors.primaryLight : (colors.warningLight ?? colors.primaryLight),
+                        }]}>
+                          <Ionicons
+                            name="location-outline"
+                            size={18}
+                            color={g.lieu ? colors.primary : colors.warning}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                            <Text variant="body" style={{ fontWeight: '700' }}>
+                              {g.lieu?.name ?? t('proMembers.location.noLocation')}
+                            </Text>
+                            {g.lieu?.isDefault && (
+                              <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                                <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>
+                                  {t('proMembers.location.principal')}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                            {t('proMembers.location.providersCount', { count: g.membres.length })}
+                            {g.membres.length > 0 && ` · ${t('proMembers.location.readyCount', { ready: prets, total: actifs.length })}`}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name={replie ? 'chevron-forward' : 'chevron-down'}
+                          size={20}
+                          color={colors.textMuted}
+                        />
+                      </Pressable>
+
+                      {!replie && (
+                        <View style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+                          {g.membres.length === 0 ? (
+                            <View style={{ padding: spacing.md, gap: spacing.sm, backgroundColor: colors.warningLight ?? colors.surface }}>
+                              <Text variant="bodySmall" style={{ fontWeight: '600' }}>
+                                {t('proMembers.location.emptyTitle')}
+                              </Text>
+                              <Text variant="caption" color="textSecondary">
+                                {t('proMembers.location.emptyBody')}
+                              </Text>
+                              {/* Le plus souvent la personne existe déjà,
+                                  elle est juste rattachée ailleurs. */}
+                              {g.lieu && deplacablesVers(g.lieu.id).length > 0 && (
+                                <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+                                  <Text variant="caption" style={{ fontWeight: '600' }}>
+                                    {t('proMembers.location.attachExisting')}
+                                  </Text>
+                                  {deplacablesVers(g.lieu.id).map((c) => (
+                                    <Pressable
+                                      key={c.id}
+                                      onPress={() => demanderDeplacement(c.id, g.lieu!.id)}
+                                      style={{
+                                        flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+                                        backgroundColor: colors.surface, borderRadius: 8,
+                                        paddingVertical: spacing.sm, paddingHorizontal: spacing.sm,
+                                      }}
+                                    >
+                                      <Ionicons name="person-add-outline" size={16} color={colors.primary} />
+                                      <Text variant="bodySmall" style={{ flex: 1 }}>
+                                        {c.name}
+                                        <Text variant="caption" color="textSecondary">
+                                          {'  '}{t('proMembers.location.currentlyAt', { name: c.lieuNom })}
+                                        </Text>
+                                      </Text>
+                                    </Pressable>
+                                  ))}
+                                </View>
+                              )}
+                            </View>
+                          ) : (
+                            <View>
+                              {trier(g.membres).map((member) => (
+                                <View key={member.id} style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                                  {renderMembre(member)}
+                                </View>
+                              ))}
+                            </View>
+                          )}
+
+                          {g.lieu && (
+                            <Pressable
+                              onPress={() => openCreate(g.lieu!.id)}
                               style={{
-                                fontWeight: '600', fontSize: 10,
-                                color: etats.get(member.id)!.reservable ? colors.success : colors.warning,
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                gap: spacing.xs, paddingVertical: spacing.md,
                               }}
                             >
-                              {etats.get(member.id)!.reservable
-                                ? t('proMembers.readiness.ready')
-                                : t('proMembers.readiness.todo')}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                        {getLocationName(member.locationId)}
-                        {' · '}
-                        {t('proMembers.readiness.servicesCount', {
-                          count: etats.get(member.id)?.prestations.length ?? 0,
-                        })}
-                      </Text>
-                      {member.isActive && (
-                        <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                          {resumerHoraires(horairesActuels, member.id)
-                            ?? t('proMembers.readiness.scheduleTodo')}
-                        </Text>
+                              <Ionicons name="add" size={18} color={colors.primary} />
+                              <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>
+                                {t('proMembers.location.addHere')}
+                              </Text>
+                            </Pressable>
+                          )}
+                        </View>
                       )}
-                      {/* LE chiffre : combien de rendez-vous cette personne
-                          peut encore recevoir. « 0 » se comprend sans rien
-                          savoir du modèle, et dit juste en dessous pourquoi. */}
-                      {member.isActive && creneaux[member.id] !== null && creneaux[member.id] !== undefined && (
-                        <Text
-                          variant="bodySmall"
-                          style={{
-                            marginTop: 4, fontWeight: '700',
-                            color: creneaux[member.id] === 0 ? colors.warning : colors.text,
-                          }}
-                        >
-                          {t('proMembers.readiness.slots', { count: creneaux[member.id] as number })}
-                        </Text>
-                      )}
-                    </View>
-
-                    {/* Active/Inactive toggle */}
-                    {!member.isDefault && (
-                      <View style={{ alignItems: 'center', marginLeft: spacing.sm }}>
-                        <Switch
-                          value={member.isActive}
-                          onValueChange={() => handleToggleActive(member)}
-                          disabled={togglingMember === member.id}
-                          trackColor={{ false: '#D1D5DB', true: colors.primaryLight }}
-                          thumbColor={member.isActive ? colors.primary : '#9CA3AF'}
-                          style={{ transform: [{ scale: 0.85 }] }}
-                        />
-                        <Text variant="caption" color={member.isActive ? 'primary' : 'textMuted'} style={{ fontSize: 10, marginTop: 2 }}>
-                          {member.isActive ? t('proMembers.status.active') : t('proMembers.status.inactive')}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </Pressable>
-
-                {/* Access code section */}
-                <View style={[styles.codeSection, { borderTopColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Ionicons name="key-outline" size={16} color={colors.textMuted} />
-                    <Text variant="bodySmall" color="textSecondary" style={{ marginLeft: spacing.xs }}>
-                      {t('proMembers.code.label')}{' '}
-                    </Text>
-                    <Text variant="bodySmall" style={{ fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
-                      {showCodeFor === member.id ? member.accessCode : '••••••••'}
-                    </Text>
-                    <Pressable
-                      onPress={() => setShowCodeFor(showCodeFor === member.id ? null : member.id)}
-                      hitSlop={8}
-                      style={{ marginLeft: spacing.xs, padding: 4 }}
-                    >
-                      <Ionicons name={showCodeFor === member.id ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleCopyCode(member.accessCode)}
-                      hitSlop={8}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons name="copy-outline" size={18} color={colors.textMuted} />
-                    </Pressable>
-                  </View>
-                  <Pressable
-                    onPress={() => openCodeModal(member)}
-                    hitSlop={8}
-                    style={{ padding: 4 }}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-
-                {/* Quick action buttons */}
-                <View style={[styles.actionsRow, { borderTopColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs }]}>
-                  <Pressable
-                    onPress={() => handleSendAgenda(member)}
-                    disabled={sendingAgenda === member.id}
-                    style={({ pressed }) => [styles.actionBtn, { opacity: pressed || sendingAgenda === member.id ? 0.5 : 1 }]}
-                  >
-                    {sendingAgenda === member.id ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Ionicons name="mail-outline" size={16} color={colors.primary} />
-                    )}
-                    <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
-                      {t('proMembers.agenda.recapAction')}
-                    </Text>
-                  </Pressable>
-
-                  <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-                  <Pressable
-                    onPress={() => router.push(`/(pro)/(tabs)/calendar?memberId=${member.id}` as any)}
-                    style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1 }]}
-                  >
-                    <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                    <Text variant="caption" color="primary" style={{ marginLeft: 4, fontWeight: '500' }}>
-                      {t('proMembers.agenda.calendarAction')}
-                    </Text>
-                  </Pressable>
-
-                  {!member.isDefault && (
-                    <>
-                      <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-                      <Pressable
-                        onPress={() => handleDelete(member)}
-                        style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1, flex: 0, paddingHorizontal: 16 }]}
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                      </Pressable>
-                    </>
-                  )}
-                </View>
-              </Card>
-            ))}
+                    </Card>
+                  );
+                })}
+              </>
+            ) : (
+              renderMatrice()
+            )}
           </View>
         )}
       </ScrollView>
@@ -1295,6 +1770,73 @@ export default function MembersScreen() {
         </KeyboardAvoidingSheet>
       </Modal>
 
+      {/* Qui réalise cette prestation. Les personnes sont groupées par
+          lieu, comme partout ailleurs dans cet écran. */}
+      <Modal visible={prestaEnEdition !== null} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.pickerContent, { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <View style={[styles.modalHeader, { padding: spacing.lg, borderBottomColor: colors.border }]}>
+              <Text variant="h3" style={{ flex: 1 }}>
+                {t('proMembers.matrix.assignTitle', {
+                  name: services.find((svc) => svc.id === prestaEnEdition)?.name ?? '',
+                })}
+              </Text>
+              <Pressable onPress={() => setPrestaEnEdition(null)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg }}>
+              {(() => {
+                const svc = services.find((x) => x.id === prestaEnEdition);
+                if (!svc) return null;
+                const orpheline = prestationSansPrestataire(svc);
+                return groupes.map((g) => {
+                  const actifs = g.membres.filter((m) => m.isActive);
+                  if (actifs.length === 0) return null;
+                  return (
+                    <View key={g.lieu?.id ?? 'sans-lieu'} style={{ marginBottom: spacing.md }}>
+                      <Text variant="caption" color="textSecondary" style={{ fontWeight: '700', textTransform: 'uppercase', marginBottom: spacing.xs }}>
+                        {g.lieu?.name ?? t('proMembers.location.noLocation')}
+                      </Text>
+                      {actifs.map((m) => {
+                        const coche = orpheline
+                          ? false
+                          : membreRealisePrestation(svc, m.id, m.locationId);
+                        const ecrit = ecritures.includes(`${svc.id}:${m.id}`);
+                        return (
+                          <Pressable
+                            key={m.id}
+                            disabled={ecrit}
+                            onPress={() => basculerAttribution(svc.id, m.id)}
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, opacity: ecrit ? 0.5 : 1 }}
+                          >
+                            <Ionicons
+                              name={coche ? 'checkbox' : 'square-outline'}
+                              size={22}
+                              color={coche ? colors.primary : colors.textMuted}
+                            />
+                            <View style={[styles.avatarMini, {
+                              backgroundColor: m.color || colors.primary,
+                              marginLeft: spacing.sm, borderColor: colors.background,
+                            }]}>
+                              <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 9 }}>
+                                {getInitials(m.name)}
+                              </Text>
+                            </View>
+                            <Text variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>{m.name}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  );
+                });
+              })()}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Location Picker Modal */}
       <Modal visible={showLocationPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -1408,6 +1950,14 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   addBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  avatarMini: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 24 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },

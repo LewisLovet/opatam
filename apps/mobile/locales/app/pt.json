@@ -2938,6 +2938,55 @@
       "actionSchedule": "Definir horários",
       "actionServices": "Atribuir serviços",
       "actionAdd": "Adicionar colaborador"
+    },
+    "views": {
+      "byLocation": "Por local",
+      "byLocationHint": "Quem trabalha onde",
+      "whoDoesWhat": "Quem faz o quê",
+      "whoDoesWhatHint": "Serviços por pessoa"
+    },
+    "stats": {
+      "locations": "Locais",
+      "locationsNote": "{{count}} com equipa",
+      "providers": "Colaboradores",
+      "providersNote": "{{count}} prontos",
+      "services": "Serviços",
+      "servicesNote": "no catálogo",
+      "slots": "Horários",
+      "slotsNote": "esta semana"
+    },
+    "location": {
+      "principal": "Principal",
+      "inactive": "Local desativado",
+      "noLocation": "Sem local",
+      "providersCount_one": "{{count}} colaborador",
+      "providersCount_other": "{{count}} colaboradores",
+      "readyCount": "{{ready}}/{{total}} prontos",
+      "emptyTitle": "Nenhum colaborador neste local",
+      "emptyBody": "Os horários e as vagas pertencem aos colaboradores. Enquanto ninguém estiver ligado aqui, este local não oferece marcações.",
+      "attachExisting": "Ligar alguém que já existe",
+      "addHere": "Adicionar um colaborador aqui",
+      "currentlyAt": "atualmente {{name}}",
+      "noPlace": "sem local",
+      "moveTitle": "Ligar {{member}} a {{location}}?",
+      "moveBody": "{{member}} vai sair de {{from}}. Os horários acompanham, e os serviços que realiza dependem também do local.",
+      "moveConfirm": "Ligar aqui",
+      "moved": "Local atualizado",
+      "moveError": "Não foi possível mudar o local"
+    },
+    "matrix": {
+      "title": "Quem faz o quê?",
+      "hint": "Toque num serviço para escolher quem o realiza.",
+      "search": "Procurar um serviço",
+      "nobody": "Ninguém · fora do ar",
+      "offlineBanner_one": "{{count}} serviço não é realizado por ninguém: não pode ser reservado online.",
+      "offlineBanner_other": "{{count}} serviços não são realizados por ninguém: não podem ser reservados online.",
+      "assignTitle": "Quem realiza «{{name}}»?",
+      "noServices": "Nenhum serviço no catálogo.",
+      "noResult": "Nenhum serviço corresponde.",
+      "wentOffline": "«{{name}}» já não é realizado por ninguém: foi retirado da reserva online.",
+      "backOnline": "«{{name}}» pode ser reservado online novamente.",
+      "emptyLocationInMatrix": "{{name}} não tem colaboradores: este local não aparece aqui."
     }
   },
   "proLocations": {

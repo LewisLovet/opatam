@@ -2938,6 +2938,55 @@
       "actionSchedule": "Définir les horaires",
       "actionServices": "Attribuer des prestations",
       "actionAdd": "Ajouter un prestataire"
+    },
+    "views": {
+      "byLocation": "Par lieu",
+      "byLocationHint": "Qui travaille où",
+      "whoDoesWhat": "Qui fait quoi",
+      "whoDoesWhatHint": "Prestations par personne"
+    },
+    "stats": {
+      "locations": "Lieux",
+      "locationsNote": "{{count}} avec équipe",
+      "providers": "Prestataires",
+      "providersNote": "{{count}} prêts",
+      "services": "Prestations",
+      "servicesNote": "au catalogue",
+      "slots": "Créneaux",
+      "slotsNote": "cette semaine"
+    },
+    "location": {
+      "principal": "Principal",
+      "inactive": "Lieu désactivé",
+      "noLocation": "Sans lieu",
+      "providersCount_one": "{{count}} prestataire",
+      "providersCount_other": "{{count}} prestataires",
+      "readyCount": "{{ready}}/{{total}} prêts",
+      "emptyTitle": "Aucun prestataire rattaché à ce lieu",
+      "emptyBody": "Les horaires et les créneaux appartiennent aux prestataires. Tant que personne n’est rattaché ici, ce lieu ne propose aucun rendez-vous.",
+      "attachExisting": "Rattacher quelqu’un qui existe déjà",
+      "addHere": "Ajouter un prestataire à ce lieu",
+      "currentlyAt": "actuellement {{name}}",
+      "noPlace": "sans lieu",
+      "moveTitle": "Rattacher {{member}} à {{location}} ?",
+      "moveBody": "{{member}} quittera {{from}}. Ses horaires suivent, et les prestations qu’il réalise dépendent aussi du lieu.",
+      "moveConfirm": "Rattacher ici",
+      "moved": "Lieu de rattachement mis à jour",
+      "moveError": "Le lieu n’a pas pu être changé"
+    },
+    "matrix": {
+      "title": "Qui réalise quoi ?",
+      "hint": "Touchez une prestation pour choisir qui la réalise.",
+      "search": "Rechercher une prestation",
+      "nobody": "Personne · hors ligne",
+      "offlineBanner_one": "{{count}} prestation n’est réalisée par personne : elle n’est pas réservable en ligne.",
+      "offlineBanner_other": "{{count}} prestations ne sont réalisées par personne : elles ne sont pas réservables en ligne.",
+      "assignTitle": "Qui réalise « {{name}} » ?",
+      "noServices": "Aucune prestation au catalogue.",
+      "noResult": "Aucune prestation ne correspond.",
+      "wentOffline": "« {{name}} » n’est plus réalisée par personne : elle est retirée de la réservation en ligne.",
+      "backOnline": "« {{name}} » est de nouveau réservable en ligne.",
+      "emptyLocationInMatrix": "{{name}} n’a aucun prestataire : ce lieu n’apparaît pas ici."
     }
   },
   "proLocations": {

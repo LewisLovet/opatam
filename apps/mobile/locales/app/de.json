@@ -2938,6 +2938,55 @@
       "actionSchedule": "Arbeitszeiten festlegen",
       "actionServices": "Leistungen zuweisen",
       "actionAdd": "Mitarbeitende hinzufügen"
+    },
+    "views": {
+      "byLocation": "Nach Standort",
+      "byLocationHint": "Wer wo arbeitet",
+      "whoDoesWhat": "Wer macht was",
+      "whoDoesWhatHint": "Leistungen pro Person"
+    },
+    "stats": {
+      "locations": "Standorte",
+      "locationsNote": "{{count}} mit Team",
+      "providers": "Mitarbeitende",
+      "providersNote": "{{count}} bereit",
+      "services": "Leistungen",
+      "servicesNote": "im Katalog",
+      "slots": "Termine",
+      "slotsNote": "diese Woche"
+    },
+    "location": {
+      "principal": "Haupt",
+      "inactive": "Standort deaktiviert",
+      "noLocation": "Ohne Standort",
+      "providersCount_one": "{{count}} Mitarbeitende:r",
+      "providersCount_other": "{{count}} Mitarbeitende",
+      "readyCount": "{{ready}}/{{total}} bereit",
+      "emptyTitle": "Keine Mitarbeitenden an diesem Standort",
+      "emptyBody": "Arbeitszeiten und Termine gehören den Mitarbeitenden. Solange hier niemand zugeordnet ist, bietet dieser Standort keine Termine an.",
+      "attachExisting": "Jemanden zuordnen, den es schon gibt",
+      "addHere": "Mitarbeitende hier hinzufügen",
+      "currentlyAt": "derzeit {{name}}",
+      "noPlace": "ohne Standort",
+      "moveTitle": "{{member}} zu {{location}} zuordnen?",
+      "moveBody": "{{member}} verlässt {{from}}. Die Arbeitszeiten folgen, und die ausgeführten Leistungen hängen ebenfalls vom Standort ab.",
+      "moveConfirm": "Hier zuordnen",
+      "moved": "Standort aktualisiert",
+      "moveError": "Der Standort konnte nicht geändert werden"
+    },
+    "matrix": {
+      "title": "Wer macht was?",
+      "hint": "Tippen Sie auf eine Leistung, um festzulegen, wer sie ausführt.",
+      "search": "Leistung suchen",
+      "nobody": "Niemand · offline",
+      "offlineBanner_one": "{{count}} Leistung wird von niemandem ausgeführt: sie ist online nicht buchbar.",
+      "offlineBanner_other": "{{count}} Leistungen werden von niemandem ausgeführt: sie sind online nicht buchbar.",
+      "assignTitle": "Wer führt „{{name}}“ aus?",
+      "noServices": "Keine Leistung im Katalog.",
+      "noResult": "Keine Leistung gefunden.",
+      "wentOffline": "„{{name}}“ wird von niemandem mehr ausgeführt: aus der Online-Buchung entfernt.",
+      "backOnline": "„{{name}}“ ist wieder online buchbar.",
+      "emptyLocationInMatrix": "{{name}} hat keine Mitarbeitenden: dieser Standort erscheint hier nicht."
     }
   },
   "proLocations": {

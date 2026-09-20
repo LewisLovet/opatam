@@ -2938,6 +2938,55 @@
       "actionSchedule": "Set the schedule",
       "actionServices": "Assign services",
       "actionAdd": "Add a team member"
+    },
+    "views": {
+      "byLocation": "By location",
+      "byLocationHint": "Who works where",
+      "whoDoesWhat": "Who does what",
+      "whoDoesWhatHint": "Services per person"
+    },
+    "stats": {
+      "locations": "Locations",
+      "locationsNote": "{{count}} with a team",
+      "providers": "Team",
+      "providersNote": "{{count}} ready",
+      "services": "Services",
+      "servicesNote": "in the catalogue",
+      "slots": "Slots",
+      "slotsNote": "this week"
+    },
+    "location": {
+      "principal": "Main",
+      "inactive": "Location disabled",
+      "noLocation": "No location",
+      "providersCount_one": "{{count}} team member",
+      "providersCount_other": "{{count}} team members",
+      "readyCount": "{{ready}}/{{total}} ready",
+      "emptyTitle": "No team member at this location",
+      "emptyBody": "Schedules and slots belong to team members. While nobody is attached here, this location offers no appointment.",
+      "attachExisting": "Attach someone who already exists",
+      "addHere": "Add a team member here",
+      "currentlyAt": "currently {{name}}",
+      "noPlace": "no location",
+      "moveTitle": "Attach {{member}} to {{location}}?",
+      "moveBody": "{{member}} will leave {{from}}. Their schedule follows, and the services they perform also depend on the location.",
+      "moveConfirm": "Attach here",
+      "moved": "Location updated",
+      "moveError": "The location could not be changed"
+    },
+    "matrix": {
+      "title": "Who does what?",
+      "hint": "Tap a service to choose who performs it.",
+      "search": "Search a service",
+      "nobody": "Nobody · offline",
+      "offlineBanner_one": "{{count}} service is performed by nobody: it cannot be booked online.",
+      "offlineBanner_other": "{{count}} services are performed by nobody: they cannot be booked online.",
+      "assignTitle": "Who performs “{{name}}”?",
+      "noServices": "No service in the catalogue.",
+      "noResult": "No service matches.",
+      "wentOffline": "“{{name}}” is no longer performed by anyone: it is removed from online booking.",
+      "backOnline": "“{{name}}” can be booked online again.",
+      "emptyLocationInMatrix": "{{name}} has no team member: this location does not appear here."
     }
   },
   "proLocations": {
