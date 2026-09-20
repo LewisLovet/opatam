@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button, useToast } from '@/components/ui';
+import { Button, ConfirmDialog, useToast } from '@/components/ui';
 import {
   memberService,
   locationService,
@@ -66,6 +66,17 @@ export function EquipeTab() {
   // La personne dont on règle la configuration dans le panneau latéral.
   const [selectionId, setSelectionId] = useState<string | null>(null);
   const [copieEnCours, setCopieEnCours] = useState(false);
+  // Les confirmations passent par une vraie fenêtre, jamais par
+  // `window.confirm` : un navigateur qui la bloque rendait l'action
+  // silencieuse, et on croyait que le bouton ne servait à rien.
+  const [confirmation, setConfirmation] = useState<{
+    titre: string;
+    message: ReactNode;
+    libelle: string;
+    variante: 'danger' | 'warning';
+    agir: () => Promise<void>;
+  } | null>(null);
+  const [confirmationEnCours, setConfirmationEnCours] = useState(false);
   const [changementLieuEnCours, setChangementLieuEnCours] = useState(false);
   const panneauRef = useRef<HTMLDivElement>(null);
   const [lieuxReplies, setLieuxReplies] = useState<string[]>([]);
@@ -387,6 +398,75 @@ export function EquipeTab() {
     }
   };
 
+  /** Collègues vers qui recopier la semaine de quelqu'un. */
+  const ciblesHoraires = useCallback(
+    (sourceId: string) =>
+      members
+        .filter((m) => m.id !== sourceId && m.isActive && m.locationId)
+        .map((m) => ({ id: m.id, name: m.name, resume: resumerHoraires(horairesActuels, m.id) })),
+    [members, horairesActuels],
+  );
+
+  /**
+   * Recopie une semaine sur plusieurs personnes d'un coup.
+   *
+   * Écraser l'agenda de quelqu'un ne se fait pas sans le dire : la fenêtre
+   * nomme celles dont les horaires actuels vont disparaître.
+   */
+  const copierVers = (sourceId: string, cibleIds: string[]) => {
+    if (!provider || cibleIds.length === 0) return;
+    const source = members.find((m) => m.id === sourceId);
+    if (!source) return;
+    const cibles = cibleIds
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is WithId<Member> => !!m && !!m.locationId);
+    if (cibles.length === 0) return;
+    const ecrases = cibles.filter((m) => resumerHoraires(horairesActuels, m.id) !== null);
+
+    setConfirmation({
+      titre: 'Copier ces horaires ?',
+      variante: ecrases.length > 0 ? 'warning' : 'danger',
+      libelle: `Copier vers ${cibles.length} personne${cibles.length > 1 ? 's' : ''}`,
+      message: (
+        <>
+          <p>
+            La semaine de <strong>{source.name}</strong> va être copiée sur{' '}
+            {cibles.map((m) => m.name).join(', ')}.
+          </p>
+          {ecrases.length > 0 && (
+            <p className="mt-2">
+              Les horaires actuels de {ecrases.map((m) => m.name).join(', ')} seront{' '}
+              <strong>remplacés</strong>. Les rendez-vous déjà pris ne sont pas annulés, mais
+              certains peuvent se retrouver hors des nouvelles heures.
+            </p>
+          )}
+        </>
+      ),
+      agir: async () => {
+        const semaine = await availabilityRepository.getWeeklySchedule(provider.id, sourceId);
+        const aEcrire = preparerCopieHoraires(semaine);
+        if (aEcrire.length === 0) {
+          toast.error(`${source.name} n’a aucun horaire à copier`);
+          return;
+        }
+        // Chaque destinataire reçoit SON propre lieu : le champ est
+        // dénormalisé depuis le membre (voir preparerCopieHoraires).
+        for (const cible of cibles) {
+          await availabilityRepository.setWeeklySchedule(
+            provider.id,
+            cible.id,
+            cible.locationId,
+            aEcrire,
+          );
+        }
+        toast.success(
+          `Horaires copiés sur ${cibles.length} personne${cibles.length > 1 ? 's' : ''}`,
+        );
+        await fetchData();
+      },
+    });
+  };
+
   const handleOpenCreate = (locationId?: string) => {
     if (isAtMemberLimit) {
       setUpgradeModalOpen(true);
@@ -603,6 +683,7 @@ export function EquipeTab() {
         // les rend INVISIBLES pour les créneaux des autres membres — la
         // recette exacte des doubles réservations. On prévient, chiffres à
         // l'appui, avant d'accepter.
+        const membre = members.find((m) => m.id === memberId);
         const resas = await bookingRepository.getByProvider(provider.id);
         const maintenant = new Date();
         const futures = resas.filter(
@@ -611,18 +692,36 @@ export function EquipeTab() {
             ['confirmed', 'pending', 'pending_payment'].includes(b.status) &&
             b.datetime > maintenant,
         ).length;
+        const desactiver = async () => {
+          await memberService.deactivateMember(provider.id, memberId);
+          toast.success('Membre désactivé');
+          await fetchData();
+        };
+
         if (futures > 0) {
-          const ok = window.confirm(
-            `${futures} rendez-vous à venir ${futures > 1 ? 'sont' : 'est'} sur ce membre.\n\n` +
-              'Une fois désactivé, ces rendez-vous resteront valides mais NE BLOQUERONT ' +
-              'PLUS les créneaux de vos autres membres — des clientes pourraient réserver ' +
-              'par-dessus.\n\nRéattribuez-les d’abord depuis le planning, ou confirmez ' +
-              'en connaissance de cause.',
-          );
-          if (!ok) return;
+          setConfirmation({
+            titre: `Désactiver ${membre?.name ?? 'ce membre'} ?`,
+            variante: 'warning',
+            libelle: 'Désactiver quand même',
+            message: (
+              <>
+                <p>
+                  {futures} rendez-vous à venir {futures > 1 ? 'sont' : 'est'} sur cette personne.
+                </p>
+                <p className="mt-2">
+                  Une fois désactivée, ces rendez-vous restent valides mais{' '}
+                  <strong>ne bloquent plus les créneaux de vos autres membres</strong>. Des
+                  clientes pourraient réserver par-dessus.
+                </p>
+                <p className="mt-2">Réattribuez-les d’abord depuis le planning, si possible.</p>
+              </>
+            ),
+            agir: desactiver,
+          });
+          return;
         }
-        await memberService.deactivateMember(provider.id, memberId);
-        toast.success('Membre désactivé');
+        await desactiver();
+        return;
       }
       await fetchData();
     } catch (error) {
@@ -889,12 +988,15 @@ export function EquipeTab() {
                   creneaux={creneaux[membreSelectionne.id] ?? null}
                   resumeHoraires={resumerHoraires(horairesActuels, membreSelectionne.id)}
                   sources={sourcesHoraires(membreSelectionne.id)}
+                  cibles={ciblesHoraires(membreSelectionne.id)}
                   enCours={ecritures}
                   copieEnCours={copieEnCours}
                   changementLieuEnCours={changementLieuEnCours}
                   onBasculerPrestation={basculerAttribution}
                   onChangerLieu={changerLieu}
                   onCopierHoraires={copierHoraires}
+                  onCopierVers={copierVers}
+                  onBasculerActif={handleToggleActive}
                   onOuvrirFiche={() => handleOpenEdit(membreSelectionne)}
                   onDefinirHoraires={() => router.push('/pro/activite?tab=disponibilites')}
                 />
@@ -924,6 +1026,29 @@ export function EquipeTab() {
         isOpen={upgradeModalOpen}
         onClose={() => setUpgradeModalOpen(false)}
         context="members"
+      />
+
+      <ConfirmDialog
+        isOpen={confirmation !== null}
+        onClose={() => setConfirmation(null)}
+        title={confirmation?.titre ?? ''}
+        message={confirmation?.message ?? ''}
+        confirmLabel={confirmation?.libelle}
+        variant={confirmation?.variante ?? 'warning'}
+        loading={confirmationEnCours}
+        onConfirm={async () => {
+          if (!confirmation) return;
+          setConfirmationEnCours(true);
+          try {
+            await confirmation.agir();
+            setConfirmation(null);
+          } catch (error) {
+            console.error('Confirm action error:', error);
+            toast.error('L’opération a échoué');
+          } finally {
+            setConfirmationEnCours(false);
+          }
+        }}
       />
     </div>
   );
