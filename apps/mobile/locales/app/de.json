@@ -3096,7 +3096,8 @@
       "invalidTiers": "Ungültige Stufen: aufsteigende Grenzen (max. 300 km), nicht negative Gebühren, maximal 8 Stufen",
       "authRequired": "Sitzung abgelaufen — bitte erneut anmelden",
       "saveFailed": "Anfahrtskosten konnten nicht gespeichert werden"
-    }
+    },
+    "upgradeContext": "Wechseln Sie zum Studio-Tarif, um mehrere Standorte zu verwalten"
   },
   "proAvailability": {
     "title": "Verfügbarkeiten",

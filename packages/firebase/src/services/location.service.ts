@@ -8,6 +8,7 @@ import {
   getCityRegion, getRegionFromPostalCode,
   getRegionFromCoords,
   PLAN_LIMITS,
+  computeEntitlements,
   type CreateLocationInput,
   type UpdateLocationInput,
 } from '@booking-app/shared';
@@ -15,22 +16,52 @@ import type { WithId } from '../repositories/base.repository';
 
 export class LocationService {
   /**
+   * L'offre qui compte pour les limites : celle des droits calculés, pas le
+   * champ `plan` brut. Un accès offert ou un abonnement payant doit lever la
+   * limite ; un essai garde la sienne. Même règle que LieuxTab côté web.
+   *
+   * Renvoie `null` si le prestataire est introuvable : on ne bloque pas une
+   * création sur une lecture ratée.
+   */
+  private async offreEffective(providerId: string): Promise<string | null> {
+    try {
+      const provider = await providerRepository.getById(providerId);
+      if (!provider) return null;
+      const ent = computeEntitlements(provider);
+      return ent.source === 'paid' || ent.source === 'comp'
+        ? (ent.effectivePlan ?? provider.plan ?? null)
+        : (provider.plan ?? null);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create a new location
    */
   async createLocation(providerId: string, input: CreateLocationInput & { region?: string | null }, providerPlan?: string): Promise<WithId<Location>> {
     // Validate input
     const validated = parseOrThrow(createLocationSchema, input);
 
-    // Check plan location limit
-    if (providerPlan) {
-      const limits = PLAN_LIMITS[providerPlan as keyof typeof PLAN_LIMITS];
-      if (limits) {
-        const activeLocations = await locationRepository.getActiveByProvider(providerId);
-        if (activeLocations.length >= limits.maxLocations) {
-          throw new Error(
-            `Votre plan ${providerPlan} est limité à ${limits.maxLocations} lieu(x) actif(s). Passez au plan supérieur pour ajouter plus de lieux.`
-          );
-        }
+    // Limite de lieux de l'offre — TOUJOURS vérifiée ici.
+    //
+    // Cette garde existait déjà mais ne s'appliquait que si l'appelant
+    // transmettait l'offre, et AUCUN ne le faisait : ni le web, ni le
+    // mobile, ni les deux inscriptions. Elle n'avait donc jamais tourné, et
+    // un compte solo pouvait créer autant de lieux qu'il voulait (cas
+    // blomd.nails : offre solo, 2 lieux). On lit désormais le prestataire
+    // nous-mêmes, pour qu'aucun client ne puisse sauter la vérification.
+    //
+    // L'offre EFFECTIVE, pas le champ brut : un accès offert ou un
+    // abonnement payant doit lever la limite même si `plan` dit autre chose.
+    const plan = providerPlan ?? (await this.offreEffective(providerId));
+    const limits = plan ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] : null;
+    if (limits) {
+      const activeLocations = await locationRepository.getActiveByProvider(providerId);
+      if (activeLocations.length >= limits.maxLocations) {
+        throw new Error(
+          `Votre offre est limitée à ${limits.maxLocations} lieu(x) actif(s). Passez à l'offre supérieure pour en ajouter.`
+        );
       }
     }
 

@@ -3096,7 +3096,8 @@
       "invalidTiers": "Scaglioni non validi: limiti crescenti (max 300 km), tariffe non negative, massimo 8 scaglioni",
       "authRequired": "Sessione scaduta — accedi di nuovo",
       "saveFailed": "Salvataggio delle spese di trasferta non riuscito"
-    }
+    },
+    "upgradeContext": "Passa all’offerta Studio per gestire più sedi"
   },
   "proAvailability": {
     "title": "Disponibilità",

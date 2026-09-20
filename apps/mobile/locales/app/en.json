@@ -3096,7 +3096,8 @@
       "invalidTiers": "Invalid tiers: increasing limits (max 300 km), non-negative fees, 8 tiers maximum",
       "authRequired": "Session expired — please sign in again",
       "saveFailed": "Failed to save travel fees"
-    }
+    },
+    "upgradeContext": "Switch to the Studio plan to manage several locations"
   },
   "proAvailability": {
     "title": "Availability",

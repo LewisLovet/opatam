@@ -3096,7 +3096,8 @@
       "invalidTiers": "Paliers invalides : bornes croissantes (max 300 km), frais positifs, 8 paliers maximum",
       "authRequired": "Session expirée — reconnectez-vous",
       "saveFailed": "Échec de la sauvegarde des frais de déplacement"
-    }
+    },
+    "upgradeContext": "Passez à l’offre Studio pour gérer plusieurs lieux"
   },
   "proAvailability": {
     "title": "Disponibilités",

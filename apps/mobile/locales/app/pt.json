@@ -3096,7 +3096,8 @@
       "invalidTiers": "Escalões inválidos: limites crescentes (máx. 300 km), taxas não negativas, máximo 8 escalões",
       "authRequired": "Sessão expirada — inicie sessão novamente",
       "saveFailed": "Falha ao guardar as taxas de deslocação"
-    }
+    },
+    "upgradeContext": "Mude para o plano Studio para gerir vários locais"
   },
   "proAvailability": {
     "title": "Disponibilidades",

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { isTeamTier } from '@booking-app/shared';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
@@ -27,14 +26,13 @@ export default function ActivityPage() {
     [router, searchParams]
   );
 
-  const isTeamPlan = isTeamTier(provider);
-
   const tabs = [
     { id: 'prestations', label: 'Prestations', icon: <Tag className="w-4 h-4" /> },
     { id: 'lieux', label: 'Lieux', icon: <MapPin className="w-4 h-4" /> },
-    ...(isTeamPlan
-      ? [{ id: 'equipe', label: 'Équipe', icon: <Users className="w-4 h-4" /> }]
-      : []),
+    // Visible à TOUTES les offres : cet onglet dit si l'on est réservable et
+    // permet d'attribuer ses prestations, ce qui vaut aussi pour un compte
+    // solo. Ajouter une 2e personne reste borné par l'offre, dans EquipeTab.
+    { id: 'equipe', label: 'Équipe', icon: <Users className="w-4 h-4" /> },
     { id: 'disponibilites', label: 'Disponibilités', icon: <Clock className="w-4 h-4" /> },
   ];
 
@@ -71,12 +69,10 @@ export default function ActivityPage() {
           <LieuxTab />
         </TabsContent>
 
-        {/* Équipe Tab (Teams only) */}
-        {isTeamPlan && (
-          <TabsContent value="equipe" className="mt-6">
-            <EquipeTab />
-          </TabsContent>
-        )}
+        {/* Équipe */}
+        <TabsContent value="equipe" className="mt-6">
+          <EquipeTab />
+        </TabsContent>
 
         {/* Disponibilités Tab */}
         <TabsContent value="disponibilites" className="mt-6">

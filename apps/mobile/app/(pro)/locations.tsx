@@ -21,8 +21,9 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
-import { Text, Button, Input, Card, Avatar, useToast } from '../../components';
-import { useProvider } from '../../contexts';
+import { Text, Button, Input, Card, Avatar, useToast, UpgradeToStudioModal } from '../../components';
+import { useProvider, useSubscriptionStatus } from '../../contexts';
+import { PLAN_LIMITS } from '@booking-app/shared';
 import { locationService, memberService, auth as firebaseAuth, type WithId } from '@booking-app/firebase';
 import { isValidTravelZone, type TravelZoneTier } from '@booking-app/shared';
 import { API_URL } from '../../lib/config';
@@ -88,6 +89,8 @@ export default function LocationsScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { providerId } = useProvider();
+  const sub = useSubscriptionStatus();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Libellés localisés des suggestions de noms (le nom choisi reste du contenu du pro)
   const namePresets = LOCATION_NAME_PRESET_KEYS.map((k) => t(`proLocations.namePresets.${k}`));
@@ -268,6 +271,14 @@ export default function LocationsScreen() {
 
   // Modal open
   const openCreate = () => {
+    // Limite de lieux de l'offre. Elle n'existait QUE sur le web : depuis le
+    // téléphone un compte solo pouvait créer autant de lieux qu'il voulait,
+    // et un lieu sans personne rattachée ne propose aucun rendez-vous.
+    const limites = sub.plan ? PLAN_LIMITS[sub.plan as keyof typeof PLAN_LIMITS] : null;
+    if (limites && locations.filter((l) => l.isActive).length >= limites.maxLocations) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setEditingId(null);
     setForm(DEFAULT_FORM);
     setAddressQuery('');
@@ -1160,6 +1171,12 @@ export default function LocationsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <UpgradeToStudioModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context={t('proLocations.upgradeContext')}
+      />
 
       {/* Country Picker Modal */}
       <Modal visible={showCountryPicker} transparent animationType="slide">
