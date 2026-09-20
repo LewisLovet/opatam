@@ -44,9 +44,12 @@ export function ConfirmDialog({
           `}>
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 pt-2">
+          {/* `div` et non `p` : `message` est un ReactNode, et un appelant
+              qui passe des paragraphes produisait un <p> dans un <p> —
+              HTML invalide, erreur d'hydratation React. */}
+          <div className="pt-2 text-sm text-gray-600 dark:text-gray-400">
             {message}
-          </p>
+          </div>
         </div>
       </ModalBody>
 

@@ -161,8 +161,20 @@ export function EquipeTab() {
   // non configurés » demande de savoir ce que ça implique. Calculé avec la
   // plus COURTE de ses prestations, donc la capacité maximale.
   const [creneaux, setCreneaux] = useState<Record<string, number | null>>({});
+  // Les données fraîches, lues DANS l'effet sans en être des dépendances :
+  // sinon cocher une case relancerait tout le comptage.
+  const donneesRef = useRef({ services, etats });
+  donneesRef.current = { services, etats };
+  const signatureEtats = members
+    .map((m) => {
+      const e = etats.get(m.id);
+      return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${e?.prestations.length ?? 0}`;
+    })
+    .join('|');
+
   useEffect(() => {
     if (!provider || members.length === 0) return;
+    const { services, etats } = donneesRef.current;
     let annule = false;
     const debut = new Date();
     debut.setHours(0, 0, 0, 0);
@@ -202,7 +214,9 @@ export function EquipeTab() {
     return () => {
       annule = true;
     };
-  }, [provider, members, services, etats]);
+    // `signatureEtats` remplace `services` et `etats` : voir donneesRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, members, signatureEtats]);
 
   /**
    * Qui réalise réellement cette prestation, en identifiants de membres.
@@ -477,6 +491,19 @@ export function EquipeTab() {
    * `changeLocation` déplace aussi ses documents de disponibilité : ce
    * n'est pas un simple champ qu'on change, d'où la confirmation.
    */
+  /** Prestataires actifs qu'on peut rattacher à ce lieu. */
+  const deplacablesVers = useCallback(
+    (locationId: string) =>
+      members
+        .filter((m) => m.isActive && m.locationId !== locationId)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          lieuNom: locations.find((l) => l.id === m.locationId)?.name ?? 'sans lieu',
+        })),
+    [members, locations],
+  );
+
   const demanderDeplacement = (memberId: string, locationId: string) => {
     const membre = members.find((m) => m.id === memberId);
     const lieu = locations.find((l) => l.id === locationId);
@@ -1052,18 +1079,7 @@ export function EquipeTab() {
                       )
                     }
                     onAjouter={g.lieu ? () => handleOpenCreate(g.lieu!.id) : undefined}
-                    deplacables={
-                      g.lieu
-                        ? members
-                            .filter((m) => m.isActive && m.locationId !== g.lieu!.id)
-                            .map((m) => ({
-                              id: m.id,
-                              name: m.name,
-                              lieuNom:
-                                locations.find((l) => l.id === m.locationId)?.name ?? 'sans lieu',
-                            }))
-                        : []
-                    }
+                    deplacables={g.lieu ? deplacablesVers(g.lieu.id) : []}
                     onDeplacerIci={
                       g.lieu ? (memberId) => demanderDeplacement(memberId, g.lieu!.id) : undefined
                     }
@@ -1098,6 +1114,12 @@ export function EquipeTab() {
               enCours={ecritures}
               membreSelectionneId={selectionId}
               onSelectionnerMembre={setSelectionId}
+              onModifierPrestation={(serviceId) =>
+                router.push(`/pro/activite/prestations/${serviceId}`)
+              }
+              deplacablesVers={deplacablesVers}
+              onAjouterA={handleOpenCreate}
+              onDeplacerVers={demanderDeplacement}
             />
             </div>
           )}

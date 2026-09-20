@@ -22,6 +22,12 @@ interface Props {
   /** Personne affichée dans le panneau de droite. */
   membreSelectionneId?: string | null;
   onSelectionnerMembre: (memberId: string) => void;
+  /** Ouvre la fiche d'une prestation. */
+  onModifierPrestation: (serviceId: string) => void;
+  /** Prestataires actifs rattachés ailleurs, par lieu d'arrivée possible. */
+  deplacablesVers: (locationId: string) => { id: string; name: string; lieuNom: string }[];
+  onAjouterA: (locationId: string) => void;
+  onDeplacerVers: (memberId: string, locationId: string) => void;
 }
 
 /**
@@ -85,35 +91,38 @@ export function AffectationsMatrice({
   enCours,
   membreSelectionneId,
   onSelectionnerMembre,
+  onModifierPrestation,
+  deplacablesVers,
+  onAjouterA,
+  onDeplacerVers,
 }: Props) {
   const [recherche, setRecherche] = useState('');
 
   const membres = useMemo(() => groupes.flatMap((g) => g.membres), [groupes]);
-  const plusieursLieux = groupes.length > 1;
+  // Un lieu sans personne n'a pas de colonne : il n'apparaîtrait nulle part.
+  const groupesPeuples = useMemo(() => groupes.filter((g) => g.membres.length > 0), [groupes]);
+  const lieuxVides = useMemo(
+    () =>
+      groupes
+        .filter((g) => g.lieu && g.membres.length === 0)
+        .map((g) => g.lieu as NonNullable<GroupeLieu['lieu']>),
+    [groupes],
+  );
+  const plusieursLieux = groupesPeuples.length > 1;
 
   const prestations = useMemo(() => {
     // Les prestations sans prestataire sont DÉSACTIVÉES : les exclure les
     // ferait disparaître au moment même où on veut les voir.
     const visibles = services.filter((s) => s.isActive !== false || sansPrestataire(s));
     const q = recherche.trim().toLowerCase();
-    const filtrees = q
-      ? visibles.filter((s) => s.name.toLowerCase().includes(q))
-      : visibles;
-    // Ce qui ne part pas en ligne remonte en tête.
-    return [...filtrees].sort(
-      (a, b) => Number(sansPrestataire(b)) - Number(sansPrestataire(a)),
-    );
+    // L'ordre du catalogue est conservé : une ligne qui remonte d'un coup
+    // sous le curseur donne l'impression que la page se recharge. Le
+    // bandeau en tête et la couleur de la ligne suffisent à la repérer.
+    return q ? visibles.filter((s) => s.name.toLowerCase().includes(q)) : visibles;
   }, [services, recherche]);
 
   const nbOrphelines = prestations.filter(sansPrestataire).length;
 
-  if (membres.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-        Ajoutez un prestataire pour attribuer des prestations.
-      </div>
-    );
-  }
 
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -136,6 +145,55 @@ export function AffectationsMatrice({
         </div>
       </div>
 
+      {lieuxVides.length > 0 && (
+        <div className="space-y-2 border-b border-warning-200 bg-warning-50 px-4 py-3 dark:border-warning-900 dark:bg-warning-950/20">
+          {lieuxVides.map((lieu) => {
+            const candidats = deplacablesVers(lieu.id);
+            return (
+              <div
+                key={lieu.id}
+                className="flex flex-col gap-2"
+              >
+                <p className="flex items-start gap-2 text-sm text-warning-900 dark:text-warning-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-warning-600 dark:text-warning-400" />
+                  <span>
+                    <strong>{lieu.name}</strong> n’a aucun prestataire : ce lieu n’apparaît pas
+                    dans ce tableau et ne propose aucun rendez-vous.
+                  </span>
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pl-6">
+                  {candidats.length > 0 && (
+                    <select
+                      value=""
+                      aria-label={`Rattacher un prestataire à ${lieu.name}`}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onChange={(e) => {
+                        if (e.target.value) onDeplacerVers(e.target.value, lieu.id);
+                      }}
+                      className="min-w-0 flex-1 rounded-lg border border-warning-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-900 outline-none dark:border-warning-800 dark:bg-gray-900 dark:text-white"
+                    >
+                      <option value="">Rattacher quelqu’un…</option>
+                      {candidats.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} — actuellement {m.lieuNom}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onAjouterA(lieu.id)}
+                    className="flex-none rounded-lg border border-warning-300 px-2.5 py-1.5 text-xs font-semibold text-warning-800 hover:bg-warning-100 dark:border-warning-800 dark:text-warning-200 dark:hover:bg-warning-900/30"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {nbOrphelines > 0 && (
         <div className="flex items-start gap-2 border-b border-warning-200 bg-warning-50 px-4 py-2.5 dark:border-warning-900 dark:bg-warning-950/20">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-warning-600 dark:text-warning-400" />
@@ -148,6 +206,11 @@ export function AffectationsMatrice({
         </div>
       )}
 
+      {membres.length === 0 ? (
+        <p className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          Ajoutez un prestataire pour attribuer des prestations.
+        </p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -156,7 +219,7 @@ export function AffectationsMatrice({
                 <th className="sticky left-0 z-10 min-w-56 bg-gray-50 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-900 dark:text-gray-400">
                   Prestation
                 </th>
-                {groupes.map((g) => (
+                {groupesPeuples.map((g) => (
                   <th
                     key={g.lieu?.id ?? 'sans-lieu'}
                     colSpan={g.membres.length}
@@ -222,15 +285,18 @@ export function AffectationsMatrice({
                       orpheline ? 'bg-warning-50 dark:bg-warning-950/20' : 'bg-white dark:bg-gray-800'
                     }`}
                   >
-                    <p
-                      className={`font-medium ${
+                    <button
+                      type="button"
+                      onClick={() => onModifierPrestation(service.id)}
+                      title={`Modifier « ${service.name} »`}
+                      className={`text-left font-medium underline-offset-2 hover:underline ${
                         orpheline
                           ? 'text-warning-900 dark:text-warning-200'
                           : 'text-gray-900 dark:text-white'
                       }`}
                     >
                       {service.name}
-                    </p>
+                    </button>
                     {orpheline ? (
                       <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-warning-100 px-2 py-0.5 text-[11px] font-semibold text-warning-800 dark:bg-warning-900/40 dark:text-warning-200">
                         <AlertTriangle className="h-3 w-3" />
@@ -291,6 +357,7 @@ export function AffectationsMatrice({
           </tbody>
         </table>
       </div>
+      )}
 
       {prestations.length === 0 && (
         <p className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
