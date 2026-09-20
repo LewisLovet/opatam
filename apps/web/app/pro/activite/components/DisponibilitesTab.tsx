@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConfirmDialog, useToast } from '@/components/ui';
 import {
@@ -40,7 +40,17 @@ export function DisponibilitesTab() {
 
   // Selected member
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const memberIdDemande = useSearchParams().get('memberId');
+  // `?memberId=` est un SIGNAL À USAGE UNIQUE, pas un état : « Définir ses
+  // horaires » désigne qui ouvrir, puis on retire le paramètre. Le laisser
+  // dans l'URL le faisait réimposer à chaque clic sur une autre pastille,
+  // et le sélecteur devenait inutilisable après cette navigation.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const memberIdDemande = searchParams.get('memberId');
+  // Lu dans `fetchData` SANS en être une dépendance : retirer le paramètre
+  // relancerait sinon tout le chargement juste après l'avoir honoré.
+  const demandeRef = useRef(memberIdDemande);
+  demandeRef.current = memberIdDemande;
 
   // Confirm dialog for unsaved changes on member switch
   const [pendingMemberSwitch, setPendingMemberSwitch] = useState<string | null>(null);
@@ -87,7 +97,7 @@ export function DisponibilitesTab() {
         // « Définir ses horaires » depuis l'onglet Équipe désigne QUI :
         // sans ça on atterrissait sur le membre par défaut et il fallait
         // retrouver la bonne personne à la main.
-        const demande = membersData.find((m) => m.id === memberIdDemande);
+        const demande = membersData.find((m) => m.id === demandeRef.current);
         const defaultMember = demande || membersData.find((m) => m.isDefault) || membersData[0];
         if (defaultMember) {
           setSelectedMemberId(defaultMember.id);
@@ -113,7 +123,7 @@ export function DisponibilitesTab() {
     } finally {
       setLoading(false);
     }
-  }, [provider, selectedMemberId, memberIdDemande, toast]);
+  }, [provider, selectedMemberId, toast]);
 
   const [sansHoraires, setSansHoraires] = useState(false);
   // Horaires de TOUTE l'équipe : ils servent à dire ce qu'on remplacerait
@@ -181,17 +191,30 @@ export function DisponibilitesTab() {
     }
   }, [selectedMemberId, fetchAvailability]);
 
-  // Une demande explicite (`?memberId=`) doit gagner même quand quelqu'un
-  // est déjà sélectionné : l'onglet peut rester monté d'une visite à
-  // l'autre, et le deuxième « Définir ses horaires » n'aurait rien fait.
-  // Des modifications non enregistrées passent par la même confirmation
-  // qu'un changement de personne à la main.
+  // Une demande explicite doit gagner même quand quelqu'un est déjà
+  // sélectionné — l'onglet peut rester monté d'une visite à l'autre, sans
+  // quoi le deuxième « Définir ses horaires » ne ferait rien. Elle est
+  // ensuite CONSOMMÉE : on attend que l'équipe soit chargée, on applique,
+  // et on retire le paramètre de l'URL. Sans ce retrait, l'effet
+  // réimposait cette personne à chaque sélection manuelle.
   useEffect(() => {
-    if (!memberIdDemande || memberIdDemande === selectedMemberId) return;
-    if (!members.some((m) => m.id === memberIdDemande)) return;
-    if (isDirty) setPendingMemberSwitch(memberIdDemande);
-    else setSelectedMemberId(memberIdDemande);
-  }, [memberIdDemande, members, selectedMemberId, isDirty]);
+    if (!memberIdDemande || members.length === 0) return;
+
+    if (
+      memberIdDemande !== selectedMemberId &&
+      members.some((m) => m.id === memberIdDemande)
+    ) {
+      // Des modifications non enregistrées passent par la même
+      // confirmation qu'un changement de personne à la main.
+      if (isDirty) setPendingMemberSwitch(memberIdDemande);
+      else setSelectedMemberId(memberIdDemande);
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('memberId');
+    const reste = params.toString();
+    router.replace(reste ? `/pro/activite?${reste}` : '/pro/activite', { scroll: false });
+  }, [memberIdDemande, members, selectedMemberId, isDirty, searchParams, router]);
 
   // Handle member switch with unsaved changes check
   const handleMemberSelect = (memberId: string) => {
