@@ -29,8 +29,10 @@ import { useProvider } from '../../contexts';
 import {
   schedulingService,
   memberService,
+  availabilityRepository,
   type WithId,
 } from '@booking-app/firebase';
+import { horairesEnVigueur, resumerHoraires } from '@booking-app/shared';
 import type { Availability, TimeSlot, Member } from '@booking-app/shared/types';
 import { MEMBER_COLORS } from '@booking-app/shared/constants';
 
@@ -154,12 +156,24 @@ export default function AvailabilityScreen() {
   const [showCopyModal, setShowCopyModal] = useState<number | null>(null); // dayOfWeek
   const [copyTargets, setCopyTargets] = useState<number[]>([]);
 
+  // Diffusion de la semaine vers des collègues.
+  const [horairesEquipe, setHorairesEquipe] = useState<WithId<Availability>[]>([]);
+  const [showDiffusion, setShowDiffusion] = useState(false);
+  const [destinataires, setDestinataires] = useState<string[]>([]);
+  const [diffusing, setDiffusing] = useState(false);
+
   // Load members
   const loadMembers = useCallback(async () => {
     if (!providerId) return;
     try {
-      const list = await memberService.getActiveByProvider(providerId);
+      const [list, tousHoraires] = await Promise.all([
+        memberService.getActiveByProvider(providerId),
+        // Les horaires de TOUTE l'équipe : ils servent à dire ce qu'on
+        // remplacerait chez chaque destinataire avant de diffuser.
+        availabilityRepository.getByProvider(providerId),
+      ]);
       setMembers(list);
+      setHorairesEquipe(tousHoraires);
       if (list.length > 0 && !selectedMemberId) {
         setSelectedMemberId(list[0].id);
       }
@@ -293,6 +307,69 @@ export default function AvailabilityScreen() {
     setShowCopyModal(null);
     setCopyTargets([]);
     showToast({ variant: 'success', message: t('proAvailability.copied') });
+  };
+
+  const horairesActuels = React.useMemo(() => horairesEnVigueur(horairesEquipe), [horairesEquipe]);
+
+  /** Collègues vers qui recopier la semaine affichée. */
+  const ciblesDiffusion = members
+    .filter((m) => m.id !== selectedMemberId && m.locationId)
+    .map((m) => ({ id: m.id, name: m.name, resume: resumerHoraires(horairesActuels, m.id) }));
+
+  /**
+   * Recopie la semaine affichée sur plusieurs collègues.
+   *
+   * Chaque destinataire reçoit SON propre lieu : le `locationId` des
+   * documents de disponibilité est dénormalisé depuis le membre, celui de
+   * la source enverrait ses créneaux ailleurs.
+   */
+  const lancerDiffusion = async () => {
+    if (!providerId || destinataires.length === 0) return;
+    const source = members.find((m) => m.id === selectedMemberId);
+    const cibles = destinataires
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is WithId<Member> => !!m && !!m.locationId);
+    if (!source || cibles.length === 0) return;
+
+    setDiffusing(true);
+    try {
+      const aEcrire = schedule.map((day) => ({
+        dayOfWeek: day.dayOfWeek,
+        slots: day.isOpen ? day.slots : [],
+        isOpen: day.isOpen,
+      }));
+      for (const cible of cibles) {
+        await schedulingService.setWeeklySchedule(providerId, cible.id, cible.locationId, aEcrire);
+      }
+      showToast({
+        variant: 'success',
+        message: t('proAvailability.copyToMembers.done', { count: cibles.length }),
+      });
+      setShowDiffusion(false);
+      setDestinataires([]);
+      loadMembers();
+    } catch (err) {
+      console.error('Diffusion error:', err);
+      showToast({ variant: 'error', message: t('proAvailability.copyToMembers.error') });
+    } finally {
+      setDiffusing(false);
+    }
+  };
+
+  const confirmerDiffusion = () => {
+    const source = members.find((m) => m.id === selectedMemberId);
+    const noms = destinataires
+      .map((id) => members.find((m) => m.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+    Alert.alert(
+      t('proAvailability.copyToMembers.confirmTitle'),
+      t('proAvailability.copyToMembers.confirmBody', { name: source?.name ?? '', targets: noms }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('proAvailability.copyToMembers.confirm'), style: 'destructive', onPress: lancerDiffusion },
+      ],
+    );
   };
 
   // Save schedule
@@ -693,6 +770,26 @@ export default function AvailabilityScreen() {
               </Text>
             </View>
 
+            {/* Diffuser cette semaine vers des collègues. On ne diffuse
+                que des horaires ENREGISTRÉS : des modifications en cours ne
+                sont pas encore les horaires de la personne. */}
+            {ciblesDiffusion.length > 0 && (
+              <View style={{ marginTop: spacing.lg }}>
+                <Button
+                  variant="outline"
+                  title={t('proAvailability.copyToMembers.button')}
+                  onPress={() => {
+                    if (isDirty) {
+                      showToast({ variant: 'error', message: t('proAvailability.copyToMembers.saveFirst') });
+                      return;
+                    }
+                    setDestinataires([]);
+                    setShowDiffusion(true);
+                  }}
+                />
+              </View>
+            )}
+
             {/* Save button (sticky at bottom for mobile UX) */}
             {isDirty && (
               <View style={{ marginTop: spacing.lg }}>
@@ -707,6 +804,66 @@ export default function AvailabilityScreen() {
           </ScrollView>
         </>
       )}
+
+      {/* Diffusion : choix des destinataires */}
+      <Modal visible={showDiffusion} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.copyModal, { backgroundColor: colors.background, borderRadius: radius.xl }]}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+              paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border,
+            }}>
+              <Text variant="h3" style={{ flex: 1 }}>
+                {t('proAvailability.copyToMembers.title', {
+                  name: members.find((m) => m.id === selectedMemberId)?.name ?? '',
+                })}
+              </Text>
+              <Pressable onPress={() => setShowDiffusion(false)}>
+                <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ paddingVertical: spacing.sm, gap: spacing.xs }}>
+              {ciblesDiffusion.map((c) => {
+                const coche = destinataires.includes(c.id);
+                return (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => setDestinataires((prev) =>
+                      prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                    )}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm }}
+                  >
+                    <Ionicons
+                      name={coche ? 'checkbox' : 'square-outline'}
+                      size={22}
+                      color={coche ? colors.primary : colors.textMuted}
+                    />
+                    <View style={{ marginLeft: spacing.sm, flex: 1 }}>
+                      <Text variant="body">{c.name}</Text>
+                      <Text variant="caption" color="textSecondary">
+                        {c.resume
+                          ? t('proAvailability.copyToMembers.replaces', { summary: c.resume })
+                          : t('proAvailability.copyToMembers.noSchedule')}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={{ paddingTop: spacing.md }}>
+              <Button
+                title={t('proAvailability.copyToMembers.confirm')}
+                onPress={confirmerDiffusion}
+                loading={diffusing}
+                disabled={destinataires.length === 0 || diffusing}
+                fullWidth
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Time Picker Modal */}
       <Modal visible={showTimePicker !== null} transparent animationType="slide">

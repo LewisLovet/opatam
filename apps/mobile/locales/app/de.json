@@ -3103,6 +3103,19 @@
       "title": "Kopieren nach",
       "message": "Zeiten von {{day}} kopieren nach:",
       "confirm": "Kopieren"
+    },
+    "copyToMembers": {
+      "button": "Diese Arbeitszeiten auf andere Mitarbeitende kopieren",
+      "title": "Woche von {{name}} kopieren auf:",
+      "replaces": "ersetzt: {{summary}}",
+      "noSchedule": "heute keine Arbeitszeiten",
+      "confirmTitle": "Diese Arbeitszeiten kopieren?",
+      "confirmBody": "Die Woche von {{name}} wird auf {{targets}} kopiert. Deren aktuelle Arbeitszeiten werden ersetzt. Bereits gebuchte Termine werden nicht storniert, können aber außerhalb der neuen Zeiten liegen.",
+      "confirm": "Kopieren",
+      "done_one": "Arbeitszeiten auf {{count}} Person kopiert",
+      "done_other": "Arbeitszeiten auf {{count}} Personen kopiert",
+      "saveFirst": "Speichern Sie zuerst Ihre Änderungen.",
+      "error": "Die Arbeitszeiten konnten nicht kopiert werden"
     }
   },
   "proBlockSlot": {

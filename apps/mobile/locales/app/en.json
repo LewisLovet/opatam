@@ -3103,6 +3103,19 @@
       "title": "Copy to",
       "message": "Copy {{day}}'s hours to:",
       "confirm": "Copy"
+    },
+    "copyToMembers": {
+      "button": "Copy this schedule to other team members",
+      "title": "Copy {{name}}’s week to:",
+      "replaces": "replaces: {{summary}}",
+      "noSchedule": "no schedule today",
+      "confirmTitle": "Copy this schedule?",
+      "confirmBody": "{{name}}’s week will be copied to {{targets}}. Their current schedule will be replaced. Existing bookings are not cancelled, but some may fall outside the new hours.",
+      "confirm": "Copy",
+      "done_one": "Schedule copied to {{count}} person",
+      "done_other": "Schedule copied to {{count}} people",
+      "saveFirst": "Save your changes first.",
+      "error": "The schedule could not be copied"
     }
   },
   "proBlockSlot": {

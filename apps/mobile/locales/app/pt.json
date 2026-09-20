@@ -3103,6 +3103,19 @@
       "title": "Copiar para",
       "message": "Copiar os horários de {{day}} para:",
       "confirm": "Copiar"
+    },
+    "copyToMembers": {
+      "button": "Copiar estes horários para outros colaboradores",
+      "title": "Copiar a semana de {{name}} para:",
+      "replaces": "substitui: {{summary}}",
+      "noSchedule": "sem horário hoje",
+      "confirmTitle": "Copiar estes horários?",
+      "confirmBody": "A semana de {{name}} será copiada para {{targets}}. Os horários atuais serão substituídos. As reservas já feitas não são canceladas, mas algumas podem ficar fora dos novos horários.",
+      "confirm": "Copiar",
+      "done_one": "Horários copiados para {{count}} pessoa",
+      "done_other": "Horários copiados para {{count}} pessoas",
+      "saveFirst": "Guarde primeiro as suas alterações.",
+      "error": "Não foi possível copiar os horários"
     }
   },
   "proBlockSlot": {
