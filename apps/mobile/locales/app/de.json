@@ -2862,7 +2862,11 @@
       "updated": "Mitglied geändert",
       "added": "Mitglied hinzugefügt",
       "saving": "Wird gespeichert …",
-      "parallelWarning": "Jedes Mitglied hat einen eigenen, parallel buchbaren Kalender: zwei Mitglieder können Termine im selben Zeitfenster erhalten. Fügen Sie ein Mitglied nur für eine zusätzliche Person hinzu — zum Trennen von Leistungen nutzen Sie Kategorien."
+      "parallelWarning": "Jedes Mitglied hat einen eigenen, parallel buchbaren Kalender: zwei Mitglieder können Termine im selben Zeitfenster erhalten. Fügen Sie ein Mitglied nur für eine zusätzliche Person hinzu — zum Trennen von Leistungen nutzen Sie Kategorien.",
+      "servicesLabel": "Ausgeführte Leistungen",
+      "servicesHint": "Ohne zugewiesene Leistung erscheint diese Person nie in der Online-Buchung.",
+      "noServicesAtLocation": "Diesem Standort ist keine Leistung zugeordnet.",
+      "servicesOffline": "Niemand führt mehr aus: {{names}}. Aus der Online-Buchung entfernt."
     },
     "deactivate": {
       "confirmTitle": "{{name}} deaktivieren?",
@@ -2912,6 +2916,28 @@
       "sendError": "Fehler beim Senden",
       "recapAction": "Übersicht + Code",
       "calendarAction": "Kalender"
+    },
+    "readiness": {
+      "ready": "Bereit",
+      "todo": "Unvollständig",
+      "slots_one": "{{count}} Termin diese Woche",
+      "slots_other": "{{count}} Termine diese Woche",
+      "noSchedule": "keine Arbeitszeiten gespeichert",
+      "noService": "keine Leistung zugewiesen",
+      "servicesCount_one": "{{count}} Leistung",
+      "servicesCount_other": "{{count}} Leistungen",
+      "scheduleTodo": "Arbeitszeiten festlegen"
+    },
+    "toFix": {
+      "title_one": "{{count}} Punkt zu klären, bevor Kunden buchen können",
+      "title_other": "{{count}} Punkte zu klären, bevor Kunden buchen können",
+      "noScheduleFor": "{{name}} hat keine gespeicherten Arbeitszeiten",
+      "noServiceFor": "{{name}} führt keine Leistung aus",
+      "emptyLocation": "{{name}} hat keine Mitarbeitenden",
+      "allGood": "Ihr gesamtes Team kann Buchungen annehmen.",
+      "actionSchedule": "Arbeitszeiten festlegen",
+      "actionServices": "Leistungen zuweisen",
+      "actionAdd": "Mitarbeitende hinzufügen"
     }
   },
   "proLocations": {

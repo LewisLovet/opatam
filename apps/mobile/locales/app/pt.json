@@ -2862,7 +2862,11 @@
       "updated": "Membro editado",
       "added": "Membro adicionado",
       "saving": "A guardar...",
-      "parallelWarning": "Cada membro tem a sua própria agenda, reservável em paralelo: dois membros podem receber duas marcações no mesmo horário. Adicione um membro apenas para uma pessoa adicional — para separar os serviços, use as categorias."
+      "parallelWarning": "Cada membro tem a sua própria agenda, reservável em paralelo: dois membros podem receber duas marcações no mesmo horário. Adicione um membro apenas para uma pessoa adicional — para separar os serviços, use as categorias.",
+      "servicesLabel": "Serviços realizados",
+      "servicesHint": "Sem serviços atribuídos, esta pessoa nunca aparece na reserva online.",
+      "noServicesAtLocation": "Nenhum serviço está ligado a este local.",
+      "servicesOffline": "Já ninguém realiza: {{names}}. Retirado da reserva online."
     },
     "deactivate": {
       "confirmTitle": "Desativar {{name}}?",
@@ -2912,6 +2916,28 @@
       "sendError": "Erro ao enviar",
       "recapAction": "Resumo + código",
       "calendarAction": "Agenda"
+    },
+    "readiness": {
+      "ready": "Pronto",
+      "todo": "A completar",
+      "slots_one": "{{count}} horário esta semana",
+      "slots_other": "{{count}} horários esta semana",
+      "noSchedule": "nenhum horário guardado",
+      "noService": "nenhum serviço atribuído",
+      "servicesCount_one": "{{count}} serviço",
+      "servicesCount_other": "{{count}} serviços",
+      "scheduleTodo": "Horários a configurar"
+    },
+    "toFix": {
+      "title_one": "{{count}} ponto a resolver antes que os clientes possam reservar",
+      "title_other": "{{count}} pontos a resolver antes que os clientes possam reservar",
+      "noScheduleFor": "{{name}} não tem horários guardados",
+      "noServiceFor": "{{name}} não realiza nenhum serviço",
+      "emptyLocation": "{{name}} não tem colaboradores",
+      "allGood": "Toda a sua equipa pode receber reservas.",
+      "actionSchedule": "Definir horários",
+      "actionServices": "Atribuir serviços",
+      "actionAdd": "Adicionar colaborador"
     }
   },
   "proLocations": {

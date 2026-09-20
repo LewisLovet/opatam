@@ -1,6 +1,6 @@
 /**
  * Résumé d'horaires de la vue Organisation.
- * node --experimental-strip-types --test apps/web/app/pro/activite/components/organisation/horaires.node.test.mjs
+ * node --experimental-strip-types --test packages/shared/src/utils/horaires.node.test.mjs
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

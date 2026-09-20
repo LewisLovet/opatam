@@ -18,8 +18,8 @@ import { StickyFooter } from './StickyFooter';
 import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
 import { CopierHorairesVers } from './organisation/CopierHorairesVers';
-import { horairesEnVigueur, resumerHoraires } from './organisation/horaires';
 import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
+import { horairesEnVigueur, resumerHoraires } from '@booking-app/shared';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;

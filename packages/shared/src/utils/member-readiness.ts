@@ -120,3 +120,22 @@ export function diagnostiquerMembre(
 
   return { reservable: blocages.length === 0, blocages, prestations };
 }
+
+/** Ce dont on a besoin pour juger qu'une prestation n'est réalisée par personne. */
+export interface PrestationDesactivable {
+  isActive?: boolean | null;
+  memberIds?: string[] | null;
+}
+
+/**
+ * Une prestation que PERSONNE ne réalise.
+ *
+ * Le modèle ne sait pas dire « aucun prestataire » : une liste de membres
+ * vide veut dire « tous ceux que le lieu autorise ». Retirer la dernière
+ * personne DÉSACTIVE donc la prestation, ce qui la sort réellement de la
+ * réservation en ligne, et c'est ce couple (désactivée + liste vide) qui
+ * signe cet état.
+ */
+export function prestationSansPrestataire(service: PrestationDesactivable): boolean {
+  return service.isActive === false && (service.memberIds?.length ?? 0) === 0;
+}

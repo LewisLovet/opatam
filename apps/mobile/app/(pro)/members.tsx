@@ -30,10 +30,21 @@ import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
   locationRepository,
+  catalogService,
+  availabilityRepository,
+  schedulingService,
   uploadFile,
   storagePaths,
   type WithId, bookingRepository } from '@booking-app/firebase';
-import type { Member, Location } from '@booking-app/shared/types';
+import {
+  diagnostiquerMembre,
+  horairesEnVigueur,
+  membreRealisePrestation,
+  prestationSansPrestataire,
+  resumerHoraires,
+  type EtatMembre,
+} from '@booking-app/shared';
+import type { Member, Location, Service, Availability } from '@booking-app/shared/types';
 import { MEMBER_COLORS, APP_CONFIG } from '@booking-app/shared/constants';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +57,8 @@ interface MemberFormData {
   phone: string;
   locationId: string;
   color: string;
+  /** Prestations que cette personne réalise. */
+  serviceIds: string[];
 }
 
 const DEFAULT_FORM: MemberFormData = {
@@ -54,6 +67,7 @@ const DEFAULT_FORM: MemberFormData = {
   phone: '',
   locationId: '',
   color: MEMBER_COLORS[0],
+  serviceIds: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -104,15 +118,25 @@ export default function MembersScreen() {
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Prestations et horaires : avec le membre, ils décident s'il peut
+  // vraiment recevoir des réservations. Sans eux, l'écran affichait une
+  // liste de noms sans dire lesquels étaient réservables.
+  const [services, setServices] = useState<WithId<Service>[]>([]);
+  const [horaires, setHoraires] = useState<WithId<Availability>[]>([]);
+
   const loadData = useCallback(async () => {
     if (!providerId) return;
     try {
-      const [mbrs, locs] = await Promise.all([
+      const [mbrs, locs, svcs, dispos] = await Promise.all([
         memberService.getByProvider(providerId),
         locationRepository.getActiveByProvider(providerId),
+        catalogService.getByProvider(providerId),
+        availabilityRepository.getByProvider(providerId),
       ]);
       setMembers(mbrs.sort((a, b) => a.sortOrder - b.sortOrder));
       setLocations(locs);
+      setServices(svcs);
+      setHoraires(dispos);
     } catch (err) {
       showToast({ variant: 'error', message: t('proMembers.loadError') });
     } finally {
@@ -123,6 +147,124 @@ export default function MembersScreen() {
 
   useEffect(() => { loadData(); }, [loadData]);
   const onRefresh = () => { setRefreshing(true); loadData(); };
+
+  // Un changement d'horaires programmé pour plus tard ne compte pas comme
+  // un horaire d'aujourd'hui : sinon quelqu'un sans aucun créneau cette
+  // semaine s'afficherait « prêt ».
+  const horairesActuels = React.useMemo(() => horairesEnVigueur(horaires), [horaires]);
+
+  const etats = React.useMemo(
+    () => new Map<string, EtatMembre>(
+      members.map((m) => [m.id, diagnostiquerMembre(m, services, horairesActuels)]),
+    ),
+    [members, services, horairesActuels],
+  );
+
+  // Créneaux réservables sur 7 jours. C'est LE chiffre qui parle : « 0 »
+  // se comprend sans rien savoir du modèle.
+  const [creneaux, setCreneaux] = useState<Record<string, number | null>>({});
+  const signatureEtats = members
+    .map((m) => {
+      const e = etats.get(m.id);
+      return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${e?.prestations.length ?? 0}`;
+    })
+    .join('|');
+  const donneesRef = React.useRef({ services, etats });
+  donneesRef.current = { services, etats };
+
+  useEffect(() => {
+    if (!providerId || members.length === 0) return;
+    let annule = false;
+    const debut = new Date();
+    debut.setHours(0, 0, 0, 0);
+    const fin = new Date(debut);
+    fin.setDate(fin.getDate() + 7);
+    const { services: svcs, etats: diag } = donneesRef.current;
+
+    (async () => {
+      const entrees = await Promise.all(
+        members.map(async (m): Promise<[string, number | null]> => {
+          const etat = diag.get(m.id);
+          if (!m.isActive || !etat || !etat.reservable) return [m.id, 0];
+          // La plus COURTE de ses prestations donne sa capacité maximale.
+          const presta = svcs
+            .filter((svc) => etat.prestations.includes(svc.id))
+            .sort((a, b) => a.duration + (a.bufferTime ?? 0) - (b.duration + (b.bufferTime ?? 0)))[0];
+          if (!presta) return [m.id, 0];
+          try {
+            const jours = await schedulingService.getAvailabilitySummary({
+              providerId,
+              serviceId: presta.id,
+              memberId: m.id,
+              startDate: debut,
+              endDate: fin,
+            });
+            return [m.id, jours.reduce((n, j) => n + j.capacity, 0)];
+          } catch {
+            // Un comptage impossible ne doit pas faire croire à un blocage.
+            return [m.id, null];
+          }
+        }),
+      );
+      if (!annule) setCreneaux(Object.fromEntries(entrees));
+    })();
+
+    return () => { annule = true; };
+  }, [providerId, members, signatureEtats]);
+
+  // Ce qui coince remonte en tête ; les désactivés ferment la liste.
+  const membresTries = React.useMemo(
+    () => [...members].sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      const bloqueA = etats.get(a.id)?.reservable === false ? 0 : 1;
+      const bloqueB = etats.get(b.id)?.reservable === false ? 0 : 1;
+      if (bloqueA !== bloqueB) return bloqueA - bloqueB;
+      return a.sortOrder - b.sortOrder;
+    }),
+    [members, etats],
+  );
+
+  /** Lieux actifs où personne n'est rattaché : aucun rendez-vous possible. */
+  const lieuxVides = React.useMemo(
+    () => locations.filter((l) => !members.some((m) => m.isActive && m.locationId === l.id)),
+    [locations, members],
+  );
+
+  /** Ce qui empêche des rendez-vous d'exister, avec l'écran qui répare. */
+  const aRegler = React.useMemo(() => {
+    const items: { id: string; titre: string; action: string; faire: () => void }[] = [];
+    for (const m of members) {
+      if (!m.isActive) continue;
+      const etat = etats.get(m.id);
+      if (!etat) continue;
+      if (etat.blocages.includes('sansHoraires')) {
+        items.push({
+          id: `${m.id}-horaires`,
+          titre: t('proMembers.toFix.noScheduleFor', { name: m.name }),
+          action: t('proMembers.toFix.actionSchedule'),
+          faire: () => router.push('/(pro)/availability'),
+        });
+      }
+      if (etat.blocages.includes('sansPrestation')) {
+        items.push({
+          id: `${m.id}-prestations`,
+          titre: t('proMembers.toFix.noServiceFor', { name: m.name }),
+          action: t('proMembers.toFix.actionServices'),
+          faire: () => openEdit(m),
+        });
+      }
+    }
+    for (const l of lieuxVides) {
+      items.push({
+        id: `${l.id}-vide`,
+        titre: t('proMembers.toFix.emptyLocation', { name: l.name }),
+        action: t('proMembers.toFix.actionAdd'),
+        faire: () => openCreate(),
+      });
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, etats, lieuxVides, t]);
 
   // Modal open — with subscription checks
   const openCreate = () => {
@@ -140,14 +282,92 @@ export default function MembersScreen() {
     setEditingId(null);
     const usedColors = new Set(members.map((m) => m.color).filter(Boolean));
     const firstAvailable = MEMBER_COLORS.find((c) => !usedColors.has(c)) || MEMBER_COLORS[0];
+    const lieuDepart = locations[0]?.id || '';
     setForm({
       ...DEFAULT_FORM,
-      locationId: locations[0]?.id || '',
+      locationId: lieuDepart,
       color: firstAvailable,
+      // Un membre créé sans aucune prestation n'est réservable nulle part :
+      // on part de toutes celles du lieu, le pro décoche ce qu'il veut.
+      serviceIds: services
+        .filter((svc) => svc.isActive !== false && svc.locationIds.includes(lieuDepart))
+        .map((svc) => svc.id),
     });
     setPhotoURL(null);
     setShowModal(true);
   };
+
+  /**
+   * Qui réalise réellement cette prestation.
+   *
+   * « Aucun membre désigné » (null OU liste vide) vaut « tous ceux que le
+   * lieu autorise » : il faut MATÉRIALISER cette liste avant toute
+   * modification, sinon retirer quelqu'un n'écrit rien et l'ajouter
+   * restreint la prestation à lui seul.
+   */
+  const membresRealisant = useCallback(
+    (service: WithId<Service>): string[] => {
+      if (service.memberIds && service.memberIds.length > 0) {
+        return service.memberIds.filter((id) => members.some((m) => m.id === id));
+      }
+      return members
+        .filter((m) => m.isActive && membreRealisePrestation(service, m.id, m.locationId))
+        .map((m) => m.id);
+    },
+    [members],
+  );
+
+  /**
+   * Écrit les attributions d'un membre. Retirer la DERNIÈRE personne d'une
+   * prestation la désactive : une liste vide voudrait dire « tout le
+   * monde », donc la seule façon honnête de dire « personne » est de la
+   * sortir de la réservation en ligne. Le pro est prévenu par son nom.
+   */
+  const appliquerAttributions = async (memberId: string, voulus: string[]) => {
+    if (!providerId) return;
+    const membre = members.find((m) => m.id === memberId);
+    const actuels = services
+      .filter((svc) => membreRealisePrestation(svc, memberId, membre?.locationId ?? form.locationId))
+      .map((svc) => svc.id);
+
+    const orphelines: string[] = [];
+    for (const svc of services) {
+      const veut = voulus.includes(svc.id);
+      const avait = actuels.includes(svc.id);
+      if (veut === avait) continue;
+
+      if (veut) {
+        const patch = prestationSansPrestataire(svc)
+          ? { memberIds: [memberId], isActive: true }
+          : { memberIds: [...new Set([...membresRealisant(svc), memberId])] };
+        await catalogService.updateService(providerId, svc.id, patch);
+      } else {
+        const restants = membresRealisant(svc).filter((id) => id !== memberId);
+        if (restants.length === 0) {
+          orphelines.push(svc.name);
+          await catalogService.updateService(providerId, svc.id, { memberIds: [], isActive: false });
+        } else {
+          await catalogService.updateService(providerId, svc.id, { memberIds: restants });
+        }
+      }
+    }
+    if (orphelines.length > 0) {
+      showToast({
+        variant: 'error',
+        message: t('proMembers.form.servicesOffline', { names: orphelines.join(', ') }),
+      });
+    }
+  };
+
+  const prestationsDuLieu = React.useMemo(
+    () =>
+      services.filter(
+        (svc) =>
+          (svc.isActive !== false || form.serviceIds.includes(svc.id)) &&
+          (svc.locationIds.includes(form.locationId) || form.serviceIds.includes(svc.id)),
+      ),
+    [services, form.locationId, form.serviceIds],
+  );
 
   const openEdit = (member: WithId<Member>) => {
     setEditingId(member.id);
@@ -157,6 +377,9 @@ export default function MembersScreen() {
       phone: member.phone || '',
       locationId: member.locationId,
       color: member.color || MEMBER_COLORS[0],
+      serviceIds: services
+        .filter((svc) => membreRealisePrestation(svc, member.id, member.locationId))
+        .map((svc) => svc.id),
     });
     setPhotoURL(member.photoURL || null);
     setShowModal(true);
@@ -239,6 +462,7 @@ export default function MembersScreen() {
         if (existing && existing.locationId !== form.locationId) {
           await memberService.changeLocation(providerId, editingId, form.locationId);
         }
+        await appliquerAttributions(editingId, form.serviceIds);
         showToast({ variant: 'success', message: t('proMembers.form.updated') });
       } else {
         const newMember = await memberService.createMember(providerId, {
@@ -247,9 +471,11 @@ export default function MembersScreen() {
           phone: form.phone.trim() || null,
           locationId: form.locationId,
           color: form.color,
-          serviceIds: [],
+          serviceIds: form.serviceIds,
           isDefault: false,
         });
+        // Filet : `createMember` a déjà reçu la liste, on recale au cas où.
+        await appliquerAttributions(newMember.id, form.serviceIds);
         // Upload photo if one was selected during creation
         if (photoURL) {
           try {
@@ -671,7 +897,50 @@ export default function MembersScreen() {
           </View>
         ) : (
           <View style={{ gap: spacing.md }}>
-            {members.map((member) => (
+            {/* Ce qui empêche des rendez-vous d'exister, en clair. Les
+                réglages vivent sur trois écrans différents ; sans ce
+                résumé, rien ne disait lequel ouvrir. */}
+            {aRegler.length > 0 ? (
+              <Card padding="md" shadow="sm" style={{ backgroundColor: colors.warningLight ?? colors.surface }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+                  <Text variant="bodySmall" style={{ fontWeight: '700', flex: 1 }}>
+                    {t('proMembers.toFix.title', { count: aRegler.length })}
+                  </Text>
+                </View>
+                <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+                  {aRegler.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={item.faire}
+                      style={({ pressed }) => [{
+                        flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+                        backgroundColor: colors.surface, borderRadius: 8,
+                        paddingVertical: spacing.sm, paddingHorizontal: spacing.sm,
+                        opacity: pressed ? 0.9 : 1,
+                      }]}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text variant="bodySmall">{item.titre}</Text>
+                        <Text variant="caption" color="primary" style={{ fontWeight: '600', marginTop: 2 }}>
+                          {item.action}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                    </Pressable>
+                  ))}
+                </View>
+              </Card>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs }}>
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+                <Text variant="caption" color="textSecondary" style={{ flex: 1 }}>
+                  {t('proMembers.toFix.allGood')}
+                </Text>
+              </View>
+            )}
+
+            {membresTries.map((member) => (
               <Card key={member.id} padding="none" shadow="sm">
                 {/* Main card content — tap to edit */}
                 <Pressable
@@ -702,10 +971,53 @@ export default function MembersScreen() {
                             <Text variant="caption" color="primary" style={{ fontWeight: '600', fontSize: 10 }}>{t('proMembers.badgeYou')}</Text>
                           </View>
                         )}
+                        {member.isActive && etats.get(member.id) && (
+                          <View style={[styles.badge, {
+                            backgroundColor: etats.get(member.id)!.reservable
+                              ? (colors.successLight ?? colors.primaryLight)
+                              : (colors.warningLight ?? colors.primaryLight),
+                          }]}>
+                            <Text
+                              variant="caption"
+                              style={{
+                                fontWeight: '600', fontSize: 10,
+                                color: etats.get(member.id)!.reservable ? colors.success : colors.warning,
+                              }}
+                            >
+                              {etats.get(member.id)!.reservable
+                                ? t('proMembers.readiness.ready')
+                                : t('proMembers.readiness.todo')}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                       <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
                         {getLocationName(member.locationId)}
+                        {' · '}
+                        {t('proMembers.readiness.servicesCount', {
+                          count: etats.get(member.id)?.prestations.length ?? 0,
+                        })}
                       </Text>
+                      {member.isActive && (
+                        <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                          {resumerHoraires(horairesActuels, member.id)
+                            ?? t('proMembers.readiness.scheduleTodo')}
+                        </Text>
+                      )}
+                      {/* LE chiffre : combien de rendez-vous cette personne
+                          peut encore recevoir. « 0 » se comprend sans rien
+                          savoir du modèle, et dit juste en dessous pourquoi. */}
+                      {member.isActive && creneaux[member.id] !== null && creneaux[member.id] !== undefined && (
+                        <Text
+                          variant="bodySmall"
+                          style={{
+                            marginTop: 4, fontWeight: '700',
+                            color: creneaux[member.id] === 0 ? colors.warning : colors.text,
+                          }}
+                        >
+                          {t('proMembers.readiness.slots', { count: creneaux[member.id] as number })}
+                        </Text>
+                      )}
                     </View>
 
                     {/* Active/Inactive toggle */}
@@ -920,6 +1232,57 @@ export default function MembersScreen() {
                       <Text variant="body">{getLocationName(form.locationId) || t('proMembers.form.chooseLocation')}</Text>
                       <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                     </Pressable>
+                  )}
+                </View>
+
+                {/* Prestations. Sans ça, un membre créé depuis le téléphone
+                    n'était réservable nulle part et rien ne permettait de
+                    le corriger sans passer par l'ordinateur. */}
+                <View style={{ marginTop: spacing.lg }}>
+                  <Text variant="bodySmall" style={{ fontWeight: '500', marginBottom: spacing.xs, color: colors.text }}>
+                    {t('proMembers.form.servicesLabel')}
+                    {'  '}
+                    <Text variant="caption" color={form.serviceIds.length === 0 ? 'warning' : 'textSecondary'}>
+                      {form.serviceIds.length}/{prestationsDuLieu.length}
+                    </Text>
+                  </Text>
+                  <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm }}>
+                    {t('proMembers.form.servicesHint')}
+                  </Text>
+                  {prestationsDuLieu.length === 0 ? (
+                    <Text variant="bodySmall" color="textSecondary">
+                      {t('proMembers.form.noServicesAtLocation')}
+                    </Text>
+                  ) : (
+                    <View style={{ gap: spacing.xs }}>
+                      {prestationsDuLieu.map((svc) => {
+                        const coche = form.serviceIds.includes(svc.id);
+                        return (
+                          <Pressable
+                            key={svc.id}
+                            onPress={() => setForm((prev) => ({
+                              ...prev,
+                              serviceIds: coche
+                                ? prev.serviceIds.filter((id) => id !== svc.id)
+                                : [...prev.serviceIds, svc.id],
+                            }))}
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs }}
+                          >
+                            <Ionicons
+                              name={coche ? 'checkbox' : 'square-outline'}
+                              size={22}
+                              color={coche ? colors.primary : colors.textMuted}
+                            />
+                            <View style={{ marginLeft: spacing.sm, flex: 1 }}>
+                              <Text variant="body">{svc.name}</Text>
+                              <Text variant="caption" color="textSecondary">
+                                {svc.duration} min
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
               </View>

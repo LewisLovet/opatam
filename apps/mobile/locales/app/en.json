@@ -2862,7 +2862,11 @@
       "updated": "Member updated",
       "added": "Member added",
       "saving": "Saving...",
-      "parallelWarning": "Each member has their own schedule, bookable in parallel: two members can receive two appointments in the same slot. Only add a member for an additional person — to separate your services, use categories."
+      "parallelWarning": "Each member has their own schedule, bookable in parallel: two members can receive two appointments in the same slot. Only add a member for an additional person — to separate your services, use categories.",
+      "servicesLabel": "Services performed",
+      "servicesHint": "With no service assigned, this person never appears in online booking.",
+      "noServicesAtLocation": "No service is attached to this location.",
+      "servicesOffline": "Nobody performs: {{names}}. Removed from online booking."
     },
     "deactivate": {
       "confirmTitle": "Deactivate {{name}}?",
@@ -2912,6 +2916,28 @@
       "sendError": "Failed to send",
       "recapAction": "Summary + code",
       "calendarAction": "Calendar"
+    },
+    "readiness": {
+      "ready": "Ready",
+      "todo": "Incomplete",
+      "slots_one": "{{count}} slot this week",
+      "slots_other": "{{count}} slots this week",
+      "noSchedule": "no saved schedule",
+      "noService": "no service assigned",
+      "servicesCount_one": "{{count}} service",
+      "servicesCount_other": "{{count}} services",
+      "scheduleTodo": "Schedule to set up"
+    },
+    "toFix": {
+      "title_one": "{{count}} thing to fix before clients can book",
+      "title_other": "{{count}} things to fix before clients can book",
+      "noScheduleFor": "{{name}} has no saved schedule",
+      "noServiceFor": "{{name}} performs no service",
+      "emptyLocation": "{{name}} has no team member",
+      "allGood": "Your whole team can take bookings.",
+      "actionSchedule": "Set the schedule",
+      "actionServices": "Assign services",
+      "actionAdd": "Add a team member"
     }
   },
   "proLocations": {

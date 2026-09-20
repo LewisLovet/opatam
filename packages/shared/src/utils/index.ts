@@ -5,6 +5,8 @@ export * from './zod';
 export * from './access';
 // « Ce membre peut-il recevoir des réservations ? » — règle unique.
 export * from './member-readiness';
+// Lecture et recopie des horaires hebdomadaires (web ET mobile).
+export * from './horaires';
 export * from './activation';
 // Address-privacy helpers (protected à-domicile addresses revealed ~48h before).
 export * from './address';

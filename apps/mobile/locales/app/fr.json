@@ -2862,7 +2862,11 @@
       "updated": "Membre modifié",
       "added": "Membre ajouté",
       "saving": "Enregistrement...",
-      "parallelWarning": "Chaque membre a son propre agenda, réservable en parallèle des autres : deux membres peuvent recevoir deux rendez-vous au même créneau. N'ajoutez un membre que pour une personne supplémentaire — pour séparer vos prestations, utilisez les catégories."
+      "parallelWarning": "Chaque membre a son propre agenda, réservable en parallèle des autres : deux membres peuvent recevoir deux rendez-vous au même créneau. N'ajoutez un membre que pour une personne supplémentaire — pour séparer vos prestations, utilisez les catégories.",
+      "servicesLabel": "Prestations réalisées",
+      "servicesHint": "Sans prestation attribuée, cette personne n’apparaît jamais dans la réservation en ligne.",
+      "noServicesAtLocation": "Aucune prestation n’est rattachée à ce lieu.",
+      "servicesOffline": "Plus personne ne réalise : {{names}}. Retiré de la réservation en ligne."
     },
     "deactivate": {
       "confirmTitle": "Désactiver {{name}} ?",
@@ -2912,6 +2916,28 @@
       "sendError": "Erreur lors de l'envoi",
       "recapAction": "Récap + code",
       "calendarAction": "Agenda"
+    },
+    "readiness": {
+      "ready": "Prêt",
+      "todo": "À compléter",
+      "slots_one": "{{count}} créneau cette semaine",
+      "slots_other": "{{count}} créneaux cette semaine",
+      "noSchedule": "aucun horaire enregistré",
+      "noService": "aucune prestation attribuée",
+      "servicesCount_one": "{{count}} prestation",
+      "servicesCount_other": "{{count}} prestations",
+      "scheduleTodo": "Horaires à configurer"
+    },
+    "toFix": {
+      "title_one": "{{count}} point à régler avant que vos clients puissent réserver",
+      "title_other": "{{count}} points à régler avant que vos clients puissent réserver",
+      "noScheduleFor": "{{name}} n'a aucun horaire enregistré",
+      "noServiceFor": "{{name}} ne réalise aucune prestation",
+      "emptyLocation": "{{name}} n'a aucun prestataire",
+      "allGood": "Toute votre équipe peut recevoir des réservations.",
+      "actionSchedule": "Définir les horaires",
+      "actionServices": "Attribuer des prestations",
+      "actionAdd": "Ajouter un prestataire"
     }
   },
   "proLocations": {

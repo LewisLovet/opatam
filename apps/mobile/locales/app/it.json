@@ -2862,7 +2862,11 @@
       "updated": "Membro modificato",
       "added": "Membro aggiunto",
       "saving": "Salvataggio...",
-      "parallelWarning": "Ogni membro ha la propria agenda, prenotabile in parallelo: due membri possono ricevere due appuntamenti nello stesso orario. Aggiungi un membro solo per una persona in più — per separare i servizi, usa le categorie."
+      "parallelWarning": "Ogni membro ha la propria agenda, prenotabile in parallelo: due membri possono ricevere due appuntamenti nello stesso orario. Aggiungi un membro solo per una persona in più — per separare i servizi, usa le categorie.",
+      "servicesLabel": "Servizi eseguiti",
+      "servicesHint": "Senza servizi assegnati, questa persona non appare mai nella prenotazione online.",
+      "noServicesAtLocation": "Nessun servizio è collegato a questa sede.",
+      "servicesOffline": "Nessuno esegue più: {{names}}. Rimosso dalla prenotazione online."
     },
     "deactivate": {
       "confirmTitle": "Disattivare {{name}}?",
@@ -2912,6 +2916,28 @@
       "sendError": "Errore durante l'invio",
       "recapAction": "Riepilogo + codice",
       "calendarAction": "Agenda"
+    },
+    "readiness": {
+      "ready": "Pronto",
+      "todo": "Da completare",
+      "slots_one": "{{count}} slot questa settimana",
+      "slots_other": "{{count}} slot questa settimana",
+      "noSchedule": "nessun orario salvato",
+      "noService": "nessun servizio assegnato",
+      "servicesCount_one": "{{count}} servizio",
+      "servicesCount_other": "{{count}} servizi",
+      "scheduleTodo": "Orari da configurare"
+    },
+    "toFix": {
+      "title_one": "{{count}} cosa da sistemare prima che i clienti possano prenotare",
+      "title_other": "{{count}} cose da sistemare prima che i clienti possano prenotare",
+      "noScheduleFor": "{{name}} non ha orari salvati",
+      "noServiceFor": "{{name}} non esegue alcun servizio",
+      "emptyLocation": "{{name}} non ha collaboratori",
+      "allGood": "Tutto il team può ricevere prenotazioni.",
+      "actionSchedule": "Imposta gli orari",
+      "actionServices": "Assegna servizi",
+      "actionAdd": "Aggiungi un collaboratore"
     }
   },
   "proLocations": {

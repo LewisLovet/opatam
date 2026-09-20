@@ -35,13 +35,15 @@ import {
   type GroupeLieu,
 } from './organisation/AffectationsMatrice';
 import { MembrePanneau } from './organisation/MembrePanneau';
-import { horairesEnVigueur, preparerCopieHoraires, resumerHoraires } from './organisation/horaires';
 import type { Member, Location, Service, Availability } from '@booking-app/shared';
 import {
   PLAN_LIMITS,
   computeEntitlements,
   diagnostiquerMembre,
+  horairesEnVigueur,
   membreRealisePrestation,
+  preparerCopieHoraires,
+  resumerHoraires,
 } from '@booking-app/shared';
 import { UpgradeTeamModal } from '@/components/modals/UpgradeTeamModal';
 
