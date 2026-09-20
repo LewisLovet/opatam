@@ -208,7 +208,13 @@ export function MemberCard({
       )}
 
       {/* Code d'accès, replié : utile, mais il ne doit pas occuper la ligne. */}
-      <div className="flex-shrink-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {/* Le code d'accès est utile mais secondaire : sur téléphone il
+          encombrait la ligne au point de couper le nom. Il reste dans la
+          fiche complète. */}
+      <div
+        className="hidden flex-shrink-0 items-center gap-1 sm:flex"
+        onClick={(e) => e.stopPropagation()}
+      >
         {showCode && (
           <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-700 dark:text-gray-300">
             {member.accessCode}

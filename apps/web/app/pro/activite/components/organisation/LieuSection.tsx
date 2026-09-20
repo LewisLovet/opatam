@@ -86,6 +86,25 @@ export function LieuSection({
           <span className="mt-0.5 block truncate text-sm text-gray-500 dark:text-gray-400">
             {lieu ? adresseCourte(lieu) : 'Rattachez ces personnes à un lieu'}
           </span>
+          {/* Sur téléphone il n'y a pas la place d'une colonne à droite :
+              l'état passe sous l'adresse plutôt que de disparaître. */}
+          <span className="mt-0.5 block text-xs sm:hidden">
+            <span className="text-gray-500 dark:text-gray-400">
+              {nbMembres} prestataire{nbMembres > 1 ? 's' : ''}
+            </span>
+            {nbMembres > 0 && (
+              <span
+                className={
+                  complet
+                    ? 'text-gray-500 dark:text-gray-400'
+                    : 'font-medium text-warning-700 dark:text-warning-400'
+                }
+              >
+                {' · '}
+                {nbPrets}/{nbMembres} prêt{nbPrets > 1 ? 's' : ''}
+              </span>
+            )}
+          </span>
         </span>
 
         <span className="hidden flex-none text-right sm:block">

@@ -7,6 +7,7 @@ import {
   schedulingService,
   locationService,
   memberService,
+  availabilityRepository,
 } from '@booking-app/firebase';
 import { Loader2, Clock, Users, AlertTriangle } from 'lucide-react';
 import { DayRow } from './DayRow';
@@ -15,6 +16,8 @@ import { QuickTemplates } from './QuickTemplates';
 import { StickyFooter } from './StickyFooter';
 import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
+import { CopierHorairesVers } from './organisation/CopierHorairesVers';
+import { horairesEnVigueur, resumerHoraires } from './organisation/horaires';
 import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
@@ -87,6 +90,17 @@ export function DisponibilitesTab() {
 
       const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
       setBlockedSlots(blockedSlotsData);
+
+      const tous = await availabilityRepository.getByProvider(provider.id);
+      setHorairesEquipe(
+        tous.map((a) => ({
+          memberId: a.memberId,
+          dayOfWeek: a.dayOfWeek,
+          isOpen: a.isOpen,
+          slots: a.slots ?? [],
+          effectiveFrom: a.effectiveFrom ?? null,
+        })),
+      );
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Erreur lors du chargement des données');
@@ -96,6 +110,13 @@ export function DisponibilitesTab() {
   }, [provider, selectedMemberId, toast]);
 
   const [sansHoraires, setSansHoraires] = useState(false);
+  // Horaires de TOUTE l'équipe : ils servent à dire ce qu'on remplacerait
+  // chez chaque destinataire avant de diffuser une semaine.
+  const [horairesEquipe, setHorairesEquipe] = useState<
+    { memberId: string; dayOfWeek: number; isOpen: boolean; slots: { start: string; end: string }[]; effectiveFrom: Date | null }[]
+  >([]);
+  const [diffusion, setDiffusion] = useState<string[] | null>(null);
+  const [diffusionEnCours, setDiffusionEnCours] = useState(false);
 
   // Fetch availability for selected member and load into reducer
   const fetchAvailability = useCallback(async () => {
@@ -188,6 +209,67 @@ export function DisponibilitesTab() {
       console.error('Save error:', error);
       saveError();
       toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const horairesActuels = horairesEnVigueur(horairesEquipe);
+
+  /** Collègues vers qui recopier la semaine affichée. */
+  const ciblesDiffusion = members
+    .filter((m) => m.id !== selectedMemberId && m.isActive && m.locationId)
+    .map((m) => ({ id: m.id, name: m.name, resume: resumerHoraires(horairesActuels, m.id) }));
+
+  /**
+   * Pourquoi la diffusion est interdite, le cas échéant.
+   *
+   * On ne diffuse que des horaires RÉELLEMENT enregistrés : l'éditeur
+   * affiche une semaine par défaut quand la base est vide, et des
+   * modifications non enregistrées ne sont pas encore les horaires de la
+   * personne. Recopier l'un ou l'autre donnerait à toute l'équipe une
+   * semaine que la source elle-même n'a pas.
+   */
+  const raisonPasDeDiffusion = isDirty
+    ? 'Enregistrez d’abord vos modifications.'
+    : sansHoraires
+      ? 'Enregistrez d’abord les horaires de cette personne.'
+      : null;
+
+  const appliquerDiffusion = async () => {
+    if (!provider || !diffusion || !selectedMemberId) return;
+    const source = members.find((m) => m.id === selectedMemberId);
+    const cibles = diffusion
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is WithId<Member> => !!m && !!m.locationId);
+    if (!source || cibles.length === 0) return;
+
+    setDiffusionEnCours(true);
+    try {
+      const aEcrire = orderedSchedule.map((j) => ({
+        dayOfWeek: j.dayOfWeek,
+        slots: j.slots,
+        isOpen: j.isOpen,
+      }));
+      // Chaque destinataire reçoit SON lieu : le champ est dénormalisé
+      // depuis le membre, celui de la source enverrait ses créneaux
+      // ailleurs.
+      for (const cible of cibles) {
+        await schedulingService.setWeeklySchedule(
+          provider.id,
+          cible.id,
+          cible.locationId,
+          aEcrire,
+        );
+      }
+      toast.success(
+        `Horaires copiés sur ${cibles.length} personne${cibles.length > 1 ? 's' : ''}`,
+      );
+      setDiffusion(null);
+      await fetchData();
+    } catch (error) {
+      console.error('Diffusion error:', error);
+      toast.error('Les horaires n’ont pas pu être copiés');
+    } finally {
+      setDiffusionEnCours(false);
     }
   };
 
@@ -342,6 +424,19 @@ export function DisponibilitesTab() {
             ))}
           </div>
 
+          {/* Diffuser cette semaine vers les collègues. Même composant et
+              mêmes garde-fous que le panneau de l'onglet Équipe. */}
+          {hasMultipleMembers && selectedMember && (
+            <CopierHorairesVers
+              sourceNom={selectedMember.name}
+              cibles={ciblesDiffusion}
+              raisonIndisponible={raisonPasDeDiffusion}
+              enCours={diffusionEnCours}
+              apparence="encadre"
+              onCopier={(ids) => setDiffusion(ids)}
+            />
+          )}
+
           {/* Blocked slots section */}
           <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
             <BlockedSlotsSection
@@ -372,6 +467,38 @@ export function DisponibilitesTab() {
         saving={saving}
         onSave={handleSave}
         onCancel={reset}
+      />
+
+      {/* Diffusion des horaires : on nomme qui sera écrasé. */}
+      <ConfirmDialog
+        isOpen={diffusion !== null}
+        onClose={() => setDiffusion(null)}
+        onConfirm={appliquerDiffusion}
+        title="Copier ces horaires ?"
+        variant="warning"
+        loading={diffusionEnCours}
+        confirmLabel={`Copier vers ${diffusion?.length ?? 0} personne${(diffusion?.length ?? 0) > 1 ? 's' : ''}`}
+        message={(() => {
+          const noms = (diffusion ?? [])
+            .map((id) => members.find((m) => m.id === id))
+            .filter((m): m is WithId<Member> => !!m);
+          const ecrases = noms.filter((m) => resumerHoraires(horairesActuels, m.id) !== null);
+          return (
+            <>
+              <p>
+                La semaine de <strong>{selectedMember?.name}</strong> va être copiée sur{' '}
+                {noms.map((m) => m.name).join(', ')}.
+              </p>
+              {ecrases.length > 0 && (
+                <p className="mt-2">
+                  Les horaires actuels de {ecrases.map((m) => m.name).join(', ')} seront{' '}
+                  <strong>remplacés</strong>. Les rendez-vous déjà pris ne sont pas annulés, mais
+                  certains peuvent se retrouver hors des nouvelles heures.
+                </p>
+              )}
+            </>
+          );
+        })()}
       />
 
       {/* Confirm dialog for member switch with unsaved changes */}

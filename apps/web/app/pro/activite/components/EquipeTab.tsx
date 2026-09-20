@@ -844,14 +844,18 @@ export function EquipeTab() {
           {/* Les quatre chiffres qui résument la configuration. */}
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 lg:grid-cols-4 dark:border-gray-700 dark:bg-gray-700">
             {chiffres.map((c) => (
-              <div key={c.libelle} className="bg-white px-4 py-3 dark:bg-gray-800">
-                <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  <c.icone className="h-3.5 w-3.5 text-primary-500" />
-                  {c.libelle}
+              <div key={c.libelle} className="min-w-0 bg-white px-3 py-2.5 sm:px-4 sm:py-3 dark:bg-gray-800">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-500 sm:text-xs dark:text-gray-400">
+                  <c.icone className="h-3.5 w-3.5 flex-none text-primary-500" />
+                  <span className="truncate">{c.libelle}</span>
                 </div>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-xl font-semibold text-gray-900 dark:text-white">{c.valeur}</span>
-                  <span className="truncate text-xs text-gray-500 dark:text-gray-400">{c.note}</span>
+                <div className="mt-0.5 flex items-baseline gap-1.5 sm:mt-1 sm:gap-2">
+                  <span className="text-lg font-semibold text-gray-900 sm:text-xl dark:text-white">
+                    {c.valeur}
+                  </span>
+                  <span className="truncate text-[11px] text-gray-500 sm:text-xs dark:text-gray-400">
+                    {c.note}
+                  </span>
                 </div>
               </div>
             ))}
@@ -926,9 +930,12 @@ export function EquipeTab() {
             </button>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+          {/* `min-w-0` sur les colonnes : sans lui une colonne de grille
+              garde `min-width: auto`, déborde de la largeur du téléphone et
+              se fait COUPER — l'interrupteur et le chevron disparaissaient. */}
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           {vue === 'organisation' ? (
-            <div className="space-y-3">
+            <div className="min-w-0 space-y-3">
               {groupes.map((g) => {
                 const cle = g.lieu?.id ?? 'sans-lieu';
                 const actifs = g.membres.filter((m) => m.isActive);
@@ -968,17 +975,19 @@ export function EquipeTab() {
               })}
             </div>
           ) : (
+            <div className="min-w-0">
             <AffectationsMatrice
               services={services}
               groupes={groupes.map((g) => ({ ...g, membres: trier(g.membres.filter((m) => m.isActive)) }))}
               onBasculer={basculerAttribution}
               enCours={ecritures}
             />
+            </div>
           )}
 
             {/* Tout ce qu'on peut corriger sur une personne, sans quitter
                 la page ni ouvrir de modale. */}
-            <div ref={panneauRef} className="xl:sticky xl:top-4">
+            <div ref={panneauRef} className="min-w-0 xl:sticky xl:top-4">
               {membreSelectionne ? (
                 <MembrePanneau
                   membre={membreSelectionne}

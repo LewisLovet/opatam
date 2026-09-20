@@ -11,6 +11,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { Switch } from '@/components/ui';
+import { CopierHorairesVers } from './CopierHorairesVers';
 import { formatPrice, membreRealisePrestation } from '@booking-app/shared';
 import type { Member, Location, Service, EtatMembre } from '@booking-app/shared';
 
@@ -75,8 +76,6 @@ export function MembrePanneau({
   onDefinirHoraires,
 }: Props) {
   const [source, setSource] = useState<string>('');
-  const [diffusionOuverte, setDiffusionOuverte] = useState(false);
-  const [destinataires, setDestinataires] = useState<string[]>([]);
   // Désactiver déclenche une lecture des réservations puis une fenêtre :
   // sans ce verrou, un double clic lançait deux fois la manœuvre.
   const [basculeEnCours, setBasculeEnCours] = useState(false);
@@ -351,92 +350,13 @@ export function MembrePanneau({
             {resumeHoraires ? 'Modifier les horaires' : 'Les définir à la main'}
           </button>
 
-          {/* Recopier CETTE semaine sur d'autres personnes. L'inverse du
-              bouton ci-dessus : utile quand on vient de régler la première
-              personne et que le reste de l'équipe travaille aux mêmes heures. */}
-          {resumeHoraires && cibles.length > 0 && (
-            <div className="mt-2 border-t border-success-200 pt-2 dark:border-success-900">
-              {!diffusionOuverte ? (
-                <button
-                  type="button"
-                  onClick={() => setDiffusionOuverte(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-white dark:text-gray-200 dark:hover:bg-gray-900"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  Copier ces horaires vers d’autres prestataires
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                    Copier la semaine de {membre.name} vers&nbsp;:
-                  </p>
-                  <div className="max-h-40 space-y-1 overflow-y-auto">
-                    {cibles.map((c) => {
-                      const coche = destinataires.includes(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() =>
-                            setDestinataires((prev) =>
-                              prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
-                            )
-                          }
-                          aria-pressed={coche}
-                          className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
-                            coche
-                              ? 'border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-950/30'
-                              : 'border-gray-200 bg-white hover:border-primary-200 dark:border-gray-700 dark:bg-gray-900'
-                          }`}
-                        >
-                          <span
-                            className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${
-                              coche
-                                ? 'border-primary-600 bg-primary-600 text-white'
-                                : 'border-gray-300 dark:border-gray-600'
-                            }`}
-                          >
-                            {coche && <Check className="h-3 w-3" />}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-medium text-gray-900 dark:text-white">
-                              {c.name}
-                            </span>
-                            <span className="block truncate text-[11px] text-gray-500 dark:text-gray-400">
-                              {c.resume ? `remplace : ${c.resume}` : 'aucun horaire aujourd’hui'}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDiffusionOuverte(false);
-                        setDestinataires([]);
-                      }}
-                      className="flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-600 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-900"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      disabled={destinataires.length === 0 || copieEnCours}
-                      onClick={() => {
-                        onCopierVers(membre.id, destinataires);
-                        setDiffusionOuverte(false);
-                        setDestinataires([]);
-                      }}
-                      className="flex-1 rounded-lg bg-primary-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      Copier vers {destinataires.length || ''}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {resumeHoraires && (
+            <CopierHorairesVers
+              sourceNom={membre.name}
+              cibles={cibles}
+              enCours={copieEnCours}
+              onCopier={(ids) => onCopierVers(membre.id, ids)}
+            />
           )}
         </div>
       </div>
