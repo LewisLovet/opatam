@@ -42,6 +42,18 @@ export function sansPrestataire(service: WithId<Service>): boolean {
   return service.isActive === false && (service.memberIds?.length ?? 0) === 0;
 }
 
+/**
+ * Retirée de la réservation en ligne, pour quelque raison que ce soit.
+ *
+ * `sansPrestataire` n'en couvre qu'une moitié : celles dont la liste de
+ * membres est vide. Une prestation DUPLIQUÉE naît inactive en recopiant
+ * ses `memberIds` (`catalog.service.ts`), donc hors ligne ET attribuée —
+ * elle n'apparaissait nulle part dans cette grille.
+ */
+export function horsLigne(service: WithId<Service>): boolean {
+  return service.isActive === false;
+}
+
 const COULEURS = [
   'bg-primary-500', 'bg-secondary-500', 'bg-accent-500', 'bg-success-500',
   'bg-warning-500', 'bg-error-500', 'bg-purple-500', 'bg-pink-500',
@@ -111,9 +123,12 @@ export function AffectationsMatrice({
   const plusieursLieux = groupesPeuples.length > 1;
 
   const prestations = useMemo(() => {
-    // Les prestations sans prestataire sont DÉSACTIVÉES : les exclure les
-    // ferait disparaître au moment même où on veut les voir.
-    const visibles = services.filter((s) => s.isActive !== false || sansPrestataire(s));
+    // TOUTES les prestations hors ligne restent visibles, pas seulement
+    // celles que plus personne ne réalise : c'est ici qu'on les remet en
+    // ligne, les cacher les rendrait introuvables. Les prestations sont
+    // vraiment supprimées quand le pro les supprime, il n'y a donc pas de
+    // pile d'archives à afficher.
+    const visibles = services;
     const q = recherche.trim().toLowerCase();
     // L'ordre du catalogue est conservé : une ligne qui remonte d'un coup
     // sous le curseur donne l'impression que la page se recharge. Le
@@ -122,6 +137,7 @@ export function AffectationsMatrice({
   }, [services, recherche]);
 
   const nbOrphelines = prestations.filter(sansPrestataire).length;
+  const nbHorsLigne = prestations.filter(horsLigne).length;
 
 
   return (
@@ -194,14 +210,25 @@ export function AffectationsMatrice({
         </div>
       )}
 
-      {nbOrphelines > 0 && (
+      {nbHorsLigne > 0 && (
         <div className="flex items-start gap-2 border-b border-warning-200 bg-warning-50 px-4 py-2.5 dark:border-warning-900 dark:bg-warning-950/20">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-warning-600 dark:text-warning-400" />
           <p className="text-sm text-warning-900 dark:text-warning-200">
-            {nbOrphelines} prestation{nbOrphelines > 1 ? 's ne sont' : ' n’est'} réalisée
-            {nbOrphelines > 1 ? 's' : ''} par personne. Tant que c’est le cas,{' '}
-            {nbOrphelines > 1 ? 'elles ne sont pas réservables' : 'elle n’est pas réservable'} en
-            ligne. Cochez quelqu’un pour {nbOrphelines > 1 ? 'les' : 'la'} remettre en ligne.
+            {nbHorsLigne} prestation{nbHorsLigne > 1 ? 's ne sont pas réservables' : ' n’est pas réservable'} en
+            ligne.{' '}
+            {nbOrphelines > 0 && (
+              <>
+                Cochez quelqu’un sur {nbOrphelines > 1 ? 'celles' : 'celle'} que personne ne réalise
+                pour {nbOrphelines > 1 ? 'les' : 'la'} remettre en ligne.{' '}
+              </>
+            )}
+            {nbHorsLigne > nbOrphelines && (
+              <>
+                {nbHorsLigne - nbOrphelines === 1 ? 'L’autre est déjà attribuée' : 'Les autres sont déjà attribuées'}{' '}
+                : {nbHorsLigne - nbOrphelines === 1 ? 'elle se remet' : 'elles se remettent'} en ligne
+                depuis la fiche prestation.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -271,18 +298,19 @@ export function AffectationsMatrice({
           <tbody>
             {prestations.map((service) => {
               const orpheline = sansPrestataire(service);
+              const retiree = horsLigne(service);
               return (
                 <tr
                   key={service.id}
                   className={`border-b border-gray-100 last:border-0 dark:border-gray-700 ${
-                    orpheline
+                    retiree
                       ? 'bg-warning-50/50 dark:bg-warning-950/10'
                       : 'hover:bg-gray-50/60 dark:hover:bg-gray-900/20'
                   }`}
                 >
                   <td
                     className={`sticky left-0 z-10 px-4 py-3 ${
-                      orpheline ? 'bg-warning-50 dark:bg-warning-950/20' : 'bg-white dark:bg-gray-800'
+                      retiree ? 'bg-warning-50 dark:bg-warning-950/20' : 'bg-white dark:bg-gray-800'
                     }`}
                   >
                     <button
@@ -290,17 +318,17 @@ export function AffectationsMatrice({
                       onClick={() => onModifierPrestation(service.id)}
                       title={`Modifier « ${service.name} »`}
                       className={`text-left font-medium underline-offset-2 hover:underline ${
-                        orpheline
+                        retiree
                           ? 'text-warning-900 dark:text-warning-200'
                           : 'text-gray-900 dark:text-white'
                       }`}
                     >
                       {service.name}
                     </button>
-                    {orpheline ? (
+                    {retiree ? (
                       <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-warning-100 px-2 py-0.5 text-[11px] font-semibold text-warning-800 dark:bg-warning-900/40 dark:text-warning-200">
                         <AlertTriangle className="h-3 w-3" />
-                        Personne · hors ligne
+                        {orpheline ? 'Personne · hors ligne' : 'Attribuée · hors ligne'}
                       </span>
                     ) : (
                       <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">

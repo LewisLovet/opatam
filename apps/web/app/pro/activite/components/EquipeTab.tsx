@@ -152,9 +152,14 @@ export function EquipeTab() {
   // Les lieux réellement ouverts. Désactiver un lieu ne détache personne,
   // et le tunnel de réservation ne lit que les lieux actifs : sans cette
   // liste, un membre devenu injoignable s'affichait « prêt ».
+  //
+  // `undefined` TANT QUE ÇA CHARGE, et seulement là : une liste vide veut
+  // dire « tous les lieux sont désactivés », ce qui bloque toute l'équipe
+  // à juste titre. Confondre les deux ferait clignoter l'alerte sur tout
+  // le monde à chaque ouverture de l'onglet.
   const lieuxActifs = useMemo(
-    () => locations.filter((l) => l.isActive !== false).map((l) => l.id),
-    [locations],
+    () => (loading ? undefined : locations.filter((l) => l.isActive !== false).map((l) => l.id)),
+    [loading, locations],
   );
 
   // Diagnostic de chaque membre — une seule fois, partagé par l'affichage
@@ -335,13 +340,13 @@ export function EquipeTab() {
           titre: `${m.name} n’a aucun horaire enregistré`,
           detail: 'Aucun créneau ne peut être proposé tant que sa semaine n’est pas définie.',
           action: 'Définir ses horaires',
-          faire: () => router.push('/pro/activite?tab=disponibilites'),
+          faire: () => router.push(`/pro/activite?tab=disponibilites&memberId=${m.id}`),
         });
       }
       if (etat.blocages.includes('lieuInactif')) {
         items.push({
           id: `${m.id}-lieu`,
-          titre: `${m.name} est rattaché·e à un lieu désactivé`,
+          titre: `${m.name} n’est rattaché·e à aucun lieu actif`,
           detail:
             'Les clientes ne voient que les lieux actifs : cette personne n’est réservable nulle part.',
           action: 'Voir les lieux',
@@ -516,18 +521,39 @@ export function EquipeTab() {
         }
         // Chaque destinataire reçoit SON propre lieu : le champ est
         // dénormalisé depuis le membre (voir preparerCopieHoraires).
+        //
+        // Les écritures sont séquentielles et INDÉPENDANTES : si la
+        // troisième échoue, les deux premières sont bel et bien faites.
+        // Une erreur générale laissait croire que rien n'avait bougé et
+        // poussait à tout refaire ; on nomme donc les deux camps.
+        const faits: string[] = [];
+        const echecs: string[] = [];
         for (const cible of cibles) {
-          await availabilityRepository.setWeeklySchedule(
-            provider.id,
-            cible.id,
-            cible.locationId,
-            aEcrire,
+          try {
+            await availabilityRepository.setWeeklySchedule(
+              provider.id,
+              cible.id,
+              cible.locationId,
+              aEcrire,
+            );
+            faits.push(cible.name);
+          } catch (error) {
+            console.error('Copie horaires error:', error);
+            echecs.push(cible.name);
+          }
+        }
+        await fetchData();
+        if (echecs.length === 0) {
+          toast.success(`Horaires copiés sur ${faits.length} personne${faits.length > 1 ? 's' : ''}`);
+        } else if (faits.length === 0) {
+          toast.error(`Aucune copie n’a abouti (${echecs.join(', ')}).`);
+        } else {
+          toast.warning(
+            `Copiés sur ${faits.join(', ')}. Échec pour ${echecs.join(', ')} : à refaire pour ${
+              echecs.length > 1 ? 'ces personnes' : 'cette personne'
+            }.`,
           );
         }
-        toast.success(
-          `Horaires copiés sur ${cibles.length} personne${cibles.length > 1 ? 's' : ''}`,
-        );
-        await fetchData();
       },
     });
   };
@@ -1243,7 +1269,9 @@ export function EquipeTab() {
                   onCopierVers={copierVers}
                   onBasculerActif={handleToggleActive}
                   onOuvrirFiche={() => handleOpenEdit(membreSelectionne)}
-                  onDefinirHoraires={() => router.push('/pro/activite?tab=disponibilites')}
+                  onDefinirHoraires={() =>
+                    router.push(`/pro/activite?tab=disponibilites&memberId=${membreSelectionne.id}`)
+                  }
                 />
               ) : null}
             </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConfirmDialog, useToast } from '@/components/ui';
 import {
@@ -39,6 +40,7 @@ export function DisponibilitesTab() {
 
   // Selected member
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const memberIdDemande = useSearchParams().get('memberId');
 
   // Confirm dialog for unsaved changes on member switch
   const [pendingMemberSwitch, setPendingMemberSwitch] = useState<string | null>(null);
@@ -82,7 +84,11 @@ export function DisponibilitesTab() {
       setMembers(membersData);
 
       if (!selectedMemberId && membersData.length > 0) {
-        const defaultMember = membersData.find((m) => m.isDefault) || membersData[0];
+        // « Définir ses horaires » depuis l'onglet Équipe désigne QUI :
+        // sans ça on atterrissait sur le membre par défaut et il fallait
+        // retrouver la bonne personne à la main.
+        const demande = membersData.find((m) => m.id === memberIdDemande);
+        const defaultMember = demande || membersData.find((m) => m.isDefault) || membersData[0];
         if (defaultMember) {
           setSelectedMemberId(defaultMember.id);
         }
@@ -107,7 +113,7 @@ export function DisponibilitesTab() {
     } finally {
       setLoading(false);
     }
-  }, [provider, selectedMemberId, toast]);
+  }, [provider, selectedMemberId, memberIdDemande, toast]);
 
   const [sansHoraires, setSansHoraires] = useState(false);
   // Horaires de TOUTE l'équipe : ils servent à dire ce qu'on remplacerait
@@ -174,6 +180,18 @@ export function DisponibilitesTab() {
       fetchAvailability();
     }
   }, [selectedMemberId, fetchAvailability]);
+
+  // Une demande explicite (`?memberId=`) doit gagner même quand quelqu'un
+  // est déjà sélectionné : l'onglet peut rester monté d'une visite à
+  // l'autre, et le deuxième « Définir ses horaires » n'aurait rien fait.
+  // Des modifications non enregistrées passent par la même confirmation
+  // qu'un changement de personne à la main.
+  useEffect(() => {
+    if (!memberIdDemande || memberIdDemande === selectedMemberId) return;
+    if (!members.some((m) => m.id === memberIdDemande)) return;
+    if (isDirty) setPendingMemberSwitch(memberIdDemande);
+    else setSelectedMemberId(memberIdDemande);
+  }, [memberIdDemande, members, selectedMemberId, isDirty]);
 
   // Handle member switch with unsaved changes check
   const handleMemberSelect = (memberId: string) => {
@@ -258,19 +276,38 @@ export function DisponibilitesTab() {
       // Chaque destinataire reçoit SON lieu : le champ est dénormalisé
       // depuis le membre, celui de la source enverrait ses créneaux
       // ailleurs.
+      // Écritures séquentielles et INDÉPENDANTES : un échec en milieu de
+      // liste laisse les précédentes écrites. On nomme qui a reçu la
+      // semaine et qui est à refaire, sinon on croit que rien n'a bougé.
+      const faits: string[] = [];
+      const echecs: string[] = [];
       for (const cible of cibles) {
-        await schedulingService.setWeeklySchedule(
-          provider.id,
-          cible.id,
-          cible.locationId,
-          aEcrire,
-        );
+        try {
+          await schedulingService.setWeeklySchedule(
+            provider.id,
+            cible.id,
+            cible.locationId,
+            aEcrire,
+          );
+          faits.push(cible.name);
+        } catch (error) {
+          console.error('Diffusion error:', error);
+          echecs.push(cible.name);
+        }
       }
-      toast.success(
-        `Horaires copiés sur ${cibles.length} personne${cibles.length > 1 ? 's' : ''}`,
-      );
       setDiffusion(null);
       await fetchData();
+      if (echecs.length === 0) {
+        toast.success(`Horaires copiés sur ${faits.length} personne${faits.length > 1 ? 's' : ''}`);
+      } else if (faits.length === 0) {
+        toast.error(`Aucune copie n’a abouti (${echecs.join(', ')}).`);
+      } else {
+        toast.warning(
+          `Copiés sur ${faits.join(', ')}. Échec pour ${echecs.join(', ')} : à refaire pour ${
+            echecs.length > 1 ? 'ces personnes' : 'cette personne'
+          }.`,
+        );
+      }
     } catch (error) {
       console.error('Diffusion error:', error);
       toast.error('Les horaires n’ont pas pu être copiés');

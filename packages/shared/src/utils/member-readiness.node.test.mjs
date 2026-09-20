@@ -83,10 +83,32 @@ describe('diagnostiquerMembre', () => {
     assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], ['l1']).reservable, true);
   });
 
-  it('sans liste de lieux, le diagnostic ne change pas', () => {
+  it('liste de lieux ABSENTE : contrôle désactivé (l’écran charge encore)', () => {
     const m = { id: 'm1', isActive: true, locationId: 'l1' };
     assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK]).reservable, true);
-    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], []).reservable, true);
+    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], null).reservable, true);
+  });
+
+  it('liste VIDE : tous les lieux sont désactivés, donc personne n’est joignable', () => {
+    // À ne pas confondre avec « on ne sait pas » : un lieu est créé à
+    // l'inscription et locationId est obligatoire, une liste vraiment vide
+    // veut dire que le pro a tout désactivé.
+    const m = { id: 'm1', isActive: true, locationId: 'l1' };
+    const e = diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], []);
+    assert.equal(e.reservable, false);
+    assert.deepEqual(e.blocages, ['lieuInactif']);
+  });
+
+  it('membre SANS lieu : bloqué, il n’apparaît sous aucun lieu', () => {
+    const m = { id: 'm1', isActive: true, locationId: null };
+    const e = diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], ['l1']);
+    assert.equal(e.reservable, false);
+    assert.deepEqual(e.blocages, ['lieuInactif']);
+  });
+
+  it('membre rattaché à un lieu INCONNU (supprimé) : bloqué', () => {
+    const m = { id: 'm1', isActive: true, locationId: 'supprime' };
+    assert.equal(diagnostiquerMembre(m, [PRESTA_LIBRE], [HORAIRE_OK], ['l1']).reservable, false);
   });
 });
 
