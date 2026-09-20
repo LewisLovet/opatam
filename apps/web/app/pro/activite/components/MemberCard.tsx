@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Switch, useToast } from '@/components/ui';
-import { AlertTriangle, CheckCircle2, Copy, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Copy, Eye, EyeOff } from 'lucide-react';
 import type { Member, Location, Service, EtatMembre, BlocageMembre } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -20,6 +20,8 @@ interface MemberCardProps {
   resumeHoraires?: string | null;
   /** Dans une section de lieu, le lieu est déjà dans l'en-tête : ne pas le répéter. */
   masquerLieu?: boolean;
+  /** Cette ligne est celle qu'affiche le panneau de réglage. */
+  selectionne?: boolean;
   /** Emmène le professionnel là où le blocage se répare. */
   onCorriger?: () => void;
   onToggleActive: (memberId: string, isActive: boolean) => Promise<void>;
@@ -62,6 +64,7 @@ export function MemberCard({
   creneaux = null,
   resumeHoraires = null,
   masquerLieu = false,
+  selectionne = false,
   onToggleActive,
   onClick,
   onCorriger,
@@ -115,8 +118,13 @@ export function MemberCard({
   return (
     <div
       className={`
-        group relative flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3.5
-        transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40
+        group relative flex items-center gap-3 px-4 py-3.5
+        transition-colors cursor-pointer
+        ${
+          selectionne
+            ? 'bg-primary-50/70 dark:bg-primary-950/20'
+            : 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/40'
+        }
         ${!member.isActive ? 'opacity-60' : ''}
       `}
       onClick={onClick}
@@ -239,6 +247,14 @@ export function MemberCard({
           aria-label={member.isActive ? 'Désactiver' : 'Activer'}
         />
       </div>
+
+      <ChevronRight
+        className={`h-5 w-5 flex-shrink-0 transition-colors ${
+          selectionne
+            ? 'text-primary-600 dark:text-primary-400'
+            : 'text-gray-300 group-hover:text-primary-500 dark:text-gray-600'
+        }`}
+      />
     </div>
   );
 }

@@ -88,3 +88,36 @@ export function resumerHoraires(horaires: HoraireLu[], memberId: string): string
     ? `${jours} · ${heure(bornes[0].debut)}–${heure(bornes[0].fin)}`
     : `${jours} · horaires variables`;
 }
+
+/** Une journée telle que `setWeeklySchedule` l'attend. */
+export interface JourACopier {
+  dayOfWeek: number;
+  slots: { start: string; end: string }[];
+  isOpen: boolean;
+}
+
+/**
+ * Prépare la recopie de la semaine d'un collègue sur quelqu'un d'autre.
+ *
+ * Deux règles que le reste du code ne rattrape pas :
+ *  - les changements PROGRAMMÉS de la source ne sont pas copiés — sinon on
+ *    poserait chez la cible, comme horaires du jour, une semaine qui ne
+ *    commence que plus tard chez la source ;
+ *  - le `locationId` écrit est celui de la CIBLE. Ce champ est dénormalisé
+ *    depuis le membre ; prendre celui de la source enverrait les créneaux
+ *    de la cible sur le lieu de quelqu'un d'autre.
+ *
+ * Le lieu de la cible est donc obligatoire : sans lui, on ne copie rien.
+ */
+export function preparerCopieHoraires(
+  horairesSource: HoraireLu[],
+  maintenant = new Date(),
+): JourACopier[] {
+  return horairesEnVigueur(horairesSource, maintenant)
+    .map((h) => ({
+      dayOfWeek: h.dayOfWeek,
+      slots: [...(h.slots ?? [])],
+      isOpen: h.isOpen === true,
+    }))
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+}

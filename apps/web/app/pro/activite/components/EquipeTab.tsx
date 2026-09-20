@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
@@ -30,7 +30,8 @@ import { MemberCard } from './MemberCard';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import { LieuSection } from './organisation/LieuSection';
 import { AffectationsMatrice, type GroupeLieu } from './organisation/AffectationsMatrice';
-import { horairesEnVigueur, resumerHoraires } from './organisation/horaires';
+import { MembrePanneau } from './organisation/MembrePanneau';
+import { horairesEnVigueur, preparerCopieHoraires, resumerHoraires } from './organisation/horaires';
 import type { Member, Location, Service, Availability } from '@booking-app/shared';
 import {
   PLAN_LIMITS,
@@ -62,6 +63,11 @@ export function EquipeTab() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   const [vue, setVue] = useState<'organisation' | 'affectations'>('organisation');
+  // La personne dont on règle la configuration dans le panneau latéral.
+  const [selectionId, setSelectionId] = useState<string | null>(null);
+  const [copieEnCours, setCopieEnCours] = useState(false);
+  const [changementLieuEnCours, setChangementLieuEnCours] = useState(false);
+  const panneauRef = useRef<HTMLDivElement>(null);
   const [lieuxReplies, setLieuxReplies] = useState<string[]>([]);
   const [ecritures, setEcritures] = useState<Set<string>>(new Set());
 
@@ -291,6 +297,95 @@ export function EquipeTab() {
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMembers, etats, groupes, router]);
+
+  // Ce qui coince d'abord : au premier affichage, le panneau ouvre sur la
+  // personne à régler, pas sur la première de la liste.
+  useEffect(() => {
+    if (members.length === 0) {
+      setSelectionId(null);
+      return;
+    }
+    setSelectionId((actuel) => {
+      if (actuel && members.some((m) => m.id === actuel)) return actuel;
+      const aRegler = members.find((m) => m.isActive && etats.get(m.id)?.reservable === false);
+      return (aRegler ?? members.find((m) => m.isActive) ?? members[0]).id;
+    });
+  }, [members, etats]);
+
+  const membreSelectionne = members.find((m) => m.id === selectionId) ?? null;
+
+  const selectionner = (memberId: string) => {
+    setSelectionId(memberId);
+    // Sous xl le panneau est sous la liste : sans ça, le clic n'aurait
+    // aucun effet visible sur un écran étroit.
+    panneauRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+
+  /** Collègues dont la semaine peut être recopiée sur quelqu'un d'autre. */
+  const sourcesHoraires = useCallback(
+    (cibleId: string) =>
+      members
+        .filter((m) => m.id !== cibleId && m.isActive)
+        .map((m) => ({ id: m.id, name: m.name, resume: resumerHoraires(horairesActuels, m.id) }))
+        .filter((s): s is { id: string; name: string; resume: string } => s.resume !== null),
+    [members, horairesActuels],
+  );
+
+  const changerLieu = async (memberId: string, locationId: string) => {
+    if (!provider || !locationId) return;
+    const membre = members.find((m) => m.id === memberId);
+    if (!membre || membre.locationId === locationId) return;
+    setChangementLieuEnCours(true);
+    try {
+      await memberService.changeLocation(provider.id, memberId, locationId);
+      toast.success('Lieu de rattachement mis à jour');
+      await fetchData();
+    } catch (error) {
+      console.error('Change location error:', error);
+      toast.error('Le lieu n’a pas pu être changé');
+    } finally {
+      setChangementLieuEnCours(false);
+    }
+  };
+
+  /**
+   * Recopie la semaine d'un collègue sur quelqu'un qui n'en a pas.
+   *
+   * Le LIEU écrit est celui de la personne ciblée, jamais celui de la
+   * source : les documents de disponibilité portent un `locationId`
+   * dénormalisé, et le mélanger enverrait ses créneaux sur le mauvais lieu.
+   */
+  const copierHoraires = async (sourceId: string, cibleId: string) => {
+    if (!provider) return;
+    const cible = members.find((m) => m.id === cibleId);
+    const source = members.find((m) => m.id === sourceId);
+    if (!cible || !source || !cible.locationId) return;
+
+    setCopieEnCours(true);
+    try {
+      const semaine = await availabilityRepository.getWeeklySchedule(provider.id, sourceId);
+      const aEcrire = preparerCopieHoraires(semaine);
+      if (aEcrire.length === 0) {
+        toast.error(`${source.name} n’a aucun horaire à copier`);
+        return;
+      }
+      // `cible.locationId` : le lieu écrit est celui de la personne qui
+      // reçoit, jamais celui de la source (voir preparerCopieHoraires).
+      await availabilityRepository.setWeeklySchedule(
+        provider.id,
+        cibleId,
+        cible.locationId,
+        aEcrire,
+      );
+      toast.success(`Horaires de ${source.name} copiés sur ${cible.name}`);
+      await fetchData();
+    } catch (error) {
+      console.error('Copy schedule error:', error);
+      toast.error('Les horaires n’ont pas pu être copiés');
+    } finally {
+      setCopieEnCours(false);
+    }
+  };
 
   const handleOpenCreate = (locationId?: string) => {
     if (isAtMemberLimit) {
@@ -732,6 +827,7 @@ export function EquipeTab() {
             </button>
           </div>
 
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           {vue === 'organisation' ? (
             <div className="space-y-3">
               {groupes.map((g) => {
@@ -762,16 +858,10 @@ export function EquipeTab() {
                         resumeHoraires={resumerHoraires(horairesActuels, member.id)}
                         masquerLieu
                         memberServiceIds={getMemberServiceIds(member.id)}
+                        selectionne={member.id === selectionId}
                         onToggleActive={handleToggleActive}
-                        onClick={() => handleOpenEdit(member)}
-                        onCorriger={() => {
-                          const etat = etats.get(member.id);
-                          if (etat?.blocages.includes('sansHoraires')) {
-                            router.push('/pro/activite?tab=disponibilites');
-                          } else {
-                            setVue('affectations');
-                          }
-                        }}
+                        onClick={() => selectionner(member.id)}
+                        onCorriger={() => selectionner(member.id)}
                       />
                     ))}
                   </LieuSection>
@@ -786,6 +876,31 @@ export function EquipeTab() {
               enCours={ecritures}
             />
           )}
+
+            {/* Tout ce qu'on peut corriger sur une personne, sans quitter
+                la page ni ouvrir de modale. */}
+            <div ref={panneauRef} className="xl:sticky xl:top-4">
+              {membreSelectionne ? (
+                <MembrePanneau
+                  membre={membreSelectionne}
+                  lieux={locations.filter((l) => l.isActive)}
+                  services={services}
+                  etat={etats.get(membreSelectionne.id)}
+                  creneaux={creneaux[membreSelectionne.id] ?? null}
+                  resumeHoraires={resumerHoraires(horairesActuels, membreSelectionne.id)}
+                  sources={sourcesHoraires(membreSelectionne.id)}
+                  enCours={ecritures}
+                  copieEnCours={copieEnCours}
+                  changementLieuEnCours={changementLieuEnCours}
+                  onBasculerPrestation={basculerAttribution}
+                  onChangerLieu={changerLieu}
+                  onCopierHoraires={copierHoraires}
+                  onOuvrirFiche={() => handleOpenEdit(membreSelectionne)}
+                  onDefinirHoraires={() => router.push('/pro/activite?tab=disponibilites')}
+                />
+              ) : null}
+            </div>
+          </div>
         </>
       )}
 
