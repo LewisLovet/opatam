@@ -42,6 +42,10 @@ export default async function CancelPage({ params }: PageProps) {
         locationName: booking.locationName,
         locationAddress: booking.locationAddress,
         datetime: booking.datetime.toISOString(),
+        // Fuseau du salon + heure convenue, figés à la réservation. Liste
+        // blanche : les oublier ici les ferait disparaître en silence.
+        timezone: booking.timezone ?? null,
+        localStartTime: booking.localStartTime ?? null,
         endDatetime: booking.endDatetime.toISOString(),
         duration: booking.duration,
         price: booking.price,

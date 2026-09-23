@@ -37,7 +37,22 @@ const COUNTRY_TIMEZONES: Record<string, string> = {
   PT: 'Europe/Lisbon',
 };
 
-export function providerTimeZone(countryCode: string | null | undefined): string {
+/**
+ * Fuseau du prestataire.
+ *
+ * `timezoneDuLieu` PRIME sur la table par pays, et c'est tout l'enjeu :
+ * **La Réunion est en `FR`**, donc la table seule renvoie Europe/Paris et
+ * le récapitulatif part trois heures trop tôt (deux en été métropolitain).
+ * Le fuseau du lieu, lui, est résolu depuis les COORDONNÉES.
+ *
+ * La table reste le repli pour les lieux pas encore résolus : elle est
+ * juste pour la métropole et les huit autres pays servis.
+ */
+export function providerTimeZone(
+  countryCode: string | null | undefined,
+  timezoneDuLieu?: string | null,
+): string {
+  if (timezoneDuLieu) return timezoneDuLieu;
   return COUNTRY_TIMEZONES[(countryCode ?? '').toUpperCase()] ?? 'Europe/Paris';
 }
 

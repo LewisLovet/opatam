@@ -83,7 +83,30 @@ export const sendProviderMorningAgenda = onSchedule(
         if (!providerDoc.exists) continue;
         const providerId = providerDoc.id;
         const p = providerDoc.data()!;
-        const timeZone = providerTimeZone(p.countryCode);
+        // Le fuseau du LIEU prime sur la table par pays : La Réunion est en
+        // « FR », donc la table seule envoyait ce récapitulatif trois heures
+        // trop tôt (deux en été métropolitain). Une lecture de plus par
+        // prestataire, une fois par heure — le prix est dérisoire à côté
+        // d'un e-mail qui arrive à 5 h du matin chez la personne.
+        let timezoneDuLieu: string | null = null;
+        try {
+          const lieux = await db
+            .collection('providers')
+            .doc(providerId)
+            .collection('locations')
+            .where('isActive', '==', true)
+            .limit(5)
+            .get();
+          // Le lieu par défaut s'il existe, sinon le premier actif : un
+          // prestataire à cheval sur deux fuseaux est un cas qu'on ne sait
+          // pas encore traiter, et qu'il faudra trancher.
+          const defaut = lieux.docs.find((d) => d.data().isDefault) ?? lieux.docs[0];
+          timezoneDuLieu = defaut?.data().timezone ?? null;
+        } catch {
+          // Une lecture qui échoue ne doit pas priver tout le monde de son
+          // récapitulatif : on retombe sur la table par pays.
+        }
+        const timeZone = providerTimeZone(p.countryCode, timezoneDuLieu);
 
         const decision = decideMorningAgenda({
           now,

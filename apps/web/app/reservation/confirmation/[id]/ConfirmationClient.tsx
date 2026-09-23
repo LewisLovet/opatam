@@ -24,6 +24,12 @@ interface Booking {
   locationAddress: string;
   datetime: string;
   endDatetime: string;
+  /** Fuseau du salon + heure convenue, figés à la réservation. Absents
+   *  sur les réservations d'avant le chantier fuseaux. */
+  timezone?: string | null;
+  localDate?: string | null;
+  localStartTime?: string | null;
+  localEndTime?: string | null;
   duration: number;
   price: number;
   priceMax?: number | null;
@@ -82,25 +88,29 @@ function fmtCurrency(cents: number, locale: string): string {
 }
 
 // Heure du SALON, jamais celle de l'appareil : une cliente qui réserve
-// depuis un autre fuseau (Guadeloupe…) doit revoir ici exactement l'heure
-// choisie dans le tunnel — sans timeZone, « 14:00 » devenait « 08:00 ».
-function formatDate(dateStr: string, locale: string): string {
+// depuis un autre fuseau doit revoir ici exactement l'heure choisie dans
+// le tunnel — sans `timeZone`, « 14:00 » devenait « 08:00 ».
+//
+// Le fuseau vient maintenant de la RÉSERVATION (celui du lieu, figé à la
+// création). « Europe/Paris » n'est plus qu'un repli pour les réservations
+// d'avant le chantier fuseaux : comportement inchangé pour elles.
+function formatDate(dateStr: string, locale: string, fuseau: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
-function formatTime(dateStr: string, locale: string): string {
+function formatTime(dateStr: string, locale: string, fuseau: string): string {
   const date = new Date(dateStr);
   return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
@@ -177,6 +187,9 @@ function downloadIcs(booking: Booking, address: string, eventTitle: string, even
 export function ConfirmationClient({ booking, providerLoyalty = null }: ConfirmationClientProps) {
   const t = useTranslations('booking');
   const locale = useLocale();
+  // Le fuseau du SALON. Repli sur Paris pour les réservations d'avant le
+  // chantier : c'est ce que cette page faisait déjà, en dur.
+  const fuseauSalon = booking.timezone || 'Europe/Paris';
   const formatPrice = (cents: number, centsMax?: number | null): string => {
     if (cents === 0 && !centsMax) return t('common.free');
     if (centsMax && centsMax > cents) {
@@ -453,10 +466,12 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
                 <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white capitalize">
-                    {formatDate(booking.datetime, locale)}
+                    {formatDate(booking.datetime, locale, fuseauSalon)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatTime(booking.datetime, locale)} - {formatTime(booking.endDatetime, locale)}
+                    {booking.localStartTime ?? formatTime(booking.datetime, locale, fuseauSalon)}
+                    {' - '}
+                    {booking.localEndTime ?? formatTime(booking.endDatetime, locale, fuseauSalon)}
                   </p>
                 </div>
               </div>

@@ -11,6 +11,12 @@ export * from './horaires';
 // À utiliser partout où l'on convertit un horaire configuré en rendez-vous —
 // `setHours()` et consorts dépendent de la machine qui exécute.
 export * from './fuseaux';
+// Quel fuseau pour ce lieu ? — résolution depuis les COORDONNÉES, parce
+// que le code pays ne suffit pas (La Réunion est en « FR »).
+export * from './fuseau-lieu';
+// LE lecteur unique de l'heure d'un rendez-vous : préfère l'heure FIGÉE,
+// retombe sur le fuseau du rendez-vous, puis sur Paris comme avant.
+export * from './rendezvous-affichage';
 export * from './activation';
 // Address-privacy helpers (protected à-domicile addresses revealed ~48h before).
 export * from './address';

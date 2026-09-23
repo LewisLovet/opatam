@@ -34,6 +34,14 @@ export default async function ConfirmationPage({ params }: PageProps) {
     locationAddress: booking.locationAddress,
     datetime: booking.datetime.toISOString(),
     endDatetime: booking.endDatetime.toISOString(),
+    // Fuseau du salon + heure CONVENUE, figés à la réservation. Sans eux,
+    // cette page réaffiche l'heure de Paris — ce qui est faux dès que le
+    // salon n'y est pas. Les oublier ici les ferait disparaître en
+    // silence : c'est une liste blanche.
+    timezone: booking.timezone ?? null,
+    localDate: booking.localDate ?? null,
+    localStartTime: booking.localStartTime ?? null,
+    localEndTime: booking.localEndTime ?? null,
     duration: booking.duration,
     price: booking.price,
     priceMax: booking.priceMax ?? null,

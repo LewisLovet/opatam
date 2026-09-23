@@ -34,9 +34,14 @@ export function resolveEmailLocale(raw: string | null | undefined): EmailLocale 
 // Locale-aware formatters
 // ---------------------------------------------------------------------------
 // Same rendering rules as formatDateFr / formatTimeFr / formatPriceFr in
-// resendService, plus English, Italian and Portuguese variants. Times stay 24h
-// and Europe/Paris in ALL languages — the appointment physically happens in
-// France.
+// resendService, plus English, Italian and Portuguese variants. Times stay
+// 24h in ALL languages — salon hours, and it reads the same clock partout.
+//
+// LE FUSEAU, LUI, N'EST PLUS SUPPOSÉ. Ce fichier disait « the appointment
+// physically happens in France » : c'est faux depuis qu'un salon réunionnais
+// utilise Opatam. Il vient désormais de la réservation (`booking.timezone`,
+// figé à la création) ; « Europe/Paris » reste le repli pour les
+// réservations d'avant le chantier fuseaux, donc rien ne change pour elles.
 
 const INTL_LOCALE: Record<EmailLocale, string> = {
   fr: 'fr-FR',
@@ -46,21 +51,30 @@ const INTL_LOCALE: Record<EmailLocale, string> = {
   de: 'de-DE',
 };
 
-export function formatEmailDate(date: Date, locale: EmailLocale = 'fr'): string {
+export function formatEmailDate(
+  date: Date,
+  locale: EmailLocale = 'fr',
+  /** Fuseau du salon, figé sur la réservation. Repli : comportement d'avant. */
+  fuseau: string = 'Europe/Paris',
+): string {
   return date.toLocaleDateString(INTL_LOCALE[locale], {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
-export function formatEmailTime(date: Date, locale: EmailLocale = 'fr'): string {
+export function formatEmailTime(
+  date: Date,
+  locale: EmailLocale = 'fr',
+  fuseau: string = 'Europe/Paris',
+): string {
   return date.toLocaleTimeString(INTL_LOCALE[locale], {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
     // Keep 24h in English (and Italian / Portuguese) too — French salon hours,
     // and it matches the fr-FR default so every language reads the same clock.
     ...(locale !== 'fr' ? { hour12: false } : {}),

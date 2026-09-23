@@ -26,6 +26,9 @@ interface Booking {
   locationAddress: string;
   datetime: string;
   endDatetime: string;
+  /** Fuseau du salon + heure convenue, figés à la réservation. */
+  timezone?: string | null;
+  localStartTime?: string | null;
   duration: number;
   price: number;
   status: string;
@@ -72,23 +75,23 @@ function formatPrice(cents: number, locale: string): string {
 
 // Heure du SALON, jamais celle de l'appareil (cf. ConfirmationClient) —
 // sinon une cliente dans un autre fuseau annulerait « le mauvais » créneau.
-function formatDate(dateStr: string, locale: string): string {
+function formatDate(dateStr: string, locale: string, fuseau: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
-function formatTime(dateStr: string, locale: string): string {
+function formatTime(dateStr: string, locale: string, fuseau: string): string {
   const date = new Date(dateStr);
   return date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
@@ -108,6 +111,9 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
   const t = useTranslations('booking.cancel');
   const tCommon = useTranslations('booking.common');
   const locale = useLocale();
+  // Le fuseau du SALON. Repli sur Paris pour les réservations d'avant le
+  // chantier : comportement inchangé pour elles.
+  const fuseauSalon = booking?.timezone || 'Europe/Paris';
   const [state, setState] = useState<'not_found' | 'already_cancelled' | 'past' | 'form' | 'loading' | 'success' | 'error'>(initialState);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +196,7 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
           </p>
           {cancelledAt && (
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-8">
-              {t('cancelledOn', { date: formatDate(cancelledAt, locale), time: formatTime(cancelledAt, locale) })}
+              {t('cancelledOn', { date: formatDate(cancelledAt, locale, fuseauSalon), time: formatTime(cancelledAt, locale, fuseauSalon) })}
             </p>
           )}
           <Link
@@ -360,10 +366,10 @@ export function CancelClient({ booking, token, initialState, cancelledAt }: Canc
                 <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white capitalize">
-                    {formatDate(booking.datetime, locale)}
+                    {formatDate(booking.datetime, locale, fuseauSalon)}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatTime(booking.datetime, locale)} - {formatTime(booking.endDatetime, locale)}
+                    {formatTime(booking.datetime, locale, fuseauSalon)} - {formatTime(booking.endDatetime, locale, fuseauSalon)}
                   </p>
                 </div>
               </div>
