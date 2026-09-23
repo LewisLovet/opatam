@@ -43,7 +43,17 @@ export async function GET(request: NextRequest) {
 
     let days: Day[];
     if (memberId) {
-      days = await schedulingService.getOccupancySummary({ providerId, memberId, startDate, endDate });
+      days = await schedulingService.getOccupancySummary({
+        providerId,
+        memberId,
+        // Dates CALENDAIRES : les bornes ci-dessus sont construites en
+        // heure du serveur (Paris), et le moteur en redéduirait une date
+        // locale du LIEU — décalée d'un jour hors de Paris.
+        startDay: fromStr,
+        endDay: toStr,
+        startDate,
+        endDate,
+      });
     } else {
       // No member → aggregate across the whole team: best status per day
       // (available > almost_full > full > closed), most-free member's minutes.
@@ -53,6 +63,11 @@ export async function GET(request: NextRequest) {
       const acc = new Map<string, Day>();
       for (const m of members) {
         const ds = await schedulingService.getOccupancySummary({
+        // Dates CALENDAIRES : les bornes ci-dessus sont construites en
+        // heure du serveur (Paris), et le moteur en redéduirait une date
+        // locale du LIEU — décalée d'un jour hors de Paris.
+          startDay: fromStr,
+          endDay: toStr,
           providerId,
           memberId: m.id,
           startDate,

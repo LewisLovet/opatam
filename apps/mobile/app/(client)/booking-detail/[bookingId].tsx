@@ -46,13 +46,16 @@ function dateLocale(): string {
 }
 
 // Helper to format date
-function formatDate(datetime: Date | any): string {
+function formatDate(datetime: Date | any, fuseau?: string | null): string {
   const date = toDate(datetime);
   return date.toLocaleDateString(dateLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    // La DATE aussi est celle du salon : un rendez-vous réunionnais du
+    // matin est encore la veille pour un téléphone métropolitain.
+    timeZone: fuseau || 'Europe/Paris',
   });
 }
 
@@ -717,7 +720,7 @@ export default function BookingDetailScreen() {
             <InfoRow
               icon="calendar-outline"
               label={t('bookingDetailScreen.info.date')}
-              value={formatDate(booking.datetime)}
+              value={formatDate(booking.datetime, booking.timezone)}
               colors={colors}
             />
             <InfoRow

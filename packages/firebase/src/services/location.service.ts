@@ -177,10 +177,19 @@ export class LocationService {
         validated.countryCode ?? location.countryCode,
         validated.postalCode ?? location.postalCode,
       );
-      // `null` = on ne sait pas trancher. On n'écrase alors PAS un fuseau
-      // déjà connu, et on n'en invente pas un.
       if (r.fuseau) {
         fuseauPatch = { timezone: r.fuseau, timezoneSource: 'automatic', timezoneResolvedAt: new Date() };
+      } else if (location.timezoneSource === 'automatic') {
+        // On ne sait plus trancher, et le fuseau en place avait été DEVINÉ
+        // pour l'ANCIENNE adresse. Le garder serait pire que de n'en avoir
+        // aucun : un salon déménagé de Paris aux États-Unis resterait
+        // affiché à l'heure de Paris, et plus rien ne le signalerait.
+        //
+        // On l'efface donc, ce qui remet le lieu dans l'état « à
+        // renseigner » — visible dans le rapport de migration. Un fuseau
+        // posé à la main, lui, n'est jamais touché : il est arrivé là
+        // précisément parce que l'automatique s'était trompé.
+        fuseauPatch = { timezone: null, timezoneSource: null, timezoneResolvedAt: new Date() };
       }
     }
 

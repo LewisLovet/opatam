@@ -40,20 +40,24 @@ function formatBookingDate(
     ? datetime
     : datetime?.toDate?.() || new Date(datetime);
 
+  // TOUT se lit chez le salon : l'heure, mais aussi le JOUR.
+  // `toDateString()` répondait dans le fuseau du téléphone — une cliente
+  // en métropole voyait « demain » pour un rendez-vous réunionnais qui a
+  // lieu aujourd'hui sur place, et inversement.
+  const fuseauSalon = fuseau || 'Europe/Paris';
+  const jourChezLeSalon = (d: Date): string =>
+    d.toLocaleDateString('en-CA', { timeZone: fuseauSalon });
+
   const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const isToday = date.toDateString() === now.toDateString();
-  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+  const isToday = jourChezLeSalon(date) === jourChezLeSalon(now);
+  const isTomorrow = jourChezLeSalon(date) === jourChezLeSalon(tomorrow);
 
-  // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
-  // Heure du SALON, figée sur la réservation. Le repli Paris garde le
-  // comportement d'avant pour les réservations plus anciennes.
   const timeStr = date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: fuseau || 'Europe/Paris',
+    timeZone: fuseauSalon,
   });
 
   if (isToday) {
@@ -64,6 +68,7 @@ function formatBookingDate(
   }
 
   const dateStr = date.toLocaleDateString(locale, {
+    timeZone: fuseauSalon,
     weekday: 'short',
     day: 'numeric',
     month: 'short',

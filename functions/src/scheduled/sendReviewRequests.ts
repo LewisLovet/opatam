@@ -236,6 +236,9 @@ export const sendReviewRequests = onSchedule(
           locale: data.clientLocale,
           serviceName: data.serviceName ?? 'Prestation',
           datetime,
+          // Fuseau du SALON, figé sur la réservation : la demande d'avis
+          // rappelle la date du rendez-vous, qui doit être la bonne.
+          timeZone: data.timezone ?? undefined,
           providerName: data.providerName ?? 'votre prestataire',
         });
 

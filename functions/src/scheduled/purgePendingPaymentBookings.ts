@@ -121,6 +121,9 @@ export const purgePendingPaymentBookings = onSchedule(
             locale: data.clientLocale,
             serviceName: data.serviceName,
             datetime,
+            // Fuseau du SALON, figé sur la réservation : sans lui, l'e-mail
+            // annonce l'heure de Paris.
+            timeZone: data.timezone ?? undefined,
             duration: data.duration || 60,
             depositAmount,
             providerName: data.providerName,

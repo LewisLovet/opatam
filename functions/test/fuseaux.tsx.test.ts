@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatEmailDate, formatEmailTime } from '../src/utils/emailI18n';
 import { providerTimeZone } from '../src/lib/morningAgenda';
+import { estHeureSilencieuse, heureLocaleDe } from '../src/lib/heuresSilencieuses';
 
 // 08:00 à La Réunion le 16 novembre 2026 = 04:00 UTC.
 const RDV_REUNION = new Date('2026-11-16T04:00:00Z');
@@ -61,5 +62,50 @@ describe('le récapitulatif quotidien part à 8 h CHEZ LE PRO', () => {
 
   it('un fuseau de lieu vide ne masque pas la table', () => {
     assert.equal(providerTimeZone('PT', ''), 'Europe/Lisbon');
+  });
+});
+
+describe('les heures silencieuses se jugent CHEZ le destinataire', () => {
+  // 2026-11-16T02:00:00Z : 3 h du matin à Paris, mais 6 h à La Réunion.
+  const NUIT_A_PARIS = new Date('2026-11-16T02:00:00Z');
+
+  it('LE BUG : le rappel de 6 h réunionnais ne partait jamais', () => {
+    // Le cron s'arrêtait entièrement quand il faisait nuit à Paris. Un
+    // rendez-vous à 8 h à La Réunion demande son rappel « 2 h avant » à
+    // 6 h locales — 3 h du matin à Paris. Il ne partait pas en retard :
+    // il ne partait JAMAIS.
+    assert.equal(heureLocaleDe(NUIT_A_PARIS, 'Europe/Paris'), 3);
+    assert.equal(heureLocaleDe(NUIT_A_PARIS, 'Indian/Reunion'), 6);
+
+    assert.equal(estHeureSilencieuse(NUIT_A_PARIS, 'Europe/Paris'), true);
+    assert.equal(estHeureSilencieuse(NUIT_A_PARIS, 'Indian/Reunion'), false);
+  });
+
+  it('les bornes sont 23 h et 6 h, chez le destinataire', () => {
+    const a = (h: number) => new Date(`2026-11-16T${String(h).padStart(2, '0')}:30:00Z`);
+    // En UTC pour lire les bornes sans détour.
+    assert.equal(estHeureSilencieuse(a(22), 'UTC'), false, '22h30 : encore permis');
+    assert.equal(estHeureSilencieuse(a(23), 'UTC'), true, '23h30 : silence');
+    assert.equal(estHeureSilencieuse(a(5), 'UTC'), true, '5h30 : silence');
+    assert.equal(estHeureSilencieuse(a(6), 'UTC'), false, '6h30 : on peut');
+  });
+
+  it('sans fuseau, comportement INCHANGÉ (Paris)', () => {
+    assert.equal(
+      estHeureSilencieuse(NUIT_A_PARIS, null),
+      estHeureSilencieuse(NUIT_A_PARIS, 'Europe/Paris'),
+    );
+    assert.equal(estHeureSilencieuse(NUIT_A_PARIS, ''), true);
+  });
+
+  it('un fuseau invalide en base ne fait pas taire TOUS les rappels', () => {
+    // Retomber sur Paris vaut mieux que lever et interrompre le cron pour
+    // tout le monde à cause d'une seule fiche mal renseignée.
+    assert.equal(estHeureSilencieuse(NUIT_A_PARIS, 'Pas/UnFuseau'), true);
+  });
+
+  it('New York : 2 h du matin à Paris, 20 h la veille sur place', () => {
+    assert.equal(heureLocaleDe(NUIT_A_PARIS, 'America/New_York'), 21);
+    assert.equal(estHeureSilencieuse(NUIT_A_PARIS, 'America/New_York'), false);
   });
 });

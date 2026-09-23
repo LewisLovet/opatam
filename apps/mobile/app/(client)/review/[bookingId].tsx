@@ -47,6 +47,9 @@ function formatDate(datetime: Date | any, fuseau?: string | null): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    // Le fuseau était bien reçu mais pas employé : la date restait celle
+    // du téléphone, donc parfois la veille ou le lendemain.
+    timeZone: fuseau || 'Europe/Paris',
   });
 }
 

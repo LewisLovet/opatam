@@ -8,6 +8,7 @@
  */
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { estHeureSilencieuse } from '../lib/heuresSilencieuses';
 import * as admin from 'firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { notifyClientBookingReminder, notifyProviderBookingSoon } from '../notifications/bookingNotifications';
@@ -37,14 +38,14 @@ export const sendBookingReminders = onSchedule(
     serverTracker.startContext('sendBookingReminders');
     console.log('=== sendBookingReminders started ===');
 
-    // Skip reminders during quiet hours (23h–6h Paris time)
-    const parisHour = new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false });
-    const hour = parseInt(parisHour, 10);
-    if (hour >= 23 || hour < 6) {
-      console.log(`Quiet hours (${hour}h Paris) — skipping reminders`);
-      serverTracker.endContext();
-      return;
-    }
+    // Les HEURES SILENCIEUSES se jugent réservation par réservation, chez
+    // le salon — plus globalement à Paris.
+    //
+    // POURQUOI CE N'ÉTAIT PAS UN DÉTAIL : un rendez-vous à 8 h à La
+    // Réunion demande son rappel « 2 h avant » à 6 h locales, soit 3 h du
+    // matin à Paris. Le cron s'arrêtait alors tout entier, et ce rappel
+    // ne partait JAMAIS — pas « en retard » : jamais. Le salon perdait
+    // silencieusement tous ses rappels matinaux.
 
     const db = admin.firestore();
     const now = new Date();
@@ -111,6 +112,12 @@ export const sendBookingReminders = onSchedule(
         // repli pour celles d'avant le chantier, donc rien ne change pour
         // elles.
         const fuseauSalon = data.timezone || 'Europe/Paris';
+
+        // 23 h–6 h CHEZ LA CLIENTE, c'est-à-dire chez le salon : on ne
+        // réveille personne. Le rendez-vous, lui, n'est pas perdu — le
+        // cron repasse dans l'heure et le rappel partira dès 6 h locales.
+        if (estHeureSilencieuse(now, fuseauSalon)) continue;
+
         const jourChezLeSalon = (d: Date): string =>
           new Intl.DateTimeFormat('en-CA', {
             timeZone: fuseauSalon,
@@ -198,6 +205,9 @@ export const sendBookingReminders = onSchedule(
                 clientId: data.clientId,
                 serviceName: data.serviceName,
                 datetime: data.datetime,
+                // Le fuseau voyage avec la date : sans lui le rappel est
+                // SÉLECTIONNÉ au bon moment mais RÉDIGÉ à l'heure de Paris.
+                timezone: data.timezone ?? null,
                 clientInfo: data.clientInfo,
                 providerName: data.providerName,
                 status: data.status,
@@ -220,6 +230,9 @@ export const sendBookingReminders = onSchedule(
                 clientId: data.clientId,
                 serviceName: data.serviceName,
                 datetime: data.datetime,
+                // Le fuseau voyage avec la date : sans lui le rappel est
+                // SÉLECTIONNÉ au bon moment mais RÉDIGÉ à l'heure de Paris.
+                timezone: data.timezone ?? null,
                 duration: data.duration,
                 price: data.price,
                 clientInfo: data.clientInfo,
@@ -276,6 +289,9 @@ export const sendBookingReminders = onSchedule(
                   clientId: data.clientId,
                   serviceName: data.serviceName,
                   datetime: data.datetime,
+                // Le fuseau voyage avec la date : sans lui le rappel est
+                // SÉLECTIONNÉ au bon moment mais RÉDIGÉ à l'heure de Paris.
+                timezone: data.timezone ?? null,
                   clientInfo: data.clientInfo,
                   providerName: data.providerName,
                   status: data.status,

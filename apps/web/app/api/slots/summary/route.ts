@@ -97,6 +97,11 @@ export async function GET(request: NextRequest) {
           // que celle du membre choisi.
           extraServiceIds,
           memberId: m.id,
+          // Même règle que la branche « membre choisi » : sans les dates
+          // calendaires, le calendrier global affiche la veille à New York
+          // et le lendemain à La Réunion.
+          startDay: fromStr,
+          endDay: toStr,
           startDate,
           endDate,
           durationOverride: dur,

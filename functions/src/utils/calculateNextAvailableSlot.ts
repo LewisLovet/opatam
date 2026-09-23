@@ -159,30 +159,6 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     return null;
   }
 
-  // 1 bis. Le fuseau du SALON. Tout ce qui suit — jour de la semaine,
-  // « est-il tard ? », minutes des rendez-vous — se lisait dans le fuseau
-  // de la Cloud Function (UTC). Pour un salon réunionnais, la journée
-  // commençait quatre heures trop tard.
-  //
-  // Absent (lieu pas encore résolu) → Europe/Paris, c'est-à-dire le
-  // comportement d'avant : le serveur web force ce fuseau et c'est ce que
-  // cet indicateur reflétait.
-  let fuseauDuSalon = 'Europe/Paris';
-  try {
-    const lieux = await db
-      .collection('providers')
-      .doc(providerId)
-      .collection('locations')
-      .where('isActive', '==', true)
-      .limit(5)
-      .get();
-    serverTracker.trackRead('providers/*/locations', lieux.size);
-    const defaut = lieux.docs.find((d) => d.data().isDefault) ?? lieux.docs[0];
-    fuseauDuSalon = defaut?.data().timezone || 'Europe/Paris';
-  } catch {
-    // Une lecture ratée ne doit pas priver la fiche de son indicateur.
-  }
-
   // 2. Récupérer le premier membre actif
   const membersSnapshot = await db
     .collection('providers')
@@ -215,6 +191,32 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
 
   const memberId = memberDoc.id;
   console.log(`Using member: ${memberId}`);
+
+  // 2 bis. Le fuseau du lieu où CE MEMBRE travaille.
+  //
+  // Il se résout APRÈS le choix du membre, et pas avant : sur un compte à
+  // plusieurs lieux, prendre « le lieu par défaut » pouvait rendre le
+  // fuseau d'un tout autre salon que celui qu'on est en train d'analyser.
+  //
+  // Absent (lieu pas encore résolu) → Europe/Paris, c'est-à-dire le
+  // comportement d'avant : le serveur web force ce fuseau, et c'est ce
+  // que cet indicateur reflétait.
+  let fuseauDuSalon = 'Europe/Paris';
+  const locationIdDuMembre = memberDoc.data()?.locationId;
+  if (locationIdDuMembre) {
+    try {
+      const lieu = await db
+        .collection('providers')
+        .doc(providerId)
+        .collection('locations')
+        .doc(locationIdDuMembre)
+        .get();
+      serverTracker.trackRead('providers/*/locations', 1);
+      fuseauDuSalon = lieu.data()?.timezone || 'Europe/Paris';
+    } catch {
+      // Une lecture ratée ne doit pas priver la fiche de son indicateur.
+    }
+  }
 
   // 3. Récupérer les availabilities du membre
   // Note: la collection s'appelle 'availability' (singulier)
