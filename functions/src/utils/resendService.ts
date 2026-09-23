@@ -72,23 +72,26 @@ export const assets = {
   },
 } as const;
 
-// Helper to format date in French
-export function formatDateFr(date: Date): string {
+// Helper to format date in French.
+// Le fuseau est celui du SALON (figé sur la réservation) ; « Europe/Paris »
+// n'est qu'un repli pour les appelants pas encore raccordés — comportement
+// inchangé pour eux.
+export function formatDateFr(date: Date, fuseau: string = 'Europe/Paris'): string {
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 
-// Helper to format time in French
-export function formatTimeFr(date: Date): string {
+// Helper to format time in French — même règle de fuseau.
+export function formatTimeFr(date: Date, fuseau: string = 'Europe/Paris'): string {
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau,
   });
 }
 

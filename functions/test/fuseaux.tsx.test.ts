@@ -14,6 +14,7 @@ import { formatEmailDate, formatEmailTime } from '../src/utils/emailI18n';
 import { providerTimeZone } from '../src/lib/morningAgenda';
 import { estHeureSilencieuse, heureLocaleDe } from '../src/lib/heuresSilencieuses';
 import { ajouterJours, jourLocal } from '../src/lib/fuseaux';
+import { demainChezLeSalon, estDemainChezLeSalon, fenetreDeRechercheDemain } from '../src/lib/agendaDemain';
 
 // 08:00 à La Réunion le 16 novembre 2026 = 04:00 UTC.
 const RDV_REUNION = new Date('2026-11-16T04:00:00Z');
@@ -135,5 +136,45 @@ describe('« demain » est une date, pas 24 heures', () => {
   it('un jour ordinaire, les deux méthodes concordent', () => {
     const now = new Date('2027-06-15T12:00:00Z');
     assert.equal(demainParDuree(now), demainParCalendrier(now));
+  });
+});
+
+describe('le récapitulatif de 20 h : « demain » chez le salon', () => {
+  // 20:00 à Paris le 16 novembre 2026 = 19:00Z ; il est 23:00 à La Réunion.
+  const A_20H_PARIS = new Date('2026-11-16T19:00:00Z');
+
+  it('demain est le 17 à Paris comme à La Réunion — ce soir-là', () => {
+    assert.equal(demainChezLeSalon(A_20H_PARIS, 'Europe/Paris'), '2026-11-17');
+    assert.equal(demainChezLeSalon(A_20H_PARIS, 'Indian/Reunion'), '2026-11-17');
+  });
+
+  it('LE BUG : un rendez-vous réunionnais de 8 h le 17 sortait de la plage parisienne', () => {
+    // 08:00 à La Réunion le 17 = 04:00Z = 05:00 à Paris le 17 : dedans.
+    // Mais 22:00 à La Réunion le 17 = 18:00Z = 19:00 à Paris : dedans aussi,
+    // alors que 01:00 à La Réunion le 18 = 21:00Z le 17 = 22:00 Paris le 17 →
+    // la plage parisienne l'INCLUAIT dans « demain » : un rendez-vous du
+    // surlendemain matin listé ce soir.
+    const rdvSurlendemain = { datetime: new Date('2026-11-17T21:00:00Z'), timezone: 'Indian/Reunion' };
+    assert.equal(jourLocal(rdvSurlendemain.datetime, 'Europe/Paris'), '2026-11-17', 'vu de Paris : demain');
+    assert.equal(estDemainChezLeSalon(rdvSurlendemain, A_20H_PARIS, 'Indian/Reunion'), false, 'chez le salon : après-demain');
+  });
+
+  it('la date locale FIGÉE prime sur le recalcul', () => {
+    const rdv = { datetime: new Date('2026-11-17T04:00:00Z'), timezone: 'Europe/Paris', localDate: '2026-11-17' };
+    assert.equal(estDemainChezLeSalon(rdv, A_20H_PARIS, 'Indian/Reunion'), true);
+  });
+
+  it('sans fuseau figé, la réservation est lue dans celui du salon', () => {
+    const rdv = { datetime: new Date('2026-11-17T04:00:00Z') };
+    assert.equal(estDemainChezLeSalon(rdv, A_20H_PARIS, 'Indian/Reunion'), true);
+    assert.equal(estDemainChezLeSalon(rdv, A_20H_PARIS, 'Europe/Paris'), true);
+  });
+
+  it('la fenêtre de recherche contient demain dans TOUS les fuseaux', () => {
+    const { debut, fin } = fenetreDeRechercheDemain(A_20H_PARIS);
+    // 00:00 le 17 à Kiritimati (UTC+14) = 10:00Z le 16.
+    assert.ok(debut.getTime() <= new Date('2026-11-16T10:00:00Z').getTime());
+    // 23:59 le 17 à Pago Pago (UTC−11) = 10:59Z le 18.
+    assert.ok(fin.getTime() >= new Date('2026-11-18T10:59:00Z').getTime());
   });
 });

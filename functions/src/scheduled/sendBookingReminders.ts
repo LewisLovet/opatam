@@ -115,8 +115,15 @@ export const sendBookingReminders = onSchedule(
         const fuseauSalon = data.timezone || 'Europe/Paris';
 
         // 23 h–6 h CHEZ LA CLIENTE, c'est-à-dire chez le salon : on ne
-        // réveille personne. Le rendez-vous, lui, n'est pas perdu — le
-        // cron repasse dans l'heure et le rappel partira dès 6 h locales.
+        // réveille personne.
+        //
+        // CE QUE ÇA COÛTE, dit franchement : le rappel « 24 h » survit (sa
+        // fenêtre couvre toute la veille), mais le « 2 h » et l'alerte pro
+        // de l'heure précédente sont PERDUS pour un rendez-vous qui
+        // commence avant 6 h — ils ne « repartent » pas à 6 h, il est trop
+        // tard. C'est un choix : envoyer après coup n'aurait pas de sens,
+        // et c'était déjà la règle pour Paris. Si ce choix change un jour,
+        // c'est ici, et c'est une décision produit, pas un correctif.
         if (estHeureSilencieuse(now, fuseauSalon)) continue;
 
         const jourChezLeSalon = (d: Date): string =>

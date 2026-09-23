@@ -19,6 +19,8 @@ import {
   isValidEmail,
 } from '../utils/resendService';
 import { serverTracker } from '../utils/serverTracker';
+import { estDemainChezLeSalon, demainChezLeSalon, fenetreDeRechercheDemain } from '../lib/agendaDemain';
+import { instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
 
@@ -38,6 +40,8 @@ interface BookingRow {
   clientName: string;
   serviceName: string;
   datetime: Date;
+  /** Fuseau du salon : c'est dans celui-là que l'heure s'affiche. */
+  timeZone: string;
   duration: number;
   price: number;
   locationName?: string;
@@ -59,20 +63,13 @@ export const sendDailyAgendaSummary = onSchedule(
 
     const db = admin.firestore();
 
-    // Calculate tomorrow's date range in Europe/Paris
-    const nowParis = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-    const tomorrowStart = new Date(nowParis);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
-    const tomorrowEnd = new Date(tomorrowStart);
-    tomorrowEnd.setHours(23, 59, 59, 999);
-
-    // Convert back to UTC for Firestore query
-    const offsetMs = nowParis.getTime() - new Date().getTime();
-    const tomorrowStartUtc = new Date(tomorrowStart.getTime() - offsetMs);
-    const tomorrowEndUtc = new Date(tomorrowEnd.getTime() - offsetMs);
-
-    const formattedTomorrow = formatDateFr(tomorrowStartUtc);
+    // « Demain » se juge CHEZ CHAQUE SALON. La requête Firestore prend un
+    // sur-ensemble qui contient demain dans tous les fuseaux ; c'est le
+    // filtre par réservation, plus bas, qui tranche. Avant, la plage était
+    // « demain à Paris » : à La Réunion elle débordait sur deux journées
+    // locales, et le récapitulatif mélangeait deux jours.
+    const now = new Date();
+    const { debut: tomorrowStartUtc, fin: tomorrowEndUtc } = fenetreDeRechercheDemain(now);
 
     try {
       // 1. Get all published providers
@@ -98,7 +95,30 @@ export const sendDailyAgendaSummary = onSchedule(
           const businessName = providerData.businessName || 'Mon entreprise';
 
           try {
-            // 3. Get tomorrow's bookings for this provider
+            // 3. Le fuseau du salon : son lieu par défaut, sinon Paris (le
+            // comportement d'avant, pour les lieux pas encore résolus).
+            let fuseauDuSalon = 'Europe/Paris';
+            try {
+              const lieux = await db
+                .collection('providers')
+                .doc(providerId)
+                .collection('locations')
+                .where('isActive', '==', true)
+                .limit(5)
+                .get();
+              serverTracker.trackRead('providers/*/locations', lieux.size);
+              const defaut = lieux.docs.find((d) => d.data().isDefault) ?? lieux.docs[0];
+              fuseauDuSalon = defaut?.data().timezone || 'Europe/Paris';
+            } catch {
+              // Une lecture ratée ne doit pas priver le salon de son récapitulatif.
+            }
+            const demain = demainChezLeSalon(now, fuseauDuSalon);
+            const formattedTomorrow = formatDateFr(
+              instantDepuisHeureLocale(demain, 12 * 60, fuseauDuSalon) ?? tomorrowStartUtc,
+              fuseauDuSalon,
+            );
+
+            // 4. Get tomorrow's bookings for this provider
             const bookingsSnapshot = await db
               .collection('bookings')
               .where('providerId', '==', providerId)
@@ -109,26 +129,36 @@ export const sendDailyAgendaSummary = onSchedule(
               .get();
             serverTracker.trackRead('bookings', bookingsSnapshot.size);
 
-            if (bookingsSnapshot.empty) {
-              console.log(`[${businessName}] No bookings tomorrow, skipping`);
-              return;
-            }
 
-            const bookings: BookingRow[] = bookingsSnapshot.docs.map(doc => {
-              const d = doc.data();
-              return {
+            const bookings: BookingRow[] = bookingsSnapshot.docs
+              .map(doc => doc.data())
+              // Le sur-ensemble contient aussi aujourd'hui et après-demain
+              // selon le fuseau : ne garder que ce qui est DEMAIN chez ce
+              // salon, chaque réservation lue dans son propre fuseau figé.
+              .filter(d =>
+                estDemainChezLeSalon(
+                  { datetime: d.datetime.toDate(), timezone: d.timezone, localDate: d.localDate },
+                  now,
+                  fuseauDuSalon,
+                ),
+              )
+              .map(d => ({
                 clientName: d.clientInfo?.name || 'Client',
                 serviceName: d.serviceName,
                 datetime: d.datetime.toDate(),
+                timeZone: d.timezone || fuseauDuSalon,
                 duration: d.duration || 60,
                 price: d.price || 0,
                 locationName: d.locationName,
                 memberName: d.memberName,
                 memberId: d.memberId,
-              };
-            });
+              }));
 
-            console.log(`[${businessName}] ${bookings.length} bookings tomorrow`);
+            if (bookings.length === 0) {
+              console.log(`[${businessName}] No bookings tomorrow (${demain}, ${fuseauDuSalon}), skipping`);
+              return;
+            }
+            console.log(`[${businessName}] ${bookings.length} bookings tomorrow (${demain}, ${fuseauDuSalon})`);
 
             // 4. Get provider email (Provider.id === User.id)
             const userDoc = await db.collection('users').doc(providerId).get();
@@ -236,8 +266,8 @@ export const sendDailyAgendaSummary = onSchedule(
 // ─── HTML Templates ──────────────────────────────────────────────────────────
 
 function generateBookingRowHtml(booking: BookingRow): string {
-  const time = formatTimeFr(booking.datetime);
-  const endTime = formatTimeFr(new Date(booking.datetime.getTime() + booking.duration * 60 * 1000));
+  const time = formatTimeFr(booking.datetime, booking.timeZone);
+  const endTime = formatTimeFr(new Date(booking.datetime.getTime() + booking.duration * 60 * 1000), booking.timeZone);
   const price = formatPriceFr(booking.price);
 
   return `
@@ -351,8 +381,8 @@ function generateProviderSummaryText(
 ): string {
   const totalRevenue = bookings.reduce((sum, b) => sum + b.price, 0);
   const lines = bookings.map(b => {
-    const time = formatTimeFr(b.datetime);
-    const endTime = formatTimeFr(new Date(b.datetime.getTime() + b.duration * 60 * 1000));
+    const time = formatTimeFr(b.datetime, b.timeZone);
+    const endTime = formatTimeFr(new Date(b.datetime.getTime() + b.duration * 60 * 1000), b.timeZone);
     return `- ${time} - ${endTime} | ${b.clientName} | ${b.serviceName} | ${formatPriceFr(b.price)}`;
   });
 
@@ -477,8 +507,8 @@ function generateMemberSummaryText(
   accessCode: string
 ): string {
   const lines = bookings.map(b => {
-    const time = formatTimeFr(b.datetime);
-    const endTime = formatTimeFr(new Date(b.datetime.getTime() + b.duration * 60 * 1000));
+    const time = formatTimeFr(b.datetime, b.timeZone);
+    const endTime = formatTimeFr(new Date(b.datetime.getTime() + b.duration * 60 * 1000), b.timeZone);
     return `- ${time} - ${endTime} | ${b.clientName} | ${b.serviceName}`;
   });
 
