@@ -45,6 +45,33 @@ import type { BookingFilters } from '../repositories/booking.repository';
 
 export class BookingService {
   /**
+   * Le fuseau dans lequel cette réservation se vit.
+   *
+   * Figé dessus quand elle est née après le chantier fuseaux. Sinon —
+   * réservation d'AVANT, sans fuseau — on le RELIT DEPUIS SON LIEU, pour
+   * qu'elle l'adopte à la première modification. Sans ça, déplacer un
+   * ancien rendez-vous réunionnais validait bien le nouveau créneau à
+   * l'heure locale… puis envoyait à la cliente un e-mail « déplacé à
+   * 15:00 » pour un rendez-vous à 17:00 : le doc restait « ancien », et
+   * tous les lecteurs retombaient sur Paris.
+   *
+   * `undefined` si le lieu n'a pas de fuseau non plus : on ne devine pas.
+   */
+  private async fuseauDeLaResa(booking: {
+    providerId: string;
+    locationId: string;
+    timezone?: string | null;
+  }): Promise<string | undefined> {
+    if (booking.timezone) return booking.timezone;
+    try {
+      const lieu = await locationRepository.getById(booking.providerId, booking.locationId);
+      return lieu?.timezone ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Create a new booking.
    *
    * @param input  Validated booking input.
@@ -786,6 +813,7 @@ export class BookingService {
     }
 
     const totalDuration = booking.duration + (service.bufferTime || 0);
+    const fuseau = await this.fuseauDeLaResa(booking);
 
     // Check if new slot is available (excluding current booking)
     const isAvailable = await schedulingService.isSlotAvailable({
@@ -801,9 +829,9 @@ export class BookingService {
       serviceIds: booking.items?.length
         ? booking.items.map((item) => item.serviceId)
         : [booking.serviceId],
-      // Fuseau FIGÉ sur la réservation : c'est celui dans lequel elle a
-      // été convenue, et il ne doit pas suivre un changement de lieu.
-      timeZone: booking.timezone ?? undefined,
+      // Fuseau figé sur la réservation — ou, pour une ancienne, celui de
+      // son lieu, qu'elle adopte à cette occasion (voir fuseauDeLaResa).
+      timeZone: fuseau,
     });
 
     if (!isAvailable) {
@@ -821,12 +849,14 @@ export class BookingService {
       datetime: newDatetime,
       endDatetime: newEndDatetime,
       // L'heure locale convenue est refigée : déplacer un rendez-vous
-      // change l'heure dont la cliente et le pro parleront ensuite.
-      ...(booking.timezone
+      // change l'heure dont la cliente et le pro parleront ensuite. Une
+      // ancienne réservation reçoit ici son fuseau pour la première fois.
+      ...(fuseau
         ? {
-            localDate: jourLocal(newDatetime, booking.timezone),
-            localStartTime: heureLocale(newDatetime, booking.timezone),
-            localEndTime: heureLocale(newEndDatetime, booking.timezone),
+            timezone: fuseau,
+            localDate: jourLocal(newDatetime, fuseau),
+            localStartTime: heureLocale(newDatetime, fuseau),
+            localEndTime: heureLocale(newEndDatetime, fuseau),
           }
         : {}),
     });
@@ -1008,6 +1038,7 @@ export class BookingService {
     const newEndDatetime = new Date(
       booking.datetime.getTime() + newServiceDuration * 60 * 1000,
     );
+    const fuseau = await this.fuseauDeLaResa(booking);
 
     // Re-check the whole extended block (services back-to-back + the NEW last
     // prestation's buffer). Skipped when no member is assigned (best effort).
@@ -1024,9 +1055,8 @@ export class BookingService {
         // greffer une prestation « lundi seulement » sur un rendez-vous du
         // jeudi.
         serviceIds: newItems.map((item) => item.serviceId),
-        // Fuseau FIGÉ sur la réservation : c'est celui dans lequel elle a
-      // été convenue, et il ne doit pas suivre un changement de lieu.
-        timeZone: booking.timezone ?? undefined,
+        // Fuseau figé, ou celui du lieu pour une ancienne réservation.
+        timeZone: fuseau,
       });
       if (!isAvailable) {
         throw new Error(
@@ -1045,10 +1075,16 @@ export class BookingService {
       price: newPrice,
       priceMax: null,
       endDatetime: newEndDatetime,
-      // La fin locale change avec la durée : on la refige dans le fuseau
-      // où la réservation a été convenue.
-      ...(booking.timezone
-        ? { localEndTime: heureLocale(newEndDatetime, booking.timezone) }
+      // La fin locale change avec la durée : on la refige dans le fuseau où
+      // la réservation a été convenue. Une ancienne réservation reçoit ici
+      // son fuseau et toutes ses heures locales d'un coup.
+      ...(fuseau
+        ? {
+            timezone: fuseau,
+            localDate: jourLocal(booking.datetime, fuseau),
+            localStartTime: heureLocale(booking.datetime, fuseau),
+            localEndTime: heureLocale(newEndDatetime, fuseau),
+          }
         : {}),
     });
 

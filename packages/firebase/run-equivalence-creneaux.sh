@@ -24,5 +24,12 @@ set -euo pipefail
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$RACINE"
 
+# `--test-timeout` : un dépôt non bouchonné part interroger Firestore pour
+# de vrai et le test reste SUSPENDU sans message. Avec le délai, il échoue
+# en disant « timed out » — et on sait quoi bouchonner.
 echo "→ Moteur de créneaux, équivalence (TZ=Europe/Paris)"
-TZ=Europe/Paris npx tsx --test packages/firebase/src/services/scheduling.equivalence.test.ts
+TZ=Europe/Paris npx tsx --test --test-timeout=20000 packages/firebase/src/services/scheduling.equivalence.test.ts
+echo "→ Réservations, fuseau figé et adoption des anciennes"
+TZ=Europe/Paris npx tsx --test --test-timeout=20000 packages/firebase/src/services/booking.fuseau.test.ts
+echo "→ Lieux, résolution et déménagement"
+npx tsx --test --test-timeout=20000 packages/firebase/src/services/location.fuseau.test.ts

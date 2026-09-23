@@ -1,7 +1,8 @@
 /**
  * Ce qu'une réservation FIGE de son heure locale — chantier fuseaux, étapes 4 et 5.
  *
- *   TZ=Europe/Paris npx tsx --test packages/firebase/src/services/booking.fuseau.test.ts
+ *   TZ=Europe/Paris npx tsx --test --test-timeout=20000 packages/firebase/src/services/booking.fuseau.test.ts
+ *   (ou ./packages/firebase/run-equivalence-creneaux.sh, qui enchaîne les trois)
  *
  * Deux règles s'y vérifient, et elles comptent plus que le reste :
  *
@@ -157,5 +158,65 @@ describe('l’heure locale convenue est figée sur la réservation', () => {
     const capture = armer('Indian/Reunion');
     await bookingService.createBooking(entree as never);
     assert.equal(capture.ecrit?.createdVia, undefined);
+  });
+});
+
+describe('une ANCIENNE réservation adopte le fuseau du lieu quand on la touche', () => {
+  // Le cas réel de M.A Barber : un rendez-vous pris avant le chantier, sans
+  // fuseau figé, que le pro déplace depuis son téléphone à 17:00 Réunion.
+  function armerAncienne(): { maj: Record<string, unknown> | null; fuseauVerifie?: string } {
+    const capture: { maj: Record<string, unknown> | null; fuseauVerifie?: string } = { maj: null };
+    const ancienne = {
+      id: 'b-ancienne', providerId: 'p1', locationId: 'l1', memberId: 'm1', serviceId: 's1',
+      serviceName: 'Coupe', duration: 30, status: 'confirmed',
+      datetime: new Date('2026-11-20T15:00:00Z'), endDatetime: new Date('2026-11-20T15:30:00Z'),
+      clientInfo: { name: 'Léa M', email: 'lea@example.com', phone: '+262692000000' },
+      // PAS de timezone, PAS de localStartTime : réservation d'avant.
+    };
+    anyOf(bookingRepository).getById = async () => ({ ...ancienne, ...(capture.maj ?? {}) });
+    anyOf(bookingRepository).update = async (_id: string, patch: Record<string, unknown>) => {
+      capture.maj = patch;
+    };
+    anyOf(serviceRepository).getById = async () => ({ id: 's1', name: 'Coupe', duration: 30, bufferTime: 0 });
+    anyOf(locationRepository).getById = async () => ({ id: 'l1', name: 'Salon', timezone: 'Indian/Reunion' });
+    // `verifyProviderAccess` compare `provider.userId` à l'appelant : sans
+    // ce champ, il va lire `userRepository` — non bouchonné — et le test
+    // part interroger Firestore pour de vrai.
+    anyOf(providerRepository).getById = async () => ({
+      id: 'p1', userId: 'user-pro', businessName: 'Salon', photoURL: null,
+      settings: { slotInterval: 30, minBookingNotice: 2, defaultBufferTime: 0 },
+    });
+    anyOf(schedulingService).isSlotAvailable = async (params: { timeZone?: string }) => {
+      capture.fuseauVerifie = params.timeZone;
+      return true;
+    };
+    return capture;
+  }
+
+  it('le déplacement est vérifié dans le fuseau du LIEU, pas de Paris', async () => {
+    const c = armerAncienne();
+    // 17:00 à La Réunion = 13:00Z.
+    await bookingService.rescheduleBooking('b-ancienne', new Date('2026-11-20T13:00:00Z'), 'user-pro');
+    assert.equal(c.fuseauVerifie, 'Indian/Reunion');
+  });
+
+  it('… et la réservation ressort FIGÉE, comme une nouvelle', async () => {
+    // Sans ça, l'e-mail « déplacé à … » partait à l'heure de Paris : le doc
+    // restait ancien, tous les lecteurs retombaient sur Paris.
+    const c = armerAncienne();
+    await bookingService.rescheduleBooking('b-ancienne', new Date('2026-11-20T13:00:00Z'), 'user-pro');
+    assert.equal(c.maj?.timezone, 'Indian/Reunion');
+    assert.equal(c.maj?.localDate, '2026-11-20');
+    assert.equal(c.maj?.localStartTime, '17:00');
+    assert.equal(c.maj?.localEndTime, '17:30');
+    assert.equal((c.maj?.datetime as Date).toISOString(), '2026-11-20T13:00:00.000Z');
+  });
+
+  it('un lieu SANS fuseau ne fabrique toujours pas « Europe/Paris »', async () => {
+    const c = armerAncienne();
+    anyOf(locationRepository).getById = async () => ({ id: 'l1', name: 'Salon', timezone: null });
+    await bookingService.rescheduleBooking('b-ancienne', new Date('2026-11-20T13:00:00Z'), 'user-pro');
+    assert.equal(c.fuseauVerifie, undefined);
+    assert.equal(c.maj?.timezone, undefined);
   });
 });
