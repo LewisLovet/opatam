@@ -7,6 +7,10 @@ export * from './access';
 export * from './member-readiness';
 // Lecture et recopie des horaires hebdomadaires (web ET mobile).
 export * from './horaires';
+// Socle horaire : heure murale ↔ instant absolu, dans un fuseau EXPLICITE.
+// À utiliser partout où l'on convertit un horaire configuré en rendez-vous —
+// `setHours()` et consorts dépendent de la machine qui exécute.
+export * from './fuseaux';
 export * from './activation';
 // Address-privacy helpers (protected à-domicile addresses revealed ~48h before).
 export * from './address';
