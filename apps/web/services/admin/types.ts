@@ -243,12 +243,17 @@ export interface RecentBookingRow {
   status: string;
   datetime: string | null;
   createdAt: string | null;
+  /** Acompte encaisse sur cette reservation, s'il y en a un. */
+  deposit: { amount: number; serviceFee: number; status: string } | null;
 }
 
 export interface RecentSignups {
   providers: RecentProvider[];
   clients: RecentSignup[];
   bookings: RecentBookingRow[];
+  /** Réservations AVEC acompte — requête séparée, sinon elles n'apparaissent
+   *  jamais dans les dix dernières réservations tout court. */
+  depositBookings: RecentBookingRow[];
 }
 
 // ── Provider Detail ──

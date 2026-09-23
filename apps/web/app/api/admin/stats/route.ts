@@ -833,7 +833,7 @@ async function getActivityFeed(db: FirebaseFirestore.Firestore): Promise<Activit
 
 async function getRecentSignups(db: FirebaseFirestore.Firestore) {
   // Fetch last 10 providers and last 30 users (filter clients in-memory to avoid composite index)
-  const [providersSnap, usersSnap, bookingsSnap] = await Promise.all([
+  const [providersSnap, usersSnap, bookingsSnap, acomptesSnap] = await Promise.all([
     db.collection('providers')
       .orderBy('createdAt', 'desc')
       .limit(10)
@@ -847,7 +847,15 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
     db.collection('bookings')
       .orderBy('createdAt', 'desc')
       .limit(15)
-      .select('clientInfo', 'providerName', 'providerId', 'serviceName', 'price', 'status', 'datetime', 'createdAt')
+      .select('clientInfo', 'providerName', 'providerId', 'serviceName', 'price', 'status', 'datetime', 'createdAt', 'deposit')
+      .get(),
+    // Reservations AVEC acompte. Elles sont rares — une dizaine au total —
+    // donc on les prend toutes et on trie en memoire : pas d'index
+    // composite, et le tri par date reste juste. `pending` est ecarte :
+    // un paiement abandonne ne rapporte rien et ne prouve rien.
+    db.collection('bookings')
+      .where('deposit.status', 'in', ['paid', 'refunded'])
+      .select('clientInfo', 'providerName', 'providerId', 'serviceName', 'price', 'status', 'datetime', 'createdAt', 'deposit')
       .get(),
   ]);
 
@@ -868,23 +876,42 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
   // Dernières réservations (remplace « derniers clients inscrits ») :
   // l'admin voit QUI a réservé CHEZ QUI — signal direct des prestataires
   // qui travaillent. pending_payment exclu (transitoire).
+  const ligneResa = (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      clientName: d.clientInfo?.name || 'Client',
+      // L'acompte : ce qui distingue une réservation qui rapporte des frais
+      // de service d'une réservation ordinaire.
+      deposit: d.deposit
+        ? {
+            amount: d.deposit.amount ?? 0,
+            serviceFee: d.deposit.serviceFee ?? 0,
+            status: d.deposit.status ?? 'pending',
+          }
+        : null,
+      providerName: d.providerName || '—',
+      providerId: d.providerId || null,
+      serviceName: d.serviceName || '',
+      price: d.price ?? 0,
+      status: d.status || '',
+      datetime: d.datetime?.toDate?.()?.toISOString() || null,
+      createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
+    };
+  };
+
   const bookings = bookingsSnap.docs
     .filter((doc) => doc.data().status !== 'pending_payment')
     .slice(0, 10)
-    .map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        clientName: d.clientInfo?.name || 'Client',
-        providerName: d.providerName || '—',
-        providerId: d.providerId || null,
-        serviceName: d.serviceName || '',
-        price: d.price ?? 0,
-        status: d.status || '',
-        datetime: d.datetime?.toDate?.()?.toISOString() || null,
-        createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
-      };
-    });
+    .map(ligneResa);
+
+  // Les réservations avec acompte, les plus récentes d'abord. Requête
+  // séparée : un acompte est rare, il n'apparaîtrait jamais dans les dix
+  // dernières réservations tout court.
+  const depositBookings = acomptesSnap.docs
+    .map(ligneResa)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    .slice(0, 10);
 
   // Pour chaque client : le prestataire de sa PREMIÈRE réservation — c'est
   // lui qui l'a fait venir sur l'app. Égalité seule + tri en mémoire (pas
@@ -937,7 +964,7 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
       }),
   );
 
-  return { providers, clients, bookings };
+  return { providers, clients, bookings, depositBookings };
 }
 
 async function getRevenueStats(): Promise<RevenueStats> {

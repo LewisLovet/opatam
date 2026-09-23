@@ -367,6 +367,63 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
+          {/* Réservations AVEC acompte. Elles sont rares : sans bloc
+              dédié elles n'apparaissent jamais dans la liste ci-dessous,
+              alors que ce sont précisément celles qui rapportent. */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-900/40">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Coins className="w-4 h-4 text-emerald-500" />
+                Réservations avec acompte
+              </h3>
+              <span className="text-xs text-gray-400">
+                {stats.serviceFeesCount} au total
+              </span>
+            </div>
+            {recentSignups.depositBookings.length === 0 ? (
+              <div className="p-5 text-center text-gray-400 text-sm">Aucun acompte encaissé</div>
+            ) : (
+              <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                {recentSignups.depositBookings.map((b) => (
+                  <div key={b.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {b.clientName}
+                        <span className="font-normal text-gray-500 dark:text-gray-400"> chez </span>
+                        {b.providerId ? (
+                          <Link href={`/admin/providers/${b.providerId}`} className="hover:underline">
+                            {b.providerName}
+                          </Link>
+                        ) : (
+                          b.providerName
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {b.serviceName}
+                        {b.datetime
+                          ? ` · RDV ${new Date(b.datetime).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}`
+                          : ''}
+                      </p>
+                    </div>
+                    {b.deposit && (
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                          {(b.deposit.amount / 100).toLocaleString('fr-FR')} €
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {b.deposit.serviceFee > 0
+                            ? `${(b.deposit.serviceFee / 100).toLocaleString('fr-FR')} € de frais`
+                            : 'sans frais'}
+                          {b.deposit.status === 'refunded' ? ' · remboursé' : ''}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Dernières réservations — qui réserve chez qui : signal direct
               des prestataires qui travaillent. */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -403,6 +460,27 @@ export default function AdminDashboardPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {b.serviceName}
                         {b.price > 0 ? ` · ${(b.price / 100).toLocaleString('fr-FR')} €` : ''}
+                        {/* L'acompte : c'est cette réservation-là qui
+                            rapporte des frais de service. */}
+                        {b.deposit && (
+                          <span
+                            className={
+                              b.deposit.status === 'paid'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : b.deposit.status === 'refunded'
+                                  ? 'text-gray-400'
+                                  : 'text-amber-600 dark:text-amber-400'
+                            }
+                          >
+                            {' · acompte '}
+                            {(b.deposit.amount / 100).toLocaleString('fr-FR')} €
+                            {b.deposit.status === 'paid'
+                              ? ''
+                              : b.deposit.status === 'refunded'
+                                ? ' (remboursé)'
+                                : ' (en attente)'}
+                          </span>
+                        )}
                         {b.datetime
                           ? ` · RDV ${new Date(b.datetime).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
                           : ''}
