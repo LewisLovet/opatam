@@ -38,6 +38,8 @@ import {
   availabilityRepository,
   blockedSlotRepository,
   bookingRepository,
+  locationRepository,
+  memberRepository,
   providerRepository,
   serviceRepository,
 } from '../repositories';
@@ -274,6 +276,13 @@ function armerDepots(fenetre: [string, string], duree: number, pas: number): voi
     }));
   anyOf(bookingRepository).getUpcomingByProvider = async () => [];
   anyOf(blockedSlotRepository).getInRange = async () => [];
+  // Le moteur résout désormais le fuseau depuis le lieu du membre : sans
+  // ces deux bouchons, le test partirait lire Firestore pour de vrai (et
+  // resterait suspendu). `timezone: null` = lieu d'avant le chantier, donc
+  // repli de compatibilité — exactement ce que les attentes figées
+  // décrivent.
+  anyOf(memberRepository).getById = async () => ({ id: 'm1', locationId: 'l1' });
+  anyOf(locationRepository).getById = async () => ({ id: 'l1', timezone: null });
 }
 
 const minuit = (jour: string) => minuitLocal(jour);
@@ -369,6 +378,13 @@ function armerOccupation(fenetre: [string, string], resas: [string, string][]): 
       datetime: new Date(debut), endDatetime: new Date(fin),
     }));
   anyOf(blockedSlotRepository).getInRange = async () => [];
+  // Le moteur résout désormais le fuseau depuis le lieu du membre : sans
+  // ces deux bouchons, le test partirait lire Firestore pour de vrai (et
+  // resterait suspendu). `timezone: null` = lieu d'avant le chantier, donc
+  // repli de compatibilité — exactement ce que les attentes figées
+  // décrivent.
+  anyOf(memberRepository).getById = async () => ({ id: 'm1', locationId: 'l1' });
+  anyOf(locationRepository).getById = async () => ({ id: 'l1', timezone: null });
 }
 
 type CasOccupation = [nom: string, debut: string, fin: string, fenetre: [string, string], resas: [string, string][], gele: string];
@@ -434,6 +450,10 @@ describe('VALIDATION — le jour et l’heure sont ceux du lieu', () => {
     };
     anyOf(blockedSlotRepository).getInRange = async () => [];
     anyOf(bookingRepository).getUpcomingByProvider = async () => [];
+    // Le fuseau est passé explicitement dans ces cas ; les bouchons évitent
+    // simplement une lecture Firestore réelle si ce n'était pas le cas.
+    anyOf(memberRepository).getById = async () => ({ id: 'm1', locationId: 'l1' });
+    anyOf(locationRepository).getById = async () => ({ id: 'l1', timezone: null });
     return { jourDemande };
   }
 

@@ -2,6 +2,8 @@ import {
   availabilityRepository,
   blockedSlotRepository,
   bookingRepository,
+  locationRepository,
+  memberRepository,
   serviceRepository,
   providerRepository,
 } from '../repositories';
@@ -205,6 +207,36 @@ const OCCUPANCY_ALMOST_FULL_RATIO = 0.75;
 const OCCUPANCY_MIN_FREE_MINUTES = 15;
 
 export class SchedulingService {
+  /**
+   * Le fuseau du lieu où ce membre travaille, relu EN BASE.
+   *
+   * Pourquoi le moteur le résout lui-même plutôt que de l'exiger de ses
+   * appelants : il y en a une quinzaine — tunnel public, espace pro web,
+   * écrans mobiles, calculs de capacité — et il suffirait qu'un seul
+   * l'oublie pour que ce salon-là reparte sur l'heure de Paris sans que
+   * rien ne le signale. Un appelant qui connaît déjà le lieu peut toujours
+   * passer `timeZone` et s'épargner ces deux lectures.
+   *
+   * `undefined` quand le lieu n'a pas encore de fuseau : le moteur garde
+   * alors son repli de compatibilité. On ne DEVINE jamais.
+   */
+  private async fuseauDuLieuDuMembre(
+    providerId: string,
+    memberId: string | null | undefined,
+  ): Promise<string | undefined> {
+    if (!memberId) return undefined;
+    try {
+      const member = await memberRepository.getById(providerId, memberId);
+      if (!member?.locationId) return undefined;
+      const location = await locationRepository.getById(providerId, member.locationId);
+      return location?.timezone ?? undefined;
+    } catch {
+      // Une lecture impossible ne doit pas empêcher de proposer des
+      // créneaux : on retombe sur le comportement d'avant le chantier.
+      return undefined;
+    }
+  }
+
   /**
    * Set availability for a specific day/member
    * memberId est maintenant obligatoire
@@ -541,7 +573,9 @@ export class SchedulingService {
    */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
     const { providerId, serviceId, memberId, startDate, endDate, durationOverride, excludeBookingId } = params;
-    const fuseau = fuseauDuMoteur(params.timeZone);
+    const fuseau = fuseauDuMoteur(
+      params.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)),
+    );
 
     const [service, provider] = await Promise.all([
       serviceRepository.getById(providerId, serviceId),
@@ -689,7 +723,9 @@ export class SchedulingService {
         ).filter((svc): svc is NonNullable<typeof svc> => Boolean(svc))
       : [];
     const provider = await providerRepository.getById(providerId);
-    const fuseau = fuseauDuMoteur(params.timeZone);
+    const fuseau = fuseauDuMoteur(
+      params.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)),
+    );
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
     const totalDuration = durationOverride ?? service.duration + bufferTime;
     const slotInterval = provider?.settings.slotInterval ?? 15;
@@ -787,7 +823,9 @@ export class SchedulingService {
    */
   async getOccupancySummary(params: OccupancySummaryParams): Promise<DayOccupancy[]> {
     const { providerId, memberId, startDate, endDate } = params;
-    const fuseau = fuseauDuMoteur(params.timeZone);
+    const fuseau = fuseauDuMoteur(
+      params.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)),
+    );
 
     const jourDebut = jourLocal(startDate, fuseau);
     const jourFin = jourLocal(endDate, fuseau);
@@ -945,7 +983,9 @@ export class SchedulingService {
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
     const { providerId, memberId, datetime, duration, excludeBookingId, serviceIds } = params;
-    const fuseau = fuseauDuMoteur(params.timeZone);
+    const fuseau = fuseauDuMoteur(
+      params.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)),
+    );
 
     // Jours autorisés par les prestations réservées. Toutes doivent accepter
     // ce jour : un rendez-vous groupé tient sur un seul créneau.
