@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { formatEmailDate, formatEmailTime } from '../src/utils/emailI18n';
 import { providerTimeZone } from '../src/lib/morningAgenda';
 import { estHeureSilencieuse, heureLocaleDe } from '../src/lib/heuresSilencieuses';
+import { ajouterJours, jourLocal } from '../src/lib/fuseaux';
 
 // 08:00 à La Réunion le 16 novembre 2026 = 04:00 UTC.
 const RDV_REUNION = new Date('2026-11-16T04:00:00Z');
@@ -107,5 +108,32 @@ describe('les heures silencieuses se jugent CHEZ le destinataire', () => {
   it('New York : 2 h du matin à Paris, 20 h la veille sur place', () => {
     assert.equal(heureLocaleDe(NUIT_A_PARIS, 'America/New_York'), 21);
     assert.equal(estHeureSilencieuse(NUIT_A_PARIS, 'America/New_York'), false);
+  });
+});
+
+describe('« demain » est une date, pas 24 heures', () => {
+  const NY = 'America/New_York';
+  const demainParDuree = (now: Date) => jourLocal(new Date(now.getTime() + 24 * 60 * 60 * 1000), NY);
+  const demainParCalendrier = (now: Date) => ajouterJours(jourLocal(now, NY), 1);
+
+  it('AUTOMNE : +24 h reste sur la MÊME date (la journée dure 25 h)', () => {
+    // 2027-11-07 à 00:30 à New York, jour du retour à l'heure d'hiver.
+    const now = new Date('2027-11-07T04:30:00Z');
+    assert.equal(jourLocal(now, NY), '2027-11-07');
+    assert.equal(demainParDuree(now), '2027-11-07', 'le bug : « demain » = aujourd’hui');
+    assert.equal(demainParCalendrier(now), '2027-11-08');
+  });
+
+  it('PRINTEMPS : +24 h SAUTE une date (la journée dure 23 h)', () => {
+    // 2027-03-13 à 23:30 à New York, veille du passage à l'heure d'été.
+    const now = new Date('2027-03-14T04:30:00Z');
+    assert.equal(jourLocal(now, NY), '2027-03-13');
+    assert.equal(demainParDuree(now), '2027-03-15', 'le bug : « demain » = après-demain');
+    assert.equal(demainParCalendrier(now), '2027-03-14');
+  });
+
+  it('un jour ordinaire, les deux méthodes concordent', () => {
+    const now = new Date('2027-06-15T12:00:00Z');
+    assert.equal(demainParDuree(now), demainParCalendrier(now));
   });
 });

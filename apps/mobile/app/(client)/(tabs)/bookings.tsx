@@ -4,6 +4,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import { ajouterJours } from '@booking-app/shared';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -49,10 +50,11 @@ function formatBookingDate(
     d.toLocaleDateString('en-CA', { timeZone: fuseauSalon });
 
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const aujourdhui = jourChezLeSalon(now);
 
-  const isToday = jourChezLeSalon(date) === jourChezLeSalon(now);
-  const isTomorrow = jourChezLeSalon(date) === jourChezLeSalon(tomorrow);
+  const isToday = jourChezLeSalon(date) === aujourdhui;
+  // Calendrier, pas durée : `+24 h` se trompe deux jours par an.
+  const isTomorrow = jourChezLeSalon(date) === ajouterJours(aujourdhui, 1);
 
   const timeStr = date.toLocaleTimeString(locale, {
     hour: '2-digit',

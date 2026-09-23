@@ -19,6 +19,11 @@
  *   SA_PATH="$PWD/service-account.json" node scripts/fuseaux-lieux.mjs           # rapport seul
  *   SA_PATH="$PWD/service-account.json" node scripts/fuseaux-lieux.mjs --apply   # écrit
  *   … --provider <id>    limite à un prestataire (pour un essai ciblé)
+ *   … --provider <id> --set Indian/Reunion --apply
+ *                        pose ce fuseau À LA MAIN sur les lieux du prestataire
+ *                        (marqué `manual` : plus jamais recalculé). C'est le
+ *                        geste qui répare M.A Barber, dont le lieu n'a ni
+ *                        coordonnées ni code postal.
  *
  * CE QU'IL NE FAIT PAS :
  *  - il ne touche JAMAIS un fuseau posé à la main (`timezoneSource: manual`) :
@@ -37,6 +42,23 @@ import { resoudreFuseauDeLieu, aBesoinDeResolution } from '../packages/shared/sr
 const apply = process.argv.includes('--apply');
 const iProvider = process.argv.indexOf('--provider');
 const providerFiltre = iProvider >= 0 ? process.argv[iProvider + 1] : null;
+const iSet = process.argv.indexOf('--set');
+const fuseauManuel = iSet >= 0 ? process.argv[iSet + 1] : null;
+
+if (fuseauManuel) {
+  if (!providerFiltre) {
+    console.error('--set exige --provider <id> : on ne pose pas un fuseau à la main sur tout le parc.');
+    process.exit(1);
+  }
+  // Un identifiant IANA, jamais un décalage. Même règle que `normaliserFuseau`.
+  const valide = /^[A-Za-z]/.test(fuseauManuel) && !fuseauManuel.includes('+') && !/-\d/.test(fuseauManuel);
+  let canonique = null;
+  try { canonique = valide ? new Intl.DateTimeFormat('en-US', { timeZone: fuseauManuel }).resolvedOptions().timeZone : null; } catch {}
+  if (!canonique) {
+    console.error(`Fuseau invalide : « ${fuseauManuel} ». Attendu un identifiant IANA (Indian/Reunion), pas un décalage.`);
+    process.exit(1);
+  }
+}
 
 const sa = JSON.parse(readFileSync(process.env.SA_PATH, 'utf-8'));
 initializeApp({ credential: cert(sa), projectId: 'opatam-da04b' });
@@ -57,8 +79,12 @@ for (const p of providers) {
     const geo = lieu.geopoint
       ? { latitude: lieu.geopoint.latitude ?? lieu.geopoint._latitude, longitude: lieu.geopoint.longitude ?? lieu.geopoint._longitude }
       : null;
-    const r = resoudreFuseauDeLieu(geo, lieu.countryCode, lieu.postalCode);
-    const besoin = aBesoinDeResolution(lieu);
+    const r = fuseauManuel
+      ? { fuseau: fuseauManuel, motif: 'manuel', libelle: 'posé à la main (--set)' }
+      : resoudreFuseauDeLieu(geo, lieu.countryCode, lieu.postalCode);
+    // En manuel, on écrit même par-dessus un fuseau existant : c'est le
+    // geste de correction, il prime sur tout.
+    const besoin = fuseauManuel ? lieu.timezone !== fuseauManuel : aBesoinDeResolution(lieu);
 
     lignes.push({
       provider: p.data().businessName ?? p.id,
@@ -117,7 +143,7 @@ let ecrits = 0;
 for (const { ref, fuseau } of aEcrire) {
   await ref.update({
     timezone: fuseau,
-    timezoneSource: 'automatic',
+    timezoneSource: fuseauManuel ? 'manual' : 'automatic',
     timezoneResolvedAt: Timestamp.now(),
   });
   ecrits++;

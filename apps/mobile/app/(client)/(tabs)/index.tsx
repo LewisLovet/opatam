@@ -5,7 +5,7 @@
  */
 
 import { providerService, catalogService } from '@booking-app/firebase';
-import { providerHasActivePromo } from '@booking-app/shared';
+import { providerHasActivePromo, ajouterJours } from '@booking-app/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -93,10 +93,11 @@ function formatBookingDate(
     d.toLocaleDateString('en-CA', { timeZone: fuseauSalon });
 
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const aujourdhui = jourChezLeSalon(now);
 
-  const isToday = jourChezLeSalon(date) === jourChezLeSalon(now);
-  const isTomorrow = jourChezLeSalon(date) === jourChezLeSalon(tomorrow)
+  const isToday = jourChezLeSalon(date) === aujourdhui;
+  // Calendrier, pas durée : `+24 h` se trompe deux jours par an.
+  const isTomorrow = jourChezLeSalon(date) === ajouterJours(aujourdhui, 1);
   // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
   // Heure du SALON, figée sur la réservation. Le repli Paris garde le
   // comportement d'avant pour les réservations plus anciennes.

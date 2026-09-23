@@ -9,6 +9,7 @@
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { estHeureSilencieuse } from '../lib/heuresSilencieuses';
+import { ajouterJours } from '../lib/fuseaux';
 import * as admin from 'firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { notifyClientBookingReminder, notifyProviderBookingSoon } from '../notifications/bookingNotifications';
@@ -128,10 +129,10 @@ export const sendBookingReminders = onSchedule(
 
         const todayStr = jourChezLeSalon(now);
         const bookingStr = data.localDate || jourChezLeSalon(bookingDatetime);
-        // +24 h suffit ici : on compare des DATES, et une journée de bascule
-        // ne décale l'instant que d'une heure — jamais assez pour changer de
-        // jour à ces heures-là.
-        const tomorrowStr = jourChezLeSalon(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+        // « Demain » est une notion de CALENDRIER, pas de durée : sur un
+        // jour de bascule, `+24 h` reste sur la même date (automne, 25 h)
+        // ou en saute une (printemps, 23 h). Reproduit à New York.
+        const tomorrowStr = ajouterJours(todayStr, 1);
 
         const isToday = todayStr === bookingStr;
         const isTomorrow = tomorrowStr === bookingStr;
