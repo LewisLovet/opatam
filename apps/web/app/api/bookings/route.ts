@@ -330,6 +330,10 @@ export async function POST(request: NextRequest) {
         skipTravel: isProVerified,
         travel: travelPrep.travel,
         bookingId: travelPrep.bookingId,
+        // D'où vient la réservation. L'information transitait déjà ici sans
+        // jamais être conservée : sans elle, impossible de savoir dans quel
+        // fuseau un rendez-vous ancien a été calculé.
+        createdVia: isProSource ? 'pro' : isMobileClient ? 'mobile' : 'client',
       });
     } catch (e) {
       // Création refusée après l'écriture de l'adresse privée → nettoyage

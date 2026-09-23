@@ -166,6 +166,18 @@ export const createLocationSchema = z.object({
     .max(1000, { message: 'Les infos d\'accès ne peuvent pas dépasser 1000 caractères' })
     .nullable()
     .optional(),
+  /**
+   * Fuseau IANA du lieu. DÉCLARÉ ICI EXPRÈS : zod retire en silence tout
+   * champ non déclaré, donc un fuseau absent du schéma n'arriverait jamais
+   * en base — sans la moindre erreur. Le refus d'un décalage brut
+   * (« +04:00 ») est dans `normaliserFuseau`, côté écriture.
+   */
+  timezone: z
+    .string()
+    .max(64, { message: 'Identifiant de fuseau trop long' })
+    .nullable()
+    .optional(),
+  timezoneSource: z.enum(['automatic', 'manual']).nullable().optional(),
 }).refine(
   (data) => {
     // If type is mobile, travelRadius must be set
@@ -245,6 +257,18 @@ export const updateLocationSchema = z.object({
     .max(1000, { message: 'Les infos d\'accès ne peuvent pas dépasser 1000 caractères' })
     .nullable()
     .optional(),
+  /**
+   * Fuseau IANA du lieu. DÉCLARÉ ICI EXPRÈS : zod retire en silence tout
+   * champ non déclaré, donc un fuseau absent du schéma n'arriverait jamais
+   * en base — sans la moindre erreur. Le refus d'un décalage brut
+   * (« +04:00 ») est dans `normaliserFuseau`, côté écriture.
+   */
+  timezone: z
+    .string()
+    .max(64, { message: 'Identifiant de fuseau trop long' })
+    .nullable()
+    .optional(),
+  timezoneSource: z.enum(['automatic', 'manual']).nullable().optional(),
 });
 
 // Export types

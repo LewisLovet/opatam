@@ -18,6 +18,8 @@ import type {
   ServiceTranslations,
 } from '@booking-app/shared';
 import {
+  heureLocale,
+  jourLocal,
   parseOrThrow,
   createBookingSchema,
   resolveDeposit,
@@ -72,6 +74,12 @@ export class BookingService {
       travel?: BookingTravel | null;
       /** Id pré-généré par la route (l'adresse privée est écrite avant). */
       bookingId?: string;
+      /**
+       * D'où vient la réservation. La route le sait déjà (`body.source`)
+       * mais ne le conservait pas : sans cette trace, on ne peut pas savoir
+       * dans quel fuseau un ancien rendez-vous a été calculé.
+       */
+      createdVia?: 'client' | 'pro' | 'mobile';
     } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
@@ -284,6 +292,12 @@ export class BookingService {
       ? bookingItems.map((i) => i.serviceNameLocalized ?? i.serviceName).join(' + ')
       : null;
 
+    // Le fuseau vient du LIEU, RELU EN BASE ici — jamais d'un paramètre
+    // envoyé par le client. Même règle que la garde sur les `serviceIds` :
+    // une vérification serveur ne fait pas confiance à ce qu'on lui passe.
+    // Absent (lieu d'avant le chantier) → le moteur garde son repli.
+    const fuseauDuLieu = location.timezone ?? undefined;
+
     // Check slot availability for the whole contiguous block.
     const isAvailable = await schedulingService.isSlotAvailable({
       providerId: validated.providerId,
@@ -293,6 +307,7 @@ export class BookingService {
       // Les prestations peuvent restreindre leurs jours : la vérification
       // doit les connaître, sinon la règle ne tient que dans l'affichage.
       serviceIds: bookingItems.map((i) => i.serviceId),
+      timeZone: fuseauDuLieu,
     });
 
     if (!isAvailable) {
@@ -419,6 +434,19 @@ export class BookingService {
       ...(validated.clientLocale ? { clientLocale: validated.clientLocale } : {}),
       datetime: validated.datetime,
       endDatetime,
+      // L'heure LOCALE convenue, figée. `datetime` est un instant : il ne
+      // dit pas à quelle heure la cliente a réservé. Sans ces champs, un
+      // prestataire qui corrige son fuseau ferait changer d'heure tous ses
+      // rendez-vous passés à l'écran.
+      ...(fuseauDuLieu
+        ? {
+            timezone: fuseauDuLieu,
+            localDate: jourLocal(validated.datetime, fuseauDuLieu),
+            localStartTime: heureLocale(validated.datetime, fuseauDuLieu),
+            localEndTime: heureLocale(endDatetime, fuseauDuLieu),
+          }
+        : {}),
+      ...(opts.createdVia ? { createdVia: opts.createdVia } : {}),
       status,
       cancelledAt: null,
       cancelledBy: null,
@@ -773,6 +801,9 @@ export class BookingService {
       serviceIds: booking.items?.length
         ? booking.items.map((item) => item.serviceId)
         : [booking.serviceId],
+      // Fuseau FIGÉ sur la réservation : c'est celui dans lequel elle a
+      // été convenue, et il ne doit pas suivre un changement de lieu.
+      timeZone: booking.timezone ?? undefined,
     });
 
     if (!isAvailable) {
@@ -789,6 +820,15 @@ export class BookingService {
     await bookingRepository.update(bookingId, {
       datetime: newDatetime,
       endDatetime: newEndDatetime,
+      // L'heure locale convenue est refigée : déplacer un rendez-vous
+      // change l'heure dont la cliente et le pro parleront ensuite.
+      ...(booking.timezone
+        ? {
+            localDate: jourLocal(newDatetime, booking.timezone),
+            localStartTime: heureLocale(newDatetime, booking.timezone),
+            localEndTime: heureLocale(newEndDatetime, booking.timezone),
+          }
+        : {}),
     });
 
     // Get updated booking
@@ -984,6 +1024,9 @@ export class BookingService {
         // greffer une prestation « lundi seulement » sur un rendez-vous du
         // jeudi.
         serviceIds: newItems.map((item) => item.serviceId),
+        // Fuseau FIGÉ sur la réservation : c'est celui dans lequel elle a
+      // été convenue, et il ne doit pas suivre un changement de lieu.
+        timeZone: booking.timezone ?? undefined,
       });
       if (!isAvailable) {
         throw new Error(
@@ -1002,6 +1045,11 @@ export class BookingService {
       price: newPrice,
       priceMax: null,
       endDatetime: newEndDatetime,
+      // La fin locale change avec la durée : on la refige dans le fuseau
+      // où la réservation a été convenue.
+      ...(booking.timezone
+        ? { localEndTime: heureLocale(newEndDatetime, booking.timezone) }
+        : {}),
     });
 
     const updated = await bookingRepository.getById(bookingId);

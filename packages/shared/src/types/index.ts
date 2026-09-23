@@ -831,6 +831,26 @@ export interface Location {
   accessInstructions: string | null;
   isDefault: boolean;
   isActive: boolean;
+  /**
+   * Fuseau IANA du lieu (« Indian/Reunion », « America/New_York »).
+   *
+   * C'EST LE LIEU QUI PORTE LE FUSEAU, pas le pays ni l'appareil : la
+   * France compte une dizaine de fuseaux outre-mer et les États-Unis six,
+   * donc `countryCode` ne suffit pas — La Réunion est en `FR`.
+   *
+   * Jamais un décalage brut (« +04:00 ») : un décalage ignore les
+   * changements d'heure et serait faux six mois plus tard.
+   *
+   * Absent sur les lieux créés avant le chantier fuseaux : les lecteurs
+   * retombent alors sur le comportement historique. Une absence est une
+   * ANOMALIE à signaler, jamais à remplacer par « Europe/Paris » — c'est
+   * ce réflexe qui a mis ce fuseau sur les prestataires portugais.
+   */
+  timezone?: string | null;
+  /** `automatic` = résolu depuis les coordonnées, `manual` = corrigé à la main. */
+  timezoneSource?: 'automatic' | 'manual' | null;
+  /** Quand la résolution a eu lieu — sert à ne pas la refaire sans raison. */
+  timezoneResolvedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1493,6 +1513,32 @@ export interface Booking {
   clientLocale?: string;
   datetime: Date;
   endDatetime: Date;
+  /**
+   * Fuseau IANA DU LIEU au moment de la réservation, figé ici.
+   *
+   * `datetime` est un instant absolu : il ne dit pas à quelle heure le
+   * rendez-vous a été pris. Sans ce champ, afficher « 08:00 » demande de
+   * relire le lieu — et si le prestataire déménage ou corrige son fuseau,
+   * tous les rendez-vous passés changent d'heure à l'écran.
+   *
+   * Absent sur les réservations d'avant le chantier fuseaux.
+   */
+  timezone?: string | null;
+  /** « 2026-09-23 » — la date LOCALE convenue, figée. */
+  localDate?: string | null;
+  /** « 08:30 » — l'heure LOCALE convenue, figée. */
+  localStartTime?: string | null;
+  /** « 09:00 » — l'heure LOCALE de fin, figée. */
+  localEndTime?: string | null;
+  /**
+   * D'où vient la réservation : tunnel public, espace pro web, ou mobile.
+   *
+   * L'information TRANSITE déjà par la route (`body.source`) mais n'était
+   * pas conservée. Sans elle, on ne peut pas savoir dans quel fuseau un
+   * ancien rendez-vous a été calculé — c'est ce qui interdit toute
+   * migration automatique des réservations existantes.
+   */
+  createdVia?: 'client' | 'pro' | 'mobile' | null;
   status: BookingStatus;
   cancelledAt: Date | null;
   cancelledBy: 'client' | 'provider' | null;
