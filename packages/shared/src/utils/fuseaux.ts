@@ -88,9 +88,15 @@ const JOUR_MS = 24 * 60 * MINUTE;
 export function normaliserFuseau(valeur: string | null | undefined): string | null {
   if (typeof valeur !== 'string') return null;
   const brut = valeur.trim();
-  // Un identifiant IANA contient toujours une lettre et jamais de signe :
-  // ça écarte "+04:00", "-0500" et "UTC+4" d'un coup.
-  if (!/^[A-Za-z]/.test(brut) || /[+\-]/.test(brut)) return null;
+  // Doit commencer par une lettre : écarte "+04:00" et "-0500".
+  if (!/^[A-Za-z]/.test(brut)) return null;
+  // Aucun « + » : écarte "UTC+4".
+  if (brut.includes('+')) return null;
+  // Un tiret SUIVI D'UN CHIFFRE est un décalage déguisé ("Etc/GMT-4",
+  // "UTC-5"). Un tiret suivi de lettres appartient au nom du lieu :
+  // `America/Port-au-Prince` est un fuseau IANA parfaitement valide, et
+  // la règle précédente — « aucun tiret » — le refusait.
+  if (/-\d/.test(brut)) return null;
   try {
     return new Intl.DateTimeFormat('en-US', { timeZone: brut }).resolvedOptions().timeZone;
   } catch {
@@ -211,6 +217,12 @@ function decouperJour(jour: JourCalendaire): { a: number; m: number; j: number }
   const mo = Number(m[2]);
   const j = Number(m[3]);
   if (mo < 1 || mo > 12 || j < 1 || j > 31) return null;
+  // La date existe-t-elle VRAIMENT ? « 2026-02-31 » passait le contrôle,
+  // puis JavaScript le normalisait en mars sans rien dire — un décalage
+  // d'un mois, silencieux, à partir d'une simple faute de frappe.
+  const controle = new Date(Date.UTC(2000, mo - 1, j));
+  controle.setUTCFullYear(a, mo - 1, j);
+  if (controle.getUTCMonth() !== mo - 1 || controle.getUTCDate() !== j) return null;
   return { a, m: mo, j };
 }
 

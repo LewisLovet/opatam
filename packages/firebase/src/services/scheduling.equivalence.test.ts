@@ -510,3 +510,70 @@ describe('VALIDATION — le jour et l’heure sont ceux du lieu', () => {
     );
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────
+// LES BORNES DEMANDÉES — le jour qui fuit par les deux bouts
+// ────────────────────────────────────────────────────────────────────────
+//
+// Les routes construisent leurs bornes en heure du SERVEUR (minuit et
+// 23:59 à Paris). Le moteur en redéduisait une date locale du LIEU, et
+// l'aller-retour perdait un jour à chaque extrémité : « 23 septembre
+// 23:59 à Paris » tombe le 24 à La Réunion, « 23 septembre 00:00 » tombe
+// le 22 à New York. D'où `startDay`/`endDay` : une date calendaire n'a pas
+// de fuseau, elle traverse intacte.
+
+describe('BORNES — une journée demandée reste UNE journée', () => {
+  function armerJours(): void {
+    const anyOf = <T,>(o: T) => o as unknown as Record<string, unknown>;
+    anyOf(serviceRepository).getById = async () => ({
+      id: 's1', duration: 60, bufferTime: 0, isActive: true, isAvailable: true,
+      memberIds: null, locationIds: [],
+    });
+    anyOf(providerRepository).getById = async () => ({
+      id: 'p1',
+      settings: { slotInterval: 60, minBookingNotice: 2, defaultBufferTime: 0, maxBookingAdvance: 1000 },
+    });
+    anyOf(availabilityRepository).getWeeklySchedule = async () =>
+      [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+        id: `a${dayOfWeek}`, dayOfWeek, isOpen: true,
+        slots: [{ start: '09:00', end: '12:00' }], memberId: 'm1', locationId: 'l1',
+      }));
+    anyOf(bookingRepository).getUpcomingByProvider = async () => [];
+    anyOf(blockedSlotRepository).getInRange = async () => [];
+    anyOf(memberRepository).getById = async () => ({ id: 'm1', locationId: 'l1' });
+    anyOf(locationRepository).getById = async () => ({ id: 'l1', timezone: null });
+  }
+
+  /** Les journées LOCALES effectivement couvertes par les créneaux rendus. */
+  async function joursRendus(fuseau: string, avecJours: boolean): Promise<string[]> {
+    armerJours();
+    const slots = await schedulingService.getAvailableSlots({
+      providerId: 'p1', serviceId: 's1', memberId: 'm1',
+      startDate: minuit('2026-11-16'),
+      endDate: new Date(2026, 10, 16, 23, 59, 59, 999),
+      ...(avecJours ? { startDay: '2026-11-16', endDay: '2026-11-16' } : {}),
+      timeZone: fuseau,
+    });
+    return [...new Set(slots.map((s) => jourLocal(s.datetime, fuseau)))].sort();
+  }
+
+  it('La Réunion : une seule journée, pas deux', async () => {
+    assert.deepEqual(await joursRendus('Indian/Reunion', true), ['2026-11-16']);
+  });
+
+  it('New York : la bonne journée, pas la veille', async () => {
+    assert.deepEqual(await joursRendus('America/New_York', true), ['2026-11-16']);
+  });
+
+  it('Paris : inchangé', async () => {
+    assert.deepEqual(await joursRendus('Europe/Paris', true), ['2026-11-16']);
+  });
+
+  it('SANS les jours calendaires, la plage débordait vraiment', async () => {
+    // Ce test fige le défaut pour qu'on se souvienne pourquoi `startDay`
+    // existe : en passant seulement des instants construits à Paris, un
+    // salon réunionnais se voyait proposer DEUX journées.
+    const sansJours = await joursRendus('Indian/Reunion', false);
+    assert.deepEqual(sansJours, ['2026-11-16', '2026-11-17']);
+  });
+});

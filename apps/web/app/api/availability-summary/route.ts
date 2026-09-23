@@ -57,6 +57,14 @@ export async function GET(request: NextRequest) {
       providerId,
       serviceId,
       memberId,
+      // Les JOURNÉES demandées, telles quelles. Les `startDate`/`endDate`
+      // ci-dessus sont construites en heure du SERVEUR (Paris) : les laisser
+      // seules ferait redéduire au moteur une date locale du LIEU, et
+      // « 23 septembre 23:59 à Paris » tombe le 24 à La Réunion, tandis que
+      // « 23 septembre 00:00 » tombe le 22 à New York. Une date calendaire
+      // n'a pas de fuseau : elle traverse intacte.
+      startDay: startStr,
+      endDay: endStr,
       startDate,
       endDate,
       durationOverride:

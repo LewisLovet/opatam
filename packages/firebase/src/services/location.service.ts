@@ -1,5 +1,6 @@
 import { locationRepository, bookingRepository, memberRepository, availabilityRepository, providerRepository } from '../repositories';
 import type { Location } from '@booking-app/shared';
+import { normaliserFuseau, resoudreFuseauDeLieu } from '@booking-app/shared';
 import {
   parseOrThrow,
   createLocationSchema,
@@ -13,6 +14,36 @@ import {
   type UpdateLocationInput,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
+
+/**
+ * Le fuseau à poser sur un lieu QU'ON CRÉE.
+ *
+ * Un fuseau saisi explicitement est une correction manuelle et prime.
+ * Sinon on résout depuis les coordonnées, à défaut le code postal. Si rien
+ * ne tranche — France sans coordonnées ni code postal, pays non servi —
+ * on n'écrit RIEN : le lieu ressort « à vérifier » dans le rapport plutôt
+ * que gravé à l'heure de Paris.
+ */
+function fuseauALaCreation(validated: {
+  timezone?: string | null;
+  geopoint?: { latitude: number; longitude: number } | null;
+  countryCode?: string | null;
+  postalCode?: string | null;
+}): Partial<Location> {
+  if (validated.timezone) {
+    const zone = normaliserFuseau(validated.timezone);
+    if (!zone) {
+      throw new Error(
+        `Fuseau horaire invalide : « ${validated.timezone} ». Un identifiant IANA est attendu ` +
+          `(« Indian/Reunion »), pas un décalage (« +04:00 »).`,
+      );
+    }
+    return { timezone: zone, timezoneSource: 'manual', timezoneResolvedAt: new Date() };
+  }
+  const r = resoudreFuseauDeLieu(validated.geopoint, validated.countryCode, validated.postalCode);
+  if (!r.fuseau) return {};
+  return { timezone: r.fuseau, timezoneSource: 'automatic', timezoneResolvedAt: new Date() };
+}
 
 export class LocationService {
   /**
@@ -85,6 +116,7 @@ export class LocationService {
       accessInstructions: validated.accessInstructions ?? null,
       isDefault,
       isActive: true,
+      ...fuseauALaCreation(validated),
     });
 
     const location = await locationRepository.getById(providerId, locationId);
@@ -118,7 +150,41 @@ export class LocationService {
       throw new Error('Lieu non trouvé');
     }
 
-    await locationRepository.update(providerId, locationId, validated);
+    // Le fuseau suit l'ADRESSE : déplacer un salon de Paris à Saint-Denis
+    // doit changer son fuseau, sinon tous ses créneaux restent décalés.
+    // On ne touche JAMAIS un fuseau posé à la main.
+    const adresseABouge =
+      validated.geopoint !== undefined ||
+      validated.postalCode !== undefined ||
+      validated.countryCode !== undefined;
+    const fuseauFourni = validated.timezone !== undefined;
+
+    let fuseauPatch: Partial<Location> = {};
+    if (fuseauFourni) {
+      // Saisi explicitement : c'est une correction MANUELLE, elle prime et
+      // ne sera plus jamais recalculée.
+      const zone = normaliserFuseau(validated.timezone);
+      if (validated.timezone && !zone) {
+        throw new Error(
+          `Fuseau horaire invalide : « ${validated.timezone} ». Un identifiant IANA est attendu ` +
+            `(« Indian/Reunion »), pas un décalage (« +04:00 »), qui ignorerait les changements d'heure.`,
+        );
+      }
+      fuseauPatch = { timezone: zone, timezoneSource: zone ? 'manual' : null, timezoneResolvedAt: new Date() };
+    } else if (adresseABouge && location.timezoneSource !== 'manual') {
+      const r = resoudreFuseauDeLieu(
+        validated.geopoint !== undefined ? validated.geopoint : location.geopoint,
+        validated.countryCode ?? location.countryCode,
+        validated.postalCode ?? location.postalCode,
+      );
+      // `null` = on ne sait pas trancher. On n'écrase alors PAS un fuseau
+      // déjà connu, et on n'en invente pas un.
+      if (r.fuseau) {
+        fuseauPatch = { timezone: r.fuseau, timezoneSource: 'automatic', timezoneResolvedAt: new Date() };
+      }
+    }
+
+    await locationRepository.update(providerId, locationId, { ...validated, ...fuseauPatch });
 
     // Update provider's cities if city or isActive changed
     if (validated.city !== undefined || validated.isActive !== undefined) {

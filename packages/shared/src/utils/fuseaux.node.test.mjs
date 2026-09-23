@@ -53,6 +53,16 @@ describe('normaliserFuseau — un identifiant IANA, et rien d’autre', () => {
     assert.equal(normaliserFuseau('Etc/GMT-4'), null);
   });
 
+  it('ACCEPTE un nom IANA qui contient des tirets', () => {
+    // La règle « aucun tiret » refusait des fuseaux parfaitement valides.
+    // Un tiret suivi de LETTRES fait partie du nom ; seul un tiret suivi
+    // d'un CHIFFRE est un décalage déguisé.
+    assert.equal(normaliserFuseau('America/Port-au-Prince'), 'America/Port-au-Prince');
+    // `Intl` canonicalise aussi les alias : c'est bien la forme rendue par
+    // `resolvedOptions` qu'on stocke, pas la chaîne saisie.
+    assert.equal(normaliserFuseau('America/Argentina/Buenos_Aires'), 'America/Buenos_Aires');
+  });
+
   it('refuse le vide et l’inconnu sans lever', () => {
     for (const mauvais of ['', '   ', 'Pas/UnFuseau', null, undefined, 42]) {
       assert.equal(normaliserFuseau(mauvais), null, `« ${mauvais} » devrait être refusé`);
@@ -228,6 +238,16 @@ describe('ajouterJours — arithmétique de calendrier, pas de durée', () => {
 
   it('refuse une date mal formée plutôt que d’inventer', () => {
     assert.throws(() => ajouterJours('08/03/2026', 1), /YYYY-MM-DD/);
+  });
+
+  it('refuse une date qui N’EXISTE PAS', () => {
+    // « 2026-02-31 » passait, puis JavaScript le normalisait en mars : un
+    // décalage d'un mois, silencieux, depuis une faute de frappe.
+    assert.throws(() => ajouterJours('2026-02-31', 1), /YYYY-MM-DD/);
+    assert.throws(() => ajouterJours('2026-04-31', 1), /YYYY-MM-DD/);
+    assert.throws(() => ajouterJours('2027-02-29', 1), /YYYY-MM-DD/);
+    // 2028 est bissextile : le 29 février y existe.
+    assert.equal(ajouterJours('2028-02-29', 1), '2028-03-01');
   });
 });
 

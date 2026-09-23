@@ -1,6 +1,14 @@
 /**
  * Fuseau horaire des LIEUX — rapport, puis application.
  *
+ * ⚠ LE PIÈGE DE CE SCRIPT, à ne pas réintroduire : sa première version
+ * écrivait « Europe/Paris » sur un lieu français SANS coordonnées. M.A
+ * Barber est exactement ce cas — un salon réunionnais — et la migration
+ * aurait gravé dans la base le bug qu'elle était censée corriger. Le
+ * résolveur refuse désormais de trancher la France, l'Espagne et le
+ * Portugal sans coordonnées ni code postal ; ces lieux ressortent en
+ * « MANUEL REQUIS ». Ne jamais leur donner de valeur par défaut.
+ *
  * Étape 8 du chantier fuseaux. Par défaut, ce script N'ÉCRIT RIEN : il
  * affiche ce qu'il poserait sur chaque lieu et pourquoi. C'est le point
  * important — on regarde le rapport AVANT de toucher quoi que ce soit,
@@ -49,7 +57,7 @@ for (const p of providers) {
     const geo = lieu.geopoint
       ? { latitude: lieu.geopoint.latitude ?? lieu.geopoint._latitude, longitude: lieu.geopoint.longitude ?? lieu.geopoint._longitude }
       : null;
-    const r = resoudreFuseauDeLieu(geo, lieu.countryCode);
+    const r = resoudreFuseauDeLieu(geo, lieu.countryCode, lieu.postalCode);
     const besoin = aBesoinDeResolution(lieu);
 
     lignes.push({
@@ -57,6 +65,7 @@ for (const p of providers) {
       lieu: lieu.name ?? l.id,
       pays: lieu.countryCode ?? '—',
       coordonnees: geo ? `${geo.latitude.toFixed(3)},${geo.longitude.toFixed(3)}` : 'ABSENTES',
+      cp: lieu.postalCode ?? '—',
       actuel: lieu.timezone ?? '—',
       source: lieu.timezoneSource ?? '—',
       propose: r.fuseau ?? '??? À TRANCHER',
@@ -76,7 +85,7 @@ for (const l of lignes) {
   const marque = l.action === 'MANUEL REQUIS' ? '  ⚠' : l.action === 'à poser' ? '  +' : '   ';
   console.log(
     `${marque} ${l.provider} / ${l.lieu}\n` +
-      `     pays ${l.pays} · coordonnées ${l.coordonnees}\n` +
+      `     pays ${l.pays} · CP ${l.cp} · coordonnées ${l.coordonnees}\n` +
       `     actuel ${l.actuel} (${l.source}) → ${l.propose}   [${l.motif}] ${l.action}`,
   );
 }

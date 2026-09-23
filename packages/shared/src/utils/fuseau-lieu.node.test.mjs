@@ -76,6 +76,67 @@ describe('les archipels ibériques, décalés toute l’année', () => {
   });
 });
 
+describe('LE cas M.A Barber : France, sans coordonnées', () => {
+  it('un code postal en 974 tranche — c’est La Réunion', () => {
+    // Le compte réel n'a PAS de coordonnées. Sans le code postal, la
+    // résolution répondait « Europe/Paris » et le script de migration
+    // l'aurait ÉCRIT : le bug gravé dans la base par l'outil censé le
+    // corriger.
+    const r = resoudreFuseauDeLieu(null, 'FR', '97400');
+    assert.equal(r.fuseau, 'Indian/Reunion');
+    assert.equal(r.motif, 'code-postal');
+  });
+
+  it('chaque département d’outre-mer par son code postal', () => {
+    const cas = [
+      ['97110', 'America/Guadeloupe'],
+      ['97200', 'America/Martinique'],
+      ['97300', 'America/Cayenne'],
+      ['97400', 'Indian/Reunion'],
+      ['97500', 'America/Miquelon'],
+      ['97600', 'Indian/Mayotte'],
+      ['98800', 'Pacific/Noumea'],
+      ['98700', 'Pacific/Tahiti'],
+    ];
+    for (const [code, attendu] of cas) {
+      assert.equal(resoudreFuseauDeLieu(null, 'FR', code).fuseau, attendu, code);
+    }
+  });
+
+  it('un code postal métropolitain reste Europe/Paris', () => {
+    assert.equal(resoudreFuseauDeLieu(null, 'FR', '75001').fuseau, 'Europe/Paris');
+    assert.equal(resoudreFuseauDeLieu(null, 'FR', '13001').fuseau, 'Europe/Paris');
+  });
+
+  it('SANS coordonnées NI code postal, la France n’est PAS tranchée', () => {
+    // Le point le plus important du module : mieux vaut un lieu signalé
+    // « à vérifier » qu'un salon réunionnais écrit à l'heure de Paris.
+    const r = resoudreFuseauDeLieu(null, 'FR');
+    assert.equal(r.fuseau, null);
+    assert.equal(r.motif, 'inconnu');
+    assert.match(r.libelle, /à trancher à la main/);
+  });
+
+  it('idem pour l’Espagne et le Portugal, qui ont des archipels', () => {
+    assert.equal(resoudreFuseauDeLieu(null, 'ES').fuseau, null);
+    assert.equal(resoudreFuseauDeLieu(null, 'PT').fuseau, null);
+    assert.equal(resoudreFuseauDeLieu(null, 'ES', '35001').fuseau, 'Atlantic/Canary');
+    assert.equal(resoudreFuseauDeLieu(null, 'PT', '9500-100').fuseau, 'Atlantic/Azores');
+  });
+
+  it('un pays à fuseau UNIQUE reste tranché sans rien d’autre', () => {
+    // La Belgique n'a qu'un fuseau : exiger des coordonnées n'apporterait
+    // qu'un signalement inutile.
+    assert.equal(resoudreFuseauDeLieu(null, 'BE').fuseau, 'Europe/Brussels');
+    assert.equal(resoudreFuseauDeLieu(null, 'DE').fuseau, 'Europe/Berlin');
+  });
+
+  it('des coordonnées (0, 0) valent des coordonnées ABSENTES', () => {
+    // Le golfe de Guinée, trace d'un géocodage raté.
+    assert.equal(resoudreFuseauDeLieu({ latitude: 0, longitude: 0 }, 'FR').fuseau, null);
+  });
+});
+
 describe('ce que le module REFUSE de deviner', () => {
   it('les États-Unis rendent null, pas une longitude approximative', () => {
     // Six fuseaux, des exceptions par comté (Arizona, Indiana). Une erreur
@@ -90,16 +151,9 @@ describe('ce que le module REFUSE de deviner', () => {
     assert.equal(resoudreFuseauDeLieu(lieu(35.6762, 139.6503), 'JP').fuseau, null);
   });
 
-  it('sans coordonnées, le pays décide — et le libellé le DIT', () => {
-    // C'est juste pour la métropole et faux pour l'outre-mer : le rapport
-    // doit pouvoir signaler ces lieux-là.
-    const r = resoudreFuseauDeLieu(null, 'FR');
-    assert.equal(r.fuseau, 'Europe/Paris');
-    assert.equal(r.libelle, 'FR (sans coordonnées)');
-  });
-
   it('des coordonnées absurdes ne font pas tomber la résolution', () => {
-    assert.equal(resoudreFuseauDeLieu(lieu(NaN, NaN), 'FR').fuseau, 'Europe/Paris');
+    assert.equal(resoudreFuseauDeLieu(lieu(NaN, NaN), 'FR', '75001').fuseau, 'Europe/Paris');
+    assert.equal(resoudreFuseauDeLieu(lieu(NaN, NaN), 'FR').fuseau, null);
     assert.equal(resoudreFuseauDeLieu(undefined, undefined).fuseau, null);
   });
 });

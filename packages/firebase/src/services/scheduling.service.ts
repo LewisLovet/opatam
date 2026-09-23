@@ -58,6 +58,19 @@ interface AvailableSlotsParams {
    * fourni mais invalide → erreur, jamais de repli silencieux.
    */
   timeZone?: string;
+  /**
+   * Journées CALENDAIRES demandées (« 2026-09-23 »), à préférer aux
+   * `startDate`/`endDate`.
+   *
+   * Pourquoi : les appelants construisent leurs bornes en heure du
+   * SERVEUR (minuit et 23:59 à Paris). Le moteur en redéduit ensuite une
+   * date locale du LIEU — et pour La Réunion, « 23 septembre 23:59 à
+   * Paris » tombe le 24 sur place ; pour New York, « 23 septembre 00:00 à
+   * Paris » tombe le 22. L'aller-retour perd un jour à chaque bout. Une
+   * date calendaire, elle, n'a pas de fuseau : elle traverse intacte.
+   */
+  startDay?: string;
+  endDay?: string;
 }
 
 interface SlotCheckParams {
@@ -140,6 +153,19 @@ interface AvailabilitySummaryParams {
    * fourni mais invalide → erreur, jamais de repli silencieux.
    */
   timeZone?: string;
+  /**
+   * Journées CALENDAIRES demandées (« 2026-09-23 »), à préférer aux
+   * `startDate`/`endDate`.
+   *
+   * Pourquoi : les appelants construisent leurs bornes en heure du
+   * SERVEUR (minuit et 23:59 à Paris). Le moteur en redéduit ensuite une
+   * date locale du LIEU — et pour La Réunion, « 23 septembre 23:59 à
+   * Paris » tombe le 24 sur place ; pour New York, « 23 septembre 00:00 à
+   * Paris » tombe le 22. L'aller-retour perd un jour à chaque bout. Une
+   * date calendaire, elle, n'a pas de fuseau : elle traverse intacte.
+   */
+  startDay?: string;
+  endDay?: string;
 }
 
 /** Per-day occupancy for the service-AGNOSTIC month view (no service picked).
@@ -165,6 +191,9 @@ interface OccupancySummaryParams {
    * fourni mais invalide → erreur, jamais de repli silencieux.
    */
   timeZone?: string;
+  /** Journées CALENDAIRES demandées, à préférer aux `startDate`/`endDate`. */
+  startDay?: string;
+  endDay?: string;
 }
 
 /**
@@ -595,8 +624,8 @@ export class SchedulingService {
     // la machine : `setHours(0,0,0,0)` visait minuit là où tournait le code.
     // `bornesDeJourLocal` ne suppose jamais 24 h — une journée de bascule en
     // dure 23 ou 25.
-    const jourDebut = jourLocal(startDate, fuseau);
-    const jourFin = jourLocal(endDate, fuseau);
+    const jourDebut = params.startDay ?? jourLocal(startDate, fuseau);
+    const jourFin = params.endDay ?? jourLocal(endDate, fuseau);
     const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
     const rangeEnd = bornesDeJourLocal(jourFin, fuseau).fin;
 
@@ -734,9 +763,9 @@ export class SchedulingService {
     const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
 
     // Bornes des JOURNÉES LOCALES du lieu (voir getAvailableSlots).
-    const jourDebut = jourLocal(startDate, fuseau);
+    const jourDebut = params.startDay ?? jourLocal(startDate, fuseau);
     const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
-    let rangeEnd = bornesDeJourLocal(jourLocal(endDate, fuseau), fuseau).fin;
+    let rangeEnd = bornesDeJourLocal(params.endDay ?? jourLocal(endDate, fuseau), fuseau).fin;
 
     // Never expose days beyond the provider's max booking advance — this is a
     // client-facing limit (the pro books via getAvailableSlots, not this).
@@ -827,8 +856,8 @@ export class SchedulingService {
       params.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)),
     );
 
-    const jourDebut = jourLocal(startDate, fuseau);
-    const jourFin = jourLocal(endDate, fuseau);
+    const jourDebut = params.startDay ?? jourLocal(startDate, fuseau);
+    const jourFin = params.endDay ?? jourLocal(endDate, fuseau);
     const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
     const rangeEnd = bornesDeJourLocal(jourFin, fuseau).fin;
 

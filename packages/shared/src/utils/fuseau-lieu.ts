@@ -77,6 +77,47 @@ const ARCHIPELS: Boite[] = [
   { libelle: 'Madère', fuseau: 'Atlantic/Madeira', latMin: 32.4, latMax: 33.2, lonMin: -17.3, lonMax: -16.2 },
 ];
 
+/**
+ * Codes postaux qui tranchent à eux seuls, quand les coordonnées manquent.
+ *
+ * C'EST LE CAS DE M.A BARBER : lieu en « FR », sans coordonnées. Sans cette
+ * table, la résolution répondait « Europe/Paris » — le salon est à
+ * Saint-Denis de La Réunion. Un code postal en 974 ne laisse aucun doute.
+ *
+ * Les préfixes sont donnés du plus long au plus court à la lecture : 97 et
+ * 98 couvrent tout l'outre-mer français, 35/38 les Canaries, 90/95/96 les
+ * archipels portugais.
+ */
+const CODES_POSTAUX: Record<string, { prefixes: string[]; fuseau: string; libelle: string }[]> = {
+  FR: [
+    { prefixes: ['971', '977', '978'], fuseau: 'America/Guadeloupe', libelle: 'Guadeloupe / Saint-Martin' },
+    { prefixes: ['972'], fuseau: 'America/Martinique', libelle: 'Martinique' },
+    { prefixes: ['973'], fuseau: 'America/Cayenne', libelle: 'Guyane' },
+    { prefixes: ['974'], fuseau: 'Indian/Reunion', libelle: 'La Réunion' },
+    { prefixes: ['975'], fuseau: 'America/Miquelon', libelle: 'Saint-Pierre-et-Miquelon' },
+    { prefixes: ['976'], fuseau: 'Indian/Mayotte', libelle: 'Mayotte' },
+    { prefixes: ['986'], fuseau: 'Pacific/Wallis', libelle: 'Wallis-et-Futuna' },
+    { prefixes: ['987'], fuseau: 'Pacific/Tahiti', libelle: 'Polynésie française' },
+    { prefixes: ['988'], fuseau: 'Pacific/Noumea', libelle: 'Nouvelle-Calédonie' },
+  ],
+  ES: [
+    { prefixes: ['35', '38'], fuseau: 'Atlantic/Canary', libelle: 'Îles Canaries' },
+  ],
+  PT: [
+    { prefixes: ['90'], fuseau: 'Atlantic/Madeira', libelle: 'Madère' },
+    { prefixes: ['95', '96'], fuseau: 'Atlantic/Azores', libelle: 'Açores' },
+  ],
+};
+
+/**
+ * Pays où un lieu SANS coordonnées ET sans code postal exploitable ne peut
+ * pas être tranché : leur territoire s'étend sur plusieurs fuseaux.
+ *
+ * Pour les autres — Belgique, Luxembourg, Suisse, Allemagne, Italie,
+ * Pays-Bas — le fuseau du pays est le seul possible, coordonnées ou non.
+ */
+const PLUSIEURS_FUSEAUX = new Set(['FR', 'ES', 'PT']);
+
 export interface Coordonnees {
   latitude: number;
   longitude: number;
@@ -86,8 +127,8 @@ export interface ResolutionFuseau {
   /** L'identifiant IANA, ou `null` quand on ne peut pas trancher sûrement. */
   fuseau: string | null;
   /** Comment on est arrivé là — pour l'expliquer dans un rapport. */
-  motif: 'territoire' | 'archipel' | 'pays' | 'inconnu';
-  /** « La Réunion », « France métropolitaine »… */
+  motif: 'territoire' | 'archipel' | 'code-postal' | 'pays' | 'inconnu';
+  /** « La Réunion », « FR (métropole) »… */
   libelle: string;
 }
 
@@ -115,10 +156,20 @@ function dansLaBoite(c: Coordonnees, b: Boite): boolean {
 export function resoudreFuseauDeLieu(
   coordonnees: Coordonnees | null | undefined,
   countryCode: string | null | undefined,
+  postalCode?: string | null,
 ): ResolutionFuseau {
   const pays = (countryCode ?? '').toUpperCase();
+  const aDesCoordonnees =
+    !!coordonnees &&
+    Number.isFinite(coordonnees.latitude) &&
+    Number.isFinite(coordonnees.longitude) &&
+    // (0, 0) est le golfe de Guinée, jamais un salon : c'est la trace
+    // d'un géocodage raté. La traiter comme des coordonnées valides
+    // ferait passer le lieu pour « métropolitain » sans le moindre doute.
+    !(coordonnees.latitude === 0 && coordonnees.longitude === 0);
 
-  if (coordonnees && Number.isFinite(coordonnees.latitude) && Number.isFinite(coordonnees.longitude)) {
+  // 1. Les coordonnées, quand on les a : c'est le signal le plus précis.
+  if (aDesCoordonnees) {
     for (const boite of [...TERRITOIRES_FR, ...ARCHIPELS]) {
       if (dansLaBoite(coordonnees, boite)) {
         return {
@@ -130,14 +181,38 @@ export function resoudreFuseauDeLieu(
     }
   }
 
+  // 2. Le code postal, qui tranche l'outre-mer sans ambiguïté.
+  const code = (postalCode ?? '').replace(/\s/g, '');
+  const tables = CODES_POSTAUX[pays] ?? [];
+  for (const entree of tables) {
+    if (entree.prefixes.some((prefixe) => code.startsWith(prefixe))) {
+      return { fuseau: entree.fuseau, motif: 'code-postal', libelle: entree.libelle };
+    }
+  }
+
   const principal = FUSEAU_PRINCIPAL[pays];
+
+  // 3. Un pays à PLUSIEURS fuseaux, sans coordonnées ni code postal
+  //    exploitable : on REFUSE de trancher.
+  //
+  //    C'est le cas qui a failli passer en production : M.A Barber est un
+  //    lieu « FR » sans coordonnées, et répondre « Europe/Paris » aurait
+  //    écrit noir sur blanc, dans la base, le bug qu'on est en train de
+  //    corriger. Un salon réunionnais n'est pas à Paris parce qu'on manque
+  //    d'informations.
+  if (principal && PLUSIEURS_FUSEAUX.has(pays) && !aDesCoordonnees && !code) {
+    return {
+      fuseau: null,
+      motif: 'inconnu',
+      libelle: `${pays} sans coordonnées ni code postal — à trancher à la main`,
+    };
+  }
+
   if (principal) {
-    // Sans coordonnées, on n'a que le pays. C'est juste pour la métropole
-    // et faux pour l'outre-mer : le rapport doit le dire, d'où le libellé.
     return {
       fuseau: principal,
       motif: 'pays',
-      libelle: coordonnees ? `${pays} (continental)` : `${pays} (sans coordonnées)`,
+      libelle: aDesCoordonnees || code ? `${pays} (métropole)` : `${pays} (fuseau unique)`,
     };
   }
 
