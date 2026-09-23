@@ -15,9 +15,10 @@
  * parce qu'un fuseau faux ne se voit pas : il décale les rendez-vous d'une
  * heure et personne ne s'en aperçoit avant la première cliente fâchée.
  *
- * Usage :
- *   SA_PATH="$PWD/service-account.json" node scripts/fuseaux-lieux.mjs           # rapport seul
- *   SA_PATH="$PWD/service-account.json" node scripts/fuseaux-lieux.mjs --apply   # écrit
+ * Usage — `--experimental-strip-types` est OBLIGATOIRE : le script importe
+ * le résolveur partagé en TypeScript, et `node` seul refuse un `.ts`.
+ *   SA_PATH="$PWD/service-account.json" node --experimental-strip-types scripts/fuseaux-lieux.mjs           # rapport seul
+ *   SA_PATH="$PWD/service-account.json" node --experimental-strip-types scripts/fuseaux-lieux.mjs --apply   # écrit
  *   … --provider <id>    limite à un prestataire (pour un essai ciblé)
  *   … --provider <id> --set Indian/Reunion --apply
  *                        pose ce fuseau À LA MAIN sur les lieux du prestataire
