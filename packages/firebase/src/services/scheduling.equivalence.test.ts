@@ -68,7 +68,6 @@ const moteur = schedulingService as unknown as {
     pas: number,
     fuseau?: string,
   ) => { start: string; end: string; datetime: Date; endDatetime: Date }[];
-  toDateKey: (date: Date) => string;
 };
 
 /** Minuit local du jour donné — ce que le moteur reçoit aujourd'hui. */
@@ -140,10 +139,15 @@ describe('PARTIE 1 — à ne PAS faire bouger', () => {
     }
   });
 
-  it('toDateKey rend la date LOCALE de l’instant', () => {
-    assert.equal(moteur.toDateKey(new Date('2026-09-22T23:30:00Z')), '2026-09-23');
-    assert.equal(moteur.toDateKey(new Date('2026-03-29T00:30:00Z')), '2026-03-29');
-    assert.equal(moteur.toDateKey(new Date('2026-10-25T00:30:00Z')), '2026-10-25');
+  it('la date d’un instant est celle du LIEU, plus celle de la machine', () => {
+    // `toDateKey()` a été SUPPRIMÉ : il rendait la date dans le fuseau de
+    // la machine, ce qui était précisément le bug. `jourLocal` le remplace
+    // et demande le fuseau.
+    assert.equal(jourLocal(new Date('2026-09-22T23:30:00Z'), FUSEAU), '2026-09-23');
+    assert.equal(jourLocal(new Date('2026-03-29T00:30:00Z'), FUSEAU), '2026-03-29');
+    // Le même instant, vu du salon réunionnais : on est déjà le 23.
+    assert.equal(jourLocal(new Date('2026-09-22T23:30:00Z'), 'Indian/Reunion'), '2026-09-23');
+    assert.equal(jourLocal(new Date('2026-09-22T19:00:00Z'), 'Indian/Reunion'), '2026-09-22');
   });
 });
 
@@ -340,5 +344,149 @@ describe('PARTIE 2 bis — boucle de jours, corrigée', () => {
     );
     const jour28 = res.find((r) => r.date === '2027-03-28')!;
     assert.equal(jour28.slots.length, jour28.capacity, 'liste et capacité concordent');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// OCCUPATION — troisième boucle, même hypothèse implicite
+// ────────────────────────────────────────────────────────────────────────
+//
+// `getOccupancySummary` alimente la vue « à quel point suis-je pris » et le
+// widget d'occupation. Même curseur `Date`, même `getDay()`, et en plus
+// `dayEndMs = dayStartMs + 24 h` — l'hypothèse exacte que les journées de
+// bascule invalident (23 ou 25 h).
+
+function armerOccupation(fenetre: [string, string], resas: [string, string][]): void {
+  const anyOf = <T,>(o: T) => o as unknown as Record<string, unknown>;
+  anyOf(availabilityRepository).getWeeklySchedule = async () =>
+    [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+      id: `a${dayOfWeek}`, dayOfWeek, isOpen: true,
+      slots: [{ start: fenetre[0], end: fenetre[1] }], memberId: 'm1', locationId: 'l1',
+    }));
+  anyOf(bookingRepository).getUpcomingByProvider = async () =>
+    resas.map(([debut, fin], i) => ({
+      id: `b${i}`, memberId: 'm1', status: 'confirmed',
+      datetime: new Date(debut), endDatetime: new Date(fin),
+    }));
+  anyOf(blockedSlotRepository).getInRange = async () => [];
+}
+
+type CasOccupation = [nom: string, debut: string, fin: string, fenetre: [string, string], resas: [string, string][], gele: string];
+
+const OCCUPATIONS: CasOccupation[] = [
+  ['occ-ordinaire', '2026-11-16', '2026-11-17', ['09:00', '18:00'],
+    [['2026-11-16T09:00:00+01:00', '2026-11-16T12:00:00+01:00']],
+    '2026-11-16:available:540:360 2026-11-17:available:540:540'],
+  ['occ-bascule-printemps', '2027-03-27', '2027-03-29', ['00:00', '23:00'], [],
+    '2027-03-27:available:1380:1380 2027-03-28:available:1380:1380 2027-03-29:available:1380:1380'],
+  ['occ-bascule-automne', '2027-10-30', '2027-11-01', ['00:00', '23:00'], [],
+    '2027-10-30:available:1380:1380 2027-10-31:available:1380:1380 2027-11-01:available:1380:1380'],
+  // Une réservation qui commence à 00:00 LOCAL le 29 mars (= 22:00Z le 28)
+  // doit compter pour le 29, pas pour le 28 — qui ne dure que 23 h.
+  ['occ-frontiere-printemps', '2027-03-28', '2027-03-29', ['00:00', '23:00'],
+    [['2027-03-28T22:00:00Z', '2027-03-28T23:00:00Z']],
+    '2027-03-28:available:1380:1380 2027-03-29:available:1380:1320'],
+];
+
+describe('OCCUPATION — à ne PAS faire bouger', () => {
+  for (const [nom, debut, fin, fenetre, resas, gele] of OCCUPATIONS) {
+    it(`${nom} : sortie inchangée`, async () => {
+      armerOccupation(fenetre, resas);
+      const r = await schedulingService.getOccupancySummary({
+        providerId: 'p1', memberId: 'm1',
+        startDate: minuit(debut), endDate: minuit(fin),
+      });
+      const rendu = r.map((x) => `${x.date}:${x.status}:${x.openMinutes}:${x.freeMinutes}`).join(' ');
+      assert.notEqual(rendu, '', CAS_PERIME(debut));
+      assert.equal(rendu, gele);
+    });
+  }
+
+  it('les dates rendues sont les jours calendaires demandés, dans l’ordre', async () => {
+    armerOccupation(['09:00', '18:00'], []);
+    const r = await schedulingService.getOccupancySummary({
+      providerId: 'p1', memberId: 'm1',
+      startDate: minuit('2027-03-27'), endDate: minuit('2027-03-30'),
+    });
+    assert.deepEqual(r.map((x) => x.date), ['2027-03-27', '2027-03-28', '2027-03-29', '2027-03-30']);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// VALIDATION D'UN CRÉNEAU — la garde serveur
+// ────────────────────────────────────────────────────────────────────────
+//
+// `isSlotAvailable` est ce qui autorise vraiment une réservation. Elle
+// lisait `datetime.getDay()` et l'heure de la machine : un rendez-vous de
+// début ou de fin de journée était comparé aux horaires du MAUVAIS jour.
+
+describe('VALIDATION — le jour et l’heure sont ceux du lieu', () => {
+  /** Mémorise le jour de la semaine que le moteur est allé chercher. */
+  function armerValidation(fenetre: [string, string]): { jourDemande: number[] } {
+    const anyOf = <T,>(o: T) => o as unknown as Record<string, unknown>;
+    const jourDemande: number[] = [];
+    anyOf(providerRepository).getById = async () => ({
+      id: 'p1', settings: { slotInterval: 30, minBookingNotice: 2, defaultBufferTime: 0 },
+    });
+    anyOf(availabilityRepository).get = async (_p: string, _m: string, dayOfWeek: number) => {
+      jourDemande.push(dayOfWeek);
+      return { id: 'a', dayOfWeek, isOpen: true, slots: [{ start: fenetre[0], end: fenetre[1] }] };
+    };
+    anyOf(blockedSlotRepository).getInRange = async () => [];
+    anyOf(bookingRepository).getUpcomingByProvider = async () => [];
+    return { jourDemande };
+  }
+
+  // 2027-06-15T20:30:00Z : mardi 22:30 à Paris, mais MERCREDI 00:30 à La
+  // Réunion. Deux jours différents, donc deux plages d'horaires
+  // différentes — et c'est le lieu qui a raison.
+  const INSTANT = new Date('2027-06-15T20:30:00Z');
+
+  it('le jour de la semaine interrogé est celui du LIEU', async () => {
+    const paris = armerValidation(['00:00', '23:00']);
+    await schedulingService.isSlotAvailable({
+      providerId: 'p1', memberId: 'm1', datetime: INSTANT, duration: 30,
+      timeZone: 'Europe/Paris',
+    });
+    const reunion = armerValidation(['00:00', '23:00']);
+    await schedulingService.isSlotAvailable({
+      providerId: 'p1', memberId: 'm1', datetime: INSTANT, duration: 30,
+      timeZone: 'Indian/Reunion',
+    });
+    assert.equal(paris.jourDemande[0], 2, 'mardi à Paris');
+    assert.equal(reunion.jourDemande[0], 3, 'mercredi à La Réunion');
+  });
+
+  it('un créneau du matin réunionnais est ACCEPTÉ avec le bon fuseau', async () => {
+    // 00:30 à La Réunion tombe dans une plage 00:00–06:00.
+    armerValidation(['00:00', '06:00']);
+    const ok = await schedulingService.isSlotAvailable({
+      providerId: 'p1', memberId: 'm1', datetime: INSTANT, duration: 30,
+      timeZone: 'Indian/Reunion',
+    });
+    assert.equal(ok, true);
+  });
+
+  it('… et REFUSÉ si on le lit à l’heure de Paris', async () => {
+    // Le même instant vaut 22:30 à Paris : hors de la plage 00:00–06:00.
+    // C'est exactement le rendez-vous que le salon réunionnais voyait
+    // rejeté sans comprendre pourquoi.
+    armerValidation(['00:00', '06:00']);
+    const ok = await schedulingService.isSlotAvailable({
+      providerId: 'p1', memberId: 'm1', datetime: INSTANT, duration: 30,
+      timeZone: 'Europe/Paris',
+    });
+    assert.equal(ok, false);
+  });
+
+  it('un fuseau invalide LÈVE, il ne retombe pas sur Paris', async () => {
+    armerValidation(['00:00', '06:00']);
+    await assert.rejects(
+      () => schedulingService.isSlotAvailable({
+        providerId: 'p1', memberId: 'm1', datetime: INSTANT, duration: 30,
+        timeZone: 'UTC+4',
+      }),
+      /IANA/,
+    );
   });
 });

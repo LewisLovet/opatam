@@ -22,6 +22,8 @@
  * conversion en 1440 faisait sauter si on la testait seule.
  */
 
+import { jourLocal } from './fuseaux';
+
 /** Minutes depuis minuit. `'09:30'` → 570. */
 export function hhmmToMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
@@ -91,11 +93,19 @@ export interface BlockedPeriodShape {
   spanMode?: 'continuous' | 'daily';
 }
 
-/** Le jour calendaire de `d`, à minuit. */
-function auMinuit(d: Date): Date {
+/**
+ * La journée à laquelle appartient un instant, comme repère comparable.
+ *
+ * Avec un fuseau, c'est la date LOCALE DU LIEU — la seule qui ait un sens
+ * pour une période bloquée saisie par le professionnel. Sans fuseau, on
+ * garde l'ancien comportement (minuit dans le fuseau de la machine) le
+ * temps que tous les appelants fournissent le leur.
+ */
+function jourRepere(d: Date, fuseau?: string): string {
+  if (fuseau) return jourLocal(d, fuseau);
   const copie = new Date(d);
   copie.setHours(0, 0, 0, 0);
-  return copie;
+  return copie.toISOString();
 }
 
 /**
@@ -124,18 +134,20 @@ function auMinuit(d: Date): Date {
  */
 export function blockedWindowForDay(
   periode: BlockedPeriodShape,
-  jour: Date
+  jour: Date,
+  /** Fuseau IANA du lieu — sans lui, les journées sont celles de la machine. */
+  fuseau?: string
 ): BlockedWindow | null {
-  const cible = auMinuit(jour);
-  const premierJour = auMinuit(periode.startDate);
-  const dernierJour = auMinuit(periode.endDate);
+  const cible = jourRepere(jour, fuseau);
+  const premierJour = jourRepere(periode.startDate, fuseau);
+  const dernierJour = jourRepere(periode.endDate, fuseau);
 
   if (cible < premierJour || cible > dernierJour) return null;
   if (periode.allDay) return { startMin: 0, endMin: MINUTES_PAR_JOUR };
   if (!periode.startTime || !periode.endTime) return null;
 
-  const estPremier = cible.getTime() === premierJour.getTime();
-  const estDernier = cible.getTime() === dernierJour.getTime();
+  const estPremier = cible === premierJour;
+  const estDernier = cible === dernierJour;
 
   // Un seul jour, ou tranche répétée : la fenêtre saisie, telle quelle.
   if ((estPremier && estDernier) || periode.spanMode === 'daily') {

@@ -10,9 +10,12 @@ import { isServiceOpenOnDay, blockedWindowForDay } from '@booking-app/shared';
 import {
   ajouterJours,
   bornesDeJourLocal,
+  heureLocale,
   instantDepuisHeureLocale,
   jourLocal,
   jourSemaineCalendaire,
+  jourSemaineLocal,
+  minutesLocales,
   normaliserFuseau,
 } from '@booking-app/shared';
 import {
@@ -70,6 +73,13 @@ interface SlotCheckParams {
    * sans prestation connue est vérifiée comme avant.
    */
   serviceIds?: string[];
+  /**
+   * Fuseau IANA du LIEU. C'est lui qui dit à quel JOUR et à quelle HEURE
+   * LOCALE correspond l'instant vérifié : `datetime.getDay()` répondait
+   * dans le fuseau de la machine, donc un rendez-vous de début ou de fin
+   * de journée pouvait être comparé aux horaires du mauvais jour.
+   */
+  timeZone?: string;
 }
 
 interface TimeSlotWithDate {
@@ -148,6 +158,11 @@ interface OccupancySummaryParams {
   memberId: string;
   startDate: Date;
   endDate: Date;
+  /**
+   * Fuseau IANA du LIEU. Absent → `FUSEAU_COMPAT` le temps du chantier ;
+   * fourni mais invalide → erreur, jamais de repli silencieux.
+   */
+  timeZone?: string;
 }
 
 /**
@@ -296,8 +311,11 @@ export class SchedulingService {
     dayOfWeek: number,
     newSlots: TimeSlot[],
     isOpen: boolean,
-    effectiveFrom: Date
+    effectiveFrom: Date,
+    /** Fuseau IANA du lieu — décide du jour de la semaine d'un rendez-vous. */
+    timeZone?: string
   ): Promise<AvailabilityConflict[]> {
+    const fuseau = fuseauDuMoteur(timeZone);
     const conflicts: AvailabilityConflict[] = [];
 
     // Get upcoming bookings for this member from effectiveFrom date
@@ -318,7 +336,7 @@ export class SchedulingService {
     );
 
     for (const booking of relevantBookings) {
-      const bookingDayOfWeek = booking.datetime.getDay();
+      const bookingDayOfWeek = jourSemaineLocal(booking.datetime, fuseau);
 
       // Only check bookings on the affected day of week
       if (bookingDayOfWeek !== dayOfWeek) continue;
@@ -335,9 +353,11 @@ export class SchedulingService {
         continue;
       }
 
-      // Check if booking time falls within any of the new slots
-      const bookingStartTime = this.formatTime(booking.datetime);
-      const bookingEndTime = this.formatTime(booking.endDatetime);
+      // Check if booking time falls within any of the new slots.
+      // Heures LOCALES DU LIEU — les horaires saisis en sont, l'instant du
+      // rendez-vous n'en est pas.
+      const bookingStartTime = heureLocale(booking.datetime, fuseau);
+      const bookingEndTime = heureLocale(booking.endDatetime, fuseau);
 
       const isWithinNewSlots = newSlots.some(
         (slot) =>
@@ -613,7 +633,8 @@ export class SchedulingService {
             const isBlocked = this.isTimeBlockedBySlots(
               genSlot.datetime,
               genSlot.endDatetime,
-              relevantBlockedSlots
+              relevantBlockedSlots,
+              fuseau
             );
 
             const isBooked = this.isTimeBookedByBookings(
@@ -740,7 +761,7 @@ export class SchedulingService {
         for (const window of availability.slots) {
           const generated = this.generateTimeSlots(jour, window.start, window.end, totalDuration, slotInterval, fuseau);
           for (const g of generated) {
-            const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked);
+            const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked, fuseau);
             const booked = this.isTimeBookedByBookings(g.datetime, g.endDatetime, relevantBookings);
             const tooSoon = g.datetime <= earliestBookable;
             if (!blocked && !booked && !tooSoon) daySlots.push(g);
@@ -766,11 +787,12 @@ export class SchedulingService {
    */
   async getOccupancySummary(params: OccupancySummaryParams): Promise<DayOccupancy[]> {
     const { providerId, memberId, startDate, endDate } = params;
+    const fuseau = fuseauDuMoteur(params.timeZone);
 
-    const rangeStart = new Date(startDate);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(endDate);
-    rangeEnd.setHours(23, 59, 59, 999);
+    const jourDebut = jourLocal(startDate, fuseau);
+    const jourFin = jourLocal(endDate, fuseau);
+    const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
+    const rangeEnd = bornesDeJourLocal(jourFin, fuseau).fin;
 
     const [weekly, allBookings, allBlocked] = await Promise.all([
       availabilityRepository.getWeeklySchedule(providerId, memberId),
@@ -789,22 +811,22 @@ export class SchedulingService {
     );
 
     const result: DayOccupancy[] = [];
-    const cursor = new Date(rangeStart);
 
-    while (cursor <= rangeEnd) {
-      const dateKey = this.toDateKey(cursor);
-      const availability = availabilityByDow.get(cursor.getDay());
+    for (let jour = jourDebut; jour <= jourFin; jour = ajouterJours(jour, 1)) {
+      const dateKey = jour;
+      const availability = availabilityByDow.get(jourSemaineCalendaire(jour));
 
       if (!availability || !availability.isOpen || !availability.slots.length) {
         result.push({ date: dateKey, status: 'closed', openMinutes: 0, freeMinutes: 0 });
-        cursor.setDate(cursor.getDate() + 1);
         continue;
       }
 
-      const dayStart = new Date(cursor);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayStartMs = dayStart.getTime();
-      const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+      // Les bornes réelles de la journée locale. `dayStart + 24 h` était
+      // faux les deux dimanches de bascule : la journée en dure 23 ou 25,
+      // et une réservation du lendemain pouvait être comptée dans la veille.
+      const bornes = bornesDeJourLocal(jour, fuseau);
+      const dayStartMs = bornes.debut.getTime();
+      const dayEndMs = bornes.fin.getTime() + 1;
 
       // Open windows in minutes-of-day.
       const openMerged = this.mergeIntervals(
@@ -816,7 +838,6 @@ export class SchedulingService {
 
       if (openMinutes === 0) {
         result.push({ date: dateKey, status: 'closed', openMinutes: 0, freeMinutes: 0 });
-        cursor.setDate(cursor.getDate() + 1);
         continue;
       }
 
@@ -846,7 +867,6 @@ export class SchedulingService {
       else status = 'available';
 
       result.push({ date: dateKey, status, openMinutes, freeMinutes });
-      cursor.setDate(cursor.getDate() + 1);
     }
 
     return result;
@@ -919,19 +939,13 @@ export class SchedulingService {
   }
 
   /** Local YYYY-MM-DD (timezone-safe — toISOString would shift to UTC). */
-  private toDateKey(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
   /**
    * Check if a specific time slot is available
    * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
    */
   async isSlotAvailable(params: SlotCheckParams): Promise<boolean> {
     const { providerId, memberId, datetime, duration, excludeBookingId, serviceIds } = params;
+    const fuseau = fuseauDuMoteur(params.timeZone);
 
     // Jours autorisés par les prestations réservées. Toutes doivent accepter
     // ce jour : un rendez-vous groupé tient sur un seul créneau.
@@ -939,7 +953,7 @@ export class SchedulingService {
       const services = await Promise.all(
         serviceIds.map((id) => serviceRepository.getById(providerId, id)),
       );
-      const dow = datetime.getDay();
+      const dow = jourSemaineLocal(datetime, fuseau);
       if (!services.every((svc) => isServiceOpenOnDay(svc, dow))) {
         return false;
       }
@@ -955,7 +969,7 @@ export class SchedulingService {
     }
 
     const endDatetime = new Date(datetime.getTime() + duration * 60 * 1000);
-    const dayOfWeek = datetime.getDay();
+    const dayOfWeek = jourSemaineLocal(datetime, fuseau);
 
     // Check availability for this member on this day
     // Plus de fallback
@@ -969,9 +983,12 @@ export class SchedulingService {
       return false;
     }
 
-    // Check if time falls within any availability slot
-    const timeStr = this.formatTime(datetime);
-    const endTimeStr = this.formatTime(endDatetime);
+    // Check if time falls within any availability slot.
+    // Heures LOCALES DU LIEU : `formatTime` lisait l'heure de la machine,
+    // si bien qu'un créneau valide chez le salon pouvait être refusé —
+    // ou, plus grave, un créneau hors horaires accepté.
+    const timeStr = heureLocale(datetime, fuseau);
+    const endTimeStr = heureLocale(endDatetime, fuseau);
     const isWithinAvailability = availability.slots.some(
       (slot) =>
         this.hhmmToMinutes(slot.start) <= this.hhmmToMinutes(timeStr) &&
@@ -992,7 +1009,7 @@ export class SchedulingService {
     const isBlocked = blockedSlots.some(
       (bs) =>
         bs.memberId === memberId &&
-        this.isTimeBlockedBySlot(datetime, endDatetime, bs)
+        this.isTimeBlockedBySlot(datetime, endDatetime, bs, fuseau)
     );
 
     if (isBlocked) {
@@ -1093,15 +1110,21 @@ export class SchedulingService {
   private isTimeBlockedBySlots(
     start: Date,
     end: Date,
-    blockedSlots: WithId<BlockedSlot>[]
+    blockedSlots: WithId<BlockedSlot>[],
+    fuseau: string = FUSEAU_COMPAT
   ): boolean {
-    return blockedSlots.some((bs) => this.isTimeBlockedBySlot(start, end, bs));
+    return blockedSlots.some((bs) => this.isTimeBlockedBySlot(start, end, bs, fuseau));
   }
 
   /**
    * Check if a time is blocked by a specific blocked slot
    */
-  private isTimeBlockedBySlot(start: Date, end: Date, blockedSlot: BlockedSlot): boolean {
+  private isTimeBlockedBySlot(
+    start: Date,
+    end: Date,
+    blockedSlot: BlockedSlot,
+    fuseau: string = FUSEAU_COMPAT,
+  ): boolean {
     // ── Une seule définition de la règle ──────────────────────────────────
     //
     // Elle vivait ici, et une SECONDE interprétation vivait côté Cloud
@@ -1121,12 +1144,16 @@ export class SchedulingService {
         endTime: blockedSlot.endTime,
         spanMode: blockedSlot.spanMode,
       },
-      start
+      start,
+      fuseau
     );
     if (!fenetre) return false;
 
-    const slotStartMin = this.hhmmToMinutes(this.formatTime(start));
-    const slotEndMin = this.endMin(this.formatTime(end));
+    // Minutes LOCALES DU LIEU : la fenêtre bloquée est saisie en heures
+    // murales, l'instant du créneau n'en est pas une.
+    const slotStartMin = minutesLocales(start, fuseau);
+    const finMin = minutesLocales(end, fuseau);
+    const slotEndMin = finMin === 0 ? 24 * 60 : finMin;
     return slotStartMin < fenetre.endMin && fenetre.startMin < slotEndMin;
   }
 
@@ -1144,10 +1171,6 @@ export class SchedulingService {
   /**
    * Format date to time string (HH:mm)
    */
-  private formatTime(date: Date): string {
-    return date.toTimeString().substring(0, 5);
-  }
-
   /**
    * Format minutes to time string (HH:mm)
    */
