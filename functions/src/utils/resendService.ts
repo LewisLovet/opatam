@@ -286,6 +286,15 @@ export interface EmailResult {
 }
 
 export interface BookingEmailData {
+  /**
+   * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
+   *
+   * Sans lui, tous les e-mails annoncent l'heure de Paris : ce fichier le
+   * supposait, et ce n'est plus vrai depuis qu'un salon réunionnais utilise
+   * Opatam. Absent = repli Paris, donc comportement inchangé pour les
+   * réservations d'avant le chantier fuseaux.
+   */
+  timeZone?: string;
   clientEmail: string;
   clientName: string;
   /** Client's booking language (booking.clientLocale, 'fr' | 'en').
@@ -405,17 +414,17 @@ function accessInstructionsBlockText(data: { accessInstructions?: string | null 
 }
 
 /** Prominent notice telling the client when the exact address will arrive. */
-function addressPendingNoticeHtml(data: { addressPending?: boolean; addressAvailableAt?: Date | null }, locale: EmailLocale = 'fr'): string {
+function addressPendingNoticeHtml(data: { addressPending?: boolean; addressAvailableAt?: Date | null; timeZone?: string }, locale: EmailLocale = 'fr'): string {
   if (!data.addressPending) return '';
   const c = EMAIL_TEXTS.common[locale];
-  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale)) : '';
+  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale, data.timeZone)) : '';
   return `<div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin-bottom: 24px;"><p style="margin: 0; font-size: 14px; color: #1e40af; line-height: 1.5;">&#x1F4CD; <strong>${c.addressPendingHtml(when)}</strong></p></div>`;
 }
 
-function addressPendingNoticeText(data: { addressPending?: boolean; addressAvailableAt?: Date | null }, locale: EmailLocale = 'fr'): string {
+function addressPendingNoticeText(data: { addressPending?: boolean; addressAvailableAt?: Date | null; timeZone?: string }, locale: EmailLocale = 'fr'): string {
   if (!data.addressPending) return '';
   const c = EMAIL_TEXTS.common[locale];
-  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale)) : '';
+  const when = data.addressAvailableAt ? c.onDate(formatEmailDate(data.addressAvailableAt, locale, data.timeZone)) : '';
   return `\n\n${c.addressPendingText(when)}`;
 }
 
@@ -441,10 +450,10 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     const l = resolveEmailLocale(data.locale);
     const t = EMAIL_TEXTS.confirmation[l];
     const ics = EMAIL_TEXTS.common[l].ics;
-    const formattedDate = formatEmailDate(data.datetime, l);
-    const formattedTime = formatEmailTime(data.datetime, l);
+    const formattedDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
     const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
@@ -556,6 +565,15 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
  * deletes the booking entirely.
  */
 export interface DepositReminderEmailData {
+  /**
+   * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
+   *
+   * Sans lui, tous les e-mails annoncent l'heure de Paris : ce fichier le
+   * supposait, et ce n'est plus vrai depuis qu'un salon réunionnais utilise
+   * Opatam. Absent = repli Paris, donc comportement inchangé pour les
+   * réservations d'avant le chantier fuseaux.
+   */
+  timeZone?: string;
   clientEmail: string;
   clientName: string;
   /** Client's booking language ('fr' | 'en', anything else → fr). */
@@ -587,10 +605,10 @@ export async function sendDepositReminderEmail(
     const l = resolveEmailLocale(data.locale);
     const t = EMAIL_TEXTS.depositReminder[l];
     const c = EMAIL_TEXTS.common[l];
-    const formattedDate = formatEmailDate(data.datetime, l);
-    const formattedTime = formatEmailTime(data.datetime, l);
+    const formattedDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
     const formattedDeposit = formatEmailPrice(data.depositAmount, l);
     const cancelUrl = data.cancelToken
       ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
@@ -676,6 +694,15 @@ ${data.providerName}
  * Send email notification to provider about a new booking
  */
 export interface ProviderNewBookingEmailData {
+  /**
+   * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
+   *
+   * Sans lui, tous les e-mails annoncent l'heure de Paris : ce fichier le
+   * supposait, et ce n'est plus vrai depuis qu'un salon réunionnais utilise
+   * Opatam. Absent = repli Paris, donc comportement inchangé pour les
+   * réservations d'avant le chantier fuseaux.
+   */
+  timeZone?: string;
   providerEmail: string;
   clientName: string;
   clientPhone?: string;
@@ -887,6 +914,8 @@ export async function sendCancellationEmail(data: {
    *  amount (in cents) is NOT being refunded — typically because the
    *  cancellation happened past the refund deadline. */
   unrefundedAmount?: number | null;
+  /** Fuseau du SALON, figé sur la réservation. Absent = repli Paris. */
+  timeZone?: string;
 }): Promise<EmailResult> {
   console.log('[EMAIL] Sending cancellation email to:', data.clientEmail);
 
@@ -896,8 +925,8 @@ export async function sendCancellationEmail(data: {
 
   try {
     const l = resolveEmailLocale(data.locale);
-    const formattedDate = formatEmailDate(data.datetime, l);
-    const formattedTime = formatEmailTime(data.datetime, l);
+    const formattedDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const businessName = data.providerName || appConfig.name;
     const rebookUrl = data.providerSlug ? `${appConfig.url}/p/${data.providerSlug}` : appConfig.url;
 
@@ -950,6 +979,8 @@ export async function sendProviderCancellationEmail(data: {
   locationName?: string;
   memberName?: string;
   cancelledBy: 'client' | 'provider';
+  /** Fuseau du SALON, figé sur la réservation. Absent = repli Paris. */
+  timeZone?: string;
   /** When the deposit was refunded as part of this cancellation. */
   refundedAmount?: number | null;
   /** When a deposit was paid but NOT refunded (delay expired and pro
@@ -1118,12 +1149,12 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
   try {
     const l = resolveEmailLocale(data.locale);
     const ics = EMAIL_TEXTS.common[l].ics;
-    const formattedOldDate = formatEmailDate(data.oldDatetime, l);
-    const formattedOldTime = formatEmailTime(data.oldDatetime, l);
-    const formattedNewDate = formatEmailDate(data.datetime, l);
-    const formattedNewTime = formatEmailTime(data.datetime, l);
+    const formattedOldDate = formatEmailDate(data.oldDatetime, l, data.timeZone);
+    const formattedOldTime = formatEmailTime(data.oldDatetime, l, data.timeZone);
+    const formattedNewDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedNewTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedNewEndTime = formatEmailTime(endDate, l);
+    const formattedNewEndTime = formatEmailTime(endDate, l, data.timeZone);
     const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
@@ -1243,10 +1274,10 @@ export async function sendReminderEmail(
     const l = resolveEmailLocale(data.locale);
     const t = EMAIL_TEXTS.reminder[l];
     const ics = EMAIL_TEXTS.common[l].ics;
-    const formattedDate = formatEmailDate(data.datetime, l);
-    const formattedTime = formatEmailTime(data.datetime, l);
+    const formattedDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
-    const formattedEndTime = formatEmailTime(endDate, l);
+    const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
     const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
     const businessName = data.providerName || appConfig.name;
 
@@ -2218,6 +2249,8 @@ L'équipe ${appConfig.name}`;
 // ──────────────────────────────────────────────────────────────────────
 
 export interface ReviewRequestEmailData {
+  /** Fuseau du SALON, figé sur la réservation. Absent = repli Paris. */
+  timeZone?: string;
   bookingId: string;
   clientEmail: string;
   clientName: string;
@@ -2251,8 +2284,8 @@ export async function sendReviewRequestEmail(
     const c = EMAIL_TEXTS.common[l];
     const t = EMAIL_TEXTS.review[l];
     const reviewUrl = `${appConfig.url}/avis/${data.bookingId}`;
-    const formattedDate = formatEmailDate(data.datetime, l);
-    const formattedTime = formatEmailTime(data.datetime, l);
+    const formattedDate = formatEmailDate(data.datetime, l, data.timeZone);
+    const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
 
     const subject = t.subject(data.serviceName);
 

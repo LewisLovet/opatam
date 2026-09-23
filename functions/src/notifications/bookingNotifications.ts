@@ -14,6 +14,8 @@ interface BookingData {
   clientId: string | null;
   serviceName: string;
   datetime: admin.firestore.Timestamp;
+  /** Fuseau du SALON, figé à la réservation. Absent avant le chantier fuseaux. */
+  timezone?: string | null;
   clientInfo: {
     name: string;
     email: string;
@@ -58,20 +60,57 @@ function formatDateProvider(date: Date, intl: string, timeZone: string): string 
   });
 }
 
-function formatDateFr(date: Date): string {
+/**
+ * « mardi 23 septembre à 8h00 », dans le fuseau du SALON.
+ *
+ * Le fuseau était figé sur Europe/Paris « since Cloud Functions run in
+ * UTC » — vrai pour le problème d'alors, faux comme solution depuis qu'un
+ * salon n'est pas à Paris. Il vient maintenant de la réservation ; le
+ * repli Paris garde le comportement d'avant pour les anciennes.
+ *
+ * `formatToParts` plutôt qu'un reparsage de `toLocaleString` : la seconde
+ * forme reconstruit une Date dans le fuseau de la MACHINE, ce qui remet le
+ * bug par la fenêtre.
+ */
+function formatDateFr(date: Date, fuseau: string = 'Europe/Paris'): string {
   const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
                   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-  // Use Paris timezone since Cloud Functions run in UTC
-  const parisDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  const dayName = days[parisDate.getDay()];
-  const dayNum = parisDate.getDate();
-  const month = months[parisDate.getMonth()];
-  const hours = parisDate.getHours();
-  const minutes = parisDate.getMinutes().toString().padStart(2, '0');
+  const parts: Record<string, string> = {};
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: fuseau,
+    hourCycle: 'h23',
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(date)) {
+    if (p.type !== 'literal') parts[p.type] = p.value;
+  }
 
-  return `${dayName} ${dayNum} ${month} à ${hours}h${minutes}`;
+  const jourSemaine = new Date(
+    Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)),
+  ).getUTCDay();
+
+  return (
+    `${days[jourSemaine]} ${Number(parts.day)} ${months[Number(parts.month) - 1]} ` +
+    `à ${Number(parts.hour)}h${parts.minute}`
+  );
+}
+
+/**
+ * Le fuseau à employer pour CETTE réservation : celui qui y est figé,
+ * sinon celui du prestataire. Le premier est le seul juste quand un
+ * prestataire a des lieux dans deux fuseaux.
+ */
+function fuseauDeLaResa(
+  booking: { timezone?: string | null } | null | undefined,
+  ctx: { timeZone: string },
+): string {
+  return booking?.timezone || ctx.timeZone;
 }
 
 // Notification event types for preference checks
@@ -234,7 +273,7 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateProvider(datetime, ctx.intl, ctx.timeZone);
+  const dateStr = formatDateProvider(datetime, ctx.intl, fuseauDeLaResa(booking, ctx));
 
   // Highlight the deposit when one was paid as part of the booking.
   // Surfaces the value of the Sérénité add-on at every relevant push.
@@ -306,7 +345,9 @@ export async function notifyClientBookingConfirmed(booking: BookingData): Promis
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateFr(datetime);
+  // Notification à la CLIENTE : pas de contexte prestataire ici, mais le
+  // fuseau du salon est figé sur la réservation.
+  const dateStr = formatDateFr(datetime, booking.timezone || 'Europe/Paris');
 
   const result = await sendPushNotifications(pushTokens, {
     title: 'Rendez-vous confirmé',
@@ -420,7 +461,7 @@ export async function notifyProviderBookingCancelled(booking: BookingData): Prom
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateProvider(datetime, ctx.intl, ctx.timeZone);
+  const dateStr = formatDateProvider(datetime, ctx.intl, fuseauDeLaResa(booking, ctx));
 
   const result = await sendPushNotifications(pushTokens, {
     title: ctx.t.rdvAnnule,
@@ -460,7 +501,7 @@ export async function notifyClientBookingCancelled(booking: BookingData): Promis
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateFr(datetime);
+  const dateStr = formatDateFr(datetime, booking.timezone || 'Europe/Paris');
 
   const result = await sendPushNotifications(pushTokens, {
     title: 'Rendez-vous annulé',
@@ -503,7 +544,7 @@ export async function notifyClientBookingRescheduled(
   }
 
   const newDatetime = booking.datetime.toDate();
-  const newDateStr = formatDateFr(newDatetime);
+  const newDateStr = formatDateFr(newDatetime, booking.timezone || 'Europe/Paris');
 
   const result = await sendPushNotifications(pushTokens, {
     title: 'Rendez-vous modifié',
@@ -543,7 +584,7 @@ export async function notifyProviderServiceChange(
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) return;
 
-  const dateStr = formatDateProvider(booking.datetime.toDate(), ctx.intl, ctx.timeZone);
+  const dateStr = formatDateProvider(booking.datetime.toDate(), ctx.intl, fuseauDeLaResa(booking, ctx));
 
   const result = await sendPushNotifications(pushTokens, {
     title: added ? ctx.t.prestationAjoutee : ctx.t.prestationRetiree,
@@ -586,7 +627,7 @@ export async function notifyClientBookingReminder(
   }
 
   const datetime = booking.datetime.toDate();
-  const dateStr = formatDateFr(datetime);
+  const dateStr = formatDateFr(datetime, booking.timezone || 'Europe/Paris');
 
   // Dynamic timing label
   let timeLabel: string;

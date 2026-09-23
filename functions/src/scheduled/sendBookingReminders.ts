@@ -102,14 +102,29 @@ export const sendBookingReminders = onSchedule(
         const minutesUntil = (bookingDatetime.getTime() - now.getTime()) / (1000 * 60);
         const hoursUntil = minutesUntil / 60;
 
-        // Determine if booking is TODAY or TOMORROW in Paris timezone
-        const parisNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-        const parisBooking = new Date(bookingDatetime.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-        const todayStr = `${parisNow.getFullYear()}-${parisNow.getMonth()}-${parisNow.getDate()}`;
-        const bookingStr = `${parisBooking.getFullYear()}-${parisBooking.getMonth()}-${parisBooking.getDate()}`;
-        const tomorrowDate = new Date(parisNow);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrowStr = `${tomorrowDate.getFullYear()}-${tomorrowDate.getMonth()}-${tomorrowDate.getDate()}`;
+        // « Aujourd'hui » et « demain » se comptent CHEZ LE SALON, pas à
+        // Paris. Pour un rendez-vous réunionnais du matin, Paris est encore
+        // la veille : le rappel annonçait « demain » à une cliente qui
+        // passait le lendemain matin — ou l'inverse.
+        //
+        // Le fuseau est figé sur la réservation ; « Europe/Paris » reste le
+        // repli pour celles d'avant le chantier, donc rien ne change pour
+        // elles.
+        const fuseauSalon = data.timezone || 'Europe/Paris';
+        const jourChezLeSalon = (d: Date): string =>
+          new Intl.DateTimeFormat('en-CA', {
+            timeZone: fuseauSalon,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(d);
+
+        const todayStr = jourChezLeSalon(now);
+        const bookingStr = data.localDate || jourChezLeSalon(bookingDatetime);
+        // +24 h suffit ici : on compare des DATES, et une journée de bascule
+        // ne décale l'instant que d'une heure — jamais assez pour changer de
+        // jour à ces heures-là.
+        const tomorrowStr = jourChezLeSalon(new Date(now.getTime() + 24 * 60 * 60 * 1000));
 
         const isToday = todayStr === bookingStr;
         const isTomorrow = tomorrowStr === bookingStr;

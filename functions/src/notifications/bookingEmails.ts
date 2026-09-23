@@ -43,6 +43,8 @@ interface BookingData {
   /** Nom dans la langue de la cliente (snapshot à la résa). */
   serviceNameLocalized?: string | null;
   datetime: admin.firestore.Timestamp;
+  /** Fuseau du SALON, figé à la réservation. Absent avant le chantier fuseaux. */
+  timezone?: string | null;
   duration?: number;
   price?: number;
   priceMax?: number | null;
@@ -275,6 +277,8 @@ async function toEmailData(
     // toEmailData ne sert que les e-mails à la CLIENTE : nom dans sa langue.
     serviceName: booking.serviceNameLocalized ?? booking.serviceName,
     datetime: booking.datetime.toDate(),
+    // Le fuseau du SALON voyage avec la date (voir ci-dessus).
+    timeZone: booking.timezone ?? undefined,
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
@@ -378,6 +382,8 @@ export async function emailProviderNewBooking(
     clientPhone: booking.clientInfo.phone,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
+    // Le fuseau du SALON voyage avec la date (voir ci-dessus).
+    timeZone: booking.timezone ?? undefined,
     duration: booking.duration || 60,
     price: booking.price || 0,
     priceMax: booking.priceMax || null,
@@ -454,6 +460,8 @@ export async function emailClientBookingCancelled(
     locale: booking.clientLocale,
     serviceName: booking.serviceNameLocalized ?? booking.serviceName,
     datetime: booking.datetime.toDate(),
+    // Le fuseau du SALON voyage avec la date (voir ci-dessus).
+    timeZone: booking.timezone ?? undefined,
     reason: booking.cancelReason,
     providerName: booking.providerName,
     providerSlug,
@@ -505,6 +513,8 @@ export async function emailProviderBookingCancelled(
     clientPhone: booking.clientInfo.phone,
     serviceName: booking.serviceName,
     datetime: booking.datetime.toDate(),
+    // Le fuseau du SALON voyage avec la date (voir ci-dessus).
+    timeZone: booking.timezone ?? undefined,
     reason: booking.cancelReason,
     providerName: booking.providerName,
     locationName: booking.locationName,
