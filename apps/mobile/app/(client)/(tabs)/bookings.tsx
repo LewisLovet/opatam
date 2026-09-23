@@ -29,7 +29,13 @@ import { getIntlLocale } from '../../../lib/i18n';
 type TabType = 'upcoming' | 'past';
 
 // Helper to format booking date
-function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): string {
+function formatBookingDate(
+  datetime: Date | any,
+  t: TFunction,
+  locale: string,
+  /** Fuseau du SALON, figé sur la réservation. Absent = repli Paris. */
+  fuseau?: string | null,
+): string {
   const date = datetime instanceof Date
     ? datetime
     : datetime?.toDate?.() || new Date(datetime);
@@ -42,7 +48,13 @@ function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): 
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
   // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
-  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  // Heure du SALON, figée sur la réservation. Le repli Paris garde le
+  // comportement d'avant pour les réservations plus anciennes.
+  const timeStr = date.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: fuseau || 'Europe/Paris',
+  });
 
   if (isToday) {
     return t('bookings.date.todayAt', { time: timeStr });
@@ -109,7 +121,7 @@ function BookingCard({
             </Text>
             <View style={styles.bookingMeta}>
               <Text variant="caption" color="primary" style={{ fontWeight: '500' }}>
-                {formatBookingDate(booking.datetime, t, dateLocale)}
+                {formatBookingDate(booking.datetime, t, dateLocale, booking.timezone)}
               </Text>
               <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
                 <Text style={[styles.statusText, { color: statusConfig.color }]}>

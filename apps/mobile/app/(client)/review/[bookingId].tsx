@@ -40,7 +40,7 @@ function dateLocale(): string {
   return getIntlLocale(i18n.language);
 }
 
-function formatDate(datetime: Date | any): string {
+function formatDate(datetime: Date | any, fuseau?: string | null): string {
   const date = toDate(datetime);
   return date.toLocaleDateString(dateLocale(), {
     weekday: 'long',
@@ -50,13 +50,15 @@ function formatDate(datetime: Date | any): string {
   });
 }
 
-function formatTime(datetime: Date | any): string {
+function formatTime(datetime: Date | any, fuseau?: string | null): string {
   const date = toDate(datetime);
   // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
   return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    // Fuseau du SALON, figé sur la réservation (repli : comportement
+    // d'avant le chantier fuseaux).
+    timeZone: fuseau || 'Europe/Paris',
   });
 }
 
@@ -337,7 +339,10 @@ export default function ReviewScreen() {
                   {booking.providerName}
                 </Text>
                 <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                  {t('review.dateAt', { date: formatDate(booking.datetime), time: formatTime(booking.datetime) })}
+                  {t('review.dateAt', {
+                    date: formatDate(booking.datetime, booking.timezone),
+                    time: booking.localStartTime ?? formatTime(booking.datetime, booking.timezone),
+                  })}
                 </Text>
               </View>
             </View>

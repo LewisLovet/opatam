@@ -76,7 +76,13 @@ function toDate(dt: any): Date {
   return new Date(dt);
 }
 
-function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): string {
+function formatBookingDate(
+  datetime: Date | any,
+  t: TFunction,
+  locale: string,
+  /** Fuseau du SALON, figé sur la réservation. Absent = repli Paris. */
+  fuseau?: string | null,
+): string {
   const date = toDate(datetime);
   const now = new Date();
   const tomorrow = new Date(now);
@@ -85,7 +91,13 @@ function formatBookingDate(datetime: Date | any, t: TFunction, locale: string): 
   const isToday = date.toDateString() === now.toDateString();
   const isTomorrow = date.toDateString() === tomorrow.toDateString();
   // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
-  const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  // Heure du SALON, figée sur la réservation. Le repli Paris garde le
+  // comportement d'avant pour les réservations plus anciennes.
+  const timeStr = date.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: fuseau || 'Europe/Paris',
+  });
 
   if (isToday) return t('home.date.todayAt', { time: timeStr });
   if (isTomorrow) return t('home.date.tomorrowAt', { time: timeStr });
@@ -394,7 +406,7 @@ export default function HomeScreen() {
                       {nextBooking.providerName}
                     </Text>
                     <Text variant="caption" color="primary" style={{ marginTop: 4, fontWeight: '500' }}>
-                      {formatBookingDate(nextBooking.datetime, t, dateLocale)}
+                      {formatBookingDate(nextBooking.datetime, t, dateLocale, nextBooking.timezone)}
                     </Text>
                   </View>
                   {nextBookingTimeChip ? (

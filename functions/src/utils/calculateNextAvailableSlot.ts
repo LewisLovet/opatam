@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { ajouterJours, jourLocal, jourSemaineCalendaire, minutesLocales, instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Timestamp } from 'firebase-admin/firestore';
 import { serverTracker } from './serverTracker';
 
@@ -51,10 +52,17 @@ const finEnMinutes = (hhmm: string): number => {
   return m === 0 ? MINUTES_PAR_JOUR : m;
 };
 
-const auMinuit = (d: Date): Date => {
+/**
+ * La journée à laquelle appartient un instant, comme repère comparable.
+ * Miroir de `jourRepere` (@booking-app/shared) : avec un fuseau, c'est la
+ * date LOCALE DU LIEU — la seule qui ait un sens pour une période bloquée
+ * saisie par le professionnel.
+ */
+const jourRepere = (d: Date, fuseau?: string): string => {
+  if (fuseau) return jourLocal(d, fuseau);
   const copie = new Date(d);
   copie.setHours(0, 0, 0, 0);
-  return copie;
+  return copie.toISOString();
 };
 
 /**
@@ -71,17 +79,17 @@ const auMinuit = (d: Date): Date => {
  * Exportée pour qu'un contrôle d'équivalence puisse la comparer à la source
  * partagée : un miroir qu'on ne peut pas confronter dérive en silence.
  */
-export function fenetreBloquee(bs: BlockedSlot, jour: Date): Tranche | null {
-  const cible = auMinuit(jour);
-  const premierJour = auMinuit(bs.startDate.toDate());
-  const dernierJour = auMinuit(bs.endDate.toDate());
+export function fenetreBloquee(bs: BlockedSlot, jour: Date, fuseau?: string): Tranche | null {
+  const cible = jourRepere(jour, fuseau);
+  const premierJour = jourRepere(bs.startDate.toDate(), fuseau);
+  const dernierJour = jourRepere(bs.endDate.toDate(), fuseau);
 
   if (cible < premierJour || cible > dernierJour) return null;
   if (bs.allDay) return { debut: 0, fin: MINUTES_PAR_JOUR };
   if (!bs.startTime || !bs.endTime) return null;
 
-  const estPremier = cible.getTime() === premierJour.getTime();
-  const estDernier = cible.getTime() === dernierJour.getTime();
+  const estPremier = cible === premierJour;
+  const estDernier = cible === dernierJour;
 
   if ((estPremier && estDernier) || bs.spanMode === 'daily') {
     return { debut: hhmmEnMinutes(bs.startTime), fin: finEnMinutes(bs.endTime) };
@@ -149,6 +157,30 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
   if (!providerDoc.exists) {
     console.log('Provider not found');
     return null;
+  }
+
+  // 1 bis. Le fuseau du SALON. Tout ce qui suit — jour de la semaine,
+  // « est-il tard ? », minutes des rendez-vous — se lisait dans le fuseau
+  // de la Cloud Function (UTC). Pour un salon réunionnais, la journée
+  // commençait quatre heures trop tard.
+  //
+  // Absent (lieu pas encore résolu) → Europe/Paris, c'est-à-dire le
+  // comportement d'avant : le serveur web force ce fuseau et c'est ce que
+  // cet indicateur reflétait.
+  let fuseauDuSalon = 'Europe/Paris';
+  try {
+    const lieux = await db
+      .collection('providers')
+      .doc(providerId)
+      .collection('locations')
+      .where('isActive', '==', true)
+      .limit(5)
+      .get();
+    serverTracker.trackRead('providers/*/locations', lieux.size);
+    const defaut = lieux.docs.find((d) => d.data().isDefault) ?? lieux.docs[0];
+    fuseauDuSalon = defaut?.data().timezone || 'Europe/Paris';
+  } catch {
+    // Une lecture ratée ne doit pas priver la fiche de son indicateur.
   }
 
   // 2. Récupérer le premier membre actif
@@ -255,19 +287,21 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
 
   console.log(`Found ${futureBookings.length} future bookings`);
 
-  // 6. Parcourir les 60 prochains jours
-  const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
+  // 6. Parcourir les 60 prochains jours, DANS LE FUSEAU DU SALON.
+  //
+  // Tout ce bloc lisait l'heure de la Cloud Function (UTC) : le jour de la
+  // semaine, l'heure qu'il est, et les minutes des rendez-vous. Pour un
+  // salon réunionnais, « aujourd'hui » commençait quatre heures trop tard
+  // et le jour de la semaine pouvait être le mauvais.
+  const jourAujourdhui = jourLocal(now, fuseauDuSalon);
 
-  // Si on est déjà tard dans la journée, commencer demain
-  const nowHours = now.getHours();
+  // Déjà tard CHEZ LE SALON ? On commence demain.
+  const nowHours = Math.floor(minutesLocales(now, fuseauDuSalon) / 60);
   const startOffset = nowHours >= 18 ? 1 : 0;
 
   for (let i = startOffset; i < 60; i++) {
-    const checkDate = new Date(currentDate);
-    checkDate.setDate(checkDate.getDate() + i);
-
-    const dayOfWeek = checkDate.getDay();
+    const jour = ajouterJours(jourAujourdhui, i);
+    const dayOfWeek = jourSemaineCalendaire(jour);
     const availability = availabilities.get(dayOfWeek);
 
     // Jour fermé ?
@@ -283,18 +317,21 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
 
     // Ce que les blocages retirent — journée entière ET fermetures horaires,
     // continues ou quotidiennes.
+    // `fenetreBloquee` compare des journées : on lui donne un instant qui
+    // tombe à coup sûr dans CETTE journée locale — midi sur place.
+    const midiLocal = instantDepuisHeureLocale(jour, 12 * 60, fuseauDuSalon) ?? new Date();
     const tranchesBloquees = blockedSlots
-      .map(bs => fenetreBloquee(bs, checkDate))
+      .map(bs => fenetreBloquee(bs, midiLocal, fuseauDuSalon))
       .filter((t): t is Tranche => t !== null);
 
-    // Ce que les rendez-vous déjà pris retirent.
+    // Ce que les rendez-vous déjà pris retirent — en minutes LOCALES.
     const tranchesReservees = futureBookings
-      .filter(b => b.datetime.toDate().toDateString() === checkDate.toDateString())
+      .filter(b => jourLocal(b.datetime.toDate(), fuseauDuSalon) === jour)
       .map(b => {
         const debutRdv = b.datetime.toDate();
         const finRdv = b.endDatetime.toDate();
-        const debut = debutRdv.getHours() * 60 + debutRdv.getMinutes();
-        const brut = finRdv.getHours() * 60 + finRdv.getMinutes();
+        const debut = minutesLocales(debutRdv, fuseauDuSalon);
+        const brut = minutesLocales(finRdv, fuseauDuSalon);
         // Un rendez-vous qui déborde sur le lendemain retombe à une fin plus
         // petite que son début : il prend alors tout le reste de la journée.
         return { debut, fin: brut > debut ? brut : MINUTES_PAR_JOUR };
@@ -307,8 +344,13 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     const minServiceDuration = 30; // Durée minimum d'un service
 
     if (availableMinutes >= minServiceDuration) {
-      console.log(`Found available date: ${checkDate.toISOString()} (${availableMinutes} minutes available)`);
-      return checkDate;
+      // On rend le DÉBUT de cette journée locale, pas minuit chez la
+      // Function : c'est la date que la fiche affichera.
+      const debutDeLaJournee = instantDepuisHeureLocale(jour, 0, fuseauDuSalon);
+      console.log(
+        `Found available date: ${jour} (${availableMinutes} minutes available, ${fuseauDuSalon})`,
+      );
+      return debutDeLaJournee ?? new Date(`${jour}T00:00:00Z`);
     }
   }
 

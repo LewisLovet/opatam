@@ -57,13 +57,15 @@ function formatDate(datetime: Date | any): string {
 }
 
 // Helper to format time
-function formatTime(datetime: Date | any): string {
+function formatTime(datetime: Date | any, fuseau?: string | null): string {
   const date = toDate(datetime);
-  // Heure du SALON, pas celle de l'appareil (cliente dans un autre fuseau).
+  // Heure du SALON, pas celle de l'appareil. Le fuseau vient de la
+  // RÉSERVATION (figé à la création) ; « Europe/Paris » n'est plus qu'un
+  // repli pour celles d'avant le chantier fuseaux.
   return date.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
+    timeZone: fuseau || 'Europe/Paris',
   });
 }
 
@@ -483,7 +485,9 @@ export default function BookingDetailScreen() {
         endDate,
         location: calendarLocation,
         notes: `${t('bookingDetailScreen.calendar.noteProvider', { name: booking.providerName })}${booking.memberName ? `\n${t('bookingDetailScreen.calendar.noteWith', { name: booking.memberName })}` : ''}`,
-        timeZone: 'Europe/Paris',
+        // Fuseau du SALON, figé sur la réservation (repli : comportement
+        // d'avant le chantier fuseaux).
+        timeZone: booking?.timezone || 'Europe/Paris',
       });
 
       showToast({
@@ -719,7 +723,11 @@ export default function BookingDetailScreen() {
             <InfoRow
               icon="time-outline"
               label={t('bookingDetailScreen.info.time')}
-              value={`${formatTime(booking.datetime)} - ${formatTime(booking.endDatetime)}`}
+              value={
+                booking.localStartTime && booking.localEndTime
+                  ? `${booking.localStartTime} - ${booking.localEndTime}`
+                  : `${formatTime(booking.datetime, booking.timezone)} - ${formatTime(booking.endDatetime, booking.timezone)}`
+              }
               colors={colors}
             />
           </View>
