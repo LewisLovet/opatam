@@ -36,6 +36,7 @@ interface StoriesData {
 }
 
 const PERIODES = [
+  { days: -1, label: "Aujourd'hui" },
   { days: 7, label: '7 jours' },
   { days: 30, label: '30 jours' },
   { days: 90, label: '90 jours' },

@@ -217,23 +217,40 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
 
   // Read pre-computed stats + lightweight time-based queries in parallel
   // Using select() instead of count() for compatibility with current firebase-admin version
-  const [statsDoc, signupsTodaySnap, signupsWeekSnap, signupsMonthSnap, bookingsTodaySnap, bookingsWeekSnap, bookingsMonthSnap, providersPvSnap] = await Promise.all([
+  const [
+    statsDoc, signupsTodaySnap, signupsWeekSnap, signupsMonthSnap,
+    bookingsTodaySnap, bookingsWeekSnap, bookingsMonthSnap, providersPvSnap,
+    avisJourSnap, storiesJourSnap, supportJourSnap, vusJourSnap,
+  ] = await Promise.all([
     db.doc('stats/dashboard').get(),
     db.collection('users').where('createdAt', '>=', startOfToday).select('email', 'isAdmin', 'isTest').get(),
     db.collection('users').where('createdAt', '>=', startOfWeek).select('email', 'isAdmin', 'isTest').get(),
     db.collection('users').where('createdAt', '>=', startOfMonth).select('email', 'isAdmin', 'isTest').get(),
-    db.collection('bookings').where('createdAt', '>=', startOfToday).select('status').get(),
+    db.collection('bookings').where('createdAt', '>=', startOfToday).select('status', 'clientId', 'providerId').get(),
     db.collection('bookings').where('createdAt', '>=', startOfWeek).select('status').get(),
     db.collection('bookings').where('createdAt', '>=', startOfMonth).select('status').get(),
-    db.collection('providers').select('stats', 'isTest').get(),
+    db.collection('providers').select('stats', 'isTest', 'depositsAddonActive').get(),
+    // Traces datees du jour : ce que quelqu'un a FAIT, disponible
+    // retroactivement. Aveugle a ceux qui consultent sans rien faire.
+    db.collection('reviews').where('createdAt', '>=', startOfToday).select('clientId').get(),
+    db.collection('storyEvents').where('createdAt', '>=', startOfToday).select('providerId').get(),
+    db.collection('supportChats').where('lastMessageAt', '>=', startOfToday)
+      .select('providerId', 'lastMessageFrom').get(),
+    // Presence reelle : le compte a ouvert l'application aujourd'hui.
+    db.collection('users').where('lastSeenAt', '>=', startOfToday)
+      .select('role', 'providerId', 'isAdmin', 'isTest').get(),
   ]);
 
   // Global page views — sum the per-provider aggregated counters (test
   // providers excluded). `today` is live; 7/30-day are recomputed nightly.
+  // Au passage : combien de prestataires encaissent des acomptes. C'est eux
+  // qui produisent les frais de service, d'ou l'interet de les compter ici.
   let pageViewsToday = 0, pageViews7Days = 0, pageViews30Days = 0, pageViewsTotal = 0;
+  let depositProviders = 0;
   providersPvSnap.docs.forEach((doc) => {
     const d = doc.data();
     if (d.isTest === true) return;
+    if (d.depositsAddonActive === true) depositProviders += 1;
     const pv = d.stats?.pageViews;
     if (!pv) return;
     pageViewsToday += pv.today || 0;
@@ -324,6 +341,80 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     console.error('[admin/stats] service fees error:', err);
   }
 
+
+  // ── Actifs aujourd'hui ────────────────────────────────────────────────
+  //
+  // Deux mesures qui ne disent pas la meme chose, affichees cote a cote :
+  //
+  //  • VISITES : le compte a ouvert l'application (champ `lastSeenAt`,
+  //    ecrit au plus une fois par jour par le client lui-meme). C'est la
+  //    mesure juste, mais elle ne compte que depuis son deploiement.
+  //  • TRACES : le compte a laisse une trace datee — reservation, avis,
+  //    story, message au support. Disponible retroactivement, mais aveugle
+  //    a quelqu'un qui consulte son planning sans rien faire.
+  //
+  // Un compte est compte UNE FOIS meme s'il a plusieurs traces, d'ou les
+  // ensembles.
+  const clientsVus = new Set<string>();
+  const prosVus = new Set<string>();
+  vusJourSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    if (d.isTest === true || d.isAdmin === true) return;
+    if (d.role === 'provider' || d.providerId) prosVus.add(doc.id);
+    else clientsVus.add(doc.id);
+  });
+
+  const clientsTraces = new Set<string>();
+  const prosTraces = new Set<string>();
+  // Une reservation prouve que le client ET le prestataire ont agi.
+  // Les abandons de paiement ne prouvent rien : on les ecarte, comme
+  // partout ailleurs dans ce fichier.
+  let traceReservations = 0;
+  bookingsTodaySnap.docs.forEach((doc) => {
+    const d = doc.data();
+    if (d.status === 'pending_payment') return;
+    traceReservations += 1;
+    if (typeof d.clientId === 'string' && d.clientId) clientsTraces.add(d.clientId);
+    if (typeof d.providerId === 'string' && d.providerId) prosTraces.add(d.providerId);
+  });
+  avisJourSnap.docs.forEach((doc) => {
+    const c = doc.data().clientId;
+    if (typeof c === 'string' && c) clientsTraces.add(c);
+  });
+  storiesJourSnap.docs.forEach((doc) => {
+    const p = doc.data().providerId;
+    if (typeof p === 'string' && p) prosTraces.add(p);
+  });
+  let traceMessages = 0;
+  supportJourSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    // Un message de l'admin ne prouve pas que le prestataire etait la.
+    if (d.lastMessageFrom !== 'pro') return;
+    traceMessages += 1;
+    const p = typeof d.providerId === 'string' && d.providerId ? d.providerId : doc.id;
+    prosTraces.add(p);
+  });
+
+  // Le chiffre affiche est l'UNION des deux : tant que `lastSeenAt` n'est pas
+  // deploye partout, les visites valent zero et seules les traces comptent ;
+  // ensuite les deux se completent sans jamais compter quelqu'un deux fois.
+  const clientsActifs = new Set([...clientsVus, ...clientsTraces]);
+  const prosActifs = new Set([...prosVus, ...prosTraces]);
+
+  const activeToday = {
+    total: { clients: clientsActifs.size, prestataires: prosActifs.size },
+    visites: { clients: clientsVus.size, prestataires: prosVus.size },
+    traces: {
+      clients: clientsTraces.size,
+      prestataires: prosTraces.size,
+      detail: {
+        reservations: traceReservations,
+        avis: avisJourSnap.size,
+        stories: storiesJourSnap.size,
+        messages: traceMessages,
+      },
+    },
+  };
   return {
     totalUsers,
     totalClients,
@@ -348,6 +439,9 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     serviceFeesThisMonth,
     serviceFeesTotal,
     serviceFeesCount,
+    depositProviders,
+    storiesToday: storiesJourSnap.size,
+    activeToday,
   };
 }
 

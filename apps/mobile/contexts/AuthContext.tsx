@@ -10,6 +10,7 @@ import {
   auth,
   authService,
   userRepository,
+  userService,
   providerService,
   onAuthChange,
   reauthenticateUser,
@@ -58,6 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const data = await userRepository.getById(firebaseUser.uid);
           setUserData(data);
+          // Présence : au plus une écriture par jour, sans relecture (le
+          // document vient d'être chargé). Non attendu volontairement, une
+          // mesure d'audience ne doit pas retarder l'ouverture.
+          if (data) {
+            void userService.marquerVisite(data.id, data.lastSeenAt ?? null);
+          }
         } catch (error) {
           console.error('Error loading user data:', error);
           setUserData(null);

@@ -28,6 +28,31 @@ export class UserService {
   }
 
   /**
+   * Marque une visite du jour, au plus une fois par jour.
+   *
+   * `dejaVu` est la valeur DEJA CHARGEE du document : on ne relit rien.
+   * Si elle date d'aujourd'hui, on n'ecrit pas — sinon chaque ouverture
+   * d'application coûterait une ecriture. L'echec est avale : une mesure
+   * d'audience ne doit jamais empecher quelqu'un d'utiliser l'application.
+   */
+  async marquerVisite(userId: string, dejaVu?: Date | null): Promise<void> {
+    const maintenant = new Date();
+    if (dejaVu) {
+      const vu = new Date(dejaVu);
+      const memeJour =
+        vu.getFullYear() === maintenant.getFullYear() &&
+        vu.getMonth() === maintenant.getMonth() &&
+        vu.getDate() === maintenant.getDate();
+      if (memeJour) return;
+    }
+    try {
+      await userRepository.update(userId, { lastSeenAt: maintenant } as never);
+    } catch {
+      // Silencieux : voir l'en-tête.
+    }
+  }
+
+  /**
    * Update user's provider ID (called when provider is created)
    */
   async setProviderId(userId: string, providerId: string): Promise<void> {

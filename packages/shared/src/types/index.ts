@@ -64,6 +64,17 @@ export interface User {
   affiliateId: string | null; // Lien vers doc affiliates (si cet user est affilié)
   isAdmin?: boolean; // Admin dashboard access (only set for platform admins)
   isDisabled?: boolean; // Disabled by admin
+  /**
+   * Derniere ouverture de l'application par ce compte.
+   *
+   * Ecrit AU PLUS une fois par jour, par le client lui-meme, quand le
+   * document est charge et que la date n'est pas celle du jour. C'est la
+   * seule mesure de presence reelle : ni Firebase Auth (la session mobile
+   * dure des mois, la connexion est donc tres ancienne) ni les traces
+   * metier (reservation, avis, story) ne voient quelqu'un qui consulte
+   * sans rien faire.
+   */
+  lastSeenAt?: Date | null;
   isTest?: boolean; // Internal/test account — excluded from admin dashboard analytics
   createdAt: Date;
   updatedAt: Date;

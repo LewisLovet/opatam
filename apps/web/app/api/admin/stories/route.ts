@@ -29,11 +29,17 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const daysParam = parseInt(request.nextUrl.searchParams.get('days') || '30', 10);
-  const days = Number.isFinite(daysParam) && daysParam >= 0 ? daysParam : 30;
+  const days = Number.isFinite(daysParam) && daysParam >= -1 ? daysParam : 30;
   const db = getAdminFirestore();
 
   let query = db.collection('storyEvents').orderBy('createdAt', 'desc');
-  if (days > 0) {
+  // `days=-1` = depuis MINUIT, pas 24 h glissantes : « aujourd'hui » doit
+  // dire la meme chose que sur le tableau de bord.
+  if (days === -1) {
+    const now = new Date();
+    const since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    query = query.where('createdAt', '>=', since);
+  } else if (days > 0) {
     const since = new Date();
     since.setDate(since.getDate() - days);
     query = query.where('createdAt', '>=', since);

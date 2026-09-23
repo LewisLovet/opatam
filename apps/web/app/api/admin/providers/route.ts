@@ -59,6 +59,10 @@ export async function GET(request: NextRequest) {
         countryCode: data.countryCode || null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
         acquisitionSource: data.acquisitionSource || null,
+        // Option acomptes (Serenite). Ce sont ces prestataires qui
+        // produisent les frais de service, d'ou l'interet de savoir
+        // lesquels d'un coup d'oeil.
+        depositsActive: data.depositsAddonActive === true,
       };
     });
 

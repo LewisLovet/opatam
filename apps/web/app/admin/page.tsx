@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Eye,
   CalendarCheck,
+  Share2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -135,9 +136,13 @@ export default function AdminDashboardPage() {
           trend={{ value: stats.newSignupsToday, label: "aujourd'hui" }}
         />
         <AdminStatCard
-          label="Prestataires payants"
-          value={stats.activeProviders}
-          icon={<Briefcase className="w-5 h-5 text-red-500" />}
+          label="Actifs aujourd'hui"
+          value={stats.activeToday.total.clients + stats.activeToday.total.prestataires}
+          icon={<Users className="w-5 h-5 text-emerald-500" />}
+          trend={{
+            value: stats.activeToday.total.prestataires,
+            label: 'prestataires',
+          }}
         />
         <AdminStatCard
           label="Encaissé (ce mois)"
@@ -146,19 +151,23 @@ export default function AdminDashboardPage() {
           format="currency"
         />
         <AdminStatCard
-          label="MRR net"
-          value={stats.mrr}
-          icon={<TrendingUp className="w-5 h-5 text-red-500" />}
-          format="currency"
+          label="Acomptes activés"
+          value={stats.depositProviders}
+          icon={<Coins className="w-5 h-5 text-emerald-500" />}
+          trend={{
+            value: stats.serviceFeesThisMonth,
+            label: 'de frais ce mois',
+            format: 'currency',
+          }}
         />
       </div>
 
       {/* Second row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <AdminStatCard
-          label="Inscriptions (semaine)"
-          value={stats.newSignupsWeek}
-          icon={<UserPlus className="w-5 h-5 text-red-500" />}
+          label="Stories (aujourd'hui)"
+          value={stats.storiesToday}
+          icon={<Share2 className="w-5 h-5 text-red-500" />}
         />
         <AdminStatCard
           label="Réservations (mois)"

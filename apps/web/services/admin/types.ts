@@ -31,6 +31,28 @@ export interface DashboardStats {
   serviceFeesThisMonth: number;
   serviceFeesTotal: number;
   serviceFeesCount: number;
+  /** Prestataires dont l'option acomptes est active — ce sont eux qui
+   *  produisent les frais de service ci-dessus. */
+  depositProviders: number;
+  /** Stories partagees depuis minuit. */
+  storiesToday: number;
+  /**
+   * Comptes vus aujourd'hui, par deux mesures qui ne disent pas la meme
+   * chose : `visites` = a ouvert l'application (mesure juste, mais elle ne
+   * commence qu'au deploiement du champ) ; `traces` = a laisse une trace
+   * datee (reservation, avis, story, message), disponible retroactivement
+   * mais aveugle a ceux qui consultent sans rien faire.
+   */
+  activeToday: {
+    /** Union des deux mesures — personne n'est compte deux fois. */
+    total: { clients: number; prestataires: number };
+    visites: { clients: number; prestataires: number };
+    traces: {
+      clients: number;
+      prestataires: number;
+      detail: { reservations: number; avis: number; stories: number; messages: number };
+    };
+  };
 }
 
 export interface TrendData {

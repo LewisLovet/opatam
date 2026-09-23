@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, CheckCircle, XCircle, Star, AlertTriangle } from 'lucide-react';
+import { ChevronRight, CheckCircle, XCircle, Star, AlertTriangle, Coins } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { acquisitionChannelLabel } from '@booking-app/shared';
 
@@ -21,6 +21,8 @@ interface ProviderItem {
   createdAt: string | null;
   /** « Comment avez-vous connu Opatam ? » — absent pour les comptes d'avant la question. */
   acquisitionSource?: { channel: string; detail?: string | null } | null;
+  /** Option acomptes active : ce prestataire produit des frais de service. */
+  depositsActive?: boolean;
 }
 
 interface ProviderTableProps {
@@ -111,8 +113,17 @@ export function ProviderTable({ items }: ProviderTableProps) {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-white">
                         {provider.businessName}
+                        {provider.depositsActive && (
+                          <span
+                            title="Acomptes activés — ce prestataire produit des frais de service"
+                            className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          >
+                            <Coins className="h-2.5 w-2.5" />
+                            Acomptes
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {categoryLabels[provider.category] || provider.category}

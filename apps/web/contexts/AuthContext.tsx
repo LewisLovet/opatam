@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { onAuthChange, type User as FirebaseUser } from '@booking-app/firebase';
-import { authService, providerService, userRepository } from '@booking-app/firebase';
+import { authService, providerService, userRepository, userService } from '@booking-app/firebase';
 import type { User, Provider } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -108,6 +108,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
 
           setUser(userData);
+
+          // Présence : au plus une écriture par jour, sans relecture (on a
+          // déjà le document). Volontairement pas attendu — une mesure
+          // d'audience ne doit pas retarder l'affichage.
+          if (userData) {
+            void userService.marquerVisite(userData.id, userData.lastSeenAt ?? null);
+          }
 
           // If user has a providerId, fetch provider data
           if (userData?.providerId) {

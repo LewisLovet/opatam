@@ -76,6 +76,8 @@ service cloud.firestore {
           'role', 'providerId',
           // Compteur d'annulations, incrémenté par le SDK à l'annulation
           'cancellationCount',
+          // Présence : au plus une écriture par jour, par le compte lui-même.
+          'lastSeenAt',
           'updatedAt'
         ])
         // Le rôle 'staff' n'est posable QUE par l'Admin SDK (invitation) :
