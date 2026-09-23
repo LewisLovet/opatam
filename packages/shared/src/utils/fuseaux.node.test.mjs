@@ -27,6 +27,7 @@ import {
   jourLocal,
   jourSemaineLocal,
   minutesLocales,
+  jourSemaineCalendaire,
   normaliserFuseau,
   resoudreHeureLocale,
 } from './fuseaux.ts';
@@ -227,6 +228,26 @@ describe('ajouterJours — arithmétique de calendrier, pas de durée', () => {
 
   it('refuse une date mal formée plutôt que d’inventer', () => {
     assert.throws(() => ajouterJours('08/03/2026', 1), /YYYY-MM-DD/);
+  });
+});
+
+describe('jourSemaineCalendaire — sans fuseau, parce qu’une date n’en a pas', () => {
+  it('« le lundi 21 » est un lundi partout', () => {
+    // C'est ce qu'il faut pour choisir les horaires d'ouverture d'un jour :
+    // `new Date(...).getDay()` répond dans le fuseau de la machine, et un
+    // salon réunionnais pouvait se voir appliquer le mauvais jour.
+    assert.equal(jourSemaineCalendaire('2026-09-21'), 1);
+    assert.equal(jourSemaineCalendaire('2026-09-20'), 0, 'dimanche');
+    assert.equal(jourSemaineCalendaire('2026-09-26'), 6, 'samedi');
+  });
+
+  it('les jours de bascule ne font pas exception', () => {
+    assert.equal(jourSemaineCalendaire('2026-03-29'), 0);
+    assert.equal(jourSemaineCalendaire('2026-10-25'), 0);
+  });
+
+  it('refuse une date mal formée', () => {
+    assert.throws(() => jourSemaineCalendaire('29/03/2026'), /YYYY-MM-DD/);
   });
 });
 

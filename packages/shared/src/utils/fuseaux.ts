@@ -182,6 +182,21 @@ export function minutesLocales(instant: Date, fuseau: string): number {
   return p.heure * 60 + p.minute;
 }
 
+/**
+ * Jour de la semaine d'une date calendaire — 0 = dimanche.
+ *
+ * Aucun fuseau : « le mardi 23 » est un mardi partout. C'est ce qu'il faut
+ * pour choisir les horaires d'ouverture d'un jour donné, là où
+ * `new Date(...).getDay()` répond dans le fuseau de la machine.
+ */
+export function jourSemaineCalendaire(jour: JourCalendaire): number {
+  const d = decouperJour(jour);
+  if (!d) throw new Error(`Date calendaire invalide : « ${jour} » (attendu YYYY-MM-DD)`);
+  const base = new Date(Date.UTC(2000, d.m - 1, d.j));
+  base.setUTCFullYear(d.a, d.m - 1, d.j);
+  return base.getUTCDay();
+}
+
 /** Jour de la semaine local — 0 = dimanche, comme partout dans le code. */
 export function jourSemaineLocal(instant: Date, fuseau: string): number {
   const p = partiesLocales(instant, fuseau);

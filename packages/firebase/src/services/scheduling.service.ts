@@ -8,6 +8,14 @@ import {
 import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
 import { isServiceOpenOnDay, blockedWindowForDay } from '@booking-app/shared';
 import {
+  ajouterJours,
+  bornesDeJourLocal,
+  instantDepuisHeureLocale,
+  jourLocal,
+  jourSemaineCalendaire,
+  normaliserFuseau,
+} from '@booking-app/shared';
+import {
   parseOrThrow,
   availabilitySchema,
   blockedSlotSchema,
@@ -38,6 +46,13 @@ interface AvailableSlotsParams {
    *  it doesn't block its own (overlapping) slots — e.g. moving an 18h–20h
    *  booking to 17h. Mirrors SlotCheckParams.excludeBookingId. */
   excludeBookingId?: string;
+  /**
+   * Fuseau IANA du LIEU (« Indian/Reunion »). Les horaires configurés sont
+   * des heures murales : sans lui, la conversion en instants dépend de la
+   * machine qui exécute. Absent → `FUSEAU_COMPAT` le temps du chantier ;
+   * fourni mais invalide → erreur, jamais de repli silencieux.
+   */
+  timeZone?: string;
 }
 
 interface SlotCheckParams {
@@ -106,6 +121,13 @@ interface AvailabilitySummaryParams {
    * lundi cliquable.
    */
   extraServiceIds?: string[];
+  /**
+   * Fuseau IANA du LIEU (« Indian/Reunion »). Les horaires configurés sont
+   * des heures murales : sans lui, la conversion en instants dépend de la
+   * machine qui exécute. Absent → `FUSEAU_COMPAT` le temps du chantier ;
+   * fourni mais invalide → erreur, jamais de repli silencieux.
+   */
+  timeZone?: string;
 }
 
 /** Per-day occupancy for the service-AGNOSTIC month view (no service picked).
@@ -126,6 +148,38 @@ interface OccupancySummaryParams {
   memberId: string;
   startDate: Date;
   endDate: Date;
+}
+
+/**
+ * ÉCHAFAUDAGE — fuseau utilisé tant qu'aucun appelant n'en fournit un.
+ *
+ * Étape 3 du chantier fuseaux : le moteur sait désormais convertir dans un
+ * fuseau EXPLICITE, mais `location.timezone` n'existe pas encore (étape 4)
+ * et les appelants ne le passent pas encore (étape 6). En attendant, on
+ * reproduit exactement le comportement d'aujourd'hui : le serveur web force
+ * Europe/Paris (`apps/web/next.config.ts`), donc ce repli ne change RIEN
+ * pour les salons français — il fige juste par écrit ce qui était subi.
+ *
+ * Ce n'est PAS le repli silencieux qui a mis « Europe/Paris » sur les
+ * prestataires portugais : un fuseau FOURNI mais invalide lève une erreur,
+ * il n'est jamais remplacé en douce. Seul un `timeZone` absent retombe ici.
+ *
+ * À SUPPRIMER à l'étape 12, quand tous les appelants fourniront le fuseau
+ * du lieu. C'est la dernière hypothèse « tout le monde est à Paris » du
+ * moteur.
+ */
+const FUSEAU_COMPAT = 'Europe/Paris';
+
+function fuseauDuMoteur(timeZone: string | null | undefined): string {
+  if (timeZone === null || timeZone === undefined) return FUSEAU_COMPAT;
+  const zone = normaliserFuseau(timeZone);
+  if (!zone) {
+    throw new Error(
+      `Fuseau IANA invalide : « ${timeZone} ». Un décalage brut (« +04:00 ») ne connaît ` +
+        `pas les changements d'heure et ne peut pas servir de fuseau de lieu.`,
+    );
+  }
+  return zone;
 }
 
 /** A day has only 2 (or fewer) bookings of room left → flag as "almost full". */
@@ -467,6 +521,7 @@ export class SchedulingService {
    */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
     const { providerId, serviceId, memberId, startDate, endDate, durationOverride, excludeBookingId } = params;
+    const fuseau = fuseauDuMoteur(params.timeZone);
 
     const [service, provider] = await Promise.all([
       serviceRepository.getById(providerId, serviceId),
@@ -482,10 +537,14 @@ export class SchedulingService {
     const totalDuration = durationOverride ?? service.duration + bufferTime;
     const slotInterval = provider?.settings.slotInterval ?? 15;
 
-    const rangeStart = new Date(startDate);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(endDate);
-    rangeEnd.setHours(23, 59, 59, 999);
+    // Les bornes sont celles des JOURNÉES LOCALES du lieu, pas de celles de
+    // la machine : `setHours(0,0,0,0)` visait minuit là où tournait le code.
+    // `bornesDeJourLocal` ne suppose jamais 24 h — une journée de bascule en
+    // dure 23 ou 25.
+    const jourDebut = jourLocal(startDate, fuseau);
+    const jourFin = jourLocal(endDate, fuseau);
+    const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
+    const rangeEnd = bornesDeJourLocal(jourFin, fuseau).fin;
 
     // 3 lectures pour TOUTE la plage, au lieu de 3 PAR JOUR.
     //
@@ -523,24 +582,30 @@ export class SchedulingService {
     const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
 
     const availableSlots: TimeSlotWithDate[] = [];
-    const currentDate = new Date(rangeStart);
 
-    while (currentDate <= rangeEnd) {
-      const availability = availabilityByDow.get(currentDate.getDay());
+    // On avance en JOURS CALENDAIRES (« 2026-09-23 »), pas en `Date` : un
+    // curseur `Date` avec `setDate(+1)` et `getDay()` lit le jour de la
+    // semaine dans le fuseau de la machine. Pour un salon réunionnais vu
+    // depuis un serveur parisien, cela pouvait appliquer les horaires du
+    // mauvais jour. Une date calendaire, elle, n'a pas de fuseau.
+    for (let jour = jourDebut; jour <= jourFin; jour = ajouterJours(jour, 1)) {
+      const jourSemaine = jourSemaineCalendaire(jour);
+      const availability = availabilityByDow.get(jourSemaine);
       // La prestation peut restreindre ses jours EN PLUS des horaires du
       // membre. Les deux conditions doivent être réunies : un mardi fermé
       // le reste, même si la prestation l'autorise.
-      const serviceOpen = isServiceOpenOnDay(service, currentDate.getDay());
+      const serviceOpen = isServiceOpenOnDay(service, jourSemaine);
 
       if (serviceOpen && availability && availability.isOpen && availability.slots.length > 0) {
         // Generate slots for each availability window
         for (const slot of availability.slots) {
           const generatedSlots = this.generateTimeSlots(
-            currentDate,
+            jour,
             slot.start,
             slot.end,
             totalDuration,
-            slotInterval
+            slotInterval,
+            fuseau
           );
 
           // Filter out blocked, booked, and past/too-soon slots
@@ -566,8 +631,6 @@ export class SchedulingService {
         }
       }
 
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     // Sort by datetime to ensure chronological order regardless of availability window order
@@ -605,6 +668,7 @@ export class SchedulingService {
         ).filter((svc): svc is NonNullable<typeof svc> => Boolean(svc))
       : [];
     const provider = await providerRepository.getById(providerId);
+    const fuseau = fuseauDuMoteur(params.timeZone);
     const bufferTime = service.bufferTime || provider?.settings.defaultBufferTime || 0;
     const totalDuration = durationOverride ?? service.duration + bufferTime;
     const slotInterval = provider?.settings.slotInterval ?? 15;
@@ -612,19 +676,19 @@ export class SchedulingService {
     const now = new Date();
     const earliestBookable = new Date(now.getTime() + minBookingNoticeHours * 60 * 60 * 1000);
 
-    const rangeStart = new Date(startDate);
-    rangeStart.setHours(0, 0, 0, 0);
-    const rangeEnd = new Date(endDate);
-    rangeEnd.setHours(23, 59, 59, 999);
+    // Bornes des JOURNÉES LOCALES du lieu (voir getAvailableSlots).
+    const jourDebut = jourLocal(startDate, fuseau);
+    const rangeStart = bornesDeJourLocal(jourDebut, fuseau).debut;
+    let rangeEnd = bornesDeJourLocal(jourLocal(endDate, fuseau), fuseau).fin;
 
     // Never expose days beyond the provider's max booking advance — this is a
     // client-facing limit (the pro books via getAvailableSlots, not this).
     const maxAdvanceDays = provider?.settings.maxBookingAdvance ?? 60;
-    const latestBookable = new Date(now);
-    latestBookable.setHours(0, 0, 0, 0);
-    latestBookable.setDate(latestBookable.getDate() + maxAdvanceDays);
-    latestBookable.setHours(23, 59, 59, 999);
-    if (rangeEnd > latestBookable) rangeEnd.setTime(latestBookable.getTime());
+    const latestBookable = bornesDeJourLocal(
+      ajouterJours(jourLocal(now, fuseau), maxAdvanceDays),
+      fuseau,
+    ).fin;
+    if (rangeEnd > latestBookable) rangeEnd = latestBookable;
 
     // 3 batched reads for the whole range (instead of 2 per day).
     const [weekly, allBookings, allBlocked] = await Promise.all([
@@ -644,16 +708,21 @@ export class SchedulingService {
     );
 
     const result: DayAvailability[] = [];
-    const cursor = new Date(rangeStart);
 
-    while (cursor <= rangeEnd) {
-      const dateKey = this.toDateKey(cursor);
-      const availability = availabilityByDow.get(cursor.getDay());
+    // Jours CALENDAIRES, comme dans `getAvailableSlots` : un curseur `Date`
+    // lit son jour de la semaine dans le fuseau de la machine.
+    // `rangeEnd` a pu être ramené en arrière par le plafond de réservation
+    // à l'avance, d'où la borne relue ici plutôt que `jourFin`.
+    const dernierJour = jourLocal(rangeEnd, fuseau);
+    for (let jour = jourDebut; jour <= dernierJour; jour = ajouterJours(jour, 1)) {
+      const dateKey = jour;
+      const jourSemaine = jourSemaineCalendaire(jour);
+      const availability = availabilityByDow.get(jourSemaine);
       // Un jour non couvert par la prestation se présente comme fermé : du
       // point de vue du client, il n'y a rien à y réserver.
       const serviceOpen =
-        isServiceOpenOnDay(service, cursor.getDay()) &&
-        others.every((svc) => isServiceOpenOnDay(svc, cursor.getDay()));
+        isServiceOpenOnDay(service, jourSemaine) &&
+        others.every((svc) => isServiceOpenOnDay(svc, jourSemaine));
 
       const providerClosed = !availability || !availability.isOpen || !availability.slots.length;
       if (providerClosed || !serviceOpen) {
@@ -669,7 +738,7 @@ export class SchedulingService {
       } else {
         const daySlots: TimeSlotWithDate[] = [];
         for (const window of availability.slots) {
-          const generated = this.generateTimeSlots(cursor, window.start, window.end, totalDuration, slotInterval);
+          const generated = this.generateTimeSlots(jour, window.start, window.end, totalDuration, slotInterval, fuseau);
           for (const g of generated) {
             const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked);
             const booked = this.isTimeBookedByBookings(g.datetime, g.endDatetime, relevantBookings);
@@ -683,8 +752,6 @@ export class SchedulingService {
           capacity === 0 ? 'full' : capacity <= ALMOST_FULL_THRESHOLD ? 'almost_full' : 'available';
         result.push({ date: dateKey, status, capacity, slots: daySlots });
       }
-
-      cursor.setDate(cursor.getDate() + 1);
     }
 
     return result;
@@ -949,11 +1016,12 @@ export class SchedulingService {
    * Generate time slots for a given availability window
    */
   private generateTimeSlots(
-    date: Date,
+    jour: string,
     startTime: string,
     endTime: string,
     slotDuration: number,
-    slotInterval: number = 15
+    slotInterval: number = 15,
+    fuseau: string = FUSEAU_COMPAT
   ): TimeSlotWithDate[] {
     const slots: TimeSlotWithDate[] = [];
 
@@ -962,24 +1030,33 @@ export class SchedulingService {
     const startMinutes = this.hhmmToMinutes(startTime);
     const endMinutes = this.endMin(endTime);
 
+    // Le jour auquel le créneau appartient, comme instant. Remplace
+    // `new Date(date)` : c'était minuit dans le fuseau de la MACHINE.
+    const jourDebut = bornesDeJourLocal(jour, fuseau).debut;
+
     let currentMinutes = startMinutes;
 
     while (currentMinutes + slotDuration <= endMinutes) {
-      const slotStartHour = Math.floor(currentMinutes / 60);
-      const slotStartMin = currentMinutes % 60;
-
       const slotEndMinutes = currentMinutes + slotDuration;
-      const slotEndHour = Math.floor(slotEndMinutes / 60);
-      const slotEndMin = slotEndMinutes % 60;
 
-      const datetime = new Date(date);
-      datetime.setHours(slotStartHour, slotStartMin, 0, 0);
+      // Conversion EXPLICITE, validée par aller-retour (voir fuseaux.ts).
+      // `null` = cette heure murale n'existe pas ce jour-là, l'horloge
+      // locale l'a sautée : aucun créneau n'est proposé. Avant, `setHours`
+      // rendait quand même une date — d'où deux créneaux différents sur le
+      // même instant le dimanche du passage à l'heure d'été.
+      const datetime = instantDepuisHeureLocale(jour, currentMinutes, fuseau);
+      if (!datetime) {
+        currentMinutes += slotInterval;
+        continue;
+      }
 
-      const endDatetime = new Date(date);
-      endDatetime.setHours(slotEndHour, slotEndMin, 0, 0);
+      // La FIN se calcule en temps RÉEL, pas en heure murale : une
+      // prestation d'une heure dure une heure, même si l'horloge saute
+      // pendant. Identique à l'ancien calcul les jours ordinaires.
+      const endDatetime = new Date(datetime.getTime() + slotDuration * 60 * 1000);
 
       slots.push({
-        date: new Date(date),
+        date: new Date(jourDebut),
         start: this.formatTimeFromMinutes(currentMinutes),
         end: this.formatTimeFromMinutes(slotEndMinutes),
         datetime,

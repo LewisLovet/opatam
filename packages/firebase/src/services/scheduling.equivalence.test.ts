@@ -1,29 +1,27 @@
 /**
- * ÉQUIVALENCE du moteur de créneaux — étape 2 du chantier fuseaux.
+ * ÉQUIVALENCE du moteur de créneaux — chantier fuseaux, étapes 2 et 3.
  *
  *   TZ=Europe/Paris npx tsx --test packages/firebase/src/services/scheduling.equivalence.test.ts
  *   (ou : ./packages/firebase/run-equivalence-creneaux.sh)
  *
  * ── À quoi sert ce fichier ──────────────────────────────────────────────
- * `generateTimeSlots` va recevoir un fuseau IANA explicite (étape 3). Avant
- * d'y toucher, on FIGE ce qu'il produit aujourd'hui, pour que le
- * remplacement se prouve au lieu de se plaider. C'est la règle maison sur
- * ce moteur : jamais de modification sans script d'équivalence.
+ * `generateTimeSlots` reçoit désormais un fuseau IANA explicite. Ce fichier
+ * a figé ce que le moteur produisait AVANT (étape 2), puis a servi à
+ * prouver ce que l'étape 3 a changé — et surtout ce qu'elle n'a PAS changé.
+ * Règle maison sur ce moteur : jamais de modification sans équivalence.
  *
- * ── Le piège, et pourquoi ce fichier a DEUX parties ─────────────────────
- * Figer le comportement actuel en bloc graverait le bug dans les tests :
- * le moteur est déjà FAUX les deux dimanches de bascule. On sépare donc :
+ * ── Pourquoi DEUX parties ───────────────────────────────────────────────
+ * Figer le comportement en bloc aurait gravé le bug dans les tests : le
+ * moteur était déjà FAUX les deux dimanches de bascule. D'où la séparation,
+ * à conserver pour les étapes suivantes :
  *
- *   PARTIE 1 — ce qui doit rester IDENTIQUE au millième de seconde. Toutes
- *   les journées ordinaires, et aussi les heures d'ouverture des jours de
- *   bascule : la bascule européenne a lieu à 01:00 ou 02:00 locales, donc
- *   une plage 09:00–12:00 est déjà juste, même ce jour-là.
+ *   PARTIE 1 — ce qui ne doit JAMAIS bouger. Journées ordinaires, et aussi
+ *   les heures d'ouverture des jours de bascule : la bascule européenne a
+ *   lieu à 01:00 ou 02:00 locales, donc 09:00–12:00 était déjà juste.
+ *   Ces attentes ont traversé l'étape 3 sans changer d'un millième.
  *
- *   PARTIE 2 — ce qui doit DÉLIBÉRÉMENT changer. Les plages de nuit des
- *   jours de bascule, où le moteur produit aujourd'hui deux anomalies
- *   mesurées (voir plus bas). Ces attentes-là sont écrites comme « état
- *   actuel, connu faux » avec la cible à côté. Quand l'étape 3 les fera
- *   échouer, ce sera le signe attendu, pas une régression.
+ *   PARTIE 2 — ce que l'étape 3 a corrigé, avec l'état d'avant en
+ *   commentaire pour que la correction reste lisible dans six mois.
  *
  * ── Pourquoi TZ=Europe/Paris est imposé ─────────────────────────────────
  * C'est le fuseau que le serveur web force (`apps/web/next.config.ts`),
@@ -36,6 +34,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { heureLocale, jourLocal } from '@booking-app/shared';
+import {
+  availabilityRepository,
+  blockedSlotRepository,
+  bookingRepository,
+  providerRepository,
+  serviceRepository,
+} from '../repositories';
 import { schedulingService } from './scheduling.service';
 
 const FUSEAU = 'Europe/Paris';
@@ -56,11 +61,12 @@ if (tzMachine !== FUSEAU) {
  */
 const moteur = schedulingService as unknown as {
   generateTimeSlots: (
-    date: Date,
+    jour: string,
     debut: string,
     fin: string,
     duree: number,
     pas: number,
+    fuseau?: string,
   ) => { start: string; end: string; datetime: Date; endDatetime: Date }[];
   toDateKey: (date: Date) => string;
 };
@@ -74,7 +80,7 @@ function minuitLocal(jour: string): Date {
 /** « étiquette>instant » séparés par des espaces : lisible dans un diff. */
 function serialiser(jour: string, debut: string, fin: string, duree: number, pas: number): string {
   return moteur
-    .generateTimeSlots(minuitLocal(jour), debut, fin, duree, pas)
+    .generateTimeSlots(jour, debut, fin, duree, pas, FUSEAU)
     .map((s) => `${s.start}>${s.datetime.toISOString()}`)
     .join(' ');
 }
@@ -116,7 +122,7 @@ describe('PARTIE 1 — à ne PAS faire bouger', () => {
     // L'invariant de fond, celui que l'étape 3 doit préserver puis étendre
     // aux jours de bascule : l'étiquette dit la vérité sur place.
     for (const [nom, jour, debut, fin, duree, pas] of INVARIANTS) {
-      for (const s of moteur.generateTimeSlots(minuitLocal(jour), debut, fin, duree, pas)) {
+      for (const s of moteur.generateTimeSlots(jour, debut, fin, duree, pas, FUSEAU)) {
         assert.equal(heureLocale(s.datetime, FUSEAU), s.start, `${nom} — créneau ${s.start}`);
         assert.equal(jourLocal(s.datetime, FUSEAU), jour, `${nom} — créneau ${s.start}`);
       }
@@ -126,7 +132,7 @@ describe('PARTIE 1 — à ne PAS faire bouger', () => {
   it('les instants sont strictement croissants et jamais dupliqués', () => {
     for (const [nom, jour, debut, fin, duree, pas] of INVARIANTS) {
       const instants = moteur
-        .generateTimeSlots(minuitLocal(jour), debut, fin, duree, pas)
+        .generateTimeSlots(jour, debut, fin, duree, pas, FUSEAU)
         .map((s) => s.datetime.getTime());
       for (let i = 1; i < instants.length; i++) {
         assert.ok(instants[i] > instants[i - 1], `${nom} — créneau ${i} n’avance pas`);
@@ -142,70 +148,197 @@ describe('PARTIE 1 — à ne PAS faire bouger', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────
-// PARTIE 2 — état actuel CONNU FAUX, doit changer à l'étape 3
+// PARTIE 2 — CORRIGÉ par l'étape 3
 // ────────────────────────────────────────────────────────────────────────
+//
+// Ces attentes décrivaient l'état d'avant. Elles ont été remplacées par la
+// cible une fois `generateTimeSlots` passé à un fuseau explicite. Les
+// commentaires gardent ce que le moteur faisait, pour que la correction
+// reste lisible dans six mois.
 
-const A_CORRIGER: Cas[] = [
+const CORRIGES: Cas[] = [
+  // AVANT : 12 créneaux, dont « 02:00 » et « 02:30 » qui n'existent pas ce
+  // jour-là et tombaient sur les MÊMES instants que « 03:00 » et « 03:30 ».
+  // APRÈS : 10 créneaux, les deux heures sautées ne sont plus proposées.
   ['bascule-printemps-nuit', '2026-03-29', '00:00', '06:00', 30, 30,
-    '00:00>2026-03-28T23:00:00.000Z 00:30>2026-03-28T23:30:00.000Z 01:00>2026-03-29T00:00:00.000Z 01:30>2026-03-29T00:30:00.000Z 02:00>2026-03-29T01:00:00.000Z 02:30>2026-03-29T01:30:00.000Z 03:00>2026-03-29T01:00:00.000Z 03:30>2026-03-29T01:30:00.000Z 04:00>2026-03-29T02:00:00.000Z 04:30>2026-03-29T02:30:00.000Z 05:00>2026-03-29T03:00:00.000Z 05:30>2026-03-29T03:30:00.000Z'],
+    '00:00>2026-03-28T23:00:00.000Z 00:30>2026-03-28T23:30:00.000Z 01:00>2026-03-29T00:00:00.000Z 01:30>2026-03-29T00:30:00.000Z 03:00>2026-03-29T01:00:00.000Z 03:30>2026-03-29T01:30:00.000Z 04:00>2026-03-29T02:00:00.000Z 04:30>2026-03-29T02:30:00.000Z 05:00>2026-03-29T03:00:00.000Z 05:30>2026-03-29T03:30:00.000Z'],
+  // AUTOMNE : INCHANGÉ, et c'est une DÉCISION PRODUIT (2026-09-23) — l'heure
+  // qui existe deux fois n'est proposée qu'UNE SEULE fois. Le socle sait
+  // rendre les deux occurrences (`{ ambigu: 'seconde' }`) si l'on change
+  // d'avis ; en attendant, le salon annonce 24 h sur une journée qui en dure
+  // 25, et le prestataire doit le savoir.
   ['bascule-automne-nuit', '2026-10-25', '00:00', '06:00', 30, 30,
     '00:00>2026-10-24T22:00:00.000Z 00:30>2026-10-24T22:30:00.000Z 01:00>2026-10-24T23:00:00.000Z 01:30>2026-10-24T23:30:00.000Z 02:00>2026-10-25T00:00:00.000Z 02:30>2026-10-25T00:30:00.000Z 03:00>2026-10-25T02:00:00.000Z 03:30>2026-10-25T02:30:00.000Z 04:00>2026-10-25T03:00:00.000Z 04:30>2026-10-25T03:30:00.000Z 05:00>2026-10-25T04:00:00.000Z 05:30>2026-10-25T04:30:00.000Z'],
 ];
 
-describe('PARTIE 2 — anomalies figées, à corriger par l’étape 3', () => {
-  for (const [nom, jour, debut, fin, duree, pas, gele] of A_CORRIGER) {
-    it(`${nom} : état actuel figé (ces attentes DOIVENT changer)`, () => {
+describe('PARTIE 2 — corrigé par l’étape 3', () => {
+  for (const [nom, jour, debut, fin, duree, pas, gele] of CORRIGES) {
+    it(`${nom} : sortie figée`, () => {
       assert.equal(serialiser(jour, debut, fin, duree, pas), gele);
     });
   }
 
-  it('PRINTEMPS — deux créneaux différents tombent sur le MÊME instant', () => {
-    // 02:00 et 03:00 pointent tous deux sur 2026-03-29T01:00:00Z. Le salon
-    // paraît avoir deux disponibilités là où il n'en a qu'une, et la
-    // cliente qui choisit « 02:00 » reçoit une confirmation pour une heure
-    // qui n'a pas existé.
-    const slots = moteur.generateTimeSlots(minuitLocal('2026-03-29'), '00:00', '06:00', 30, 30);
-    const parEtiquette = new Map(slots.map((s) => [s.start, s.datetime.getTime()]));
-    assert.equal(parEtiquette.get('02:00'), parEtiquette.get('03:00'));
-    assert.equal(parEtiquette.get('02:30'), parEtiquette.get('03:30'));
-
-    // CIBLE étape 3 : « 02:00 » et « 02:30 » n'existent pas ce jour-là,
-    // aucun créneau n'est proposé, et plus aucun instant n'est dupliqué.
+  it('PRINTEMPS — plus aucun instant dupliqué', () => {
+    // AVANT : « 02:00 » et « 03:00 » tombaient tous deux sur 01:00Z. Le
+    // salon paraissait avoir deux disponibilités pour une seule.
+    const slots = moteur.generateTimeSlots('2026-03-29', '00:00', '06:00', 30, 30, FUSEAU);
     const instants = slots.map((s) => s.datetime.getTime());
-    assert.notEqual(new Set(instants).size, instants.length, 'doublon encore présent (attendu à ce stade)');
+    assert.equal(new Set(instants).size, instants.length);
   });
 
-  it('PRINTEMPS — l’étiquette ment sur l’heure réelle du rendez-vous', () => {
-    const slots = moteur.generateTimeSlots(minuitLocal('2026-03-29'), '00:00', '06:00', 30, 30);
-    const menteurs = slots.filter((s) => heureLocale(s.datetime, FUSEAU) !== s.start);
-    assert.deepEqual(
-      menteurs.map((s) => `${s.start} se produit en réalité à ${heureLocale(s.datetime, FUSEAU)}`),
-      [
-        '02:00 se produit en réalité à 03:00',
-        '02:30 se produit en réalité à 03:30',
-      ],
-    );
-    // CIBLE étape 3 : cette liste est VIDE.
+  it('PRINTEMPS — les heures sautées ne sont plus proposées', () => {
+    const slots = moteur.generateTimeSlots('2026-03-29', '00:00', '06:00', 30, 30, FUSEAU);
+    const etiquettes = slots.map((s) => s.start);
+    assert.ok(!etiquettes.includes('02:00'), '« 02:00 » n’existe pas ce jour-là');
+    assert.ok(!etiquettes.includes('02:30'), '« 02:30 » n’existe pas ce jour-là');
+    assert.equal(slots.length, 10, '12 créneaux avant, 10 après');
   });
 
-  it('AUTOMNE — une heure de capacité disparaît en silence', () => {
-    // L'heure 02:00→03:00 locale existe DEUX fois ce jour-là. Le moteur
-    // n'en propose qu'une : entre « 02:30 » et « 03:00 » il s'écoule 90
-    // minutes réelles au lieu de 30.
-    const slots = moteur.generateTimeSlots(minuitLocal('2026-10-25'), '00:00', '06:00', 30, 30);
+  it('PRINTEMPS — plus aucune étiquette ne ment', () => {
+    // AVANT : « 02:00 se produit en réalité à 03:00 ». La cliente recevait
+    // une confirmation pour une heure qui n'a jamais existé.
+    for (const [, jour, debut, fin, duree, pas] of CORRIGES) {
+      for (const s of moteur.generateTimeSlots(jour, debut, fin, duree, pas, FUSEAU)) {
+        assert.equal(heureLocale(s.datetime, FUSEAU), s.start);
+      }
+    }
+  });
+
+  it('la durée réelle d’un créneau est celle de la prestation', () => {
+    // La fin se calcule en temps RÉEL : une prestation d'une heure dure une
+    // heure, même si l'horloge saute pendant.
+    for (const [, jour, debut, fin, duree, pas] of [...INVARIANTS, ...CORRIGES]) {
+      for (const s of moteur.generateTimeSlots(jour, debut, fin, duree, pas, FUSEAU)) {
+        assert.equal((s.endDatetime.getTime() - s.datetime.getTime()) / 60_000, duree);
+      }
+    }
+  });
+
+  it('AUTOMNE — l’heure doublée n’est proposée qu’une fois (décision produit)', () => {
+    const slots = moteur.generateTimeSlots('2026-10-25', '00:00', '06:00', 30, 30, FUSEAU);
     const parEtiquette = new Map(slots.map((s) => [s.start, s.datetime.getTime()]));
-    const saut = (parEtiquette.get('03:00')! - parEtiquette.get('02:30')!) / 60_000;
-    assert.equal(saut, 90);
-
-    // La journée dure 25 h mais le moteur en couvre 24 : sur une plage de
-    // 6 h murales, il rend 12 créneaux de 30 min pour 7 h réelles.
+    // 90 minutes réelles entre « 02:30 » et « 03:00 » : l'heure répétée est
+    // vécue une fois. C'est voulu, pas subi.
+    assert.equal((parEtiquette.get('03:00')! - parEtiquette.get('02:30')!) / 60_000, 90);
     assert.equal(slots.length, 12);
-    const etendueReelle =
-      (slots[slots.length - 1].datetime.getTime() - slots[0].datetime.getTime()) / 3_600_000;
-    assert.equal(etendueReelle, 6.5);
+  });
 
-    // CIBLE étape 3 : décision produit à prendre — soit l'heure doublée est
-    // proposée deux fois (capacité réelle), soit une seule (capacité
-    // annoncée), mais le choix doit être explicite et dit au prestataire.
+  it('un fuseau invalide LÈVE au lieu de retomber sur Paris', () => {
+    assert.throws(
+      () => moteur.generateTimeSlots('2026-09-23', '09:00', '12:00', 60, 30, '+04:00'),
+      /IANA/,
+    );
+  });
+
+  it('un salon réunionnais obtient enfin ses propres heures', () => {
+    // Le but de tout le chantier, en une ligne : 08:00 configuré à La
+    // Réunion vaut 04:00 UTC, pas 06:00 comme si le salon était à Paris.
+    const [reunion] = moteur.generateTimeSlots('2026-09-23', '08:00', '09:00', 60, 30, 'Indian/Reunion');
+    assert.equal(reunion.datetime.toISOString(), '2026-09-23T04:00:00.000Z');
+    assert.equal(heureLocale(reunion.datetime, 'Indian/Reunion'), '08:00');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// BOUCLE DE JOURS — le second endroit où le fuseau est implicite
+// ────────────────────────────────────────────────────────────────────────
+//
+// `generateTimeSlots` n'est que la moitié du problème : la boucle qui
+// l'appelle avance avec `cursor.setDate(+1)`, lit `cursor.getDay()` et
+// appelle `toDateKey(cursor)` — trois lectures dans le fuseau de la
+// machine. Un salon réunionnais peut donc se voir appliquer les horaires
+// du mauvais jour de la semaine. On la couvre AVANT de la convertir.
+//
+// Les dépôts sont remplacés à chaud : ce sont des singletons exportés, et
+// le service les appelle par accès de propriété. Pas de moqueur de modules
+// nécessaire, donc pas de vitest.
+
+function armerDepots(fenetre: [string, string], duree: number, pas: number): void {
+  const anyOf = <T,>(o: T) => o as unknown as Record<string, unknown>;
+  anyOf(serviceRepository).getById = async () => ({
+    id: 's1', duration: duree, bufferTime: 0, isActive: true, isAvailable: true,
+    memberIds: null, locationIds: [],
+  });
+  anyOf(providerRepository).getById = async () => ({
+    id: 'p1',
+    settings: { slotInterval: pas, minBookingNotice: 2, defaultBufferTime: 0, maxBookingAdvance: 1000 },
+  });
+  anyOf(availabilityRepository).getWeeklySchedule = async () =>
+    [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+      id: `a${dayOfWeek}`, dayOfWeek, isOpen: true,
+      slots: [{ start: fenetre[0], end: fenetre[1] }], memberId: 'm1', locationId: 'l1',
+    }));
+  anyOf(bookingRepository).getUpcomingByProvider = async () => [];
+  anyOf(blockedSlotRepository).getInRange = async () => [];
+}
+
+const minuit = (jour: string) => minuitLocal(jour);
+
+async function serialiserBoucle(
+  debut: string, fin: string, fenetre: [string, string], duree: number, pas: number,
+): Promise<string> {
+  armerDepots(fenetre, duree, pas);
+  const slots = await schedulingService.getAvailableSlots({
+    providerId: 'p1', serviceId: 's1', memberId: 'm1',
+    startDate: minuit(debut), endDate: minuit(fin),
+  });
+  return slots.map((s) => `${s.start}>${s.datetime.toISOString()}`).join(' ');
+}
+
+type CasBoucle = [nom: string, debut: string, fin: string, fenetre: [string, string], duree: number, pas: number, gele: string];
+
+const BOUCLES_INVARIANTES: CasBoucle[] = [
+  ['boucle-semaine-ordinaire', '2026-11-16', '2026-11-18', ['09:00', '12:00'], 60, 30,
+    '09:00>2026-11-16T08:00:00.000Z 09:30>2026-11-16T08:30:00.000Z 10:00>2026-11-16T09:00:00.000Z 10:30>2026-11-16T09:30:00.000Z 11:00>2026-11-16T10:00:00.000Z 09:00>2026-11-17T08:00:00.000Z 09:30>2026-11-17T08:30:00.000Z 10:00>2026-11-17T09:00:00.000Z 10:30>2026-11-17T09:30:00.000Z 11:00>2026-11-17T10:00:00.000Z 09:00>2026-11-18T08:00:00.000Z 09:30>2026-11-18T08:30:00.000Z 10:00>2026-11-18T09:00:00.000Z 10:30>2026-11-18T09:30:00.000Z 11:00>2026-11-18T10:00:00.000Z'],
+  // AUTOMNE : la décision produit est « heure doublée proposée UNE SEULE
+  // fois » — donc cette sortie ne doit PAS bouger à l'étape 3.
+  ['boucle-bascule-automne', '2027-10-30', '2027-11-01', ['00:00', '06:00'], 30, 30,
+    '00:00>2027-10-29T22:00:00.000Z 00:30>2027-10-29T22:30:00.000Z 01:00>2027-10-29T23:00:00.000Z 01:30>2027-10-29T23:30:00.000Z 02:00>2027-10-30T00:00:00.000Z 02:30>2027-10-30T00:30:00.000Z 03:00>2027-10-30T01:00:00.000Z 03:30>2027-10-30T01:30:00.000Z 04:00>2027-10-30T02:00:00.000Z 04:30>2027-10-30T02:30:00.000Z 05:00>2027-10-30T03:00:00.000Z 05:30>2027-10-30T03:30:00.000Z 00:00>2027-10-30T22:00:00.000Z 00:30>2027-10-30T22:30:00.000Z 01:00>2027-10-30T23:00:00.000Z 01:30>2027-10-30T23:30:00.000Z 02:00>2027-10-31T00:00:00.000Z 02:30>2027-10-31T00:30:00.000Z 03:00>2027-10-31T02:00:00.000Z 03:30>2027-10-31T02:30:00.000Z 04:00>2027-10-31T03:00:00.000Z 04:30>2027-10-31T03:30:00.000Z 05:00>2027-10-31T04:00:00.000Z 05:30>2027-10-31T04:30:00.000Z 00:00>2027-10-31T23:00:00.000Z 00:30>2027-10-31T23:30:00.000Z 01:00>2027-11-01T00:00:00.000Z 01:30>2027-11-01T00:30:00.000Z 02:00>2027-11-01T01:00:00.000Z 02:30>2027-11-01T01:30:00.000Z 03:00>2027-11-01T02:00:00.000Z 03:30>2027-11-01T02:30:00.000Z 04:00>2027-11-01T03:00:00.000Z 04:30>2027-11-01T03:30:00.000Z 05:00>2027-11-01T04:00:00.000Z 05:30>2027-11-01T04:30:00.000Z'],
+];
+
+describe('PARTIE 1 bis — boucle de jours, à ne PAS faire bouger', () => {
+  for (const [nom, debut, fin, fenetre, duree, pas, gele] of BOUCLES_INVARIANTES) {
+    it(`${nom} : sortie inchangée`, async () => {
+      const rendu = await serialiserBoucle(debut, fin, fenetre, duree, pas);
+      assert.notEqual(rendu, '', CAS_PERIME(debut));
+      assert.equal(rendu, gele);
+    });
+  }
+});
+
+/** Message d'aide quand un cas est tombé dans le passé. */
+function CAS_PERIME(debut: string): string {
+  return (
+    `Aucun créneau rendu pour ${debut}. Le moteur filtre le passé (préavis minimum), ` +
+    `donc ce cas a EXPIRÉ : décaler les dates de test sur de prochains dimanches de ` +
+    `bascule, recapturer les attentes, et les remplacer ici. Ce n’est pas une régression.`
+  );
+}
+
+describe('PARTIE 2 bis — boucle de jours, corrigée', () => {
+  it('boucle-bascule-printemps : plus de doublon le jour de la bascule', async () => {
+    const rendu = await serialiserBoucle('2027-03-27', '2027-03-29', ['00:00', '06:00'], 30, 30);
+    assert.notEqual(rendu, '', CAS_PERIME('2027-03-27'));
+    // AVANT : « 02:00 » et « 03:00 » tombaient tous deux sur
+    // 2027-03-28T01:00:00.000Z. Les deux heures sautées ont disparu.
+    assert.ok(!rendu.includes('02:00>2027-03-28T01:00:00.000Z'));
+    assert.ok(!rendu.includes('02:30>2027-03-28T01:30:00.000Z'));
+    assert.ok(rendu.includes('03:00>2027-03-28T01:00:00.000Z'));
+  });
+
+  it('la liste et le résumé disent enfin la même chose', async () => {
+    // AVANT : le résumé annonçait 11 pour le 28 mars (countNonOverlapping
+    // dédoublonnait la collision) alors que la liste proposait 12 entrées.
+    armerDepots(['00:00', '06:00'], 30, 30);
+    const res = await schedulingService.getAvailabilitySummary({
+      providerId: 'p1', serviceId: 's1', memberId: 'm1',
+      startDate: minuit('2027-03-27'), endDate: minuit('2027-03-29'),
+    });
+    assert.equal(
+      res.map((r) => `${r.date}:${r.status}:${r.capacity}`).join(' '),
+      '2027-03-27:available:12 2027-03-28:available:10 2027-03-29:available:12',
+    );
+    const jour28 = res.find((r) => r.date === '2027-03-28')!;
+    assert.equal(jour28.slots.length, jour28.capacity, 'liste et capacité concordent');
   });
 });

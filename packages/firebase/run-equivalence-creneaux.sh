@@ -10,11 +10,14 @@
 #
 #   ./packages/firebase/run-equivalence-creneaux.sh
 #
-# PARTIE 1 doit rester verte quoi qu'il arrive.
-# PARTIE 2 fige des anomalies CONNUES des jours de bascule : quand l'étape 3
-# du chantier fuseaux les corrigera, ces tests-là échoueront — c'est le
-# signal attendu, et leurs attentes devront être remplacées par la cible
-# écrite en commentaire à côté de chacune.
+# PARTIE 1 doit rester verte quoi qu'il arrive : ce sont les journées
+# ordinaires, et elles ont traversé l'étape 3 sans bouger d'un millième.
+# PARTIE 2 fige ce que l'étape 3 a corrigé sur les jours de bascule, avec
+# l'état d'avant en commentaire.
+#
+# Les cas de BOUCLE portent sur des dates futures, parce que le moteur
+# filtre le passé (préavis minimum). Quand elles seront dépassées, le test
+# le dira explicitement : décaler les dates, recapturer, remplacer.
 
 set -euo pipefail
 
