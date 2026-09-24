@@ -5,6 +5,7 @@
 
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
+import { envoyerEmail } from '../lib/emailJournal';
 
 const resendApiKey = defineString('RESEND_API_KEY');
 
@@ -246,12 +247,12 @@ export async function sendTemplateEmail(options: TemplateEmailOptions): Promise<
   const { subject, html } = getTemplate(template, data);
 
   const resend = getResend();
-  await resend.emails.send({
+  await envoyerEmail(getResend(), {
     from: FROM,
     to,
     subject,
     html,
-  });
+  }, { type: `template:${template}` });
 
   console.log(`[TemplateEmail] Sent "${template}" to ${to}`);
 }

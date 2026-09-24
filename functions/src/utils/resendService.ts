@@ -4,6 +4,7 @@
  */
 
 import { Resend } from 'resend';
+import { envoyerEmail, metaDepuis } from '../lib/emailJournal';
 import { defineString } from 'firebase-functions/params';
 import type {
   BookingSelectedVariation,
@@ -36,12 +37,12 @@ export function getResend(): Resend {
 /** Envoi générique — pour les triggers qui construisent leur propre HTML
  *  (ex. emails promo fidélité v2). Best-effort : throw sur erreur Resend. */
 export async function sendRawEmail(params: { to: string; subject: string; html: string }): Promise<void> {
-  const { error } = await getResend().emails.send({
+  const { error } = await envoyerEmail(getResend(), {
     from: emailConfig.from,
     to: params.to,
     subject: params.subject,
     html: params.html,
-  });
+  }, metaDepuis('raw', params));
   if (error) throw new Error(String(error.message ?? error));
 }
 
@@ -504,7 +505,7 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     ].join('\r\n');
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject: data.updateContext
@@ -543,7 +544,7 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
         icsUrl,
         googleCalendarUrl,
       }),
-    });
+    }, metaDepuis('confirmation', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -674,13 +675,13 @@ ${t.signoff}
 ${data.providerName}
     `.trim();
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject: t.subject(data.serviceName, data.providerName),
       html,
       text,
-    });
+    }, metaDepuis('deposit_reminder', data));
 
     if (error) {
       console.error('[EMAIL] Resend deposit reminder error:', error);
@@ -756,7 +757,7 @@ export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailD
     const formattedPrice = formatPriceFr(data.price, data.priceMax);
     const calendarUrl = `${appConfig.url}/pro/calendrier`;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.providerEmail,
       replyTo: emailConfig.replyTo,
@@ -777,7 +778,7 @@ export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailD
         formattedPrice,
         calendarUrl,
       }),
-    });
+    }, metaDepuis('provider_new_booking', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -933,7 +934,7 @@ export async function sendCancellationEmail(data: {
     const businessName = data.providerName || appConfig.name;
     const rebookUrl = data.providerSlug ? `${appConfig.url}/p/${data.providerSlug}` : appConfig.url;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject: EMAIL_TEXTS.cancellation[l].subject(data.serviceName),
@@ -953,7 +954,7 @@ export async function sendCancellationEmail(data: {
         businessName,
         rebookUrl,
       }),
-    });
+    }, metaDepuis('cancellation', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -1001,7 +1002,7 @@ export async function sendProviderCancellationEmail(data: {
     const formattedTime = formatTimeFr(data.datetime);
     const calendarUrl = `${appConfig.url}/pro/calendrier`;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.providerEmail,
       replyTo: emailConfig.replyTo,
@@ -1018,7 +1019,7 @@ export async function sendProviderCancellationEmail(data: {
         formattedTime,
         calendarUrl,
       }),
-    });
+    }, metaDepuis('provider_cancellation', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -1204,7 +1205,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
     ].join('\r\n');
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject: EMAIL_TEXTS.reschedule[l].subject(data.serviceName),
@@ -1243,7 +1244,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
         icsUrl,
         googleCalendarUrl,
       }),
-    });
+    }, metaDepuis('reschedule', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -1336,7 +1337,7 @@ export async function sendReminderEmail(
         : (minutesUntil != null ? formatEmailTimeUntil(minutesUntil, l) : t.inTwoHours);
     const subject = t.subject(timeLabel, data.serviceName);
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject,
@@ -1375,7 +1376,7 @@ export async function sendReminderEmail(
         reminderType,
         timeLabel,
       }),
-    });
+    }, metaDepuis('reminder', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -1956,13 +1957,13 @@ export async function sendWelcomeEmail(data: {
     const themeBorder = isPro ? '#bfdbfe' : '#c4b5fd';
     const tierLabel = isPro ? 'Indépendant' : 'Équipe';
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.providerEmail,
       subject: `Bienvenue chez ${appConfig.name} — Plan ${data.planName} activé !`,
       html: generateWelcomeHtml({ ...data, isPro, themeColor, themeBg, themeBorder, tierLabel }),
       text: generateWelcomeText(data),
-    });
+    }, metaDepuis('welcome', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -2131,14 +2132,14 @@ Ce lien expire dans 1 heure. Si vous n'avez pas fait cette demande, ignorez cet 
 
 L'équipe ${appConfig.name}`;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.email,
       replyTo: emailConfig.replyTo,
       subject: 'Réinitialisez votre mot de passe Opatam',
       html,
       text,
-    });
+    }, metaDepuis('password_reset', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -2225,14 +2226,14 @@ Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.
 
 L'équipe ${appConfig.name}`;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.email,
       replyTo: emailConfig.replyTo,
       subject: 'Confirmez votre nouvelle adresse email Opatam',
       html,
       text,
-    });
+    }, metaDepuis('email_change', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -2358,13 +2359,13 @@ export async function sendReviewRequestEmail(
       t.visibleNote(data.providerName),
     ].join('\n');
 
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject,
       html,
       text,
-    });
+    }, metaDepuis('review_request', data));
 
     if (error) {
       console.error('[EMAIL] Resend review-request error:', error);
@@ -2483,13 +2484,13 @@ L'équipe ${appConfig.name}
   `.trim();
 
   try {
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.providerEmail,
       subject: "Vos acomptes s'arrêtent à la fin de votre essai — continuez avec Sérénité",
       html,
       text,
-    });
+    }, metaDepuis('serenity_trial_ending', data));
 
     if (error) {
       console.error('[EMAIL] Resend error:', error);
@@ -2547,13 +2548,13 @@ ${lt.rewardBody(data.businessName, data.rewardLabel)}
 
 ${lt.rewardCta} : ${url}`;
   try {
-    const { error } = await getResend().emails.send({
+    const { error } = await envoyerEmail(getResend(), {
       from: emailConfig.from,
       to: data.clientEmail,
       subject: lt.rewardSubject(data.businessName),
       html,
       text,
-    });
+    }, metaDepuis('loyalty_reward', data));
     if (error) return { success: false, error: String(error) };
     return { success: true };
   } catch (e) {

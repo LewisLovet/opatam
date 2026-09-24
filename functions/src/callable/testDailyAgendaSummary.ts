@@ -20,6 +20,7 @@ import {
 import { serverTracker } from '../utils/serverTracker';
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
+import { envoyerEmail } from '../lib/emailJournal';
 
 const resendApiKey = defineString('RESEND_API_KEY');
 
@@ -175,14 +176,14 @@ export const testDailyAgendaSummary = onCall(
 
           if (providerEmail && isValidEmail(providerEmail)) {
             const calendarUrl = `${appConfig.url}/pro/calendrier`;
-            const { error } = await getResend().emails.send({
+            const { error } = await envoyerEmail(getResend(), {
               from: emailConfig.from,
               to: providerEmail,
               replyTo: emailConfig.replyTo,
               subject: `Agenda de demain - ${bookings.length} rendez-vous - ${formattedTomorrow}`,
               html: generateProviderSummaryHtml(businessName, bookings, formattedTomorrow, calendarUrl),
               text: generateProviderSummaryText(businessName, bookings, formattedTomorrow, calendarUrl),
-            });
+            }, { type: 'test_daily_agenda_provider', providerId });
 
             if (error) {
               console.error(`[${businessName}] Provider email error:`, error);
@@ -218,14 +219,14 @@ export const testDailyAgendaSummary = onCall(
             }
 
             const planningUrl = `${appConfig.url}/planning`;
-            const { error } = await getResend().emails.send({
+            const { error } = await envoyerEmail(getResend(), {
               from: emailConfig.from,
               to: member.email,
               replyTo: emailConfig.replyTo,
               subject: `Votre agenda de demain - ${memberBookings.length} rendez-vous - ${formattedTomorrow}`,
               html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
               text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
-            });
+            }, { type: 'test_daily_agenda_member', providerId });
 
             if (error) {
               console.error(`[${businessName}] Member ${member.name} email error:`, error);

@@ -39,6 +39,7 @@ before(async () => {
     await setDoc(doc(db, 'users/client-1'), { isAdmin: false });
     await setDoc(doc(db, 'landingVideos/home'), { items: [] });
     await setDoc(doc(db, 'landingGalleries/nail-artist'), { images: [] });
+    await setDoc(doc(db, 'emailLogs/e1'), { type: 'confirmation', to: ['x@y.z'], bookingId: 'b1' });
   });
 });
 
@@ -76,4 +77,30 @@ describe('surfaces d’accueil — écriture réservée aux admins', () => {
       assert.equal(snap.exists(), true);
     });
   }
+});
+
+describe('journal des e-mails — lecture admin, écriture interdite à tous', () => {
+  // Le journal contient des adresses de clientes et ce qu'on leur a dit :
+  // seul un admin le lit, et personne ne l'écrit depuis un client — les
+  // Functions passent par l'Admin SDK, qui contourne ces règles.
+  it('un visiteur anonyme ne lit pas', async () => {
+    const db = env.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(db, 'emailLogs/e1')));
+  });
+
+  it('un compte client connecté ne lit pas', async () => {
+    const db = env.authenticatedContext('client-1').firestore();
+    await assertFails(getDoc(doc(db, 'emailLogs/e1')));
+  });
+
+  it('un admin lit', async () => {
+    const db = env.authenticatedContext('admin-1').firestore();
+    const snap = await assertSucceeds(getDoc(doc(db, 'emailLogs/e1')));
+    assert.equal(snap.exists(), true);
+  });
+
+  it('même un admin n’écrit pas depuis un client', async () => {
+    const db = env.authenticatedContext('admin-1').firestore();
+    await assertFails(setDoc(doc(db, 'emailLogs/e2'), { type: 'raw' }));
+  });
 });

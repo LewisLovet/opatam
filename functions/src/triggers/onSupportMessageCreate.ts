@@ -15,6 +15,7 @@ import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendPushNotifications } from '../utils/expoPushService';
 import { getResend, emailConfig, appConfig } from '../utils/resendService';
+import { envoyerEmail } from '../lib/emailJournal';
 
 export const onSupportMessageCreate = onDocumentCreated(
   {
@@ -91,7 +92,7 @@ export const onSupportMessageCreate = onDocumentCreated(
         if (emails.length === 0) return;
         const chat = (await chatRef.get()).data();
         const nom = chat?.businessName ?? 'Un professionnel';
-        await getResend().emails.send({
+        await envoyerEmail(getResend(), {
           from: emailConfig.from,
           to: emails,
           subject: `💬 ${nom} vous écrit sur le chat Opatam`,
@@ -106,7 +107,7 @@ export const onSupportMessageCreate = onDocumentCreated(
               <p><a href="${appConfig.url}/admin/messages" style="color:#c81e3a;font-weight:600;">Répondre dans l'interface admin →</a></p>
               <p style="color:#a1a1aa;font-size:12px;">Vous ne recevrez pas d'autre e-mail pour cette conversation tant que vous n'avez pas répondu.</p>
             </div>`,
-        });
+        }, { type: 'support_message', providerId: chat?.providerId ?? null });
       } catch (e) {
         console.error('[supportChat] e-mail admins échoué:', e);
       }

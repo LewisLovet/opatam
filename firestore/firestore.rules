@@ -513,6 +513,16 @@ service cloud.firestore {
       allow write: if isAdminUser();
     }
 
+    // === JOURNAL DES E-MAILS (lecture admin, écrit par les Functions) ===
+    // Une entrée par e-mail envoyé : destinataire, réservation, ce que
+    // l'e-mail annonçait, identifiant Resend. Aucun client ne l'écrit — les
+    // Functions passent par l'Admin SDK. L'AdminGuard React ne protège
+    // jamais Firebase : c'est cette règle qui compte.
+    match /emailLogs/{logId} {
+      allow read: if isAdminUser();
+      allow write: if false;
+    }
+
     // === PAGE VIEWS DAILY (read-only by provider, written by Cloud Function) ===
     //
     // Daily counts of vitrine views, populated by the

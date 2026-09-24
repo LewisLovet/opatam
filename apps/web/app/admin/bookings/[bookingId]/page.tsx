@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminBookingService } from '@/services/admin/adminBookingService';
+import { adminEmailService, type EmailLogEntry, type EmailRendu } from '@/services/admin/adminEmailService';
 import type { BookingDetail } from '@/services/admin/types';
 import { statusConfig } from '@/lib/booking-utils';
 import { Loader } from '@/components/ui';
@@ -72,6 +73,27 @@ function formatPrice(price: number): string {
   }).format(price / 100);
 }
 
+/** Ce que chaque type d'e-mail veut dire, en clair. Le type brut sert de repli. */
+const EMAIL_TYPE_LABELS: Record<string, string> = {
+  confirmation: 'Confirmation cliente',
+  provider_new_booking: 'Nouveau rendez-vous (pro)',
+  reminder: 'Rappel cliente',
+  reschedule: 'Déplacement',
+  cancellation: 'Annulation cliente',
+  provider_cancellation: 'Annulation (pro)',
+  deposit_reminder: 'Relance acompte',
+  review_request: 'Demande d’avis',
+  loyalty_reward: 'Récompense fidélité',
+};
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export default function AdminBookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { user } = useAuth();
@@ -91,6 +113,29 @@ export default function AdminBookingDetailPage() {
       setLoading(false);
     }
   }, [user?.id, bookingId]);
+
+  // Journal des e-mails de cette réservation. Chargé à part : son absence
+  // (règle, réseau) ne doit pas empêcher d'afficher la fiche.
+  const [emails, setEmails] = useState<EmailLogEntry[] | null>(null);
+  const [emailsErreur, setEmailsErreur] = useState<string | null>(null);
+  const [emailOuvert, setEmailOuvert] = useState<{ entree: EmailLogEntry; rendu: EmailRendu | null; erreur: string | null } | null>(null);
+  useEffect(() => {
+    if (!user?.id || !bookingId) return;
+    adminEmailService
+      .listForBooking(bookingId)
+      .then(setEmails)
+      .catch((e: unknown) => setEmailsErreur(e instanceof Error ? e.message : 'Erreur'));
+  }, [user?.id, bookingId]);
+
+  const ouvrirEmail = async (entree: EmailLogEntry) => {
+    setEmailOuvert({ entree, rendu: null, erreur: null });
+    try {
+      const rendu = await adminEmailService.getRendered(entree.id);
+      setEmailOuvert({ entree, rendu, erreur: null });
+    } catch (e) {
+      setEmailOuvert({ entree, rendu: null, erreur: e instanceof Error ? e.message : 'Erreur' });
+    }
+  };
 
   useEffect(() => {
     loadBooking();
@@ -393,6 +438,114 @@ export default function AdminBookingDetailPage() {
               Motif : {booking.cancelReason}
             </p>
           )}
+        </div>
+      )}
+
+      {/* E-mails envoyés — journal `emailLogs`, relecture via Resend */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide mb-4">
+          E-mails envoyés
+        </h2>
+        {emailsErreur ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{emailsErreur}</p>
+        ) : emails === null ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+        ) : emails.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aucun e-mail journalisé pour cette réservation. Le journal ne couvre que les envois
+            postérieurs à sa mise en place.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+            {emails.map((e) => (
+              <li key={e.id} className="py-3 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {EMAIL_TYPE_LABELS[e.type] ?? e.type}
+                    <span
+                      className={`ml-2 inline-block px-2 py-0.5 rounded-full text-xs ${
+                        e.status === 'sent'
+                          ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                      }`}
+                    >
+                      {e.status === 'sent' ? 'envoyé' : 'échec'}
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {formatDateTime(e.sentAt)} · à {e.to.join(', ')}
+                  </p>
+                  {e.resume?.affiche && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                      Annonçait : <span className="font-medium">{String(e.resume.affiche)}</span>
+                      {e.resume.timeZone && <span className="text-gray-400"> ({String(e.resume.timeZone)})</span>}
+                    </p>
+                  )}
+                  {e.error && <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{e.error}</p>}
+                </div>
+                {e.resendId && (
+                  <button
+                    type="button"
+                    onClick={() => ouvrirEmail(e)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                  >
+                    Voir
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {emailOuvert && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setEmailOuvert(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 p-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                  {emailOuvert.rendu?.subject ?? emailOuvert.entree.subject}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {EMAIL_TYPE_LABELS[emailOuvert.entree.type] ?? emailOuvert.entree.type} · à{' '}
+                  {(emailOuvert.rendu?.to ?? emailOuvert.entree.to).join(', ')}
+                  {emailOuvert.rendu?.lastEvent && <> · Resend : {emailOuvert.rendu.lastEvent}</>}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmailOuvert(null)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 bg-gray-50 dark:bg-gray-950">
+              {emailOuvert.erreur ? (
+                <p className="p-4 text-sm text-red-600 dark:text-red-400">{emailOuvert.erreur}</p>
+              ) : !emailOuvert.rendu ? (
+                <p className="p-4 text-sm text-gray-500 dark:text-gray-400">Relecture auprès de Resend…</p>
+              ) : emailOuvert.rendu.html ? (
+                // `sandbox` sans permission : l'e-mail est rendu, aucun script n'y tourne.
+                <iframe
+                  title="E-mail envoyé"
+                  srcDoc={emailOuvert.rendu.html}
+                  sandbox=""
+                  className="w-full h-[70vh] bg-white"
+                />
+              ) : (
+                <pre className="p-4 text-sm whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+                  {emailOuvert.rendu.text ?? '(aucun contenu)'}
+                </pre>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

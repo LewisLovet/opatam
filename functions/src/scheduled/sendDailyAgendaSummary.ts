@@ -23,6 +23,7 @@ import { estDemainChezLeSalon, demainChezLeSalon, fenetreDeRechercheDemain } fro
 import { instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
+import { envoyerEmail } from '../lib/emailJournal';
 
 const resendApiKey = defineString('RESEND_API_KEY');
 
@@ -168,14 +169,14 @@ export const sendDailyAgendaSummary = onSchedule(
             // 5. Send summary to provider
             if (providerEmail && isValidEmail(providerEmail)) {
               const calendarUrl = `${appConfig.url}/pro/calendrier`;
-              const { error } = await getResend().emails.send({
+              const { error } = await envoyerEmail(getResend(), {
                 from: emailConfig.from,
                 to: providerEmail,
                 replyTo: emailConfig.replyTo,
                 subject: `Agenda de demain - ${bookings.length} rendez-vous - ${formattedTomorrow}`,
                 html: generateProviderSummaryHtml(businessName, bookings, formattedTomorrow, calendarUrl),
                 text: generateProviderSummaryText(businessName, bookings, formattedTomorrow, calendarUrl),
-              });
+              }, { type: 'daily_agenda_provider', providerId, resume: { demain, fuseau: fuseauDuSalon, rendezVous: bookings.length } });
 
               if (error) {
                 console.error(`[${businessName}] Provider email error:`, error);
@@ -220,14 +221,14 @@ export const sendDailyAgendaSummary = onSchedule(
 
               const planningUrl = `${appConfig.url}/planning`;
 
-              const { error } = await getResend().emails.send({
+              const { error } = await envoyerEmail(getResend(), {
                 from: emailConfig.from,
                 to: member.email,
                 replyTo: emailConfig.replyTo,
                 subject: `Votre agenda de demain - ${memberBookings.length} rendez-vous - ${formattedTomorrow}`,
                 html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
                 text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
-              });
+              }, { type: 'daily_agenda_member', providerId, resume: { demain, fuseau: fuseauDuSalon, membre: member.name, rendezVous: memberBookings.length } });
 
               if (error) {
                 console.error(`[${businessName}] Member ${member.name} email error:`, error);
