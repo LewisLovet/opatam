@@ -79,6 +79,12 @@ export default function AdminMessagesPage() {
   const [texte, setTexte] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const finRef = useRef<HTMLDivElement>(null);
+  /** Le conteneur défilant du fil — on le fait défiler LUI, jamais la page. */
+  const fluxRef = useRef<HTMLDivElement>(null);
+  const saisieRef = useRef<HTMLTextAreaElement>(null);
+  /** « À traiter » par défaut : la boîte sert à répondre, pas à contempler. */
+  const [filtre, setFiltre] = useState<'a_traiter' | 'toutes'>('a_traiter');
+  const [filtreTexte, setFiltreTexte] = useState('');
 
   // ── Nouveau message : le chat s'initie aussi de NOTRE côté ──
   // On cherche un prestataire (searchTokens, comme la recherche publique) et
@@ -224,9 +230,57 @@ export default function AdminMessagesPage() {
     );
   }, [ouvertId, ouvert]);
 
+  // On déplace le SCROLL DU CONTENEUR, jamais `scrollIntoView` : celui-ci
+  // fait défiler TOUS les ancêtres défilants, donc la page entière — d'où
+  // la page qui descendait toute seule à l'ouverture d'une conversation.
+  //
+  // Changement de conversation : saut instantané, on n'anime pas un
+  // repositionnement. Nouveau message dans le fil ouvert : défilement doux.
   useEffect(() => {
-    finRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const flux = fluxRef.current;
+    if (flux) flux.scrollTop = flux.scrollHeight;
+  }, [ouvertId]);
+
+  useEffect(() => {
+    const flux = fluxRef.current;
+    if (!flux) return;
+    flux.scrollTo({ top: flux.scrollHeight, behavior: 'smooth' });
   }, [messages]);
+
+  /**
+   * La zone de saisie grandit avec le texte, jusqu'à la hauteur maximale de
+   * la classe `max-h-32` — au-delà, elle défile. `rows={1}` seul ne suffit
+   * pas : un retour à la ligne restait invisible.
+   */
+  const ajusterHauteur = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    ajusterHauteur(saisieRef.current);
+  }, [texte]);
+
+  /** Les conversations à afficher : filtre + recherche, tri déjà fait en base. */
+  const chatsAffiches = useMemo(() => {
+    const q = filtreTexte.trim().toLowerCase();
+    return (chats ?? [])
+      .filter((c) =>
+        filtre === 'toutes'
+          // « À traiter » = la balle est dans notre camp : non lus, ou le
+          // pro a écrit en dernier. Écarte les 69 fils qui n'ont reçu que
+          // le message d'accueil, tous identiques et sans rien à y faire.
+          ? true
+          : c.adminUnread > 0 || c.lastMessageFrom === 'pro',
+      )
+      .filter((c) => !q || c.businessName.toLowerCase().includes(q));
+  }, [chats, filtre, filtreTexte]);
+
+  const nbATraiter = useMemo(
+    () => (chats ?? []).filter((c) => c.adminUnread > 0 || c.lastMessageFrom === 'pro').length,
+    [chats],
+  );
 
   const envoyer = async () => {
     const contenu = texte.trim();
@@ -319,8 +373,43 @@ export default function AdminMessagesPage() {
       ) : (
         <div className="grid lg:grid-cols-[320px_1fr] gap-4 items-start">
           {/* Liste des conversations */}
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-50 dark:divide-gray-800/60 overflow-hidden lg:sticky lg:top-6 max-h-[75vh] overflow-y-auto">
-            {chats.map((c) => (
+          <div className="lg:sticky lg:top-6 space-y-2">
+            <div className="flex items-center gap-1.5">
+              {([
+                ['a_traiter', 'À traiter', nbATraiter],
+                ['toutes', 'Toutes', chats.length],
+              ] as const).map(([cle, libelle, n]) => (
+                <button
+                  key={cle}
+                  onClick={() => setFiltre(cle)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    filtre === cle
+                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {libelle} <span className="opacity-60">{n}</span>
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={filtreTexte}
+                onChange={(e) => setFiltreTexte(e.target.value)}
+                placeholder="Filtrer par nom…"
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-9 pr-3 py-2 text-sm text-gray-900 dark:text-white"
+              />
+            </div>
+            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-50 dark:divide-gray-800/60 overflow-hidden max-h-[calc(75vh-84px)] overflow-y-auto">
+            {chatsAffiches.length === 0 && (
+              <p className="px-4 py-6 text-xs text-gray-400 text-center">
+                {filtre === 'a_traiter'
+                  ? 'Rien à traiter — tout est répondu.'
+                  : 'Aucune conversation à ce nom.'}
+              </p>
+            )}
+            {chatsAffiches.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setOuvertId(c.id)}
@@ -344,9 +433,11 @@ export default function AdminMessagesPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-0.5">
+                  {/* Une seule ligne, coupée : le résumé stocké fait jusqu'à
+                      200 caractères et remplissait la colonne. */}
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {c.lastMessageFrom === 'admin' ? 'Vous : ' : ''}
-                    {c.lastMessageText}
+                    {c.lastMessageText.replace(/\s+/g, ' ').slice(0, 70)}
                   </p>
                   {c.adminUnread > 0 && (
                     <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center">
@@ -356,6 +447,7 @@ export default function AdminMessagesPage() {
                 </div>
               </button>
             ))}
+            </div>
           </div>
 
           {/* Le fil */}
@@ -377,7 +469,10 @@ export default function AdminMessagesPage() {
                   Voir la fiche prestataire
                 </a>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50 dark:bg-gray-950/40">
+              <div
+                ref={fluxRef}
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50 dark:bg-gray-950/40"
+              >
                 {messages.map((m) => (
                   <div key={m.id} className={`flex ${m.from === 'admin' ? 'justify-end' : 'justify-start'}`}>
                     <div
@@ -408,6 +503,7 @@ export default function AdminMessagesPage() {
               </div>
               <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex items-end gap-2">
                 <textarea
+                  ref={saisieRef}
                   value={texte}
                   onChange={(e) => setTexte(e.target.value)}
                   onKeyDown={(e) => {
@@ -418,7 +514,7 @@ export default function AdminMessagesPage() {
                   }}
                   placeholder={`Répondre à ${ouvert.businessName}…`}
                   rows={1}
-                  className="flex-1 resize-none rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white max-h-32"
+                  className="flex-1 resize-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white max-h-32"
                 />
                 <button
                   onClick={() => void envoyer()}
