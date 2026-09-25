@@ -2,6 +2,8 @@ export * from './supportFaq';
 export * from './acquisition';
 // Regions
 export * from './regions';
+// Devises : celle du prestataire, celle dans laquelle il encaisse.
+export * from './currencies';
 
 // Thèmes de couleur des pages prestataires (fichier généré)
 export * from './themes';

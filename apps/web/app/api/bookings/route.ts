@@ -12,6 +12,8 @@ import {
   hasLoyaltyAccess,
   depositTransferAmount,
   clientServiceFee,
+  DEFAULT_CURRENCY,
+  formatPrice,
 } from '@booking-app/shared';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
@@ -146,6 +148,10 @@ export async function POST(request: NextRequest) {
     // Droits calculés — LA règle unique (payant, essai en cours, ou accès
     // offert actif). L'ancien test lisait `plan`, que l'octroi d'un comp
     // mutait ; il ne mute plus, donc seuls les droits dérivés font foi.
+    // Devise du prestataire : elle decide de ce que la cliente est debitee.
+    // Absente = euro, donc rien ne change pour les comptes existants.
+    const deviseProvider = (providerData.currency ?? DEFAULT_CURRENCY).toLowerCase();
+
     const isSubscriptionValid = computeEntitlements(providerData).canReceiveBookings;
 
     if (!isSubscriptionValid) {
@@ -472,15 +478,20 @@ export async function POST(request: NextRequest) {
 
           // Frais de service Opatam, payés par la cliente en plus de l'acompte
           // et conservés par la plateforme (le transfert au pro ne change pas).
-          const serviceFee = booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount);
+          const serviceFee =
+          booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount, providerData.currency);
           const paymentIntent = await stripe.paymentIntents.create({
             amount: booking.deposit.amount + serviceFee,
-            currency: 'eur',
+            currency: deviseProvider,
             customer: customer.id,
             automatic_payment_methods: { enabled: true },
             description:
               `Acompte — ${booking.serviceName} chez ${booking.providerName}` +
-              (serviceFee > 0 ? ` (dont ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de plateforme)` : ''),
+              // Le libelle apparait sur le releve bancaire de la cliente :
+              // il doit porter la devise reellement debitee, pas l'euro.
+              (serviceFee > 0
+                ? ` (dont ${formatPrice(serviceFee, providerData.currency)} de frais de plateforme)`
+                : ''),
             transfer_data: {
               destination: providerData.stripeConnectAccountId,
               // Frais de traitement déduits, comme sur le tunnel web.
@@ -555,7 +566,8 @@ export async function POST(request: NextRequest) {
         // Frais de service Opatam : ligne à part sur la page de paiement (la
         // cliente voit le détail avant de valider), retenus par la plateforme
         // via application_fee_amount — le pro reçoit son acompte inchangé.
-        const serviceFee = booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount);
+        const serviceFee =
+          booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount, providerData.currency);
         const session = await stripe.checkout.sessions.create(
           {
             mode: 'payment',
@@ -564,7 +576,7 @@ export async function POST(request: NextRequest) {
             line_items: [
               {
                 price_data: {
-                  currency: 'eur',
+                  currency: deviseProvider,
                   unit_amount: booking.deposit.amount,
                   product_data: {
                     name: `Acompte — ${booking.serviceName}`,
@@ -577,7 +589,7 @@ export async function POST(request: NextRequest) {
                 ? [
                     {
                       price_data: {
-                        currency: 'eur',
+                        currency: deviseProvider,
                         unit_amount: serviceFee,
                         product_data: {
                           name: 'Frais de plateforme',
@@ -601,7 +613,7 @@ export async function POST(request: NextRequest) {
               ? {
                   custom_text: {
                     submit: {
-                      message: `Ce montant comprend l'acompte de ${(booking.deposit.amount / 100).toFixed(2).replace('.', ',')} € et ${(serviceFee / 100).toFixed(2).replace('.', ',')} € de frais de plateforme.`,
+                      message: `Ce montant comprend l'acompte de ${formatPrice(booking.deposit.amount, providerData.currency)} et ${formatPrice(serviceFee, providerData.currency)} de frais de plateforme.`,
                     },
                   },
                 }

@@ -136,6 +136,12 @@ export const providerSettingsSchema = z.object({
 // Create provider schema - MINIMUM requis pour creer un provider
 // Le plan est mis automatiquement a 'trial' par le service
 export const createProviderSchema = z.object({
+  // Devise choisie à l'inscription, proposée d'après le pays. Déclarée
+  // ici sous peine d'être retirée silencieusement par zod.
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/, { message: 'Code devise invalide' })
+    .optional(),
   businessName: z
     .string({ required_error: 'Le nom de l\'entreprise est requis' })
     .min(2, { message: 'Le nom doit contenir au moins 2 caractères' })
@@ -182,6 +188,12 @@ export const createProviderSchema = z.object({
 
 // Update provider schema - Tout optionnel
 export const updateProviderSchema = z.object({
+  // Devise d'affichage et d'encaissement. DOIT figurer ici : zod retire
+  // silencieusement tout champ non déclaré, il n'arriverait jamais en base.
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/, { message: 'Code devise invalide' })
+    .optional(),
   businessName: z
     .string()
     .min(2, { message: 'Le nom doit contenir au moins 2 caractères' })

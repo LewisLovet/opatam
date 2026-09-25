@@ -5,6 +5,9 @@ export * from './zod';
 export * from './access';
 // « Ce membre peut-il recevoir des réservations ? » — règle unique.
 export * from './member-readiness';
+
+// Barème des frais de service par devise.
+import { SERVICE_FEE_BY_CURRENCY } from '../constants/currencies';
 // Lecture et recopie des horaires hebdomadaires (web ET mobile).
 export * from './horaires';
 // Socle horaire : heure murale ↔ instant absolu, dans un fuseau EXPLICITE.
@@ -393,9 +396,22 @@ export function depositTransferAmount(depositCents: number): number {
 export const CLIENT_SERVICE_FEE_CENTS = 49;
 export const CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS = 500;
 
-export function clientServiceFee(depositCents: number): number {
-  if (!Number.isFinite(depositCents) || depositCents < CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS) return 0;
-  return CLIENT_SERVICE_FEE_CENTS;
+/**
+ * Frais de service, dans la devise du prestataire.
+ *
+ * `currency` est optionnel pour que les appels existants continuent de
+ * donner exactement le même résultat en euro. Les montants par devise
+ * vivent dans SERVICE_FEE_BY_CURRENCY : ce sont des prix ronds, pas une
+ * conversion au taux du jour, sinon le forfait changerait chaque matin.
+ */
+export function clientServiceFee(depositCents: number, currency?: string | null): number {
+  const bareme = currency
+    ? SERVICE_FEE_BY_CURRENCY[currency.toUpperCase()]
+    : undefined;
+  const fee = bareme?.fee ?? CLIENT_SERVICE_FEE_CENTS;
+  const seuil = bareme?.minDeposit ?? CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS;
+  if (!Number.isFinite(depositCents) || depositCents < seuil) return 0;
+  return fee;
 }
 
 interface ProviderSettingsForDeposit {

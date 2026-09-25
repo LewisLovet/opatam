@@ -179,6 +179,19 @@ export interface Provider {
   cities: string[];              // Normalized cities from active locations
   region: string | null;         // Region from primary location (e.g., "Île-de-France")
   countryCode: string;           // ISO 3166-1 alpha-2 from default location (e.g., 'FR')
+  /**
+   * Devise dans laquelle ce prestataire affiche SES prix et encaisse.
+   *
+   * Absent = euro : aucune migration, les comptes existants ne bougent pas.
+   * Proposée d'après le pays à l'inscription, modifiable ensuite — mais
+   * changer la devise NE CONVERTIT RIEN : les prix sont stockés en unités
+   * mineures sans devise, donc 35,00 € deviendrait 35,00 CHF. Le réglage
+   * prévient, la conversion reste à la charge du prestataire.
+   *
+   * À ne pas confondre avec la devise de VERSEMENT sur son compte
+   * bancaire, qui découle du pays de son compte Stripe Connect.
+   */
+  currency?: string;
   minPrice: number | null;       // Minimum price from active services (in centimes)
   // Denormalized non-expired promo windows (shop-wide + per-service), maintained
   // on service/promo writes. Lets list surfaces flag active promos with one read

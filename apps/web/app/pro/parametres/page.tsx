@@ -16,6 +16,7 @@ import {
   ReservationSettingsForm,
   NotificationsForm,
   AccountForm,
+  DeviseSection,
   ShareSection,
   WidgetSection,
   EcranSection,
@@ -203,7 +204,12 @@ export default function SettingsPage() {
             </div>
 
             {/* Section content */}
-            {activeTab === 'reservation' && <ReservationSettingsForm />}
+            {activeTab === 'reservation' && (
+              <div className="space-y-10">
+                <DeviseSection />
+                <ReservationSettingsForm />
+              </div>
+            )}
             {activeTab === 'notifications' && <NotificationsForm />}
             {activeTab === 'compte' && <AccountForm />}
             {activeTab === 'partage' && <ShareSection />}

@@ -77,9 +77,23 @@ export async function POST(request: NextRequest) {
 
     if (!accountId) {
       // First time the pro starts onboarding — create the connected account
+      // Le PAYS du compte connecte decide de la devise de versement et des
+      // pieces demandees a l'onboarding. Il etait fige sur la France alors
+      // que neuf pays sont ouverts a l'inscription : un prestataire suisse
+      // se voyait creer un compte francais, ce qui empeche le versement sur
+      // un IBAN suisse.
+      //
+      // Stripe N'AUTORISE PAS a changer le pays d'un compte existant : ce
+      // choix est definitif, d'ou la lecture du pays declare par le
+      // prestataire plutot qu'une valeur par defaut commode.
+      const paysCompte =
+        typeof provider.countryCode === 'string' && /^[A-Z]{2}$/.test(provider.countryCode)
+          ? provider.countryCode
+          : 'FR';
+
       const account = await stripe.accounts.create({
         type: 'express',
-        country: 'FR',
+        country: paysCompte,
         // Email pre-fills the onboarding form. Pro can change it during onboarding.
         email: decoded.email ?? undefined,
         // Pro will charge clients (deposits) and receive payouts to their IBAN

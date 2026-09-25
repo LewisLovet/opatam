@@ -300,12 +300,20 @@ service cloud.firestore {
           'isPublished',
           // Géographie et dérivés catalogue côté client
           'cities', 'geopoint', 'region', 'countryCode',
+          // Devise d'affichage et d'encaissement (valeur contrainte plus bas)
+          'currency',
           'minPrice', 'promoSummary',
           'updatedAt'
         ])
         && (
           !('locale' in request.resource.data.diff(resource.data).affectedKeys()) ||
           request.resource.data.locale in ['fr', 'en', 'it', 'pt', 'de']
+        )
+        // La devise décide de ce que la cliente est débitée : une valeur
+        // fantaisiste ferait échouer le paiement chez Stripe.
+        && (
+          !('currency' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          request.resource.data.currency in ['EUR', 'CHF', 'GBP', 'USD', 'CAD', 'MAD']
         );
 
       allow delete: if isProviderAdmin(providerId);

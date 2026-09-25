@@ -35,7 +35,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { ACQUISITION_CHANNELS, CATEGORIES, DAYS_OF_WEEK, getCountryLabel, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
+import { ACQUISITION_CHANNELS, CATEGORIES, DAYS_OF_WEEK, getCountryLabel, getCurrencyForCountry, SUPPORTED_CURRENCIES, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField, AcquisitionChannel } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -80,6 +80,8 @@ interface WizardData {
   // Step 2 - Location
   locationName: string;
   countryCode: string;
+  /** Devise d'affichage et d'encaissement, proposée d'après le pays. */
+  currency: string;
   cityOnly: boolean;
   address: string;
   postalCode: string;
@@ -134,6 +136,7 @@ const DEFAULT_DATA: WizardData = {
   description: '',
   locationName: 'Mon salon',
   countryCode: 'FR',
+  currency: getCurrencyForCountry('FR'),
   cityOnly: false,
   address: '',
   postalCode: '',
@@ -551,6 +554,7 @@ export default function RegisterPage() {
       // page d'abord (paramètres recopiés depuis l'accueil), la session en
       // filet. `undefined` = arrivée directe, rien n'est écrit.
       attribution: attributionInscription(typeof window !== 'undefined' ? window.location.search : ''),
+      currency: data.currency,
     });
 
     // If referral code, link affiliate to provider + increment stats
@@ -933,6 +937,9 @@ export default function RegisterPage() {
         value={data.countryCode}
         onChange={(code) => updateData({
           countryCode: code,
+          // Le pays PROPOSE la devise ; le champ juste en dessous reste
+          // libre, un salon suisse peut vouloir afficher en euros.
+          currency: getCurrencyForCountry(code),
           address: '',
           postalCode: '',
           city: '',
@@ -940,6 +947,30 @@ export default function RegisterPage() {
           region: null,
         })}
       />
+
+      <div>
+        <label
+          htmlFor="devise-inscription"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
+          Devise
+        </label>
+        <select
+          id="devise-inscription"
+          value={data.currency}
+          onChange={(e) => updateData({ currency: e.target.value })}
+          className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+        >
+          {SUPPORTED_CURRENCIES.map((d) => (
+            <option key={d.code} value={d.code}>
+              {d.label} ({d.symbol})
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+          Vos prix seront affichés et encaissés dans cette devise.
+        </p>
+      </div>
 
       {/* Address type selector */}
       <div>

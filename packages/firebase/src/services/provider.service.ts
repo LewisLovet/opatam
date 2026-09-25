@@ -17,6 +17,7 @@ import {
   haversineDistance,
   type CreateProviderInput,
   type UpdateProviderInput,
+  DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
@@ -90,6 +91,9 @@ export class ProviderService {
     await providerRepository.createWithId(userId, {
       userId,
       plan: 'trial', // Toujours trial a la creation
+      // Devise d'affichage et d'encaissement. Absente = euro, donc les
+      // comptes créés avant ce champ ne bougent pas.
+      currency: validated.currency ?? DEFAULT_CURRENCY,
       acquisitionSource: validated.acquisitionSource ?? null,
       attribution: validated.attribution ?? null,
       businessName: validated.businessName,
