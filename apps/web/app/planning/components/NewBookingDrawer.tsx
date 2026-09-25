@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 import { getAuth } from 'firebase/auth';
 import {
   ArrowLeft,
@@ -136,6 +138,8 @@ export function NewBookingDrawer({
   providerId,
   onBookingCreated,
 }: NewBookingDrawerProps) {
+  // Devise du prestataire, a la place de l'euro fige.
+  const devise = useDevise();
   const [data, setData] = useState<BookingDataResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -445,7 +449,7 @@ export function NewBookingDrawer({
                   />
                   <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 dark:border-gray-700 pt-4">
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {total ? `${formatPrice(total.price)} · ${formatDuration(total.duration)}` : ''}
+                      {total ? `${formatPrice(total.price, devise)} · ${formatDuration(total.duration)}` : ''}
                     </span>
                     <button
                       onClick={handleChoicesContinue}
@@ -719,6 +723,8 @@ function ClientStep({
   askDeposit: boolean;
   onAskDepositChange: (v: boolean) => void;
 }) {
+  // Devise du prestataire, a la place de l'euro fige.
+  const devise = useDevise();
   const isNameValid = clientInfo.name.trim().length >= 2;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientInfo.email);
   const isPhoneValid = isValidPhone(clientInfo.phone);
@@ -856,7 +862,7 @@ function ClientStep({
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
                   {askDeposit
-                    ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount)} sera envoyé. La résa reste en attente jusqu'au paiement.`
+                    ? `Un email avec un lien de paiement de ${formatPrice(resolvedDeposit.amount, devise)} sera envoyé. La résa reste en attente jusqu'au paiement.`
                     : "Aucune demande d'acompte. Vous encaisserez en personne."}
                 </p>
               </div>
@@ -969,11 +975,11 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number): string {
+function formatPrice(cents: number, devise = DEFAULT_CURRENCY): string {
   if (cents === 0) return 'Gratuit';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(cents / 100);

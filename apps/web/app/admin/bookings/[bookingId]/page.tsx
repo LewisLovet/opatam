@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,10 +67,10 @@ function formatTime(iso: Date | string | null): string {
   });
 }
 
-function formatPrice(price: number): string {
+function formatPrice(price: number, devise = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
   }).format(price / 100);
 }
 

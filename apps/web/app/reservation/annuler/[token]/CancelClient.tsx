@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
@@ -63,11 +64,11 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(cents: number, locale: string): string {
+function formatPrice(cents: number, locale: string, devise = DEFAULT_CURRENCY): string {
   const euros = cents / 100;
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(euros);
