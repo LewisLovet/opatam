@@ -35,6 +35,8 @@ import { resolveEmailLocale } from '../utils/emailI18n';
 // Types for booking data from Firestore
 interface BookingData {
   providerId: string;
+  /** Devise figee a la creation de la reservation. Absente = euro. */
+  currency?: string;
   clientId: string | null;
   createdAt?: admin.firestore.Timestamp;
   /** Snapshot serveur quand la récompense a réduit cette résa. */
@@ -281,6 +283,9 @@ async function toEmailData(
     timeZone: booking.timezone ?? undefined,
     duration: booking.duration || 60,
     price: booking.price || 0,
+    // Devise figee sur la reservation : un e-mail doit porter la devise
+    // a laquelle la cliente a consenti, pas le reglage du jour.
+    currency: booking.currency,
     priceMax: booking.priceMax || null,
     originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({
@@ -386,6 +391,9 @@ export async function emailProviderNewBooking(
     timeZone: booking.timezone ?? undefined,
     duration: booking.duration || 60,
     price: booking.price || 0,
+    // Devise figee sur la reservation : un e-mail doit porter la devise
+    // a laquelle la cliente a consenti, pas le reglage du jour.
+    currency: booking.currency,
     priceMax: booking.priceMax || null,
     originalPrice: booking.originalPrice ?? null,
     items: booking.items?.map((i) => ({

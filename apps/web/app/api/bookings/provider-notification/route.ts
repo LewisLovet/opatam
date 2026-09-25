@@ -12,6 +12,7 @@ import {
 import { getAdminFirestore } from '@/lib/firebase-admin';
 
 interface ProviderNotificationRequest {
+  currency?: string;
   providerId: string;
   clientName: string;
   clientPhone?: string;
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
       datetime,
       duration,
       price,
+      // Devise figee sur la reservation. Absente = euro, donc les
+      // appelants qui ne l'envoient pas encore ne changent pas.
+      currency,
       locationName,
       locationAddress,
       memberName,
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
     const formattedTime = formatTimeFr(datetime);
     const endDate = new Date(new Date(datetime).getTime() + duration * 60 * 1000);
     const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(price);
+    const formattedPrice = formatPriceFr(price, currency);
     const calendarUrl = `${appConfig.url}/pro/calendrier`;
 
     if (type === 'confirmation') {

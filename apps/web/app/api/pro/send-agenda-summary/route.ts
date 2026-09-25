@@ -15,6 +15,8 @@ const EMAIL_LOGO_URL =
   'https://firebasestorage.googleapis.com/v0/b/opatam-da04b.firebasestorage.app/o/assets%2Flogos%2Flogo-email.png?alt=media';
 
 interface BookingRow {
+  /** Devise figee sur la reservation. Absente = euro. */
+  currency?: string;
   clientName: string;
   serviceName: string;
   datetime: Date;
@@ -187,7 +189,8 @@ function generateBookingRowHtml(booking: BookingRow): string {
   const endTime = formatTimeFr(
     new Date(booking.datetime.getTime() + booking.duration * 60 * 1000)
   );
-  const price = formatPriceFr(booking.price);
+  // Devise figee sur la reservation, pas le reglage du jour.
+  const price = formatPriceFr(booking.price, booking.currency);
 
   return `
     <tr>

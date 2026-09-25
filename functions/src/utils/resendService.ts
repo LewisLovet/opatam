@@ -97,11 +97,23 @@ export function formatTimeFr(date: Date, fuseau: string = 'Europe/Paris'): strin
 }
 
 // Helper to format price (centimes to euros)
-export function formatPriceFr(priceInCentimes: number, priceMaxInCentimes?: number | null): string {
+/**
+ * Montant dans la devise de la reservation.
+ *
+ * `devise` est optionnel et vaut l'euro : les appels existants et les
+ * reservations d'avant le chantier devises rendent exactement la meme
+ * chose qu'avant. Volontairement sans import de @booking-app/shared —
+ * un import runtime fait echouer `firebase deploy` sur ce paquet.
+ */
+export function formatPriceFr(
+  priceInCentimes: number,
+  priceMaxInCentimes?: number | null,
+  devise = 'EUR',
+): string {
   const fmt = (v: number) =>
     new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR',
+      currency: devise,
     }).format(v / 100);
   if (priceMaxInCentimes && priceMaxInCentimes > priceInCentimes) {
     return `De ${fmt(priceInCentimes)} à ${fmt(priceMaxInCentimes)}`;
@@ -290,6 +302,8 @@ export interface EmailResult {
 }
 
 export interface BookingEmailData {
+  /** Devise de la reservation, figee a sa creation. Absente = euro. */
+  currency?: string;
   /**
    * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
    *
@@ -698,6 +712,8 @@ ${data.providerName}
  * Send email notification to provider about a new booking
  */
 export interface ProviderNewBookingEmailData {
+  /** Devise de la reservation, figee a sa creation. Absente = euro. */
+  currency?: string;
   /**
    * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
    *
@@ -754,7 +770,7 @@ export async function sendProviderNewBookingEmail(data: ProviderNewBookingEmailD
     const formattedTime = formatTimeFr(data.datetime);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatTimeFr(endDate);
-    const formattedPrice = formatPriceFr(data.price, data.priceMax);
+    const formattedPrice = formatPriceFr(data.price, data.priceMax, data.currency);
     const calendarUrl = `${appConfig.url}/pro/calendrier`;
 
     const { error } = await envoyerEmail(getResend(), {
@@ -833,7 +849,7 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                             <div style="padding: 8px 0;${idx > 0 ? ' border-top: 1px solid #e4e4e7;' : ''}">
                               <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                                 <td style="font-size: 14px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price)}${promoNoteHtml(item.price, item.originalPrice)}</td>
+                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price, null, data.currency)}${promoNoteHtml(item.price, item.originalPrice)}</td>
                               </tr></table>
                               <div style="font-size: 12px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
                               ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
@@ -879,7 +895,7 @@ Détails :
 - Client : ${data.clientName}
 ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price, null, data.currency)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
   : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}

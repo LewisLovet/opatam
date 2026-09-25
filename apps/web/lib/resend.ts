@@ -59,11 +59,11 @@ export function formatTimeFr(date: Date | string): string {
 }
 
 // Helper to format price (centimes to euros)
-export function formatPriceFr(priceInCentimes: number): string {
+export function formatPriceFr(priceInCentimes: number, devise = 'EUR'): string {
   const priceInEuros = priceInCentimes / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
   }).format(priceInEuros);
 }
 

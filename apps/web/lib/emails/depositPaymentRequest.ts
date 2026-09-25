@@ -194,10 +194,10 @@ function formatTime(d: Date, l: Locale): string {
   });
 }
 
-function formatPrice(cents: number, l: Locale): string {
+function formatPrice(cents: number, l: Locale, devise = 'EUR'): string {
   return new Intl.NumberFormat(INTL_LOCALE[l], {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
   }).format(cents / 100);
 }
 
