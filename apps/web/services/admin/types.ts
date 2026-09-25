@@ -28,9 +28,17 @@ export interface DashboardStats {
   trialConversionRate: number;
   /** Frais de service encaissés sur les acomptes (cents) — conservés même
    *  si l'acompte est remboursé ; source : bookings.deposit.serviceFee. */
+  /** Frais encaisses EN EURO uniquement — voir serviceFeesByCurrency. */
   serviceFeesThisMonth: number;
   serviceFeesTotal: number;
   serviceFeesCount: number;
+  /**
+   * Frais par devise, en unites mineures. Additionner 49 EUR, 50 CHF et
+   * 500 MAD produirait un montant qui n'existe pas : ce sont des unites
+   * differentes, et aucun taux n'est stocke pour les convertir.
+   */
+  serviceFeesByCurrency: Record<string, number>;
+  serviceFeesMonthByCurrency: Record<string, number>;
   /** Prestataires dont l'option acomptes est active — ce sont eux qui
    *  produisent les frais de service ci-dessus. */
   depositProviders: number;

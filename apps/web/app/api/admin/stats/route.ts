@@ -322,20 +322,37 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
   let serviceFeesThisMonth = 0;
   let serviceFeesTotal = 0;
   let serviceFeesCount = 0;
+  // Detail par devise : la seule lecture honnete des que plusieurs devises
+  // cohabitent. Les deux totaux ci-dessus restent en euro.
+  const serviceFeesByCurrency: Record<string, number> = {};
+  const serviceFeesMonthByCurrency: Record<string, number> = {};
   try {
     const feesSnap = await db
       .collection('bookings')
       .where('deposit.status', 'in', ['paid', 'refunded'])
-      .select('deposit')
+      .select('deposit', 'currency')
       .get();
     for (const doc of feesSnap.docs) {
-      const dep = doc.data().deposit;
+      const d = doc.data();
+      const dep = d.deposit;
       const fee = Number(dep?.serviceFee) || 0;
       if (fee <= 0) continue;
-      serviceFeesTotal += fee;
-      serviceFeesCount += 1;
+      const devise = typeof d.currency === 'string' && d.currency ? d.currency : 'EUR';
       const paidAt = dep?.paidAt?.toDate?.() ?? null;
-      if (paidAt && paidAt >= startOfMonth) serviceFeesThisMonth += fee;
+      serviceFeesCount += 1;
+      // Par devise. Additionner 49 (EUR), 50 (CHF) et 500 (MAD) pour
+      // afficher « 5,99 € » serait un chiffre qui n'existe pas : ce sont
+      // des unites differentes, et aucun taux n'est stocke pour convertir.
+      serviceFeesByCurrency[devise] = (serviceFeesByCurrency[devise] ?? 0) + fee;
+      if (paidAt && paidAt >= startOfMonth) {
+        serviceFeesMonthByCurrency[devise] = (serviceFeesMonthByCurrency[devise] ?? 0) + fee;
+      }
+      // Les deux totaux historiques ne comptent QUE l'euro, pour rester
+      // justes : ils alimentent un montant affiche avec un « € ».
+      if (devise === 'EUR') {
+        serviceFeesTotal += fee;
+        if (paidAt && paidAt >= startOfMonth) serviceFeesThisMonth += fee;
+      }
     }
   } catch (err) {
     console.error('[admin/stats] service fees error:', err);
@@ -439,6 +456,8 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     serviceFeesThisMonth,
     serviceFeesTotal,
     serviceFeesCount,
+    serviceFeesByCurrency,
+    serviceFeesMonthByCurrency,
     depositProviders,
     storiesToday: storiesJourSnap.size,
     activeToday,

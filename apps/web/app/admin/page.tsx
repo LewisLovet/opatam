@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatPrice } from '@booking-app/shared';
 import {
   Users,
   Briefcase,
@@ -105,6 +106,11 @@ export default function AdminDashboardPage() {
     );
   }
 
+  // Devises autres que l'euro qui ont deja produit des frais.
+  const autresDevises = Object.keys(stats.serviceFeesByCurrency ?? {}).filter(
+    (d) => d !== 'EUR',
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -156,7 +162,7 @@ export default function AdminDashboardPage() {
           icon={<Coins className="w-5 h-5 text-emerald-500" />}
           trend={{
             value: stats.serviceFeesThisMonth,
-            label: 'de frais ce mois',
+            label: autresDevises.length > 0 ? 'de frais ce mois (EUR)' : 'de frais ce mois',
             format: 'currency',
           }}
         />
@@ -366,6 +372,35 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
+
+          {/* Frais encaisses dans une autre devise. Les additionner a
+              l'euro donnerait un montant qui n'existe pas : ce sont des
+              unites differentes et aucun taux n'est stocke. */}
+          {autresDevises.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 px-5 py-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                Frais de service par devise
+              </h3>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                Jamais additionnés : ce sont des unités différentes.
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {Object.entries(stats.serviceFeesByCurrency)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([devise, total]) => (
+                    <div key={devise} className="flex items-baseline justify-between">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{devise}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {formatPrice(total, devise)}
+                        <span className="ml-2 text-xs font-normal text-gray-400">
+                          dont {formatPrice(stats.serviceFeesMonthByCurrency[devise] ?? 0, devise)} ce mois
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Réservations AVEC acompte. Elles sont rares : sans bloc
               dédié elles n'apparaissent jamais dans la liste ci-dessous,
