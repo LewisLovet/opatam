@@ -373,7 +373,9 @@ export function BookingFlow({
       .filter((d): d is NonNullable<typeof d> => d !== null);
     const combined = combineResolvedDeposits(deposits);
     if (!combined || combined.amount <= 0) return null;
-    return { amount: combined.amount, fee: clientServiceFee(combined.amount) };
+    // MEME appel que le serveur, devise comprise : sans elle l'apercu
+    // annoncait 0,49 et le serveur facturait le bareme de la devise.
+    return { amount: combined.amount, fee: clientServiceFee(combined.amount, provider.currency) };
   }, [cartLines, provider]);
   // Pre-discount total + aggregate % — drives the crossed-out price / badge.
   const cartTotalOriginal = useMemo(

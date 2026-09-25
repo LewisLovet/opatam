@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSupportedCurrency } from '../constants/currencies';
 import { serviceDiscountSchema } from './service.schema';
 import { PROVIDER_THEMES } from '../constants/themes';
 import { ACQUISITION_CHANNEL_IDS } from '../constants/acquisition';
@@ -140,7 +141,9 @@ export const createProviderSchema = z.object({
   // ici sous peine d'être retirée silencieusement par zod.
   currency: z
     .string()
-    .regex(/^[A-Z]{3}$/, { message: 'Code devise invalide' })
+    // Contre la liste centrale, pas un simple format : « XYZ » passait la
+    // validation et ne faisait echouer le paiement que chez Stripe.
+    .refine(isSupportedCurrency, { message: 'Devise non prise en charge' })
     .optional(),
   businessName: z
     .string({ required_error: 'Le nom de l\'entreprise est requis' })
@@ -192,7 +195,9 @@ export const updateProviderSchema = z.object({
   // silencieusement tout champ non déclaré, il n'arriverait jamais en base.
   currency: z
     .string()
-    .regex(/^[A-Z]{3}$/, { message: 'Code devise invalide' })
+    // Contre la liste centrale, pas un simple format : « XYZ » passait la
+    // validation et ne faisait echouer le paiement que chez Stripe.
+    .refine(isSupportedCurrency, { message: 'Devise non prise en charge' })
     .optional(),
   businessName: z
     .string()

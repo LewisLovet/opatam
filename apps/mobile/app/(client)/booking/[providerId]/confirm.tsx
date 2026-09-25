@@ -33,6 +33,8 @@ import {
   combineResolvedDeposits,
   clientServiceFee,
   isServiceLoyaltyEligible,
+  DEFAULT_CURRENCY,
+  formatPrice,
 } from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
@@ -203,7 +205,9 @@ export default function ConfirmBookingScreen() {
     }
     const combined = combineResolvedDeposits(deposits);
     if (!combined || combined.amount <= 0) return null;
-    return { amount: combined.amount, fee: clientServiceFee(combined.amount) };
+    // MEME appel que le serveur, devise comprise : sans elle l'apercu
+    // annoncait 0,49 et le serveur facturait le bareme de la devise.
+    return { amount: combined.amount, fee: clientServiceFee(combined.amount, provider.currency) };
   })();
   const eurosExact = (c: number) => `${(c / 100).toFixed(2)} €`;
 
@@ -421,18 +425,25 @@ export default function ConfirmBookingScreen() {
         // dans le récapitulatif en haut de l'écran.
         const fraisService = Number(data.serviceFee) || 0;
         const depositCents = Number(data.depositAmount) || 0;
-        const euros = (c: number) => `${(c / 100).toFixed(2).replace('.', ',')} €`;
+        // Devise du PaymentIntent, renvoyee par le serveur. Google Pay
+        // refuse un code qui ne lui correspond pas, et le libelle du bouton
+        // affichait des euros quel que soit le pays.
+        const devisePaiement = String(data.currency || DEFAULT_CURRENCY).toUpperCase();
+        const montant = (c: number) => formatPrice(c, devisePaiement);
         const init = await initPaymentSheet({
           merchantDisplayName: provider.businessName ?? 'Opatam',
           ...(fraisService > 0 && depositCents > 0
-            ? { primaryButtonLabel: t('bookingFlow.confirm.payTotal', { total: euros(depositCents + fraisService) }) }
+            ? { primaryButtonLabel: t('bookingFlow.confirm.payTotal', { total: montant(depositCents + fraisService) }) }
             : {}),
           paymentIntentClientSecret: data.paymentIntent,
           customerId: data.customer,
           customerEphemeralKeySecret: data.ephemeralKey,
           allowsDelayedPaymentMethods: false,
+          // `merchantCountryCode` reste FR : avec des destination charges,
+          // le marchand est la PLATEFORME, pas le prestataire. Seule la
+          // devise doit suivre le PaymentIntent.
           applePay: { merchantCountryCode: 'FR' },
-          googlePay: { merchantCountryCode: 'FR', currencyCode: 'EUR' },
+          googlePay: { merchantCountryCode: 'FR', currencyCode: devisePaiement },
           returnURL: 'opatam://stripe-redirect',
           defaultBillingDetails: {
             email: userData.email,

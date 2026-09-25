@@ -150,7 +150,16 @@ export async function POST(request: NextRequest) {
     // mutait ; il ne mute plus, donc seuls les droits dérivés font foi.
     // Devise du prestataire : elle decide de ce que la cliente est debitee.
     // Absente = euro, donc rien ne change pour les comptes existants.
-    const deviseProvider = (providerData.currency ?? DEFAULT_CURRENCY).toLowerCase();
+    /**
+     * Devise du PAIEMENT, en minuscules pour Stripe.
+     *
+     * C'est celle FIGEE sur la reservation, pas le reglage du jour : une
+     * reservation creee hier et payee aujourd'hui ne doit pas changer de
+     * devise parce que le prestataire a touche a ses parametres entre les
+     * deux. Repli sur le prestataire puis l'euro pour l'historique.
+     */
+    const deviseDeLaResa = (b?: { currency?: string } | null): string =>
+      (b?.currency ?? providerData.currency ?? DEFAULT_CURRENCY).toLowerCase();
 
     const isSubscriptionValid = computeEntitlements(providerData).canReceiveBookings;
 
@@ -482,7 +491,7 @@ export async function POST(request: NextRequest) {
           booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount, providerData.currency);
           const paymentIntent = await stripe.paymentIntents.create({
             amount: booking.deposit.amount + serviceFee,
-            currency: deviseProvider,
+            currency: deviseDeLaResa(booking),
             customer: customer.id,
             automatic_payment_methods: { enabled: true },
             description:
@@ -535,6 +544,9 @@ export async function POST(request: NextRequest) {
               serviceFee,
               customer: customer.id,
               depositAmount: booking.deposit.amount,
+              // Google Pay refuse un code de devise qui ne correspond pas a
+              // celui du PaymentIntent : il doit venir du serveur.
+              currency: deviseDeLaResa(booking).toUpperCase(),
             },
             { status: 201 },
           );
@@ -576,7 +588,7 @@ export async function POST(request: NextRequest) {
             line_items: [
               {
                 price_data: {
-                  currency: deviseProvider,
+                  currency: deviseDeLaResa(booking),
                   unit_amount: booking.deposit.amount,
                   product_data: {
                     name: `Acompte — ${booking.serviceName}`,
@@ -589,7 +601,7 @@ export async function POST(request: NextRequest) {
                 ? [
                     {
                       price_data: {
-                        currency: deviseProvider,
+                        currency: deviseDeLaResa(booking),
                         unit_amount: serviceFee,
                         product_data: {
                           name: 'Frais de plateforme',

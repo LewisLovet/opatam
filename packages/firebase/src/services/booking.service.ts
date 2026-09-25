@@ -392,7 +392,11 @@ export class BookingService {
     const depositField: BookingDeposit | null = resolvedDeposit
       ? {
           amount: resolvedDeposit.amount,
-          serviceFee: clientServiceFee(resolvedDeposit.amount),
+          // Bareme de la devise du prestataire, pas le forfait euro.
+          // Fige ici une fois pour toutes : sans la devise, une reservation
+          // marocaine enregistrait 49 (0,49 MAD) au lieu de 500 (5 MAD), et
+          // ce mauvais montant faisait ensuite foi partout.
+          serviceFee: clientServiceFee(resolvedDeposit.amount, provider.currency),
           refundDeadlineHours: resolvedDeposit.refundDeadlineHours,
           paymentIntentId: null,
           connectAccountId: null,
