@@ -134,18 +134,18 @@ export function formatPriceFr(
  *
  * Returns '' when there's no promo.
  */
-function promoNoteHtml(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
+function promoNoteHtml(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr', devise = 'EUR'): string {
   if (!originalPrice || originalPrice <= price) return '';
-  const saving = formatEmailPrice(originalPrice - price, locale);
-  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatEmailPrice(originalPrice, locale)}</span> <span style="color: #e11d48; font-weight: 700;">−${saving}</span>`;
+  const saving = formatEmailPrice(originalPrice - price, locale, null, devise);
+  return ` <span style="color: #a1a1aa; text-decoration: line-through; font-weight: 400;">${formatEmailPrice(originalPrice, locale, null, devise)}</span> <span style="color: #e11d48; font-weight: 700;">−${saving}</span>`;
 }
 
 /** Plain-text version of the promo note: " (au lieu de 50 €, soit 10 € de moins)". */
-function promoNoteText(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr'): string {
+function promoNoteText(price: number, originalPrice?: number | null, locale: EmailLocale = 'fr', devise = 'EUR'): string {
   if (!originalPrice || originalPrice <= price) return '';
   return EMAIL_TEXTS.common[locale].promoWas(
-    formatEmailPrice(originalPrice, locale),
-    formatEmailPrice(originalPrice - price, locale),
+    formatEmailPrice(originalPrice, locale, null, devise),
+    formatEmailPrice(originalPrice - price, locale, null, devise),
   );
 }
 
@@ -198,7 +198,7 @@ const choiceLabels = (forClient: boolean) => ({
   info: (i: BookingSelectedInfo) => (forClient && i.localized ? i.localized : { label: i.label, value: i.value }),
 });
 
-function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false): string {
+function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false, devise = 'EUR'): string {
   const colon = EMAIL_TEXTS.common[locale].colon;
   const L = choiceLabels(forClient);
   const lines: string[] = [];
@@ -210,7 +210,7 @@ function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr', fo
     lines.push(muted(`${l.variationName}${colon} <strong>${l.optionName}</strong>`));
   }
   for (const o of s.selectedOptions ?? []) {
-    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
+    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale, null, devise)})` : '';
     lines.push(muted(`+ <strong>${L.option(o)}</strong>${extra}`));
     for (const nv of o.nestedVariations ?? []) {
       const l = L.variation(nv);
@@ -230,7 +230,7 @@ function renderSelectionsHtml(s: EmailSelections, locale: EmailLocale = 'fr', fo
 
 /** Render the client's choices as indented plain-text lines, under the
  *  prestation they belong to. Returns '' when there's nothing to show. */
-function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false): string {
+function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr', forClient = false, devise = 'EUR'): string {
   const colon = EMAIL_TEXTS.common[locale].colon;
   const L = choiceLabels(forClient);
   const lines: string[] = [];
@@ -240,7 +240,7 @@ function renderSelectionsText(s: EmailSelections, locale: EmailLocale = 'fr', fo
     lines.push(`  - ${l.variationName}${colon} ${l.optionName}`);
   }
   for (const o of s.selectedOptions ?? []) {
-    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale)})` : '';
+    const extra = o.price > 0 ? ` (+${formatEmailPrice(o.price, locale, null, devise)})` : '';
     lines.push(`  - + ${L.option(o)}${extra}`);
     for (const nv of o.nestedVariations ?? []) {
       const l = L.variation(nv);
@@ -472,7 +472,7 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
     const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
-    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax, data.currency);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -583,6 +583,8 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<Ema
  * deletes the booking entirely.
  */
 export interface DepositReminderEmailData {
+  /** Devise de la reservation, figee a sa creation. Absente = euro. */
+  currency?: string;
   /**
    * Fuseau du SALON, figé sur la réservation (`booking.timezone`).
    *
@@ -627,7 +629,7 @@ export async function sendDepositReminderEmail(
     const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
-    const formattedDeposit = formatEmailPrice(data.depositAmount, l);
+    const formattedDeposit = formatEmailPrice(data.depositAmount, l, null, data.currency);
     const cancelUrl = data.cancelToken
       ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
       : null;
@@ -849,7 +851,7 @@ function generateProviderNewBookingHtml(data: ProviderNewBookingTemplateData): s
                             <div style="padding: 8px 0;${idx > 0 ? ' border-top: 1px solid #e4e4e7;' : ''}">
                               <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                                 <td style="font-size: 14px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price, null, data.currency)}${promoNoteHtml(item.price, item.originalPrice)}</td>
+                                <td style="font-size: 14px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatPriceFr(item.price, null, data.currency)}${promoNoteHtml(item.price, item.originalPrice, 'fr', data.currency)}</td>
                               </tr></table>
                               <div style="font-size: 12px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
                               ${hasSelections(item) ? renderSelectionsHtml(item) : ''}
@@ -895,7 +897,7 @@ Détails :
 - Client : ${data.clientName}
 ${data.clientPhone ? `- Téléphone : ${data.clientPhone}` : ''}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price, null, data.currency)}${promoNoteText(item.price, item.originalPrice)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
+  ? data.items.map((item) => `- Prestation : ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatPriceFr(item.price, null, data.currency)}${promoNoteText(item.price, item.originalPrice, 'fr', data.currency)}${hasSelections(item) ? `\n${renderSelectionsText(item)}` : ''}`).join('\n')
   : `- Prestation : ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data)}` : ''}`}
 - Date : ${data.formattedDate}
 - Horaire : ${data.formattedTime} - ${data.formattedEndTime}
@@ -1175,7 +1177,7 @@ export async function sendRescheduleEmail(data: BookingEmailData & { oldDatetime
     const formattedNewTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedNewEndTime = formatEmailTime(endDate, l, data.timeZone);
-    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax, data.currency);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -1298,7 +1300,7 @@ export async function sendReminderEmail(
     const formattedTime = formatEmailTime(data.datetime, l, data.timeZone);
     const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
     const formattedEndTime = formatEmailTime(endDate, l, data.timeZone);
-    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax);
+    const formattedPrice = formatEmailPrice(data.price, l, data.priceMax, data.currency);
     const businessName = data.providerName || appConfig.name;
 
     // Generate URLs
@@ -1494,16 +1496,16 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                           <div style="padding: 10px 0;${idx > 0 ? ' border-top: 1px solid #bbf7d0;' : ''}">
                             <table role="presentation" style="width: 100%; border-collapse: collapse;"><tr>
                               <td style="font-size: 15px; color: #18181b; font-weight: 600;">${idx + 1}. ${item.serviceName}</td>
-                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatEmailPrice(item.price, l)}${promoNoteHtml(item.price, item.originalPrice, l)}</td>
+                              <td style="font-size: 15px; color: #18181b; font-weight: 700; text-align: right; white-space: nowrap;">${formatEmailPrice(item.price, l, null, data.currency)}${promoNoteHtml(item.price, item.originalPrice, l, data.currency)}</td>
                             </tr></table>
                             <div style="font-size: 13px; color: #71717a; margin-top: 2px;">${formatDurationFr(item.duration)}</div>
-                            ${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}
+                            ${hasSelections(item) ? renderSelectionsHtml(item, l, true, data.currency) : ''}
                           </div>`).join('')}</div>`
                       : ''}
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
                         ? ''
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true, data.currency) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
@@ -1511,10 +1513,10 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${locationAddressRowsHtml(data, l)}
                       ${data.travel?.addressLine ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.clientAddress}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.addressLine}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
-                      ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.travelFee}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l, data.currency)}</td></tr>
+                      ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.travelFee}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l, null, data.currency)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l, null, data.currency)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null, data.currency)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
                   ${loyaltyBlockHtml(data.loyalty ?? null, data.businessName, l)}
@@ -1566,8 +1568,8 @@ ${data.updateContext
 
 ${t.detailsHeading}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item) => `- ${c.labels.service}${c.colon} ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatEmailPrice(item.price, l)}${promoNoteText(item.price, item.originalPrice, l)}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
-  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
+  ? data.items.map((item) => `- ${c.labels.service}${c.colon} ${item.serviceName} — ${formatDurationFr(item.duration)} · ${formatEmailPrice(item.price, l, null, data.currency)}${promoNoteText(item.price, item.originalPrice, l, data.currency)}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true, data.currency)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true, data.currency)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedDate}
 - ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min
@@ -1575,10 +1577,10 @@ ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : 
 ${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
 ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
 ${data.travel?.addressLine ? `- ${c.labels.clientAddress}${c.colon} ${data.travel.addressLine}` : ''}
-- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
-${data.travel ? `- ${c.labels.travelFee}${c.colon} ${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l)}` : ''}
-${data.depositPaid ? `- ${c.labels.depositPaid}${c.colon} ${formatEmailPrice(data.depositPaid.amount, l)}` : ''}
-${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null)}` : ''}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l, data.currency)}
+${data.travel ? `- ${c.labels.travelFee}${c.colon} ${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l, null, data.currency)}` : ''}
+${data.depositPaid ? `- ${c.labels.depositPaid}${c.colon} ${formatEmailPrice(data.depositPaid.amount, l, null, data.currency)}` : ''}
+${data.depositPaid ? `- ${c.labels.remainingOnSite}${c.colon} ${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null, data.currency)}` : ''}
 ${data.loyalty ? `
 ${EMAIL_TEXTS.loyalty[l].cardTitle(data.businessName)}
 ${data.loyalty.appliedAmountOff > 0 ? EMAIL_TEXTS.loyalty[l].applied(data.loyalty.rewardLabel) + '\n' : ''}${data.loyalty.count > 0 && data.loyalty.count % data.loyalty.threshold === 0 ? EMAIL_TEXTS.loyalty[l].readyForNext(data.loyalty.rewardLabel) : EMAIL_TEXTS.loyalty[l].counted(data.loyalty.count, data.loyalty.threshold, data.loyalty.threshold - (data.loyalty.count % data.loyalty.threshold), data.loyalty.rewardLabel)}` : ''}
@@ -1597,6 +1599,8 @@ ${data.businessName}
 }
 
 interface CancellationTemplateData {
+  /** Devise de la reservation, figee a sa creation. Absente = euro. */
+  currency?: string;
   emailLocale: EmailLocale;
   clientName: string;
   serviceName: string;
@@ -1647,11 +1651,11 @@ function generateCancellationHtml(data: CancellationTemplateData): string {
                   </div>
                   ${data.refundedAmount ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${t.refundedTitle}</p>
-                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">${t.refundedBodyHtml(formatEmailPrice(data.refundedAmount, l))}</p>
+                    <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.5;">${t.refundedBodyHtml(formatEmailPrice(data.refundedAmount, l, null, data.currency))}</p>
                   </div>` : ''}
                   ${data.unrefundedAmount ? `<div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                     <p style="margin: 0 0 4px; font-size: 13px; font-weight: 600; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px;">${t.unrefundedTitle}</p>
-                    <p style="margin: 0 0 4px; font-size: 14px; color: #991b1b; line-height: 1.5;">${t.unrefundedBodyHtml(formatEmailPrice(data.unrefundedAmount, l), data.businessName)}</p>
+                    <p style="margin: 0 0 4px; font-size: 14px; color: #991b1b; line-height: 1.5;">${t.unrefundedBodyHtml(formatEmailPrice(data.unrefundedAmount, l, null, data.currency), data.businessName)}</p>
                     <p style="margin: 0; font-size: 13px; color: #991b1b; line-height: 1.5;">${t.unrefundedContactHtml(data.businessName)}</p>
                   </div>` : ''}
                   <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #3f3f46;">${t.rebookPromptHtml}</p>
@@ -1688,8 +1692,8 @@ ${t.detailsHeading}
 - ${c.labels.time}${c.colon} ${data.formattedTime}
 ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
 ${data.reason ? `- ${c.labels.reason}${c.colon} ${data.reason}` : ''}
-${data.refundedAmount ? `\n${t.refundedText(formatEmailPrice(data.refundedAmount, l))}` : ''}
-${data.unrefundedAmount ? `\n${t.unrefundedText(formatEmailPrice(data.unrefundedAmount, l), data.businessName)}` : ''}
+${data.refundedAmount ? `\n${t.refundedText(formatEmailPrice(data.refundedAmount, l, null, data.currency))}` : ''}
+${data.unrefundedAmount ? `\n${t.unrefundedText(formatEmailPrice(data.unrefundedAmount, l, null, data.currency), data.businessName)}` : ''}
 
 ${t.rebookPromptText(data.rebookUrl)}
 
@@ -1746,15 +1750,15 @@ function generateRescheduleHtml(data: RescheduleTemplateData): string {
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">${t.newSlotTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
-                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}</div>`).join('')}</td></tr>`
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
+                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true, data.currency) : ''}</div>`).join('')}</td></tr>`
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true, data.currency) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedNewDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedNewTime} - ${data.formattedNewEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data, l)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l, data.currency)}</td></tr>
                     </table>
                   </div>
                   ${addressPendingNoticeHtml(data, l)}
@@ -1800,15 +1804,15 @@ ${t.oldSlotLineText(data.formattedOldDate, data.formattedOldTime)}
 
 ${t.newSlotHeadingText}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
-  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
+  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true, data.currency)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true, data.currency)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedNewDate}
 - ${c.labels.time}${c.colon} ${data.formattedNewTime} - ${data.formattedNewEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min
 ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
 ${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
 ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
-- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l, data.currency)}
 
 ${c.updateCalendarText}
 - ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}
@@ -1866,17 +1870,17 @@ function generateReminderHtml(data: ReminderTemplateData): string {
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px;">${t.boxTitle}</p>
                     <table style="width: 100%; border-collapse: collapse;">
                       ${data.items && data.items.length >= 2
-                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true) : ''}</div>`).join('')}</td></tr>`
-                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true) : ''}</td></tr>`}
+                        ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px; vertical-align: top;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.items.map((item, idx) => `<div${idx > 0 ? ' style="margin-top: 6px;"' : ''}>${idx + 1}. ${item.serviceName}${hasSelections(item) ? renderSelectionsHtml(item, l, true, data.currency) : ''}</div>`).join('')}</td></tr>`
+                        : `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a; width: 100px;">${c.labels.service}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.serviceName}${hasSelections(data) ? renderSelectionsHtml(data, l, true, data.currency) : ''}</td></tr>`}
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.date}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500; text-transform: capitalize;">${data.formattedDate}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.time}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.formattedTime} - ${data.formattedEndTime}</td></tr>
                       <tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.duration}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.duration} min</td></tr>
                       ${data.locationName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.location}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.locationName}</td></tr>` : ''}
                       ${locationAddressRowsHtml(data, l)}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l)}</td></tr>
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l)}</td></tr>` : ''}
-                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null)} ${c.onSite}</td></tr>` : ''}
+                      <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l, data.currency)}</td></tr>
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l, null, data.currency)}</td></tr>` : ''}
+                      ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax - data.depositPaid.amount) : null, data.currency)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
                   ${addressPendingNoticeHtml(data, l)}
@@ -1925,15 +1929,15 @@ ${introText}
 
 ${t.detailsHeading}
 ${data.items && data.items.length >= 2
-  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true)}` : ''}`).join('\n')
-  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true)}` : ''}`}
+  ? data.items.map((item, idx) => `- ${c.labels.service} ${idx + 1}${c.colon} ${item.serviceName}${hasSelections(item) ? `\n${renderSelectionsText(item, l, true, data.currency)}` : ''}`).join('\n')
+  : `- ${c.labels.service}${c.colon} ${data.serviceName}${hasSelections(data) ? `\n${renderSelectionsText(data, l, true, data.currency)}` : ''}`}
 - ${c.labels.date}${c.colon} ${data.formattedDate}
 - ${c.labels.time}${c.colon} ${data.formattedTime} - ${data.formattedEndTime}
 - ${c.labels.duration}${c.colon} ${data.duration} min
 ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
 ${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
 ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
-- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l)}
+- ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l, data.currency)}
 
 ${c.addToCalendarText}
 - ${c.calendarGoogleText}${c.colon} ${data.googleCalendarUrl}

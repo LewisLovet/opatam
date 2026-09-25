@@ -34,9 +34,12 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
   // La devise est AUSSI posee dans un module : les ecrans pro formatent
   // leurs prix dans des fonctions au niveau du module, qui ne peuvent pas
   // lire un contexte React. Meme parti pris que `dateLocale()`.
-  useEffect(() => {
-    setDevisePro(provider?.currency);
-  }, [provider?.currency]);
+  //
+  // PENDANT le rendu, surtout pas dans un effet : un effet s'execute APRES,
+  // donc le premier affichage aurait lu l'ancienne devise et serait reste
+  // en euros jusqu'a une autre interaction. L'affectation est idempotente
+  // et ne declenche aucun abonnement, elle est sans danger ici.
+  setDevisePro(provider?.currency);
 
   const providerId = userData?.providerId || null;
 

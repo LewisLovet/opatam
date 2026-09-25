@@ -86,11 +86,17 @@ export function formatEmailPrice(
   priceInCentimes: number,
   locale: EmailLocale = 'fr',
   priceMaxInCentimes?: number | null,
+  /**
+   * Devise de la reservation, figee a sa creation. Optionnelle et euro par
+   * defaut : les envois qui ne la passent pas encore rendent exactement la
+   * meme chose qu'avant.
+   */
+  devise = 'EUR',
 ): string {
   const fmt = (v: number) =>
     new Intl.NumberFormat(INTL_LOCALE[locale], {
       style: 'currency',
-      currency: 'EUR',
+      currency: devise,
     }).format(v / 100);
   if (priceMaxInCentimes && priceMaxInCentimes > priceInCentimes) {
     if (locale === 'en') return `From ${fmt(priceInCentimes)} to ${fmt(priceMaxInCentimes)}`;
