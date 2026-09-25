@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { devisePro } from '../../../lib/devise';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -41,6 +42,7 @@ import {
   computeServiceTotal,
   buildBookingSelections,
   emptyServiceSelections,
+  DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import type {
   Booking,
@@ -117,10 +119,10 @@ function formatEndTime(datetime: Date | any, durationMinutes: number): string {
   });
 }
 
-function formatPrice(cents: number): string {
+function formatPrice(cents: number, devise = devisePro()): string {
   return (cents / 100).toLocaleString(dateLocale(), {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
   });
 }
 

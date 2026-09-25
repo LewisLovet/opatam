@@ -8,8 +8,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { providerService, collections, doc, onSnapshot } from '@booking-app/firebase';
+import { setDevisePro } from '../lib/devise';
 import type { Provider } from '@booking-app/shared';
-import { computeEntitlements } from '@booking-app/shared';
+import { computeEntitlements,
+  DEFAULT_CURRENCY,
+  formatPrice,
+} from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useAuth } from './AuthContext';
 
@@ -26,6 +30,13 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
   const { userData } = useAuth();
   const [provider, setProvider] = useState<WithId<Provider> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // La devise est AUSSI posee dans un module : les ecrans pro formatent
+  // leurs prix dans des fonctions au niveau du module, qui ne peuvent pas
+  // lire un contexte React. Meme parti pris que `dateLocale()`.
+  useEffect(() => {
+    setDevisePro(provider?.currency);
+  }, [provider?.currency]);
 
   const providerId = userData?.providerId || null;
 
@@ -147,4 +158,25 @@ export function useSubscriptionStatus() {
     daysRemaining,
     paymentSource: subscription?.paymentSource || null,
   };
+}
+
+/**
+ * Devise du prestataire connecte, et le formateur qui va avec.
+ *
+ * Onze ecrans mobiles avaient leur propre formateur avec l'euro ecrit en
+ * dur : un salon suisse y lisait des euros. Plutot que de faire descendre
+ * une devise en propriete dans chacun, ils lisent le contexte.
+ *
+ * Attention : cote CLIENT (fiche d'un prestataire qu'on consulte), la
+ * devise n'est pas celle-ci mais celle du prestataire affiche — ces
+ * ecrans-la recoivent l'objet et doivent passer `provider.currency`.
+ */
+export function useDevisePro(): string {
+  const { provider } = useProvider();
+  return provider?.currency || DEFAULT_CURRENCY;
+}
+
+export function usePrixPro(): (cents: number, locale?: string) => string {
+  const devise = useDevisePro();
+  return (cents: number, locale?: string) => formatPrice(cents, devise, locale);
 }

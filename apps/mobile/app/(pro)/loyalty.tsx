@@ -14,6 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { devisePro } from '../../lib/devise';
 import {
   FlatList,
   Pressable,
@@ -33,6 +34,8 @@ import {
   isLoyaltyRewardArmed,
   loyaltyRemaining,
   type ProviderClient,
+  DEFAULT_CURRENCY,
+  formatPrice as formatPrice0,
 } from '@booking-app/shared';
 import { useTheme } from '../../theme';
 import { Avatar, Badge, Card, EmptyState, Loader, Text } from '../../components';
@@ -40,9 +43,9 @@ import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useProviderClients, useServices } from '../../hooks';
 
-function formatPrice(cents: number): string {
-  const euros = cents / 100;
-  return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
+function formatPrice(cents: number, devise = devisePro()): string {
+  // Voir l'ecran d'accueil pro : l'euro etait colle a la main.
+  return formatPrice0(cents, devise);
 }
 
 /** Thin progress bar — same visual contract as MyProvidersRow's

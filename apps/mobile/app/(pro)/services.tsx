@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { devisePro } from '../../lib/devise';
 import {
   View,
   StyleSheet,
@@ -66,6 +67,7 @@ import {
   type DiscountPreviewRow,
   type ServiceDiscountPreview,
   parseRefundDeadlineHours,
+  DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import {
   VariationsEditor,
@@ -345,10 +347,10 @@ function formatDuration(min: number): string {
   return `${min} min`;
 }
 
-function formatPrice(cents: number, centsMax?: number | null): string {
+function formatPrice(cents: number, centsMax?: number | null, devise = devisePro()): string {
   if (cents === 0 && !centsMax) return i18n.t('common.free');
   const fmt = (v: number) =>
-    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(v / 100);
+    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: devise }).format(v / 100);
   if (centsMax && centsMax > cents) {
     return i18n.t('proServices.priceRange', { min: fmt(cents), max: fmt(centsMax) });
   }

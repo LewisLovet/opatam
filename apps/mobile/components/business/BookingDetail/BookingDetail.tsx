@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { DEFAULT_CURRENCY, formatPrice as formatPriceShared } from '@booking-app/shared';
 import { View, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -65,8 +66,10 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(euros: number): string {
-  return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
+function formatPrice(euros: number, devise = DEFAULT_CURRENCY): string {
+  // L'euro etait colle au montant a la main. Le formateur partage place le
+  // symbole la ou la langue l'attend, et suit la devise du prestataire.
+  return formatPriceShared(Math.round(euros * 100), devise);
 }
 
 export function BookingDetail({

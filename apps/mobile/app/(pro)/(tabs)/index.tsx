@@ -5,6 +5,7 @@
  */
 
 import { analyticsService, bookingService, providerService } from '@booking-app/firebase';
+import { devisePro } from '../../../lib/devise';
 import {
   deltaPercent,
   hasDepositAccess,
@@ -13,7 +14,10 @@ import {
   effectiveLoyaltyCount,
   isLoyaltyRewardArmed,
   type PageViewStats,
-  type TrendPoint, isTeamTier } from '@booking-app/shared';
+  type TrendPoint, isTeamTier,
+  DEFAULT_CURRENCY,
+  formatPrice as formatPrice0,
+} from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
 import { LaunchNoticeModal } from '../../../components/LaunchNoticeModal';
@@ -156,9 +160,11 @@ function sumLast(
   return sum;
 }
 
-function formatPrice(centimes: number): string {
-  const euros = centimes / 100;
-  return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
+function formatPrice(centimes: number, devise = devisePro()): string {
+  // L'euro etait colle au montant a la main : un salon suisse lisait
+  // « 35 € ». On passe par le formateur partage, qui place le symbole la
+  // ou la langue l'attend.
+  return formatPrice0(centimes, devise);
 }
 
 /** Returns "Dans Xh" / "In Xh", "Dans X min" / "In X min", or null if the

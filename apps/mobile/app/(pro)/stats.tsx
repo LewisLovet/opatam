@@ -5,6 +5,7 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { devisePro } from '../../lib/devise';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -28,15 +29,18 @@ import { useProvider } from '../../contexts';
 import { useProviderStats } from '../../hooks';
 import { useTheme } from '../../theme';
 import i18n from '../../lib/i18n';
-import { deltaPercent, type Period } from '@booking-app/shared';
+import { deltaPercent, type Period,
+  DEFAULT_CURRENCY,
+  formatPrice as formatPrice0,
+} from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatPrice(centimes: number): string {
-  const euros = centimes / 100;
-  return euros % 1 === 0 ? `${euros} €` : `${euros.toFixed(2)} €`;
+function formatPrice(centimes: number, devise = devisePro()): string {
+  // Voir l'ecran d'accueil pro : l'euro etait colle a la main.
+  return formatPrice0(centimes, devise);
 }
 
 // ---------------------------------------------------------------------------

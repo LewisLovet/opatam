@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { devisePro } from '../../lib/devise';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -64,6 +65,7 @@ import {
   getServiceMinDuration,
   resolveDeposit,
   hasDepositAccess,
+  DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import type { Service, Member, Location, ProviderClient, ServiceSelections } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
@@ -306,10 +308,10 @@ function formatLongDate(date: Date): string {
   });
 }
 
-function formatPrice(centimes: number): string {
+function formatPrice(centimes: number, devise = devisePro()): string {
   return (centimes / 100).toLocaleString(dateLocale(), {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
   });
 }
 

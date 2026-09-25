@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
@@ -83,10 +84,16 @@ function formatDuration(minutes: number): string {
 }
 
 // Helper to format price
-function formatPrice(cents: number, centsMax?: number | null): string {
+function formatPrice(
+  cents: number,
+  centsMax?: number | null,
+  // Devise figee sur la reservation : un rendez-vous garde celle a
+  // laquelle la cliente a consenti, meme si le salon en change ensuite.
+  devise = DEFAULT_CURRENCY,
+): string {
   if (cents === 0 && !centsMax) return i18n.t('common.free');
   const fmt = (v: number) =>
-    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(v / 100);
+    new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: devise }).format(v / 100);
   if (centsMax && centsMax > cents) {
     return i18n.t('bookingDetailScreen.priceRange', { min: fmt(cents), max: fmt(centsMax) });
   }
