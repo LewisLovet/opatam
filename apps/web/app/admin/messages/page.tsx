@@ -71,6 +71,24 @@ function depuis(d: Date | null): string {
   return `${Math.round(h / 24)} j`;
 }
 
+/** Fenêtre de la vue par défaut : on garde sous les yeux la semaine écoulée. */
+const JOURS_RECENTS = 7;
+
+/**
+ * La balle est-elle dans NOTRE camp ? Non lus, ou le pro a écrit en dernier.
+ * Sert maintenant à COLORER la ligne, plus à la cacher : le client veut voir
+ * les conversations récentes même répondues, et repérer d'un coup d'œil
+ * celles qui attendent.
+ */
+function attendReponse(c: ChatRow): boolean {
+  return c.adminUnread > 0 || c.lastMessageFrom === 'pro';
+}
+
+function estRecent(c: ChatRow): boolean {
+  if (!c.lastMessageAt) return false;
+  return Date.now() - c.lastMessageAt.getTime() < JOURS_RECENTS * 24 * 60 * 60 * 1000;
+}
+
 export default function AdminMessagesPage() {
   const { user } = useAuth();
   const [chats, setChats] = useState<ChatRow[] | null>(null);
@@ -83,7 +101,7 @@ export default function AdminMessagesPage() {
   const fluxRef = useRef<HTMLDivElement>(null);
   const saisieRef = useRef<HTMLTextAreaElement>(null);
   /** « À traiter » par défaut : la boîte sert à répondre, pas à contempler. */
-  const [filtre, setFiltre] = useState<'a_traiter' | 'toutes'>('a_traiter');
+  const [filtre, setFiltre] = useState<'recentes' | 'toutes'>('recentes');
   const [filtreTexte, setFiltreTexte] = useState('');
 
   // ── Nouveau message : le chat s'initie aussi de NOTRE côté ──
@@ -266,19 +284,17 @@ export default function AdminMessagesPage() {
   const chatsAffiches = useMemo(() => {
     const q = filtreTexte.trim().toLowerCase();
     return (chats ?? [])
-      .filter((c) =>
-        filtre === 'toutes'
-          // « À traiter » = la balle est dans notre camp : non lus, ou le
-          // pro a écrit en dernier. Écarte les 69 fils qui n'ont reçu que
-          // le message d'accueil, tous identiques et sans rien à y faire.
-          ? true
-          : c.adminUnread > 0 || c.lastMessageFrom === 'pro',
-      )
+      // Vue par défaut : tout ce qui a bougé ces derniers jours, PLUS tout
+      // ce qui attend une réponse même ancien. On ne cache rien d'actif —
+      // seuls disparaissent les fils dormants, qui n'ont souvent reçu que
+      // le message d'accueil.
+      .filter((c) => (filtre === 'toutes' ? true : estRecent(c) || attendReponse(c)))
       .filter((c) => !q || c.businessName.toLowerCase().includes(q));
   }, [chats, filtre, filtreTexte]);
 
-  const nbATraiter = useMemo(
-    () => (chats ?? []).filter((c) => c.adminUnread > 0 || c.lastMessageFrom === 'pro').length,
+  const nbATraiter = useMemo(() => (chats ?? []).filter(attendReponse).length, [chats]);
+  const nbRecents = useMemo(
+    () => (chats ?? []).filter((c) => estRecent(c) || attendReponse(c)).length,
     [chats],
   );
 
@@ -376,7 +392,7 @@ export default function AdminMessagesPage() {
           <div className="lg:sticky lg:top-6 space-y-2">
             <div className="flex items-center gap-1.5">
               {([
-                ['a_traiter', 'À traiter', nbATraiter],
+                ['recentes', `${JOURS_RECENTS} derniers jours`, nbRecents],
                 ['toutes', 'Toutes', chats.length],
               ] as const).map(([cle, libelle, n]) => (
                 <button
@@ -404,8 +420,8 @@ export default function AdminMessagesPage() {
             <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 divide-y divide-gray-50 dark:divide-gray-800/60 overflow-hidden max-h-[calc(75vh-84px)] overflow-y-auto">
             {chatsAffiches.length === 0 && (
               <p className="px-4 py-6 text-xs text-gray-400 text-center">
-                {filtre === 'a_traiter'
-                  ? 'Rien à traiter — tout est répondu.'
+                {filtre === 'recentes'
+                  ? 'Rien ces derniers jours — voyez « Toutes ».'
                   : 'Aucune conversation à ce nom.'}
               </p>
             )}
@@ -413,14 +429,30 @@ export default function AdminMessagesPage() {
               <button
                 key={c.id}
                 onClick={() => setOuvertId(c.id)}
-                className={`w-full text-left px-4 py-3 transition-colors ${
+                // Un liseré ambre et un fond teinté sur ce qui attend une
+                // réponse : la liste montre TOUT ce qui est récent, la
+                // couleur dit où porter les yeux. La conversation ouverte
+                // garde la priorité visuelle.
+                className={`w-full text-left px-4 py-3 transition-colors border-l-[3px] ${
+                  attendReponse(c)
+                    ? 'border-l-amber-400 dark:border-l-amber-500'
+                    : 'border-l-transparent'
+                } ${
                   ouvertId === c.id
-                    ? 'bg-gray-50 dark:bg-gray-800/60'
-                    : 'hover:bg-gray-50/60 dark:hover:bg-gray-800/40'
+                    ? 'bg-gray-100 dark:bg-gray-800'
+                    : attendReponse(c)
+                      ? 'bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                      : 'hover:bg-gray-50/60 dark:hover:bg-gray-800/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                  <p
+                    className={`text-sm truncate ${
+                      attendReponse(c)
+                        ? 'font-bold text-gray-900 dark:text-white'
+                        : 'font-medium text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
                     {c.businessName}
                     {supportTopicTag(c.topic) && (
                       <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 rounded-full px-1.5 py-0.5">
