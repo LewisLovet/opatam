@@ -53,6 +53,7 @@ export function PaymentsSection() {
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [openingDashboard, setOpeningDashboard] = useState(false);
   const [addonWorking, setAddonWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +62,35 @@ export function PaymentsSection() {
     if (!user) throw new Error('Non authentifié');
     return user.getIdToken();
   }, []);
+
+  // Espace Stripe Express : solde des acomptes, virements, IBAN. Le lien de
+  // connexion est à usage unique et expire vite, on le demande au clic. La
+  // fenêtre est ouverte AVANT l'appel réseau : ouverte après un `await`,
+  // Safari la bloquerait comme une fenêtre surgissante.
+  const openStripeDashboard = async () => {
+    const win = window.open('', '_blank');
+    setOpeningDashboard(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch('/api/pro/stripe-connect/dashboard-link', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || `HTTP ${res.status}`);
+      if (win) {
+        win.opener = null;
+        win.location.href = data.url as string;
+      } else {
+        window.location.href = data.url as string;
+      }
+    } catch (e) {
+      win?.close();
+      toast.error(e instanceof Error ? e.message : "Impossible d'ouvrir votre espace Stripe");
+    } finally {
+      setOpeningDashboard(false);
+    }
+  };
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -504,6 +534,22 @@ export function PaymentsSection() {
                   Virements : {status.payoutsEnabled ? 'OK' : 'KO'}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={openStripeDashboard}
+                disabled={openingDashboard}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 text-green-800 dark:text-green-300 text-sm font-semibold hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 transition-colors"
+              >
+                {openingDashboard ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4" />
+                )}
+                Voir mon solde et mes virements
+              </button>
+              <p className="text-xs text-green-700/80 dark:text-green-400/80 mt-2">
+                Ouvre votre espace Stripe : acomptes reçus, virements, compte bancaire.
+              </p>
             </div>
           </div>
         </div>
