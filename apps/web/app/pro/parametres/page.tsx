@@ -172,10 +172,16 @@ export default function SettingsPage() {
                             : 'text-gray-400 dark:text-gray-500'
                         }`}
                       />
-                      <div className="min-w-0">
-                        <div>{tab.label}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate">{tab.label}</div>
+                        {/* La description sort du `whitespace-nowrap` du
+                            bouton, qui est la pour la barre HORIZONTALE du
+                            telephone. Sur ordinateur elle etait coupee en
+                            plein mot et debordait de la carte : « Le
+                            planning du jour sur une TV ou une ta ». Elle
+                            passe donc a la ligne. */}
                         <div
-                          className={`text-xs font-normal hidden lg:block ${
+                          className={`text-xs font-normal hidden lg:block lg:whitespace-normal leading-snug mt-0.5 ${
                             isActive
                               ? 'text-primary-600/70 dark:text-primary-400/70'
                               : 'text-gray-400 dark:text-gray-500'
