@@ -1040,13 +1040,14 @@ function ManageSubscriptionSection({ onChangePlan }: { onChangePlan?: () => void
     setError(null);
 
     try {
+      // Le serveur retrouve le client Stripe à partir du jeton : on
+      // n'envoie plus l'identifiant (voir /api/stripe/portal).
+      const jeton = await getAuth().currentUser?.getIdToken();
+      if (!jeton) throw new Error('Session expirée, reconnectez-vous');
       const res = await fetch('/api/stripe/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId,
-          returnUrl: window.location.href,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jeton}` },
+        body: JSON.stringify({ returnUrl: window.location.href }),
       });
 
       const data = await res.json();

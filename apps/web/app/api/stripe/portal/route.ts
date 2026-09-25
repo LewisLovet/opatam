@@ -1,55 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 
-interface PortalRequest {
-  customerId: string;
-  returnUrl?: string;
-}
-
+/**
+ * POST /api/stripe/portal
+ *
+ * Ouvre le portail client Stripe du prestataire CONNECTÉ : son abonnement
+ * Opatam, ses factures, sa carte.
+ *
+ * Sécurité : l'identifiant client Stripe n'est jamais pris dans la requête.
+ * Il était lisible publiquement dans la fiche prestataire, et cette route
+ * l'acceptait sans vérifier l'appelant : n'importe qui pouvait ouvrir le
+ * portail d'un autre prestataire (factures, carte, résiliation). On le relit
+ * désormais côté serveur à partir du jeton Firebase.
+ *
+ * L'adresse de retour n'est acceptée que sur notre propre domaine.
+ */
 export async function POST(request: NextRequest) {
-  console.log('[STRIPE-PORTAL] ========== START ==========');
-
   try {
-    const body: PortalRequest = await request.json();
-    console.log('[STRIPE-PORTAL] Request body received:', {
-      customerId: body.customerId,
-      returnUrl: body.returnUrl ?? 'NOT PROVIDED',
-    });
+    const authHeader = request.headers.get('authorization') ?? '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: 'Connexion requise' }, { status: 401 });
+    }
+    let uid: string;
+    try {
+      uid = (await getAdminAuth().verifyIdToken(authHeader.slice('Bearer '.length))).uid;
+    } catch {
+      return NextResponse.json({ message: 'Session expirée, reconnectez-vous' }, { status: 401 });
+    }
 
-    const { customerId, returnUrl } = body;
+    const body = (await request.json().catch(() => ({}))) as { returnUrl?: string };
 
-    // Validate required fields
+    const providerSnap = await getAdminFirestore().collection('providers').doc(uid).get();
+    const customerId = providerSnap.data()?.subscription?.stripeCustomerId as string | undefined;
     if (!customerId) {
-      console.log('[STRIPE-PORTAL] ERROR: Missing required fields');
       return NextResponse.json(
-        { message: 'customerId is required' },
-        { status: 400 }
+        { message: 'Aucun abonnement Stripe associé à votre compte' },
+        { status: 404 },
       );
     }
 
-    const stripe = getStripe();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    let returnUrl = `${appUrl}/pro/abonnement`;
+    if (body.returnUrl) {
+      try {
+        const asked = new URL(body.returnUrl);
+        const allowed = [new URL(appUrl).origin, request.nextUrl.origin];
+        if (allowed.includes(asked.origin)) returnUrl = asked.toString();
+      } catch {
+        // adresse invalide : on garde la page abonnement
+      }
+    }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: customerId,
-      return_url: returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pro/abonnement`,
+      return_url: returnUrl,
     });
-
-    console.log('[STRIPE-PORTAL] SUCCESS - Portal session created');
-    console.log('[STRIPE-PORTAL] ========== END ==========');
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('[STRIPE-PORTAL] EXCEPTION:', error);
-
-    if (error?.type === 'StripeInvalidRequestError' && error?.code === 'resource_missing') {
+  } catch (error: unknown) {
+    console.error('[STRIPE-PORTAL] erreur :', error);
+    const e = error as { type?: string; code?: string };
+    if (e?.type === 'StripeInvalidRequestError' && e?.code === 'resource_missing') {
       return NextResponse.json(
         { message: 'Client Stripe introuvable. Votre compte a peut-être été créé dans un autre environnement (test/production). Veuillez re-souscrire.' },
-        { status: 404 }
+        { status: 404 },
       );
     }
-
     return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
+      { message: "Impossible d'ouvrir le portail de gestion" },
+      { status: 500 },
     );
   }
 }

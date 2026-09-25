@@ -273,9 +273,13 @@ export default function StripeTestPage() {
     addLog(`Customer ID: ${customerId}`);
 
     try {
+      // Le portail n'ouvre plus que le client du compte connecté : le
+      // Customer ID saisi ici est ignoré par le serveur.
+      const { getAuth } = await import('firebase/auth');
+      const jeton = await getAuth().currentUser?.getIdToken();
       const res = await fetch('/api/stripe/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) },
         body: JSON.stringify({
           customerId: customerId.trim(),
           returnUrl: `${window.location.origin}/dev/tests/stripe`,
