@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useDevise } from '@/contexts/DeviseContext';
 import { useLocale, useTranslations } from 'next-intl';
 import { localizedPath } from '@/lib/localizedPath';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +13,9 @@ interface MobileBookingBarProps {
 }
 
 export function MobileBookingBar({ slug, minPrice, businessName }: MobileBookingBarProps) {
+  // Devise du prestataire de la page : ce formateur ecrivait l'euro
+  // en dur, un salon suisse y lisait donc des euros.
+  const devise = useDevise();
   const t = useTranslations('provider');
   const locale = useLocale();
 
@@ -20,7 +24,7 @@ export function MobileBookingBar({ slug, minPrice, businessName }: MobileBooking
     const euros = cents / 100;
     return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'EUR',
+      currency: devise,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(euros);

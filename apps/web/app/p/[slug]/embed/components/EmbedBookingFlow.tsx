@@ -1,6 +1,7 @@
 'use client';
 
 import { annoncerHauteurEmbed } from '@/lib/embed-height';
+import { DeviseProvider } from '@/contexts/DeviseContext';
 
 import { useState, useMemo, useEffect } from 'react';
 import { Loader2, Info } from 'lucide-react';
@@ -23,6 +24,8 @@ interface EmbedProvider {
   slug: string;
   photoURL: string | null;
   plan: string;
+  /** Devise d'affichage du prestataire. Absente = euro. */
+  currency?: string;
   teamTier?: boolean;
   settings: {
     maxBookingAdvance: number;
@@ -477,6 +480,7 @@ export function EmbedBookingFlow({
   );
 
   return (
+    <DeviseProvider devise={provider.currency}>
     <div className="min-h-[400px] flex flex-col bg-white dark:bg-gray-900">
       {showHeader && (
         <EmbedHeader
@@ -574,5 +578,6 @@ export function EmbedBookingFlow({
         </div>
       )}
     </div>
+    </DeviseProvider>
   );
 }

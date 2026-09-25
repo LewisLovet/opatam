@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '../ui/Button';
+import { usePrix } from '@/contexts/DeviseContext';
 import { Card } from '../ui/Card';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -30,14 +31,6 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function formatPrice(price: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(price);
-}
 
 export function ServiceCard({
   service,
@@ -46,6 +39,10 @@ export function ServiceCard({
   showBookButton = true,
   className = '',
 }: ServiceCardProps) {
+  // Prix dans la devise du prestataire de la page. Ce fichier avait son
+  // propre formateur avec l'euro en dur : un salon suisse y lisait des
+  // euros. Le hook lit le contexte, rien a passer en propriete.
+  const formatPrice = usePrix();
   const t = useTranslations('booking.serviceCard');
   const locale = useLocale();
   const handleClick = () => {

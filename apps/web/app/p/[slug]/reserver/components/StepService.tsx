@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 import { Clock, Check, ChevronRight, Plus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
@@ -74,11 +76,11 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function fmtCurrency(cents: number, locale: string): string {
+function fmtCurrency(cents: number, locale: string, devise = DEFAULT_CURRENCY): string {
   const euros = cents / 100;
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(euros);
@@ -100,8 +102,10 @@ function ServiceButton({
   const t = useTranslations('booking.service');
   const tCommon = useTranslations('booking.common');
   const locale = useLocale();
+  // Devise du prestataire de la page, a la place de l'euro fige.
+  const devise = useDevise();
   const formatPrice = (cents: number): string =>
-    cents === 0 ? tCommon('free') : fmtCurrency(cents, locale);
+    cents === 0 ? tCommon('free') : fmtCurrency(cents, locale, devise);
   const [descExpanded, setDescExpanded] = useState(false);
   const [descClamped, setDescClamped] = useState(false);
   const descRef = useRef<HTMLParagraphElement>(null);

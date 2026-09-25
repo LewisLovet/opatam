@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, Fragment } from 'react';
+import { useDevise } from '@/contexts/DeviseContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
@@ -59,6 +60,9 @@ function formatDuration(minutes: number): string {
 }
 
 export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: ServiceItemProps) {
+  // Devise du prestataire de la page : ce formateur ecrivait l'euro
+  // en dur, un salon suisse y lisait donc des euros.
+  const devise = useDevise();
   const t = useTranslations('provider');
   const locale = useLocale();
 
@@ -67,7 +71,7 @@ export function ServiceItem({ service, slug, globalDiscount, onBookingClick }: S
     const fmt = (v: number) =>
       new Intl.NumberFormat(locale, {
         style: 'currency',
-        currency: 'EUR',
+        currency: devise,
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       }).format(v / 100);

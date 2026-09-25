@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { DeviseProvider } from '@/contexts/DeviseContext';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
@@ -52,6 +53,8 @@ interface Provider {
   slug: string;
   photoURL: string | null;
   plan: string;
+  /** Devise d'affichage du prestataire. Absente = euro. */
+  currency?: string;
   settings: {
     reminderTimes: number[];
     requiresConfirmation: boolean;
@@ -880,6 +883,7 @@ export function BookingFlow({
   };
 
   return (
+    <DeviseProvider devise={provider.currency}>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -1460,5 +1464,6 @@ export function BookingFlow({
         </div>
       )}
     </div>
+    </DeviseProvider>
   );
 }

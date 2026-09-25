@@ -26,6 +26,9 @@ export default async function ConfirmationPage({ params }: PageProps) {
   // Serialize booking for client component
   const serializedBooking = {
     id: booking.id,
+    // Serialisation champ par champ : sans cette ligne la page
+    // retomberait sur l'euro sans rien signaler.
+    currency: booking.currency,
     providerName: booking.providerName,
     // Page vue par la CLIENTE : nom dans sa langue quand le snapshot l'a.
     serviceName: booking.serviceNameLocalized ?? booking.serviceName,

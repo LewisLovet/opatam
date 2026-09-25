@@ -1,6 +1,7 @@
 'use client';
 
 import { Calendar, Clock, MapPin, User, Euro } from 'lucide-react';
+import { useDevise } from '@/contexts/DeviseContext';
 import { useTranslations, useLocale } from 'next-intl';
 
 interface EmbedRecapService {
@@ -34,12 +35,19 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number, centsMax: number | null, locale: string, freeLabel: string): string {
+
+function formatPrice(
+  cents: number,
+  centsMax: number | null,
+  locale: string,
+  freeLabel: string,
+  devise: string,
+): string {
   if (cents === 0 && !centsMax) return freeLabel;
   const fmt = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'EUR',
+      currency: devise,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(v / 100);
@@ -66,6 +74,8 @@ function formatSlot(iso: string, locale: string): { date: string; time: string }
  * Mirrors the recap on /p/[slug]/reserver but sized for a 240px column.
  */
 export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRecapProps) {
+  // La devise du prestataire de la page, a la place de l'euro fige.
+  const devise = useDevise();
   const t = useTranslations('booking');
   const locale = useLocale();
   const slot = slotDatetime ? formatSlot(slotDatetime, locale) : null;
@@ -93,7 +103,7 @@ export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRec
               </span>
               <span className="inline-flex items-center gap-1">
                 <Euro className="w-3 h-3" />
-                {formatPrice(service.price, service.priceMax, locale, t('common.free'))}
+                {formatPrice(service.price, service.priceMax, locale, t('common.free'), devise)}
               </span>
             </div>
           </div>

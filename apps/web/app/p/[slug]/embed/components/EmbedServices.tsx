@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useDevise } from '@/contexts/DeviseContext';
 import Image from 'next/image';
 import { Clock, ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -55,12 +56,19 @@ function formatDuration(minutes: number): string {
   return rem === 0 ? `${hours}h` : `${hours}h${rem}`;
 }
 
-function formatPrice(cents: number, centsMax: number | null, locale: string, freeLabel: string): string {
+
+function formatPrice(
+  cents: number,
+  centsMax: number | null,
+  locale: string,
+  freeLabel: string,
+  devise: string,
+): string {
   if (cents === 0 && !centsMax) return freeLabel;
   const fmt = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'EUR',
+      currency: devise,
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(v / 100);
@@ -81,6 +89,8 @@ function ServiceCard({
   providerSlug: string;
   onSelect: (id: string) => void;
 }) {
+  // Devise du prestataire de la page, a la place de l'euro fige.
+  const devise = useDevise();
   const t = useTranslations('booking');
   const locale = useLocale();
   // Suspendue : la carte reste listée — le client doit savoir que la
@@ -153,7 +163,7 @@ function ServiceCard({
 
         <div className="flex-shrink-0 flex flex-col items-end gap-1">
           <span className="font-bold text-gray-900 dark:text-white text-sm sm:text-[15px] whitespace-nowrap">
-            {formatPrice(service.price, service.priceMax, locale, t('common.free'))}
+            {formatPrice(service.price, service.priceMax, locale, t('common.free'), devise)}
           </span>
           {!unavailable && !needsChoices && (
             <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />

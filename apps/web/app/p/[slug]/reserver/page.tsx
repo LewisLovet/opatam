@@ -192,6 +192,10 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
     slug: provider.slug,
     photoURL: provider.photoURL,
     plan: provider.plan,
+    // Devise du prestataire. Ces serialisations listent les champs UN PAR
+    // UN : un champ non repris ici n'arrive jamais au navigateur, et la
+    // page retomberait sur l'euro sans rien signaler.
+    currency: provider.currency,
     // Consigne de réservation dans la langue du visiteur (original si non
     // traduite — getProviderText ne renvoie jamais autre chose qu'un texte).
     settings: { ...provider.settings, bookingNotice: getProviderText(provider, locale).bookingNotice },

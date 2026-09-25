@@ -1477,6 +1477,15 @@ export interface Booking {
   providerId: string;
   clientId: string | null;
   memberId: string | null;
+  /**
+   * Devise de CETTE reservation, figee a sa creation.
+   *
+   * Comme `deposit.serviceFee`, elle ne doit pas suivre les reglages du
+   * prestataire : s'il change de devise plus tard, un rendez-vous deja pris
+   * garde le montant ET la devise auxquels la cliente a consenti. Absente =
+   * euro, donc l'historique ne bouge pas.
+   */
+  currency?: string;
   providerName: string;
   providerPhoto: string | null;
   memberName: string | null;

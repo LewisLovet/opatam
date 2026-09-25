@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePrix } from '@/contexts/DeviseContext';
 import Image from 'next/image';
 import { Star, Users, Euro, MapPin, Calendar } from 'lucide-react';
 import { getCategoryLabel, capitalizeWords } from '@booking-app/shared';
@@ -15,14 +16,6 @@ interface SearchProviderCardProps {
 /**
  * Format price for display (centimes to euros)
  */
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(euros);
-}
 
 /**
  * Get initials from business name
@@ -41,6 +34,10 @@ function getInitials(name: string): string {
 const MIN_REVIEWS_FOR_RATING = 5;
 
 export function SearchProviderCard({ provider }: SearchProviderCardProps) {
+  // Prix dans la devise du prestataire de la page. Ce fichier avait son
+  // propre formateur avec l'euro en dur : un salon suisse y lisait des
+  // euros. Le hook lit le contexte, rien a passer en propriete.
+  const formatPrice = usePrix();
   // Cover image only, fallback to profile photo
   const coverImage = provider.coverPhotoURL || provider.photoURL;
   const profileImage = provider.photoURL;

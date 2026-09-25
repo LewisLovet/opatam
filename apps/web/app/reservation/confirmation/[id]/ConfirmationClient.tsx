@@ -13,10 +13,14 @@ import type {
   BookingSelectedOption,
   BookingSelectedInfo,
 } from '@booking-app/shared';
+// Valeur, pas type : le repli euro quand la reservation n'en porte pas.
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
 
 interface Booking {
   id: string;
+  /** Devise figee a la reservation. Absente sur l'historique = euro. */
+  currency?: string;
   providerName: string;
   serviceName: string;
   memberName: string | null;
@@ -78,10 +82,10 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes}`;
 }
 
-function fmtCurrency(cents: number, locale: string): string {
+function fmtCurrency(cents: number, locale: string, devise = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(cents / 100);
@@ -185,6 +189,7 @@ function downloadIcs(booking: Booking, address: string, eventTitle: string, even
 }
 
 export function ConfirmationClient({ booking, providerLoyalty = null }: ConfirmationClientProps) {
+  const devise = booking.currency ?? DEFAULT_CURRENCY;
   const t = useTranslations('booking');
   const locale = useLocale();
   // Le fuseau du SALON. Repli sur Paris pour les réservations d'avant le
@@ -194,11 +199,11 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
     if (cents === 0 && !centsMax) return t('common.free');
     if (centsMax && centsMax > cents) {
       return t('common.priceRange', {
-        min: fmtCurrency(cents, locale),
-        max: fmtCurrency(centsMax, locale),
+        min: fmtCurrency(cents, locale, devise),
+        max: fmtCurrency(centsMax, locale, devise),
       });
     }
-    return fmtCurrency(cents, locale);
+    return fmtCurrency(cents, locale, devise);
   };
   // Translated calendar-event chrome (title + description).
   const calendarEventTitle = t('confirmation.calendarTitle', {
@@ -267,7 +272,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
         content_category: 'booking-deposit',
         content_ids: [booking.id],
         value: (booking.deposit?.amount ?? 0) / 100,
-        currency: 'EUR',
+        currency: devise,
       },
       { eventID: `Purchase:${booking.id}` },
     );
@@ -276,7 +281,7 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
       {
         contents: contenu(booking.id, `Acompte — ${booking.providerName}`),
         value: (booking.deposit?.amount ?? 0) / 100,
-        currency: 'EUR',
+        currency: devise,
       },
       { event_id: `Purchase:${booking.id}` },
     );

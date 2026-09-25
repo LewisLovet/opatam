@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { DeviseProvider } from '@/contexts/DeviseContext';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/meta-pixel';
 import { contenu, trackTikTok } from '@/lib/tiktok-pixel';
@@ -25,6 +26,8 @@ interface SerializedProvider {
   id: string;
   userId: string;
   plan: string;
+  /** Devise d'affichage du prestataire. Absente = euro. */
+  currency?: string;
   /** Tier effectif calculé côté serveur (payant, essai ou accès offert). */
   teamTier: boolean;
   businessName: string;
@@ -260,6 +263,7 @@ export function ProviderPageClient({
   const isTeam = provider.teamTier && members.length > 1;
 
   return (
+    <DeviseProvider devise={provider.currency}>
     <div className="min-h-screen bg-white dark:bg-gray-900 pb-24 overflow-x-hidden">
       {/* Demo welcome modal */}
       {isDemo && <DemoBanner signupUrl={demoSignupUrl} />}
@@ -455,6 +459,7 @@ export function ProviderPageClient({
         </div>
       )}
     </div>
+    </DeviseProvider>
   );
 }
 

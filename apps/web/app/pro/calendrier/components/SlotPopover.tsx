@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePrix } from '@/contexts/DeviseContext';
 import { createPortal } from 'react-dom';
 import type { Booking } from '@booking-app/shared';
 
@@ -61,12 +62,6 @@ export function isPastBooking(booking: Booking): boolean {
 /**
  * Format price from cents to euros
  */
-function formatPrice(cents: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
-}
 
 interface TooltipPosition {
   top: number;
@@ -85,6 +80,10 @@ export function SlotPopover({
   children,
   disabled = false,
 }: SlotTooltipProps) {
+  // Prix dans la devise du prestataire. Ce fichier avait son propre
+  // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
+  // euros. Le hook lit la devise de la page, rien a passer en propriete.
+  const formatPrice = usePrix();
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
   const [mounted, setMounted] = useState(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePrix } from '@/contexts/DeviseContext';
 import { X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import type { Booking } from '@booking-app/shared';
 
@@ -13,12 +14,6 @@ interface CancelBookingModalProps {
   onCancelled: () => void;
 }
 
-function formatPrice(cents: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
-}
 
 function isWithinRefundDeadline(
   bookingDatetime: Date,
@@ -45,6 +40,10 @@ export function CancelBookingModal({
   onClose,
   onCancelled,
 }: CancelBookingModalProps) {
+  // Prix dans la devise du prestataire. Ce fichier avait son propre
+  // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
+  // euros. Le hook lit la devise de la page, rien a passer en propriete.
+  const formatPrice = usePrix();
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState<false | 'plain' | 'force-refund'>(false);
   const [error, setError] = useState<string | null>(null);

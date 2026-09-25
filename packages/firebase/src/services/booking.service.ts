@@ -39,6 +39,7 @@ import {
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
   type CreateBookingInput,
+  DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 import type { BookingFilters } from '../repositories/booking.repository';
@@ -417,6 +418,8 @@ export class BookingService {
       clientId: validated.clientId || null, // Set if user is logged in
       memberId: effectiveMemberId || null, // Use effective member ID
       providerName: provider.businessName,
+      // Figee ici : voir Booking.currency.
+      currency: provider.currency ?? DEFAULT_CURRENCY,
       providerPhoto: provider.photoURL,
       memberName: member?.name || null,
       memberPhoto: member?.photoURL || null,

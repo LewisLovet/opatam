@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { DeviseProvider } from '@/contexts/DeviseContext';
 import { isAccessOverrideActive } from '@booking-app/shared';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { TrialExpiredBanner } from '@/components/auth/TrialExpiredBanner';
@@ -35,6 +36,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard requireProvider={true}>
+      <DeviseProvider devise={provider?.currency}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
         {/* Desktop sidebar */}
         <Sidebar
@@ -76,6 +78,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
       </div>
       {/* Chat de support — la bulle flottante, sur tout l'espace pro */}
       <SupportChatWidget />
+      </DeviseProvider>
     </AuthGuard>
   );
 }

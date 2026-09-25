@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePrix } from '@/contexts/DeviseContext';
 import { getCategoryLabel, capitalizeWords } from '@booking-app/shared';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
@@ -44,17 +45,12 @@ function truncateText(text: string, maxLength: number): string {
 /**
  * Format price for display
  */
-function formatPrice(price: number): string {
-  if (price === 0) return 'Gratuit';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-}
 
 export function ProviderCard({ provider, href, className = '' }: ProviderCardProps) {
+  // Prix dans la devise du prestataire de la page. Ce fichier avait son
+  // propre formateur avec l'euro en dur : un salon suisse y lisait des
+  // euros. Le hook lit le contexte, rien a passer en propriete.
+  const formatPrice = usePrix();
   const linkHref = href || `/prestataire/${provider.id}`;
   const hasRating = provider.rating !== undefined && provider.reviewCount !== undefined && provider.reviewCount > 0;
 

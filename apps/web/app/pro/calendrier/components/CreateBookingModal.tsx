@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { usePrix } from '@/contexts/DeviseContext';
 import { getAuth } from 'firebase/auth';
 import {
   Modal,
@@ -180,6 +181,10 @@ export function CreateBookingModal({
   isTeamPlan,
   onCreated,
 }: CreateBookingModalProps) {
+  // Prix dans la devise du prestataire. Ce fichier avait son propre
+  // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
+  // euros. Le hook lit la devise de la page, rien a passer en propriete.
+  const formatPrice = usePrix();
   const { provider } = useAuth();
   const toast = useToast();
   // Shop-wide promo — applied server-side at creation, so the preview must
@@ -1333,11 +1338,3 @@ function formatTimeForSelect(date: Date): string {
   return `${hours}:${minutes.toString().padStart(2, '0')}`;
 }
 
-function formatPrice(priceInCentimes: number): string {
-  // Convert centimes to euros
-  const priceInEuros = priceInCentimes / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(priceInEuros);
-}

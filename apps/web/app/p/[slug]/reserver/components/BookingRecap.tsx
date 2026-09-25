@@ -1,6 +1,8 @@
 'use client';
 
 import { Clock, MapPin, User, Calendar, Car } from 'lucide-react';
+import { DEFAULT_CURRENCY } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import {
@@ -105,19 +107,19 @@ function formatDuration(minutes: number): string {
 }
 
 /** Montants à payer : toujours deux décimales (« 73,50 € », pas « 73,5 € »). */
-function fmtExact(cents: number, locale: string): string {
+function fmtExact(cents: number, locale: string, devise = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100);
 }
 
-function fmtCurrency(cents: number, locale: string): string {
+function fmtCurrency(cents: number, locale: string, devise = DEFAULT_CURRENCY): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(cents / 100);
@@ -162,6 +164,8 @@ export function BookingRecap({
   choiceLabels = [],
   travelFee = null,
 }: BookingRecapProps) {
+  // Devise du prestataire : ces aides ecrivaient l'euro en dur.
+  const devise = useDevise();
   const t = useTranslations('booking');
   const locale = useLocale();
 
@@ -169,11 +173,11 @@ export function BookingRecap({
     if (cents === 0 && !centsMax) return t('common.free');
     if (centsMax && centsMax > cents) {
       return t('common.priceRange', {
-        min: fmtCurrency(cents, locale),
-        max: fmtCurrency(centsMax, locale),
+        min: fmtCurrency(cents, locale, devise),
+        max: fmtCurrency(centsMax, locale, devise),
       });
     }
-    return fmtCurrency(cents, locale);
+    return fmtCurrency(cents, locale, devise);
   };
 
   const displayName = serviceLabel ?? (service ? getServiceText(service, locale).name : '');
@@ -226,9 +230,9 @@ export function BookingRecap({
               )}
               {depositPreview && (
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  {t('recap.payToday')} : {fmtExact(depositPreview.amount + depositPreview.fee, locale)}
+                  {t('recap.payToday')} : {fmtExact(depositPreview.amount + depositPreview.fee, locale, devise)}
                   {depositPreview.fee > 0
-                    ? ` (${t('recap.depositNow').toLowerCase()} ${fmtExact(depositPreview.amount, locale)} + ${t('recap.platformFee').toLowerCase()} ${fmtExact(depositPreview.fee, locale)})`
+                    ? ` (${t('recap.depositNow').toLowerCase()} ${fmtExact(depositPreview.amount, locale, devise)} + ${t('recap.platformFee').toLowerCase()} ${fmtExact(depositPreview.fee, locale, devise)})`
                     : ''}
                 </p>
               )}
@@ -466,17 +470,17 @@ export function BookingRecap({
             <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-1 text-sm">
               <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                 <span>{t('recap.depositNow')}</span>
-                <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.amount, locale)}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.amount, locale, devise)}</span>
               </div>
               {depositPreview.fee > 0 && (
                 <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                   <span>{t('recap.platformFee')}</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.fee, locale)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{fmtExact(depositPreview.fee, locale, devise)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
                 <span>{t('recap.payToday')}</span>
-                <span>{fmtExact(depositPreview.amount + depositPreview.fee, locale)}</span>
+                <span>{fmtExact(depositPreview.amount + depositPreview.fee, locale, devise)}</span>
               </div>
               <div className="flex items-center justify-between text-gray-500 dark:text-gray-400 text-xs">
                 <span>{t('recap.restOnSite')}</span>

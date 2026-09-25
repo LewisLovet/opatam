@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePrix } from '@/contexts/DeviseContext';
 import Image from 'next/image';
 import { Badge, Switch } from '@/components/ui';
 import { ChevronUp, ChevronDown, Clock, Euro, PauseCircle, Tag } from 'lucide-react';
@@ -65,14 +66,6 @@ function formatDuration(minutes: number): string {
   return `${hours}h${remainingMinutes.toString().padStart(2, '0')}`;
 }
 
-function formatPrice(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  const euros = cents / 100;
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(euros);
-}
 
 /** Compact badge that summarises the effective deposit on this service:
  *   - explicit none      → grey "Pas d'acompte"
@@ -130,6 +123,10 @@ export function ServiceCard({
   defaultDeposit = null,
   globalDiscount = null,
 }: ServiceCardProps) {
+  // Prix dans la devise du prestataire. Ce fichier avait son propre
+  // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
+  // euros. Le hook lit la devise de la page, rien a passer en propriete.
+  const formatPrice = usePrix();
   // Determine which members perform this service
   const assignedMembers = service.memberIds
     ? members.filter((m) => service.memberIds?.includes(m.id))
