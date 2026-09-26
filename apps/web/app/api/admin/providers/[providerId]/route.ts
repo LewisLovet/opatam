@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore, getAdminAuth } from '@/lib/firebase-admin';
+import { isSupportedCurrency } from '@booking-app/shared';
 
 export async function GET(
   request: NextRequest,
@@ -216,6 +217,21 @@ export async function PATCH(
     }
     if (typeof body.isPublished === 'boolean') {
       updateData.isPublished = body.isPublished;
+    }
+
+    // Opération administrée sur la devise. Le prestataire ne peut plus la
+    // changer dès qu'un acompte a été encaissé (`currencyLockedAt`) : c'est
+    // ici, et nulle part ailleurs, qu'on peut le faire pour lui ou rendre
+    // le choix — les réservations déjà payées gardent la leur de toute façon,
+    // `Booking.currency` étant figée à la création.
+    if (typeof body.currency === 'string') {
+      if (!isSupportedCurrency(body.currency)) {
+        return NextResponse.json({ error: 'Devise non prise en charge' }, { status: 400 });
+      }
+      updateData.currency = body.currency.toUpperCase();
+    }
+    if (body.currencyLockedAt === null) {
+      updateData.currencyLockedAt = null;
     }
 
     if (Object.keys(updateData).length === 0) {

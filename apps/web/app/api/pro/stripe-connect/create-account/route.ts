@@ -3,6 +3,7 @@ import { getStripeDev } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { canUseDepositsServer } from '@/lib/feature-flags';
 import { FieldValue } from 'firebase-admin/firestore';
+import { SUPPORTED_COUNTRIES } from '@booking-app/shared';
 
 /**
  * POST /api/pro/stripe-connect/create-account
@@ -86,10 +87,27 @@ export async function POST(request: NextRequest) {
       // Stripe N'AUTORISE PAS a changer le pays d'un compte existant : ce
       // choix est definitif, d'ou la lecture du pays declare par le
       // prestataire plutot qu'une valeur par defaut commode.
-      const paysCompte =
-        typeof provider.countryCode === 'string' && /^[A-Z]{2}$/.test(provider.countryCode)
-          ? provider.countryCode
-          : 'FR';
+      // Contre la LISTE des pays ouverts, pas un simple format a deux
+      // lettres : un code hors liste (ou un pays ou Stripe n'opere pas) est
+      // refuse par Stripe, et le repli silencieux sur la France creait alors
+      // un compte francais DEFINITIF pour un prestataire etranger. Mieux
+      // vaut echouer ici, ou c'est reparable, que la-bas ou ce ne l'est pas.
+      const declare = typeof provider.countryCode === 'string'
+        ? provider.countryCode.toUpperCase()
+        : '';
+      const paysCompte = SUPPORTED_COUNTRIES.some((c) => c.code === declare)
+        ? declare
+        : null;
+      if (!paysCompte) {
+        return NextResponse.json(
+          {
+            error:
+              'Renseignez d’abord le pays de votre activité dans vos réglages : '
+              + 'le pays du compte Stripe est définitif et ne pourra plus être changé.',
+          },
+          { status: 400 },
+        );
+      }
 
       const account = await stripe.accounts.create({
         type: 'express',

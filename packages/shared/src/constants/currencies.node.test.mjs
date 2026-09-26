@@ -12,6 +12,8 @@ import {
   getCurrencyForCountry,
   getCurrency,
   isSupportedCurrency,
+  peutChangerDevise,
+  raisonVerrouDevise,
 } from './currencies.ts';
 
 describe('getCurrencyForCountry', () => {
@@ -79,5 +81,71 @@ describe('barème des frais de service', () => {
       assert.ok(b.fee > 0, code);
       assert.ok(b.fee < b.minDeposit, `${code} : frais >= seuil`);
     }
+  });
+});
+
+describe('périmètre : une devise doit être encaissable', () => {
+  // Stripe n'opère pas partout (stripe.com/global). Offrir une devise dont
+  // le pays n'a pas de Stripe, c'est promettre des acomptes qu'on ne pourra
+  // jamais verser. Le dirham marocain a été retiré pour cette raison.
+  it('le dirham marocain n’est PLUS proposé : le Maroc n’est pas un pays Stripe', () => {
+    assert.equal(isSupportedCurrency('MAD'), false);
+    assert.equal(SERVICE_FEE_BY_CURRENCY.MAD, undefined);
+    assert.equal(
+      SUPPORTED_CURRENCIES.some((d) => d.code === 'MAD'),
+      false,
+    );
+  });
+
+  it('le Maroc ne propose donc aucune devise et retombe sur l’euro', () => {
+    assert.equal(getCurrencyForCountry('MA'), 'EUR');
+  });
+
+  it('les cinq devises restantes sont celles de pays où Stripe opère', () => {
+    assert.deepEqual(
+      SUPPORTED_CURRENCIES.map((d) => d.code),
+      ['EUR', 'CHF', 'GBP', 'USD', 'CAD'],
+    );
+  });
+
+  it('chaque seuil dépasse le minimum de paiement Stripe de sa devise', () => {
+    // docs.stripe.com/currencies — montant débité minimum par devise.
+    const minimumStripe = { EUR: 50, CHF: 50, GBP: 30, USD: 50, CAD: 50 };
+    for (const [code, bareme] of Object.entries(SERVICE_FEE_BY_CURRENCY)) {
+      const plancher = minimumStripe[code];
+      assert.ok(plancher !== undefined, `minimum Stripe inconnu pour ${code}`);
+      assert.ok(
+        bareme.minDeposit > plancher,
+        `${code} : un acompte au seuil serait refusé par Stripe`,
+      );
+    }
+  });
+});
+
+describe('verrou de la devise', () => {
+  // Le verrou tient au premier PAIEMENT, pas à la connexion de Stripe :
+  // presque tous les comptes existants ont déjà branché Stripe, donc
+  // verrouiller là-dessus les figerait tous sur l'euro.
+  it('un prestataire sans encaissement peut choisir', () => {
+    assert.equal(peutChangerDevise({}), true);
+    assert.equal(peutChangerDevise({ currencyLockedAt: null }), true);
+    assert.equal(peutChangerDevise({ currencyLockedAt: undefined }), true);
+  });
+
+  it('les comptes d’AVANT la fonctionnalité gardent leur choix', () => {
+    // Le champ n'existe pas en base : ils ne doivent pas être verrouillés
+    // par accident, sinon la fonctionnalité ne sert personne.
+    assert.equal(peutChangerDevise({ currency: 'EUR', businessName: 'Ancien' }), true);
+  });
+
+  it('un acompte encaissé ferme le choix', () => {
+    assert.equal(peutChangerDevise({ currencyLockedAt: new Date() }), false);
+    assert.equal(raisonVerrouDevise({ currencyLockedAt: new Date() }), 'paiement_encaisse');
+  });
+
+  it('un prestataire absent ne fait pas planter la garde', () => {
+    assert.equal(peutChangerDevise(null), true);
+    assert.equal(peutChangerDevise(undefined), true);
+    assert.equal(raisonVerrouDevise(null), null);
   });
 });

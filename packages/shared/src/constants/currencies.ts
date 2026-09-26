@@ -11,6 +11,13 @@
  *    demanderait une source de taux et l'obligation de montrer la devise
  *    réellement débitée au paiement. Volontairement hors sujet ici.
  *
+ * PÉRIMÈTRE — une devise n'est listée ici que si Stripe opère dans le pays
+ * qui l'émet, parce qu'un prestataire sans compte Connect ne peut pas
+ * encaisser d'acompte. Le dirham marocain a été retiré le 2026-09-27 pour
+ * cette raison : le Maroc n'est pas un pays Stripe (stripe.com/global), donc
+ * un prestataire marocain n'aurait jamais pu recevoir de virement. Afficher
+ * une devise qu'on ne peut pas encaisser est pire que de ne pas l'offrir.
+ *
  * `decimals` n'est pas décoratif. Tout le code stocke des montants en
  * unités MINEURES (centimes) et divise par 100 ; une devise sans décimale
  * comme le franc CFA casserait chaque prix affiché et chaque saisie. Les
@@ -36,7 +43,6 @@ export const SUPPORTED_CURRENCIES: readonly Devise[] = [
   { code: 'GBP', label: 'Livre sterling', symbol: '£', decimals: 2 },
   { code: 'USD', label: 'Dollar américain', symbol: '$', decimals: 2 },
   { code: 'CAD', label: 'Dollar canadien', symbol: 'CA$', decimals: 2 },
-  { code: 'MAD', label: 'Dirham marocain', symbol: 'MAD', decimals: 2 },
 ] as const;
 
 export type CurrencyCode = string;
@@ -58,7 +64,8 @@ const DEVISE_PAR_PAYS: Record<string, string> = {
   GB: 'GBP',
   US: 'USD',
   CA: 'CAD',
-  MA: 'MAD',
+  // Pas de MA : le Maroc n'est pas un pays Stripe (voir l'en-tete), un
+  // compte marocain n'existe pas, donc aucune devise a lui proposer.
 };
 
 export function getCurrencyForCountry(countryCode: string | null | undefined): string {
@@ -92,5 +99,38 @@ export const SERVICE_FEE_BY_CURRENCY: Record<string, { fee: number; minDeposit: 
   GBP: { fee: 45, minDeposit: 500 },
   USD: { fee: 55, minDeposit: 500 },
   CAD: { fee: 75, minDeposit: 700 },
-  MAD: { fee: 500, minDeposit: 5000 },
 };
+
+/**
+ * Le prestataire peut-il encore changer de devise ?
+ *
+ * La devise se verrouille au PREMIER ENCAISSEMENT, pas à la connexion de
+ * Stripe. La nuance n'est pas cosmétique : la quasi-totalité des comptes
+ * existants ont déjà branché Stripe, donc verrouiller là-dessus les
+ * figerait tous sur l'euro — y compris les prestataires suisses, qui sont
+ * la raison d'être de ce réglage.
+ *
+ * Le verrou est posé par le webhook Stripe quand un acompte passe à
+ * « payé ». Les comptes d'avant cette fonctionnalité n'ont pas le champ :
+ * ils gardent donc un choix libre jusqu'à leur prochain encaissement.
+ * C'est voulu.
+ *
+ * Ce n'est PAS une frontière de sécurité, seulement la règle métier. La
+ * garde qui compte est côté serveur (route de mise à jour du prestataire)
+ * et dans les règles Firestore.
+ */
+export function peutChangerDevise(
+  provider: { currencyLockedAt?: unknown } | null | undefined,
+): boolean {
+  return !provider?.currencyLockedAt;
+}
+
+/**
+ * Pourquoi la devise est figée, pour l'expliquer à l'écran.
+ * `null` quand elle est encore libre.
+ */
+export function raisonVerrouDevise(
+  provider: { currencyLockedAt?: unknown } | null | undefined,
+): 'paiement_encaisse' | null {
+  return provider?.currencyLockedAt ? 'paiement_encaisse' : null;
+}

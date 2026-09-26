@@ -310,10 +310,22 @@ service cloud.firestore {
           request.resource.data.locale in ['fr', 'en', 'it', 'pt', 'de']
         )
         // La devise décide de ce que la cliente est débitée : une valeur
-        // fantaisiste ferait échouer le paiement chez Stripe.
+        // fantaisiste ferait échouer le paiement chez Stripe. Le MAD a été
+        // retiré le 2026-09-27 : le Maroc n'est pas un pays Stripe, donc
+        // aucun prestataire marocain ne peut encaisser.
         && (
           !('currency' in request.resource.data.diff(resource.data).affectedKeys()) ||
-          request.resource.data.currency in ['EUR', 'CHF', 'GBP', 'USD', 'CAD', 'MAD']
+          request.resource.data.currency in ['EUR', 'CHF', 'GBP', 'USD', 'CAD']
+        )
+        // Devise FIGÉE dès le premier acompte encaissé. `currencyLockedAt`
+        // est posé par le webhook Stripe et n'est pas dans la liste blanche
+        // ci-dessus : le prestataire ne peut donc ni le poser ni l'effacer,
+        // et tant qu'il existe il ne peut plus changer de devise. Seule la
+        // route d'administration (SDK admin, hors règles) peut déverrouiller.
+        && (
+          !('currency' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          !('currencyLockedAt' in resource.data) ||
+          resource.data.currencyLockedAt == null
         );
 
       allow delete: if isProviderAdmin(providerId);

@@ -33,8 +33,8 @@ export interface DashboardStats {
   serviceFeesTotal: number;
   serviceFeesCount: number;
   /**
-   * Frais par devise, en unites mineures. Additionner 49 EUR, 50 CHF et
-   * 500 MAD produirait un montant qui n'existe pas : ce sont des unites
+   * Frais par devise, en unites mineures. Additionner 49 EUR et 50 CHF
+   * produirait un montant qui n'existe pas : ce sont des unites
    * differentes, et aucun taux n'est stocke pour les convertir.
    */
   serviceFeesByCurrency: Record<string, number>;

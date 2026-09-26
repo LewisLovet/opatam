@@ -183,8 +183,10 @@ export interface Provider {
    * Devise dans laquelle ce prestataire affiche SES prix et encaisse.
    *
    * Absent = euro : aucune migration, les comptes existants ne bougent pas.
-   * Proposée d'après le pays à l'inscription, modifiable ensuite — mais
-   * changer la devise NE CONVERTIT RIEN : les prix sont stockés en unités
+   * Proposée d'après le pays à l'inscription, modifiable ensuite TANT
+   * QU'AUCUN ACOMPTE N'A ÉTÉ ENCAISSÉ — voir `currencyLockedAt`.
+   *
+   * Changer la devise NE CONVERTIT RIEN : les prix sont stockés en unités
    * mineures sans devise, donc 35,00 € deviendrait 35,00 CHF. Le réglage
    * prévient, la conversion reste à la charge du prestataire.
    *
@@ -192,6 +194,19 @@ export interface Provider {
    * bancaire, qui découle du pays de son compte Stripe Connect.
    */
   currency?: string;
+  /**
+   * Date du premier acompte encaissé. Présent = la devise est FIGÉE.
+   *
+   * Posé par le webhook Stripe, jamais par le prestataire : le champ n'est
+   * déclaré dans AUCUN schéma zod, donc une tentative d'écriture depuis
+   * l'application est retirée en silence (voir `updateProviderSchema`).
+   * Seule la route d'administration peut le remettre à `null`.
+   *
+   * Pourquoi le premier PAIEMENT et pas la connexion de Stripe : presque
+   * tous les comptes existants ont déjà branché Stripe, donc verrouiller
+   * là-dessus les figerait tous sur l'euro. Voir `peutChangerDevise`.
+   */
+  currencyLockedAt?: Date | null;
   minPrice: number | null;       // Minimum price from active services (in centimes)
   // Denormalized non-expired promo windows (shop-wide + per-service), maintained
   // on service/promo writes. Lets list surfaces flag active promos with one read

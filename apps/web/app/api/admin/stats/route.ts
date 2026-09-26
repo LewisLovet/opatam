@@ -340,7 +340,7 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
       const devise = typeof d.currency === 'string' && d.currency ? d.currency : 'EUR';
       const paidAt = dep?.paidAt?.toDate?.() ?? null;
       serviceFeesCount += 1;
-      // Par devise. Additionner 49 (EUR), 50 (CHF) et 500 (MAD) pour
+      // Par devise. Additionner 49 (EUR) et 50 (CHF) pour
       // afficher « 5,99 € » serait un chiffre qui n'existe pas : ce sont
       // des unites differentes, et aucun taux n'est stocke pour convertir.
       serviceFeesByCurrency[devise] = (serviceFeesByCurrency[devise] ?? 0) + fee;

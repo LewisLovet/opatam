@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Check, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, useToast } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
@@ -10,6 +10,7 @@ import {
   DEFAULT_CURRENCY,
   getCurrency,
   formatPrice,
+  peutChangerDevise,
 } from '@booking-app/shared';
 
 /**
@@ -20,6 +21,12 @@ import {
  * choix assumé — une conversion au taux du jour donnerait des prix à
  * virgule que personne n'affiche — mais il faut le dire noir sur blanc
  * AVANT de valider, pas après.
+ *
+ * Et le choix se ferme : dès le premier acompte encaissé, une réservation
+ * payée existe dans cette devise, et la changer ferait mentir l'historique,
+ * les e-mails déjà partis et les relevés bancaires. Le sélecteur passe donc
+ * en lecture seule — la garde qui compte étant côté serveur, celle-ci ne
+ * fait qu'éviter une erreur de bonne foi.
  */
 export function DeviseSection() {
   const { provider, refreshProvider } = useAuth();
@@ -29,6 +36,7 @@ export function DeviseSection() {
   const [choix, setChoix] = useState(actuelle);
   const [enCours, setEnCours] = useState(false);
 
+  const verrouillee = !peutChangerDevise(provider);
   const change = choix !== actuelle;
   const avant = getCurrency(actuelle);
   const apres = getCurrency(choix);
@@ -67,7 +75,7 @@ export function DeviseSection() {
         <select
           id="devise-reglage"
           value={choix}
-          disabled={enCours}
+          disabled={enCours || verrouillee}
           onChange={(e) => setChoix(e.target.value)}
           // Une molette au-dessus d'un select natif change sa valeur : ici
           // ce n'est qu'un brouillon, mais autant ne pas surprendre.
@@ -82,7 +90,27 @@ export function DeviseSection() {
         </select>
       </div>
 
-      {change && (
+      {verrouillee && (
+        <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <Lock className="mt-0.5 h-5 w-5 flex-none text-gray-400" />
+          <div className="min-w-0 space-y-2 text-sm">
+            <p className="font-semibold text-gray-900 dark:text-white">
+              Votre devise est figée sur {avant.label}.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Vous avez déjà encaissé un acompte : des rendez-vous payés existent
+              dans cette devise, ainsi que les e-mails et les relevés bancaires
+              correspondants. La changer les rendrait faux.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Si vous devez vraiment en changer, écrivez-nous depuis la messagerie :
+              nous le faisons pour vous.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!verrouillee && change && (
         <div className="flex items-start gap-3 rounded-xl border border-warning-300 bg-warning-50 p-4 dark:border-warning-800 dark:bg-warning-950/20">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-warning-600 dark:text-warning-400" />
           <div className="min-w-0 space-y-2 text-sm">
@@ -103,7 +131,7 @@ export function DeviseSection() {
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={enregistrer} disabled={!change || enCours}>
+        <Button onClick={enregistrer} disabled={!change || enCours || verrouillee}>
           {enCours ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Enregistrer la devise
         </Button>

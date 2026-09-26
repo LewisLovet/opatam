@@ -18,6 +18,7 @@ import {
   type CreateProviderInput,
   type UpdateProviderInput,
   DEFAULT_CURRENCY,
+  peutChangerDevise,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
@@ -182,6 +183,22 @@ export class ProviderService {
     const provider = await providerRepository.getById(providerId);
     if (!provider) {
       throw new Error('Prestataire non trouvé');
+    }
+
+    // La devise se figera au premier acompte encaissé. Sans cette garde, le
+    // sélecteur grisé à l'écran ne protégerait rien : la route est appelable
+    // directement, et une réservation déjà payée en francs se retrouverait
+    // dans un historique qui prétend afficher des euros.
+    //
+    // Reposer la MÊME devise est tolérée : un formulaire qui renvoie tout
+    // son état ne doit pas échouer parce qu'un champ inchangé est présent.
+    if (validated.currency !== undefined && !peutChangerDevise(provider)) {
+      const actuelle = provider.currency ?? DEFAULT_CURRENCY;
+      if (validated.currency.toUpperCase() !== actuelle.toUpperCase()) {
+        throw new Error(
+          'La devise ne peut plus être modifiée : un acompte a déjà été encaissé. Contactez le support.',
+        );
+      }
     }
 
     // If business name changed, update slug and search tokens

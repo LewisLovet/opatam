@@ -394,8 +394,8 @@ export class BookingService {
           amount: resolvedDeposit.amount,
           // Bareme de la devise du prestataire, pas le forfait euro.
           // Fige ici une fois pour toutes : sans la devise, une reservation
-          // marocaine enregistrait 49 (0,49 MAD) au lieu de 500 (5 MAD), et
-          // ce mauvais montant faisait ensuite foi partout.
+          // canadienne enregistrait 49 (0,49 CA$) au lieu de 75, et ce
+          // mauvais montant faisait ensuite foi partout.
           serviceFee: clientServiceFee(resolvedDeposit.amount, provider.currency),
           refundDeadlineHours: resolvedDeposit.refundDeadlineHours,
           paymentIntentId: null,

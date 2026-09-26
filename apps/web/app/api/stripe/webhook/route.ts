@@ -1435,9 +1435,37 @@ async function handleDepositCheckoutCompleted(
     updatedAt: FieldValue.serverTimestamp(),
   });
 
+  await verrouillerDeviseDuPrestataire(db, booking.providerId);
+
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (intent ${paymentIntentId})`,
   );
+}
+
+/**
+ * Fige la devise du prestataire au PREMIER acompte encaissé.
+ *
+ * À partir d'ici, une réservation payée existe dans cette devise : la
+ * changer ferait mentir tout l'historique, les e-mails déjà envoyés et les
+ * relevés bancaires. Le déverrouillage passe par l'administration.
+ *
+ * Idempotent (écrit seulement si le champ est absent) et best-effort : un
+ * échec ici ne doit jamais empêcher une réservation d'être confirmée.
+ */
+async function verrouillerDeviseDuPrestataire(
+  db: FirebaseFirestore.Firestore,
+  providerId: string | undefined,
+) {
+  if (!providerId) return;
+  try {
+    const ref = db.collection('providers').doc(providerId);
+    const snap = await ref.get();
+    if (!snap.exists || snap.data()?.currencyLockedAt) return;
+    await ref.update({ currencyLockedAt: new Date() });
+    console.log(`[STRIPE-WEBHOOK] devise figée pour le prestataire ${providerId}`);
+  } catch (err) {
+    console.error('[STRIPE-WEBHOOK] verrou devise impossible:', err);
+  }
 }
 
 /**
@@ -1479,6 +1507,8 @@ async function handleDepositPaymentIntentSucceeded(
     'deposit.paymentIntentId': intent.id,
     updatedAt: FieldValue.serverTimestamp(),
   });
+
+  await verrouillerDeviseDuPrestataire(db, booking.providerId);
 
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (PI ${intent.id})`,
