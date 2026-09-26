@@ -134,3 +134,55 @@ export function raisonVerrouDevise(
 ): 'paiement_encaisse' | null {
   return provider?.currencyLockedAt ? 'paiement_encaisse' : null;
 }
+
+/**
+ * LA règle du chantier : quelle devise pour quel montant.
+ *
+ * Avant la réservation, les prix affichés sont ceux du PRESTATAIRE. À la
+ * création, la devise est FIGÉE sur la réservation — et à partir de là c'est
+ * elle qui commande, pour toujours : paiement, e-mails, remboursement,
+ * historique, administration.
+ *
+ * Pourquoi c'est la seule règle tenable : un prestataire peut changer de
+ * devise tant qu'il n'a rien encaissé. Sans gel, un rendez-vous pris en euros
+ * serait débité en francs des semaines plus tard, et les e-mails déjà envoyés
+ * deviendraient faux. Le défaut a existé : Stripe lisait la devise COURANTE du
+ * prestataire au moment du paiement.
+ *
+ * Une réservation d'avant la fonctionnalité n'a pas de devise. Elle retombe
+ * sur l'euro — pas sur celle du prestataire aujourd'hui, qui pourrait avoir
+ * changé depuis.
+ */
+export function deviseDeLaReservation(
+  booking: { currency?: string | null } | null | undefined,
+  /** Repli quand la réservation n'existe pas encore (aperçus, devis). */
+  provider?: { currency?: string | null } | null,
+): string {
+  if (booking?.currency) return booking.currency.toUpperCase();
+  // La réservation EXISTE mais n'a pas de devise : c'est une réservation
+  // historique. Elle vaut l'euro, jamais la devise actuelle du prestataire.
+  if (booking) return DEFAULT_CURRENCY;
+  return (provider?.currency ?? DEFAULT_CURRENCY).toUpperCase();
+}
+
+/** Barème historique en euro : repli quand la devise est absente ou inconnue. */
+const FRAIS_EURO_CENTIMES = 49;
+const SEUIL_EURO_CENTIMES = 500;
+
+/**
+ * Frais de service, dans la devise du prestataire.
+ *
+ * `currency` est optionnel pour que les appels existants continuent de
+ * donner exactement le même résultat en euro. Les montants par devise
+ * vivent dans SERVICE_FEE_BY_CURRENCY : ce sont des prix ronds, pas une
+ * conversion au taux du jour, sinon le forfait changerait chaque matin.
+ */
+export function clientServiceFee(depositCents: number, currency?: string | null): number {
+  const bareme = currency
+    ? SERVICE_FEE_BY_CURRENCY[currency.toUpperCase()]
+    : undefined;
+  const fee = bareme?.fee ?? FRAIS_EURO_CENTIMES;
+  const seuil = bareme?.minDeposit ?? SEUIL_EURO_CENTIMES;
+  if (!Number.isFinite(depositCents) || depositCents < seuil) return 0;
+  return fee;
+}

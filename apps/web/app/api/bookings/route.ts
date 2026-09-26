@@ -12,6 +12,7 @@ import {
   hasLoyaltyAccess,
   clientServiceFee,
   DEFAULT_CURRENCY,
+  deviseDeLaReservation,
   formatPrice,
 } from '@booking-app/shared';
 import type Stripe from 'stripe';
@@ -184,8 +185,13 @@ export async function POST(request: NextRequest) {
      * devise parce que le prestataire a touche a ses parametres entre les
      * deux. Repli sur le prestataire puis l'euro pour l'historique.
      */
+    // Stripe attend la devise en minuscules. La regle elle-meme vit dans
+    // `shared` (`deviseDeLaReservation`) et y est testee : une reservation qui
+    // EXISTE sans devise est historique et vaut l'euro, jamais la devise
+    // actuelle du prestataire — sinon un rendez-vous pris en euros se
+    // ferait debiter en francs apres un changement de reglage.
     const deviseDeLaResa = (b?: { currency?: string } | null): string =>
-      (b?.currency ?? providerData.currency ?? DEFAULT_CURRENCY).toLowerCase();
+      deviseDeLaReservation(b, providerData).toLowerCase();
 
     const isSubscriptionValid = computeEntitlements(providerData).canReceiveBookings;
 

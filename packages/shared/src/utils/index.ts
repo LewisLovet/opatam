@@ -62,73 +62,16 @@ export * from './articles';
 // Objectifs de partage de stories (compteurs par période, progression, série)
 export * from './storyGoals';
 
-/**
- * Format price from cents to display string
- * @param cents - Price in cents
- * @param currency - Currency code (default: EUR)
- * @param locale - BCP 47 locale for number formatting (default: fr-FR —
- *   pass the active UI locale on translated surfaces)
- * @returns Formatted price string
- */
-export function formatPrice(
-  cents: number,
-  // `null` accepte, et pas seulement `undefined` : la devise vient presque
-  // toujours de `provider.currency` ou `booking.currency`, qui valent `null`
-  // pour un compte d'avant la fonctionnalite. Sans ca, chaque appelant
-  // ecrirait `?? undefined` — et il aurait suffi d'en oublier un.
-  currency: string | null | undefined = 'EUR',
-  locale = 'fr-FR',
-): string {
-  const devise = currency || 'EUR';
-  // "Free" is the only translated word here — a full dictionary lookup would
-  // drag react/i18n into shared, so a tiny inline map does the job.
-  if (cents === 0) {
-    if (locale.startsWith('en')) return 'Free';
-    if (locale.startsWith('it')) return 'Gratis';
-    if (locale.startsWith('pt')) return 'Grátis';
-    if (locale.startsWith('de')) return 'Kostenlos';
-    return 'Gratuit';
-  }
-  const amount = cents / 100;
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: devise,
-  }).format(amount);
-}
 
-/**
- * Prix COMPACT : « 120 € » plutôt que « 120,00 € », et « 89,50 € » quand il
- * y a des centimes.
- *
- * Existe pour les pastilles de montant trop étroites pour deux décimales
- * inutiles. Deux copies de cette fonction vivaient dans l'application mobile
- * (l'agenda pro et le composant de journée), toutes deux avec un « € » écrit
- * en dur : un prestataire suisse voyait donc des euros sur son agenda.
- *
- * Contrairement à `formatPrice`, ne renvoie PAS « Gratuit » pour 0 : les
- * appelants traitent 0 comme « pas de montant » et n'affichent rien.
- */
-export function formatPriceCompact(
-  cents: number,
-  currency: string | null | undefined = 'EUR',
-  locale = 'fr-FR',
-): string {
-  const devise = currency || 'EUR';
-  const montant = cents / 100;
-  const rond = montant % 1 === 0;
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: devise,
-    minimumFractionDigits: rond ? 0 : 2,
-    maximumFractionDigits: rond ? 0 : 2,
-  }).format(montant);
-}
 
 /**
  * Format duration in minutes to human readable string
  * @param minutes - Duration in minutes
  * @returns Formatted duration string
  */
+export { formatPrice, formatPriceCompact } from './prix';
+export { clientServiceFee } from '../constants/currencies';
+
 export function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes}min`;
@@ -397,24 +340,6 @@ interface ServiceForDeposit {
  */
 export const CLIENT_SERVICE_FEE_CENTS = 49;
 export const CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS = 500;
-
-/**
- * Frais de service, dans la devise du prestataire.
- *
- * `currency` est optionnel pour que les appels existants continuent de
- * donner exactement le même résultat en euro. Les montants par devise
- * vivent dans SERVICE_FEE_BY_CURRENCY : ce sont des prix ronds, pas une
- * conversion au taux du jour, sinon le forfait changerait chaque matin.
- */
-export function clientServiceFee(depositCents: number, currency?: string | null): number {
-  const bareme = currency
-    ? SERVICE_FEE_BY_CURRENCY[currency.toUpperCase()]
-    : undefined;
-  const fee = bareme?.fee ?? CLIENT_SERVICE_FEE_CENTS;
-  const seuil = bareme?.minDeposit ?? CLIENT_SERVICE_FEE_MIN_DEPOSIT_CENTS;
-  if (!Number.isFinite(depositCents) || depositCents < seuil) return 0;
-  return fee;
-}
 
 interface ProviderSettingsForDeposit {
   depositDefault?: {
