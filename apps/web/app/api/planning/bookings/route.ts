@@ -68,6 +68,10 @@ export async function GET(request: NextRequest) {
       serviceName: b.serviceName,
       duration: b.duration,
       price: b.price,
+      // Devise FIGEE sur la reservation : l'ecran du planning ne doit pas
+      // l'inventer. Cette serialisation liste les champs un par un, donc un
+      // champ non cite disparait en silence.
+      currency: b.currency ?? null,
       clientInfo: {
         name: b.clientInfo.name,
         email: b.clientInfo.email,

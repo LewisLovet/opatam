@@ -203,9 +203,13 @@ function formatPromoDate(ymd: string): string {
   return ymdToDate(ymd).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Montant dans la devise du prestataire connecte. Forcait « EUR » avant. */
 function euroCents(cents: number): string {
   if (cents === 0) return i18n.t('common.free');
-  return new Intl.NumberFormat(dateLocale(), { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  return new Intl.NumberFormat(dateLocale(), {
+    style: 'currency',
+    currency: devisePro(),
+  }).format(cents / 100);
 }
 
 /** A "12 € → 9,60 €" preview line. When `onToggle` is set, the row is tappable

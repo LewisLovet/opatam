@@ -29,6 +29,7 @@ import {
   Megaphone,
 } from 'lucide-react';
 import { acquisitionChannelLabel } from '@booking-app/shared';
+import { formatPrice } from '@booking-app/shared';
 
 const categoryLabels: Record<string, string> = {
   coiffure: 'Coiffure',
@@ -629,7 +630,7 @@ export default function AdminProviderDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Prix</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.price ? `${(selectedBooking.price / 100).toFixed(2)} €` : 'Gratuit'}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedBooking.price ? formatPrice(selectedBooking.price, selectedBooking.currency) : 'Gratuit'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">Statut</span>

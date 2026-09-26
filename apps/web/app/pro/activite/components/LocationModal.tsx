@@ -20,6 +20,8 @@ import type { Location, LocationType, TravelZoneTier } from '@booking-app/shared
 import { isValidTravelZone } from '@booking-app/shared';
 import { isValidPostalCode } from '@booking-app/shared/schemas';
 import { auth as firebaseAuth } from '@booking-app/firebase';
+import { useDevise } from '@/contexts/DeviseContext';
+import { getCurrency } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -80,6 +82,8 @@ export function LocationModal({
   onSave,
   onDelete,
 }: LocationModalProps) {
+  // Symbole de la devise du prestataire, pour le suffixe des paliers de frais.
+  const symboleDevise = getCurrency(useDevise()).symbol;
   const isEditing = !!location;
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -738,7 +742,9 @@ export function LocationModal({
                           className="w-20 px-2 py-1.5 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         />
                         <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">
-                          {Number(row.feeEuros.replace(',', '.')) === 0 ? '€ — offert' : '€'}
+                          {Number(row.feeEuros.replace(',', '.')) === 0
+                            ? `${symboleDevise} — offert`
+                            : symboleDevise}
                         </span>
                         {tierRows.length > 1 && (
                           <button

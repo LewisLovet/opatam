@@ -265,7 +265,7 @@ export function BookingCard({
             </div>
           </div>
           <div className="flex items-center gap-1 text-lg font-bold text-gray-900 dark:text-white">
-            {formatBookingPrice(booking.price)}
+            {formatBookingPrice(booking.price, booking.currency)}
           </div>
         </div>
       </div>

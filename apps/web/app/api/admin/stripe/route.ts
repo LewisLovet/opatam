@@ -297,13 +297,29 @@ export async function GET(request: NextRequest) {
       return months[key];
     };
 
+    // Devise de REGLEMENT de la plateforme. Depuis que le tunnel mobile
+    // encaisse en paiement direct, les frais d'application arrivent dans la
+    // devise de la charge : un acompte en francs depose des centimes de FRANC
+    // sur le solde. Les additionner aux euros donnerait un total qui n'existe
+    // pas. Les lignes d'une autre devise sont donc EXCLUES des totaux
+    // mensuels, et comptees a part pour qu'elles ne disparaissent pas en
+    // silence.
+    const deviseReglement = (
+      await stripe.accounts.retrieve()
+    ).default_currency?.toUpperCase() ?? 'EUR';
+    const exclusHorsDevise: Record<string, { lignes: number; total: number }> = {};
+
     // `source` étendu : sur un acompte, la charge porte `transfer_data.amount`,
     // donc le montant reversé au salon se lit sans un appel de plus.
     for await (const tx of stripe.balanceTransactions.list({
       limit: 100,
       expand: ['data.source'],
     })) {
+      const deviseTx = (tx.currency ?? 'eur').toUpperCase();
+      const horsDevise = deviseTx !== deviseReglement;
       const month = new Date(tx.created * 1000).toISOString().slice(0, 7);
+      // Les totaux mensuels ne recoivent que la devise de reglement. Le bucket
+      // est quand meme cree pour que le mois existe a l'ecran.
       const m = bucket(month);
       const isDeposit = (tx.description ?? '').includes('Acompte');
       const periode = feePeriod(tx.description);
@@ -322,7 +338,18 @@ export async function GET(request: NextRequest) {
         fee: tx.fee,
         net: tx.net,
         period: periode,
+        currency: deviseTx,
       });
+      if (horsDevise) {
+        const e = exclusHorsDevise[deviseTx] ?? { lignes: 0, total: 0 };
+        e.lignes += 1;
+        e.total += tx.amount;
+        exclusHorsDevise[deviseTx] = e;
+        // Rien n'est ajoute aux totaux du mois : on passe a la ligne suivante
+        // apres avoir conserve la transaction, qui reste visible dans la liste.
+        origines.push({ customer: null, account: null, email: null });
+        continue;
+      }
 
       // `source` est déjà étendu : la charge porte son client, le transfert sa
       // destination. On ne garde que les identifiants — la résolution en noms
@@ -534,6 +561,8 @@ export async function GET(request: NextRequest) {
         trialExpiredNeverPaid,
         compAccess: compAccess.sort((a, b) => a.name.localeCompare(b.name)),
       },
+      settlementCurrency: deviseReglement,
+      excludedByCurrency: exclusHorsDevise,
       generatedAt: new Date().toISOString(),
     };
 

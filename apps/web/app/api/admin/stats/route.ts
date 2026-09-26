@@ -913,6 +913,8 @@ async function getRecentSignups(db: FirebaseFirestore.Firestore) {
       providerId: d.providerId || null,
       serviceName: d.serviceName || '',
       price: d.price ?? 0,
+      // Devise FIGEE sur la reservation : l'admin ne doit pas l'inventer.
+      currency: d.currency ?? null,
       status: d.status || '',
       datetime: d.datetime?.toDate?.()?.toISOString() || null,
       createdAt: d.createdAt?.toDate?.()?.toISOString() || null,

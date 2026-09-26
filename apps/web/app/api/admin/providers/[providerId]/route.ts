@@ -174,6 +174,8 @@ export async function GET(
         datetime: d.datetime?.toDate?.()?.toISOString() || null,
         createdAt: d.createdAt?.toDate?.()?.toISOString() || null,
         price: d.price || 0,
+        // Devise FIGEE sur la reservation : l'admin ne doit pas l'inventer.
+        currency: d.currency ?? null,
       });
     });
 

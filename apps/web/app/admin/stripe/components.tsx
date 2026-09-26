@@ -3,8 +3,19 @@
 import type { StripeTx } from '@/services/admin/types';
 import type { LucideIcon } from 'lucide-react';
 
-export const eur = (cents: number) =>
-  (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+/**
+ * Montant dans une devise donnee. S'appelait `eur` et collait « € » a la main.
+ *
+ * La devise par defaut reste l'euro : c'est celle de reglement du compte
+ * plateforme, donc celle de la quasi-totalite des lignes.
+ */
+export const eur = (cents: number, devise = 'EUR') =>
+  (cents / 100).toLocaleString('fr-FR', {
+    style: 'currency',
+    currency: devise,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 export const moisCourt = (m: string) =>
   new Date(m + '-01').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });

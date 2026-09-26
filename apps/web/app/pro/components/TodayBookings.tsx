@@ -135,7 +135,7 @@ export function TodayBookings({
                       {formatDuration(booking.duration)}
                     </span>
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                      {formatBookingPrice(booking.price)}
+                      {formatBookingPrice(booking.price, booking.currency)}
                     </span>
                     {isTeamPlan && memberName && (
                       <>

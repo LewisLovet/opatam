@@ -10,6 +10,7 @@
 
 import { MapPin, Clock, Star, Calendar, Scissors } from 'lucide-react';
 import { categoryCover } from '@/lib/categoryCover';
+import { formatPriceCompact } from '@booking-app/shared';
 
 export interface RegisterPreviewData {
   businessName: string;
@@ -23,6 +24,14 @@ export interface RegisterPreviewData {
   services: { name: string; priceFrom: number; durationFrom: number; variable: boolean }[];
   /** Day indices (0=Sun … 6=Sat) that are marked open. */
   openDays: number[];
+  /**
+   * Devise choisie dans le formulaire. Absente = euro.
+   *
+   * L'aperçu doit la refléter immédiatement : le prestataire vient de la
+   * sélectionner deux champs plus haut, voir « 35 € » alors qu'il a choisi le
+   * franc suisse lui ferait croire que son choix n'a pas pris.
+   */
+  currency?: string | null;
 }
 
 const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
@@ -34,8 +43,15 @@ function initials(name: string): string {
   return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
-function formatEuro(v: number): string {
-  return Number.isInteger(v) ? `${v} €` : `${v.toFixed(2)} €`;
+/**
+ * Prix de l'apercu, dans la devise CHOISIE dans le formulaire.
+ *
+ * Cet apercu accompagne l'inscription : le prestataire vient de selectionner
+ * sa devise deux champs plus haut, il doit la voir tout de suite. La fonction
+ * s'appelait `formatEuro` et collait le symbole a la main.
+ */
+function formatPrixApercu(v: number, devise: string): string {
+  return formatPriceCompact(Math.round(v * 100), devise);
 }
 
 function formatDuration(min: number): string {
@@ -52,12 +68,17 @@ function formatOpenDays(days: number[]): string {
     .join(' · ');
 }
 
-function servicePrice(s: { priceFrom: number; variable: boolean }): string {
+function servicePrice(
+  s: { priceFrom: number; variable: boolean },
+  devise: string,
+): string {
   if (s.priceFrom <= 0) return s.variable ? '—' : 'Gratuit';
-  return s.variable ? `à partir de ${formatEuro(s.priceFrom)}` : formatEuro(s.priceFrom);
+  const p = formatPrixApercu(s.priceFrom, devise);
+  return s.variable ? `à partir de ${p}` : p;
 }
 
 export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null }) {
+  const deviseChoisie = data?.currency || 'EUR';
   const name = data?.businessName?.trim() || '';
   const services = (data?.services ?? []).filter((s) => s.name.trim());
   const locationText = data?.cityOnly
@@ -139,7 +160,7 @@ export function RegisterLivePreview({ data }: { data: RegisterPreviewData | null
                   <li key={i} className="flex items-center justify-between gap-3">
                     <span className="text-base font-medium text-gray-800 truncate">{s.name}</span>
                     <span className="text-sm text-gray-500 whitespace-nowrap">
-                      {[formatDuration(s.durationFrom), servicePrice(s)].filter(Boolean).join(' · ')}
+                      {[formatDuration(s.durationFrom), servicePrice(s, deviseChoisie)].filter(Boolean).join(' · ')}
                     </span>
                   </li>
                 ))}

@@ -22,6 +22,7 @@ import { signSalesLink } from '@/lib/sales-attribution';
 import { buildDemoData } from '@/lib/sales-demo-build';
 import { ProviderThemeStyle } from '@/components/theme/ProviderThemeStyle';
 import { PageRevealGate } from '@/components/loading/PageRevealGate';
+import { formatPriceCompact } from '@booking-app/shared';
 import {
   demoProvider,
   demoServices,
@@ -508,7 +509,12 @@ export default async function ProviderPage({ params }: PageProps) {
           },
         }),
         ...(minPrice !== null && {
-          priceRange: minPrice === 0 ? 'Gratuit' : `À partir de ${(minPrice / 100).toFixed(0)} €`,
+          // Donnee structuree lue par les moteurs : elle doit porter la devise
+      // du prestataire, sinon un salon suisse est indexe avec des euros.
+      priceRange:
+        minPrice === 0
+          ? 'Gratuit'
+          : `À partir de ${formatPriceCompact(minPrice, provider.currency)}`,
         }),
         ...(services.length > 0 && {
           hasOfferCatalog: {

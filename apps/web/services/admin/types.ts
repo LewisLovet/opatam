@@ -251,6 +251,8 @@ export interface RecentBookingRow {
   status: string;
   datetime: string | null;
   createdAt: string | null;
+  /** Devise FIGEE sur la reservation. Absente = euro (resas d'avant). */
+  currency?: string | null;
   /** Acompte encaisse sur cette reservation, s'il y en a un. */
   deposit: { amount: number; serviceFee: number; status: string } | null;
 }
@@ -290,6 +292,8 @@ export interface ProviderDetail {
     datetime: string | null;
     createdAt: string | null;
     price: number;
+    /** Devise FIGEE sur la reservation. Absente = euro (resas d'avant). */
+    currency?: string | null;
   }[];
 }
 
@@ -337,6 +341,16 @@ export interface StripeTx {
    * lignes qui n'ont pas de contrepartie (frais Stripe, virements bancaires).
    */
   who?: string | null;
+  /**
+   * Devise de CETTE ligne, en majuscules.
+   *
+   * Depuis que le tunnel mobile encaisse en paiement direct, un acompte en
+   * francs depose des centimes de FRANC sur le solde de la plateforme. Les
+   * lignes dont la devise n'est pas celle de reglement sont exclues des totaux
+   * mensuels — et comptees dans `excludedByCurrency` pour qu'elles ne
+   * disparaissent pas en silence.
+   */
+  currency?: string;
 }
 
 export interface StripeEconomics {
@@ -421,5 +435,9 @@ export interface StripeEconomics {
     trialExpiredNeverPaid: number;
     compAccess: { name: string; plan: string; until: string | null }[];
   };
+  /** Devise de reglement du compte plateforme : celle des totaux mensuels. */
+  settlementCurrency?: string;
+  /** Lignes ecartees des totaux parce qu'elles sont dans une autre devise. */
+  excludedByCurrency?: Record<string, { lignes: number; total: number }>;
   generatedAt: string;
 }

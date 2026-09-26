@@ -1,3 +1,4 @@
+import { formatMontantCompact } from '../lib/devise';
 /**
  * Fidélité — MIROIR unique côté functions de packages/shared/src/utils/loyalty.ts
  * et hasLoyaltyAccess (access.ts). Les functions n'importent pas les packages
@@ -76,15 +77,18 @@ export function loyaltyRewardLabel(
   rewardType: string,
   rewardValue: number,
   locale: 'fr' | 'en' | 'it' | 'pt' | 'de',
+  /** Devise de la reservation. Absente = euro, comme avant. */
+  devise?: string | null,
 ): string {
   if (rewardType === 'percent') {
     // fr et de : espace avant % ; en/it/pt : pas d'espace.
     return locale === 'fr' || locale === 'de' ? `−${rewardValue} %` : `−${rewardValue}%`;
   }
-  const euros = rewardValue / 100;
-  const v = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
-  // en : symbole avant ; fr/it/pt/de : symbole après avec espace.
-  return locale === 'en' ? `−€${v}` : `−${v} €`;
+  // `Intl` place le symbole, l'espace insecable et la virgule selon la langue
+  // ET selon la devise : « −€35 » en anglais, « −35 € » en francais, « −35 CHF »
+  // pour un salon suisse. Les trois cas etaient ecrits a la main, avec l'euro
+  // en dur.
+  return `−${formatMontantCompact(rewardValue, devise, locale)}`;
 }
 
 /**

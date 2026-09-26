@@ -14,10 +14,14 @@ import { GlobalPromoModal } from './GlobalPromoModal';
 import { LoyaltyModal } from './LoyaltyModal';
 import type { Service, ServiceCategory, Member } from '@booking-app/shared';
 import { hasDepositAccess, hasLoyaltyAccess, isLoyaltyConfigValid, isTeamTier } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
+import { formatPriceCompact } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
 export function PrestationsTab() {
+  // Devise du prestataire, pour les libellés de récompense fidélité.
+  const deviseProv = useDevise();
   const { provider } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -415,7 +419,7 @@ export function PrestationsTab() {
             {loyaltyActive && loyaltyRaw ? (
               <>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Carte de fidélité : {loyaltyRewardText(loyaltyRaw)} tous les{' '}
+                  Carte de fidélité : {loyaltyRewardText(loyaltyRaw, deviseProv)} tous les{' '}
                   {loyaltyRaw.threshold} RDV
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -517,14 +521,18 @@ export function PrestationsTab() {
   );
 }
 
-/** "−10 %" / "−5 €" — libellé compact de la récompense fidélité. */
-function loyaltyRewardText(l: { rewardType: 'percent' | 'amount'; rewardValue: number }): string {
+/**
+ * « −10 % » / « −5 € » — libellé compact de la récompense fidélité.
+ *
+ * La devise est passée en argument : cette fonction est au niveau du module et
+ * ne peut pas appeler `usePrix()`.
+ */
+function loyaltyRewardText(
+  l: { rewardType: 'percent' | 'amount'; rewardValue: number },
+  devise: string,
+): string {
   if (l.rewardType === 'percent') return `−${l.rewardValue} %`;
-  const euros = l.rewardValue / 100;
-  const label = Number.isInteger(euros)
-    ? euros.toString()
-    : euros.toFixed(2).replace('.', ',');
-  return `−${label} €`;
+  return `−${formatPriceCompact(l.rewardValue, devise)}`;
 }
 
 /** "Du 01/06/2026 au 30/06/2026" / "Jusqu'au …" / "Permanente". */

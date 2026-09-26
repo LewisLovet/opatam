@@ -62,12 +62,23 @@ export function formatBookingTime(date: Date): string {
   });
 }
 
-export function formatBookingPrice(priceInCentimes: number): string {
-  const priceInEuros = priceInCentimes / 100;
+/**
+ * Prix d'une réservation, dans SA devise.
+ *
+ * La devise est celle figée sur la réservation (`booking.currency`), pas
+ * celle du prestataire aujourd'hui : un rendez-vous garde la devise à
+ * laquelle la cliente a consenti. Absente = euro, pour les réservations
+ * d'avant la fonctionnalité.
+ */
+export function formatBookingPrice(
+  priceInCentimes: number,
+  currency?: string | null,
+): string {
+  const montant = priceInCentimes / 100;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
-  }).format(priceInEuros);
+    currency: currency || 'EUR',
+  }).format(montant);
 }
 
 export function formatDuration(minutes: number): string {

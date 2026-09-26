@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, User, Store, Scissors, CalendarDays, Clock, Euro, ArrowRightLeft } from 'lucide-react';
 import { statusConfig } from '@/lib/booking-utils';
 import type { BookingStatus } from '@booking-app/shared';
+import { formatPrice } from '@booking-app/shared';
 
 interface BookingItem {
   id: string;
@@ -15,6 +16,8 @@ interface BookingItem {
   datetime: string | null;
   status: BookingStatus;
   price: number;
+  /** Devise FIGEE sur la reservation. Absente = euro (resas d'avant). */
+  currency?: string | null;
   createdAt: string | null;
 }
 
@@ -154,7 +157,7 @@ function BookingModal({
 
             <InfoRow icon={Euro} label="Prix">
               {booking.price ? (
-                <span className="text-base font-semibold">{(booking.price / 100).toFixed(2)} €</span>
+                <span className="text-base font-semibold">{formatPrice(booking.price, booking.currency)}</span>
               ) : (
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Gratuit</span>
               )}

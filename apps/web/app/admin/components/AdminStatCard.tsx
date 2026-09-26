@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { formatPrice } from '@booking-app/shared';
 
 interface AdminStatCardProps {
   label: string;
@@ -11,6 +12,9 @@ interface AdminStatCardProps {
     label: string;
     /** 'currency' → la valeur de tendance est en centimes. */
     format?: 'currency';
+    /** Devise du montant. Absente = euro. Ne JAMAIS y mettre le total de
+     *  plusieurs devises : ce serait un chiffre qui n'existe pas. */
+    currency?: string | null;
   };
   format?: 'number' | 'currency' | 'percentage';
 }
@@ -46,7 +50,7 @@ export function AdminStatCard({ label, value, icon, trend, format }: AdminStatCa
                 }`}
               >
                 {trend.format === 'currency'
-                  ? `${(trend.value / 100).toFixed(2).replace('.', ',')} €`
+                  ? formatPrice(trend.value, trend.currency)
                   : `${trend.value >= 0 ? '+' : ''}${trend.value}`}
               </span>
               <span className="text-xs text-gray-400">{trend.label}</span>

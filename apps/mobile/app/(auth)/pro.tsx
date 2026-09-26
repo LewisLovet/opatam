@@ -60,6 +60,7 @@ import {
   SERVICE_BASE_DURATION_MAX,
   ACQUISITION_CHANNELS,
   type AcquisitionChannel,
+  getCurrencyForCountry,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
 import {
@@ -1003,6 +1004,13 @@ export default function ProRegisterScreen() {
         businessName: data.businessName.trim(),
         category: data.category,
         description: data.description.trim(),
+        // Devise DEDUITE du pays declare. L'inscription mobile n'a pas de
+        // selecteur, contrairement au web : sans cette ligne un prestataire
+        // suisse serait cree en euros, et il ne pourrait plus en changer des
+        // son premier acompte encaisse. Modifiable ensuite depuis l'espace pro
+        // web, tant qu'aucun paiement n'a ete encaisse.
+        // Declaree dans createProviderSchema — sinon zod la retirerait.
+        currency: getCurrencyForCountry(data.countryCode),
         // Déclaré dans createProviderSchema — sinon zod le retirerait en silence.
         acquisitionSource: data.acquisitionChannel
           ? { channel: data.acquisitionChannel, detail: data.acquisitionDetail.trim() || null }
@@ -2218,7 +2226,11 @@ export default function ProRegisterScreen() {
           </Text>
           {data.services.map((svc: WizardService, i: number) => {
             const choicesCount = (svc.variations?.length ?? 0) + (svc.options?.length ?? 0);
-            const price = new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'EUR' }).format(Number(svc.price || 0));
+            // Devise deduite du pays, comme a la creation du compte.
+            const price = new Intl.NumberFormat(i18n.language, {
+              style: 'currency',
+              currency: getCurrencyForCountry(data.countryCode),
+            }).format(Number(svc.price || 0));
             return (
               <Text key={i} variant="bodySmall" color="textSecondary">
                 {svc.name || '—'} • {svc.duration} min • {price}{svc.category ? ` • ${svc.category}` : ''}{choicesCount > 0 ? ` • ${t('auth.pro.step5.choicesCount', { count: choicesCount })}` : ''}

@@ -67,13 +67,14 @@ function formatPeriod(startsAt: string | null, endsAt: string | null): string {
   return 'sans limite';
 }
 
-/** Remise telle qu'elle est partie : « −20 % » ou « −10 € ». Le journal fige
- *  les deux champs, l'un des deux seulement étant renseigné. */
-function formatOff(row: { percent: number; amount: number | null }): string {
+/** Remise telle qu'elle est partie : « −20 % » ou « −10 CHF ». Le journal fige
+ *  les deux champs (l'un des deux seulement étant renseigné) ET la devise :
+ *  sans elle, une remise de dix francs s'affichait « −10 € ». */
+function formatOff(row: { percent: number; amount: number | null; currency?: string | null }): string {
   if (row.amount != null && row.amount > 0) {
     return `−${new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR',
+      currency: row.currency || 'EUR',
       minimumFractionDigits: row.amount % 100 === 0 ? 0 : 2,
     }).format(row.amount / 100)}`;
   }

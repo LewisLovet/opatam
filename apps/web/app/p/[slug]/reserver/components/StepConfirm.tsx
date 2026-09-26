@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Loader2, Info, MapPin, RotateCw } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { GoogleAddressAutocomplete, type GoogleAddressSuggestion } from '@/components/ui';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface ClientInfo {
   name: string;
@@ -97,10 +98,13 @@ export function StepConfirm({
     !requiresClientAddress || (!!clientAddress && travelQuote?.status === 'ok');
   const isValid = isNameValid && isEmailValid && isPhoneValid && isAddressValid;
 
+  // Devise du prestataire, via le contexte de la page. Ces frais sont
+  // annonces a la cliente juste avant qu'elle paie : c'etait « EUR » en dur.
+  const deviseTunnel = useDevise();
   const formatFee = (cents: number) =>
     new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'EUR',
+      currency: deviseTunnel,
       minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
     }).format(cents / 100);
 

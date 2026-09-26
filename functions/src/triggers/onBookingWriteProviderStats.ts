@@ -322,6 +322,9 @@ async function maybeSendLoyaltyMilestone(
     loyalty.rewardType as string,
     loyalty.rewardValue as number,
     locale,
+    // La recompense est un REGLAGE du prestataire (`settings.loyalty`), donc
+    // sa devise a lui — pas celle d'une reservation en particulier.
+    p?.currency as string | undefined,
   );
 
   const remaining = T - pos;

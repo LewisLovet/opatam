@@ -10,6 +10,7 @@ import {
   discountToPayload,
 } from './types';
 import type { ServiceFormData } from './types';
+import { usePrix } from '@/contexts/DeviseContext';
 
 interface SectionPromotionProps {
   data: ServiceFormData;
@@ -26,14 +27,14 @@ const DEFAULT_PROMO = {
   endsAt: null,
 };
 
-function euro(cents: number): string {
-  if (cents === 0) return 'Gratuit';
-  return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
-}
+// `euro()` a disparu : elle écrivait le symbole en dur. Les deux composants
+// ci-dessous prennent le formateur dans le contexte de devise de la page —
+// même comportement (« Gratuit » à zéro), bonne devise.
 
 /** A "12 € → 9,60 €" line. When `onToggle` is given the whole row is a button
  *  that includes/excludes the line from the promo (checkbox + greyed state). */
 function PriceLine({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () => void }) {
+  const euro = usePrix();
   const reduced = row.applies && row.discounted < row.original;
   const inner = (
     <div className="flex items-center justify-between gap-3 text-sm">
@@ -92,6 +93,7 @@ function PriceLine({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () =
  * picks exactly what goes on sale.
  */
 export function SectionPromotion({ data, errors, update }: SectionPromotionProps) {
+  const euro = usePrix();
   const promo = data.discount;
   const enabled = promo !== null;
 

@@ -443,11 +443,11 @@ export default function AdminDashboardPage() {
                     {b.deposit && (
                       <div className="flex-shrink-0 text-right">
                         <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                          {(b.deposit.amount / 100).toLocaleString('fr-FR')} €
+                          {formatPrice(b.deposit.amount, b.currency)}
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
                           {b.deposit.serviceFee > 0
-                            ? `${(b.deposit.serviceFee / 100).toLocaleString('fr-FR')} € de frais`
+                            ? `${formatPrice(b.deposit.serviceFee, b.currency)} de frais`
                             : 'sans frais'}
                           {b.deposit.status === 'refunded' ? ' · remboursé' : ''}
                         </p>
@@ -494,7 +494,7 @@ export default function AdminDashboardPage() {
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {b.serviceName}
-                        {b.price > 0 ? ` · ${(b.price / 100).toLocaleString('fr-FR')} €` : ''}
+                        {b.price > 0 ? ` · ${formatPrice(b.price, b.currency)}` : ''}
                         {/* L'acompte : c'est cette réservation-là qui
                             rapporte des frais de service. */}
                         {b.deposit && (
@@ -508,7 +508,7 @@ export default function AdminDashboardPage() {
                             }
                           >
                             {' · acompte '}
-                            {(b.deposit.amount / 100).toLocaleString('fr-FR')} €
+                            {formatPrice(b.deposit.amount, b.currency)}
                             {b.deposit.status === 'paid'
                               ? ''
                               : b.deposit.status === 'refunded'

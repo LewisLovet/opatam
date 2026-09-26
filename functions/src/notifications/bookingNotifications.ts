@@ -7,6 +7,7 @@ import * as admin from 'firebase-admin';
 import { providerLocale, PUSH_TEXTS, INTL_LOCALE, type ProviderLocale } from '../lib/providerPushI18n';
 import { providerTimeZone } from '../lib/morningAgenda';
 import { sendPushNotifications, type SendNotificationResult } from '../utils/expoPushService';
+import { formatMontantCompact } from '../lib/devise';
 
 // Types for booking data from Firestore
 interface BookingData {
@@ -34,6 +35,8 @@ interface BookingData {
     amount: number;          // cents
     status: 'pending' | 'paid' | 'refunded' | 'failed';
   } | null;
+  /** Devise FIGEE a la creation. Absente = euro (reservations d'avant). */
+  currency?: string | null;
 }
 
 /**
@@ -284,7 +287,7 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   const depositPaid =
     booking.deposit?.status === 'paid' && (booking.deposit.amount ?? 0) > 0;
   const depositEuros = depositPaid
-    ? formatDepositAmount(booking.deposit!.amount)
+    ? formatMontantCompact(booking.deposit!.amount, booking.currency)
     : null;
 
   const title = depositPaid ? ctx.t.nouveauRdvAcompte : ctx.t.nouveauRdv;
@@ -312,15 +315,10 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
   }
 }
 
-/** Format cents → "30 €" / "29,50 €". Kept local rather than imported
- *  from shared because shared's formatPrice returns "Gratuit" for 0,
- *  which would never apply here (we only call it on paid deposits)
- *  but the explicit local version makes the intent clearer. */
-function formatDepositAmount(cents: number): string {
-  const euros = cents / 100;
-  if (euros % 1 === 0) return `${euros} €`;
-  return `${euros.toFixed(2).replace('.', ',')} €`;
-}
+// `formatDepositAmount` a disparu : elle ecrivait « € » en dur, donc une
+// notification annoncait des euros pour un acompte encaisse en francs. Le
+// formateur compact de `lib/devise` fait la meme forme (« 30 € », « 29,50 € »)
+// dans la devise de la RESERVATION.
 
 /**
  * Send notification to client when their booking is confirmed

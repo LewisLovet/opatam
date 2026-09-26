@@ -145,6 +145,10 @@ export function BookingDetailModal({
   onUpdate,
   providerSlug,
 }: BookingDetailModalProps) {
+  // Devise FIGÉE sur la réservation, pas celle du prestataire aujourd'hui :
+  // un rendez-vous garde la devise à laquelle la cliente a consenti, et cet
+  // écran affiche aussi des rendez-vous passés.
+  const prixResa = (cents: number) => formatBookingPrice(cents, booking?.currency);
   const { user, provider } = useAuth();
   const toast = useToast();
 
@@ -556,14 +560,14 @@ export function BookingDetailModal({
                       {item.serviceName}
                     </span>
                     <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {formatDuration(item.duration)} · {formatBookingPrice(item.price)}
+                      {formatDuration(item.duration)} · {prixResa(item.price)}
                     </span>
                   </div>
                   <BookingChoices
                     variations={item.selectedVariations}
                     options={item.selectedOptions}
                     info={item.selectedInfo}
-                    formatPrice={formatBookingPrice}
+                    formatPrice={prixResa}
                   />
                 </div>
               ))}
@@ -577,7 +581,7 @@ export function BookingDetailModal({
                 variations={booking.selectedVariations}
                 options={booking.selectedOptions}
                 info={booking.selectedInfo}
-                formatPrice={formatBookingPrice}
+                formatPrice={prixResa}
               />
             </>
           )}
@@ -664,7 +668,7 @@ export function BookingDetailModal({
                   )}
                 </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Déplacement : {booking.travel.fee === 0 ? 'offert' : formatBookingPrice(booking.travel.fee)}
+                  Déplacement : {booking.travel.fee === 0 ? 'offert' : prixResa(booking.travel.fee)}
                   {' '}· {booking.travel.distanceKm} km
                 </span>
               </div>
@@ -674,10 +678,10 @@ export function BookingDetailModal({
             <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
             <span className="text-gray-700 dark:text-gray-300">Prix</span>
             <span className="ml-auto font-bold text-base text-primary-600 dark:text-primary-400">
-              {formatBookingPrice(booking.price + (booking.travel?.fee ?? 0))}
+              {prixResa(booking.price + (booking.travel?.fee ?? 0))}
               {booking.travel && booking.travel.fee > 0 && (
                 <span className="block text-[11px] font-normal text-gray-500 dark:text-gray-400 text-right">
-                  dont {formatBookingPrice(booking.travel.fee)} de déplacement
+                  dont {prixResa(booking.travel.fee)} de déplacement
                 </span>
               )}
             </span>
@@ -690,7 +694,7 @@ export function BookingDetailModal({
               <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                 {booking.loyalty.rewardType === 'percent'
                   ? `Fidélité −${booking.loyalty.rewardValue} %`
-                  : `Fidélité −${formatBookingPrice(booking.loyalty.amountOff)}`}
+                  : `Fidélité −${prixResa(booking.loyalty.amountOff)}`}
               </span>
             </div>
           )}
@@ -701,7 +705,7 @@ export function BookingDetailModal({
                 <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                 <span className="text-gray-700 dark:text-gray-300">Acompte payé</span>
                 <span className="ml-auto font-medium text-green-600 dark:text-green-400">
-                  {formatBookingPrice(booking.deposit.amount)}
+                  {prixResa(booking.deposit.amount)}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-sm">
@@ -709,7 +713,7 @@ export function BookingDetailModal({
                 <span className="text-gray-700 dark:text-gray-300">Reste à payer</span>
                 <span className="ml-auto font-bold text-base text-gray-900 dark:text-white">
                   {/* Formule unique : prestations + déplacement − acompte */}
-                  {formatBookingPrice(
+                  {prixResa(
                     Math.max(0, booking.price + (booking.travel?.fee ?? 0) - booking.deposit.amount),
                   )}
                 </span>
@@ -735,7 +739,7 @@ export function BookingDetailModal({
                       Acompte remboursé
                     </p>
                     <p className="text-xs text-green-800 dark:text-green-200">
-                      L'acompte de <strong>{formatBookingPrice(booking.deposit!.amount)}</strong> sera automatiquement reversé au client.
+                      L'acompte de <strong>{prixResa(booking.deposit!.amount)}</strong> sera automatiquement reversé au client.
                     </p>
                   </div>
                 </div>
@@ -752,7 +756,7 @@ export function BookingDetailModal({
                       Acompte non remboursé
                     </p>
                     <p className="text-xs text-red-800 dark:text-red-200 mb-1">
-                      Délai de remboursement (<strong>{booking.deposit!.refundDeadlineHours}h</strong> avant le RDV) dépassé. L'acompte de <strong>{formatBookingPrice(booking.deposit!.amount)}</strong> reste acquis.
+                      Délai de remboursement (<strong>{booking.deposit!.refundDeadlineHours}h</strong> avant le RDV) dépassé. L'acompte de <strong>{prixResa(booking.deposit!.amount)}</strong> reste acquis.
                     </p>
                     <p className="text-xs text-red-700 dark:text-red-300">
                       Vous pouvez choisir ci-dessous de rembourser quand même, à titre commercial.
@@ -800,7 +804,7 @@ export function BookingDetailModal({
                   disabled={loading}
                   className="w-full border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                 >
-                  Annuler et rembourser quand même {formatBookingPrice(booking.deposit!.amount)}
+                  Annuler et rembourser quand même {prixResa(booking.deposit!.amount)}
                 </Button>
                 <Button
                   variant="ghost"
@@ -832,7 +836,7 @@ export function BookingDetailModal({
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : refundEligible ? (
-                    `Annuler et rembourser ${formatBookingPrice(booking.deposit!.amount)}`
+                    `Annuler et rembourser ${prixResa(booking.deposit!.amount)}`
                   ) : (
                     'Oui, annuler'
                   )}

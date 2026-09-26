@@ -284,6 +284,9 @@ export async function runPromoEmailForService(
       // Contexte figé : le montant aussi, sinon la vue admin ne saurait pas
       // distinguer une promo en euros d'une promo sans valeur.
       amount: discount!.amount ?? null,
+      // ET sa devise : sans elle, la vue admin afficherait « −10 € » pour une
+      // remise de dix francs. Absente sur les envois d'avant = euro.
+      currency: deviseProv,
       startsAt: discount!.startsAt ?? null,
       endsAt: discount!.endsAt ?? null,
       // 'pending' tant que la boucle d'envoi n'a rien conclu. Cet état
@@ -309,11 +312,14 @@ export async function runPromoEmailForService(
   // Libellé de la remise, mis en forme UNE fois pour l'email et le journal.
   // `Intl` gère l'espace insécable et la virgule décimale selon la langue.
   const isAmount = (discount!.amount ?? 0) > 0;
+  // Devise du PRESTATAIRE : la remise est un reglage a lui, et `currency`
+  // etait ecrit « EUR » en dur — un salon suisse annoncait « −5 € ».
+  const deviseProv = (provider.currency as string | undefined) ?? 'EUR';
   const offLabel = (locale: string) =>
     isAmount
       ? `−${new Intl.NumberFormat(locale, {
           style: 'currency',
-          currency: 'EUR',
+          currency: deviseProv,
           minimumFractionDigits: discount!.amount! % 100 === 0 ? 0 : 2,
           maximumFractionDigits: 2,
         }).format(discount!.amount! / 100)}`

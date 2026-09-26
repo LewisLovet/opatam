@@ -37,7 +37,13 @@ export default function AdminStripePage() {
     let acomptes = 0;
     let rembourse = 0;
     let rembourseAcompte = 0;
+    const devise = data.settlementCurrency ?? 'EUR';
     for (const t of data.transactions) {
+      // Une ligne dans une AUTRE devise ne rejoint aucun total : additionner
+      // des francs a des euros donnerait un chiffre qui n'existe pas. Elle
+      // reste visible dans la liste des transactions, avec sa devise, et le
+      // bandeau plus bas dit combien ont ete ecartees.
+      if ((t.currency ?? 'EUR') !== devise) continue;
       if (t.category === 'revenu') revenu += t.amount;
       else if (t.category === 'acompte') acomptes += t.amount;
       else if (t.category === 'remboursement') {
@@ -173,6 +179,28 @@ export default function AdminStripePage() {
           reversés aux salons. Cet argent traverse le compte sans jamais vous appartenir — c&apos;est lui qui rendait
           le relevé Stripe illisible. Leur coût de traitement, lui, reste à votre charge : voir plus bas.
         </p>
+        {/* Lignes dans une autre devise. Elles ne rejoignent AUCUN total : on
+            n'additionne pas des francs à des euros, et aucun taux n'est
+            stocké. Mais elles ne doivent pas disparaître non plus. */}
+        {Object.keys(data.excludedByCurrency ?? {}).length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
+            <p className="text-xs font-semibold text-gray-900 dark:text-white">
+              Hors des totaux : transactions dans une autre devise
+            </p>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+              Ce bilan est en {data.settlementCurrency ?? 'EUR'}, la devise de règlement du compte.
+              Les lignes ci-dessous sont comptées à part — les additionner donnerait un montant
+              qui n&apos;existe pas, et aucun taux de change n&apos;est enregistré.
+            </p>
+            <ul className="mt-2 space-y-0.5">
+              {Object.entries(data.excludedByCurrency ?? {}).map(([devise, e]) => (
+                <li key={devise} className="text-xs tabular-nums text-gray-700 dark:text-gray-200">
+                  <strong>{eur(e.total, devise)}</strong> sur {e.lignes} ligne{e.lignes > 1 ? 's' : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       {/* ── Recettes, dépenses, solde ─────────────────────────────────── */}
@@ -229,7 +257,7 @@ export default function AdminStripePage() {
                   <p className={`text-[11px] text-center tabular-nums font-medium truncate ${
                     s.solde >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'
                   }`}>
-                    {(s.solde / 100).toFixed(0)} €
+                    {eur(s.solde, data.settlementCurrency)}
                   </p>
                 </div>
               );

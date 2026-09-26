@@ -2,6 +2,8 @@
 
 import { Input } from '@/components/ui';
 import type { ServiceFormData } from './types';
+import { usePrix, useDevise } from '@/contexts/DeviseContext';
+import { getCurrency } from '@booking-app/shared';
 
 // Per-service deposit configuration with 3 explicit radio choices:
 //   1. "Acompte par défaut"     → null (inherit provider default)
@@ -37,6 +39,10 @@ export function DepositSection({
   onChange,
   error,
 }: DepositSectionProps) {
+  // Devise du prestataire, via le contexte de la page. Le hook doit être appelé
+  // AVANT le retour anticipé ci-dessous : l'ordre des hooks ne se négocie pas.
+  const prix = usePrix();
+  const symboleDevise = getCurrency(useDevise()).symbol;
   const mode = depositMode(deposit);
 
   // Add-on not active → locked card with link to /pro/parametres
@@ -62,7 +68,8 @@ export function DepositSection({
     );
   }
 
-  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',') + ' €';
+  // Devise du prestataire, via le contexte de la page.
+  const fmt = prix;
   const defaultAmount = defaultDeposit
     ? Math.round((servicePrice * defaultDeposit.percent) / 100)
     : 0;
@@ -179,7 +186,7 @@ export function DepositSection({
                 decimal={deposit.type === 'fixed'}
                 min={1}
                 max={deposit.type === 'percent' ? 100 : servicePrice / 100}
-                suffix={deposit.type === 'percent' ? '%' : '€'}
+                suffix={deposit.type === 'percent' ? '%' : symboleDevise}
                 error={error}
               />
             </div>

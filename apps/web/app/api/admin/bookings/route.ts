@@ -68,6 +68,8 @@ export async function GET(request: NextRequest) {
         datetime: data.datetime?.toDate?.()?.toISOString() || null,
         status: data.status,
         price: data.price || 0,
+        // Devise FIGEE sur la reservation : l'admin ne doit pas l'inventer.
+        currency: data.currency ?? null,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
       };
     });

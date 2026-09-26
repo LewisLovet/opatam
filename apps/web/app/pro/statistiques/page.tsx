@@ -59,6 +59,8 @@ import { TopClientsPanel } from './components/TopClientsPanel';
 import { HeatmapPanel } from './components/HeatmapPanel';
 import { QualityIndicators } from './components/QualityIndicators';
 import { OtherRevenuePanel } from './components/OtherRevenuePanel';
+import { useDevise } from '@/contexts/DeviseContext';
+import { getCurrency } from '@booking-app/shared';
 
 interface State {
   loading: boolean;
@@ -82,6 +84,8 @@ interface State {
 }
 
 export default function StatistiquesPage() {
+  // Symbole de la devise du prestataire, pour les axes des graphes.
+  const symboleDevise = getCurrency(useDevise()).symbol;
   const { user, provider } = useAuth();
   const [state, setState] = useState<State>({
     loading: true,
@@ -384,7 +388,9 @@ export default function StatistiquesPage() {
             valueKey="revenue"
             chartType={view.chartType}
             yAxisFormatter={(v) =>
-              v >= 100_000 ? `${Math.round(v / 100_000)} k€` : `${(v / 100).toFixed(0)} €`
+              v >= 100_000
+                ? `${Math.round(v / 100_000)} k${symboleDevise}`
+                : `${(v / 100).toFixed(0)} ${symboleDevise}`
             }
             tooltipFormatter={(v) => [formatPrice(v), 'CA']}
           />

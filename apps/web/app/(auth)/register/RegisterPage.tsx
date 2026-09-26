@@ -286,6 +286,8 @@ export default function RegisterPage() {
       city: data.city,
       address: data.address,
       cityOnly: data.cityOnly,
+      // L'apercu doit refleter la devise choisie deux champs plus haut.
+      currency: data.currency,
       services: data.services.map((s) => {
         // Reflect variations in the preview: when a prestation has variations
         // the price/duration is defined by them ("à partir de …"); otherwise
@@ -1595,10 +1597,12 @@ export default function RegisterPage() {
 
   // Step 5 - Preview
   const renderStep5 = () => {
+    // Devise choisie a l'etape 1, pas « EUR » en dur : cet ecran est le
+    // recapitulatif juste avant la creation du compte.
     const fmtEur = (euros: number) =>
       euros.toLocaleString('fr-FR', {
         style: 'currency',
-        currency: 'EUR',
+        currency: data.currency || 'EUR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });

@@ -22,6 +22,7 @@ import {
   emptyServiceSelections,
   serviceHasChoices,
   formatPrice,
+  DEFAULT_CURRENCY,
   formatDuration,
   type ServiceSelections,
   type ServiceVariation,
@@ -178,10 +179,18 @@ interface BookingState {
 }
 
 /** Human-readable labels of the chosen variations/options for a service. */
-function fmtChoiceEuro(cents: number, locale: string): string {
+/**
+ * Montant d'un choix (variation, option, supplement).
+ *
+ * La devise est passee en argument : cette fonction est au niveau du module et
+ * ne peut pas lire le contexte. Elle s'appelait `fmtChoiceEuro` et forcait
+ * « EUR », donc les suppléments d'un salon suisse s'affichaient en euros au
+ * milieu de prix en francs.
+ */
+function fmtChoiceMontant(cents: number, locale: string, devise: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'EUR',
+    currency: devise,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(cents / 100);
@@ -191,6 +200,8 @@ function buildChoiceLabels(
   rawService: Service | undefined,
   selections: ServiceSelections,
   locale: string,
+  /** Devise du prestataire. Absente = euro. */
+  devise: string,
 ): string[] {
   if (!rawService) return [];
   // Libellés dans la langue du visiteur (ids, prix et durées inchangés).
@@ -205,7 +216,11 @@ function buildChoiceLabels(
   for (const o of service.options ?? []) {
     const selOpt = selections.options[o.id];
     if (!selOpt) continue;
-    labels.push(o.price > 0 ? `+ ${o.name} (+${fmtChoiceEuro(o.price, locale)})` : `+ ${o.name}`);
+    labels.push(
+      o.price > 0
+        ? `+ ${o.name} (+${fmtChoiceMontant(o.price, locale, devise)})`
+        : `+ ${o.name}`,
+    );
     for (const nv of o.nestedVariations ?? []) {
       const chosen = nv.options.find((x) => x.id === selOpt.nestedVariations[nv.id]);
       if (chosen) labels.push(`${nv.name} : ${chosen.name}`);
@@ -438,7 +453,12 @@ export function BookingFlow({
     const multi = cartLines.length > 1;
     const labels: string[] = [];
     for (const line of cartLines) {
-      const itemLabels = buildChoiceLabels(line.service, line.item.selections, locale);
+      const itemLabels = buildChoiceLabels(
+        line.service,
+        line.item.selections,
+        locale,
+        provider.currency ?? DEFAULT_CURRENCY,
+      );
       if (multi) {
         // Always surface the service name (with its choices appended).
         // Le nom AFFICHÉ suit la langue du visiteur ; celui envoyé au serveur
@@ -1011,7 +1031,12 @@ export function BookingFlow({
                   ) : (
                     <div className="space-y-2">
                       {cartLines.map((line, idx) => {
-                        const itemLabels = buildChoiceLabels(line.service, line.item.selections, locale);
+                        const itemLabels = buildChoiceLabels(
+                          line.service,
+                          line.item.selections,
+                          locale,
+                          provider.currency ?? DEFAULT_CURRENCY,
+                        );
                         return (
                           <div
                             key={idx}

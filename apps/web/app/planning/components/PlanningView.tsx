@@ -26,12 +26,15 @@ import {
 import { QRCodeCanvas } from 'qrcode.react';
 import { NewBookingDrawer } from './NewBookingDrawer';
 import { downloadCanvasAsPng } from '@/lib/downloadCanvas';
+import { formatPriceCompact } from '@booking-app/shared';
 
 interface BookingItem {
   id: string;
   serviceName: string;
   duration: number;
   price: number;
+  /** Devise FIGEE sur la reservation. Absente = euro (resas d'avant). */
+  currency?: string | null;
   clientInfo: {
     name: string;
     email: string;
@@ -557,7 +560,8 @@ function BookingCard({ booking }: { booking: BookingItem }) {
 
   const timeStr = datetime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   const endTimeStr = endDatetime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  const priceStr = (booking.price / 100).toFixed(0) + ' €';
+  // Devise FIGEE sur la reservation : le planning montre aussi du passe.
+  const priceStr = formatPriceCompact(booking.price, booking.currency);
 
   return (
     <div className={`

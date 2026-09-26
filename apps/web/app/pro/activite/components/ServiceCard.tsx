@@ -78,6 +78,9 @@ function formatDuration(minutes: number): string {
 function depositBadgeProps(
   service: WithId<Service>,
   defaultDeposit: { percent: number; refundDeadlineHours: number } | null,
+  // Formateur passé et non `usePrix()` appelé ici : cette fonction est au
+  // niveau du module, elle ne peut pas lire de contexte React.
+  prix: (cents: number) => string,
 ): { label: string; variant: 'default' | 'primary' | 'warning' } | null {
   if (service.deposit?.type === 'none') {
     return { label: "Pas d'acompte", variant: 'default' };
@@ -89,7 +92,7 @@ function depositBadgeProps(
   if (!resolved) return null;
   // 0 € resolves on free services — no useful info, hide.
   if (resolved.amount === 0) return null;
-  const amount = (resolved.amount / 100).toFixed(2).replace('.', ',') + ' €';
+  const amount = prix(resolved.amount);
   const suffix = resolved.source === 'service' ? 'perso' : 'défaut';
   return {
     label: `Acompte ${amount} · ${suffix}`,
@@ -136,7 +139,7 @@ export function ServiceCard({
   const [toggling, setToggling] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
 
-  const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit) : null;
+  const depositBadge = depositsEnabled ? depositBadgeProps(service, defaultDeposit, formatPrice) : null;
 
   // Effective promo surfaced on the card so the pro sees at a glance which
   // prestations are discounted — the service's own promo wins, otherwise the

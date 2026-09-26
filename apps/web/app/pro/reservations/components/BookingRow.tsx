@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreVertical, Check, X, UserX, CheckCircle, Mail, Phone, Clock, Euro } from 'lucide-react';
+import { MoreVertical, Check, X, UserX, CheckCircle, Mail, Phone, Clock, Tag } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { Booking, Member } from '@booking-app/shared';
 import { statusConfig, formatBookingDate, formatBookingTime, formatBookingPrice, formatDuration } from '@/lib/booking-utils';
@@ -109,9 +109,13 @@ export function BookingRow({
               <Clock className="w-3 h-3" />
               {formatDuration(booking.duration)}
             </span>
+            {/* Plus d'icône Euro ni de `.replace('€', '')` : le montant
+                porte sa propre devise, et retirer le symbole d'une valeur
+                formatée ne coupait de toute façon rien en francs — « CHF »
+                s'affichait à côté d'un symbole euro. */}
             <span className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-              <Euro className="w-3 h-3" />
-              {formatBookingPrice(booking.price).replace('€', '').trim()}
+              <Tag className="w-3 h-3" />
+              {formatBookingPrice(booking.price, booking.currency)}
             </span>
           </div>
         </div>

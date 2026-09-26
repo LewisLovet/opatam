@@ -777,7 +777,13 @@ async function computeLoyaltyEmailContext(
   return {
     count,
     threshold: loyalty.threshold as number,
-    rewardLabel: loyaltyRewardLabel(loyalty.rewardType as string, loyalty.rewardValue as number, locale),
+    rewardLabel: loyaltyRewardLabel(
+      loyalty.rewardType as string,
+      loyalty.rewardValue as number,
+      locale,
+      // La recompense est un REGLAGE du prestataire, donc sa devise a lui.
+      p?.currency as string | undefined,
+    ),
     appliedAmountOff: booking.loyalty?.amountOff ?? 0,
   };
 }
