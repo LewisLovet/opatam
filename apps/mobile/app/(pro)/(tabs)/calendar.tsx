@@ -27,7 +27,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot, Service } from '@booking-app/shared';
-import { ACTIVITY_CATEGORY_META } from '@booking-app/shared';
+import { ACTIVITY_CATEGORY_META, formatPriceCompact } from '@booking-app/shared';
+import { devisePro } from '../../../lib/devise';
 import type { WithId } from '@booking-app/firebase';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
@@ -128,14 +129,15 @@ function formatTime(date: Date): string {
 }
 
 /**
- * Cents → "120 €" / "89,50 €" — compact form for the small amount
- * badge on activity cards. Drops the cents when the amount is a
- * round euro so "12000" cents = "120 €" not "120,00 €".
+ * Forme compacte pour la pastille de montant d'une activite : « 120 € »
+ * plutot que « 120,00 € ». Le formateur vit dans `shared` — il etait recopie
+ * ici ET dans le composant de journee, les deux fois avec l'euro en dur.
+ *
+ * `devisePro()` par defaut, evalue A L'APPEL : cet ecran est cote pro, et le
+ * module porte la devise du prestataire connecte.
  */
-function formatActivityAmount(cents: number): string {
-  const euros = cents / 100;
-  if (euros % 1 === 0) return `${euros} €`;
-  return `${euros.toFixed(2).replace('.', ',')} €`;
+function formatActivityAmount(cents: number, devise = devisePro()): string {
+  return formatPriceCompact(cents, devise);
 }
 
 /**
@@ -2490,6 +2492,7 @@ export default function CalendarScreen() {
           >
             {dayBookings.length > 0 || dayBlockedSlots.length > 0 ? (
               <DaySchedule
+                currency={devisePro()}
                 date={selectedDate}
                 bookings={dayBookings}
                 blockedSlots={dayBlockedSlots}

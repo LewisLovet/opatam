@@ -97,6 +97,8 @@ import {
   ACTIVITY_CATEGORY_META,
   ACTIVITY_CATEGORY_ORDER,
 } from '../../components/business/Activity/categoryMeta';
+import { getCurrency } from '@booking-app/shared';
+import { devisePro } from '../../lib/devise';
 
 interface CategoryDef {
   key: ActivityCategory;
@@ -991,7 +993,7 @@ export default function CreateActivityScreen() {
             keyboardType="decimal-pad"
             maxLength={10}
             leftIcon={<Ionicons name="cash-outline" size={18} color={teinte} />}
-            rightIcon={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.textSecondary }}>€</Text>}
+            rightIcon={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.textSecondary }}>{getCurrency(devisePro()).symbol}</Text>}
           />
           <Text style={[s.aide, { color: colors.textMuted }]}>{t('proActivity.amountHelper')}</Text>
         </View>

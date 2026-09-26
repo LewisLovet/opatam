@@ -68,6 +68,7 @@ import {
   type ServiceDiscountPreview,
   parseRefundDeadlineHours,
   DEFAULT_CURRENCY,
+  getCurrency,
 } from '@booking-app/shared';
 import {
   VariationsEditor,
@@ -425,6 +426,8 @@ function DepositBadge({
 // ---------------------------------------------------------------------------
 
 export default function ServicesScreen() {
+  // Symbole de la devise du prestataire connecte, pour les suffixes de champ.
+  const symboleDevise = getCurrency(devisePro()).symbol;
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -2328,7 +2331,7 @@ export default function ServicesScreen() {
                           keyboardType="decimal-pad"
                           rightIcon={
                             <Text variant="caption" color="textMuted">
-                              €
+                              {symboleDevise}
                             </Text>
                           }
                         />
@@ -3255,7 +3258,7 @@ export default function ServicesScreen() {
                     keyboardType="decimal-pad"
                     rightIcon={
                       <Text variant="caption" color="textMuted">
-                        €
+                        {symboleDevise}
                       </Text>
                     }
                   />
@@ -3426,7 +3429,7 @@ export default function ServicesScreen() {
                         }}
                       >
                         <Text variant="bodySmall" style={{ fontWeight: '700', color: selected ? colors.primary : colors.textSecondary }}>
-                          {type === 'percent' ? '%' : '€'}
+                          {type === 'percent' ? '%' : symboleDevise}
                         </Text>
                       </Pressable>
                     );

@@ -8,20 +8,13 @@ import { closedBands } from '../../../lib/workingRanges';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { formatPriceCompact } from '@booking-app/shared';
 import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
 
-/**
- * Cents → "120 €" / "89,50 €" — kept local rather than imported
- * from @booking-app/shared because formatPrice there returns
- * "Gratuit" for 0, which we treat as "no amount" upstream.
- */
-function formatActivityAmount(cents: number): string {
-  const euros = cents / 100;
-  if (euros % 1 === 0) return `${euros} €`;
-  return `${euros.toFixed(2).replace('.', ',')} €`;
-}
+// Le formateur compact vit desormais dans `shared` : il etait recopie ici ET
+// dans l'agenda pro, les deux fois avec un « € » ecrit en dur.
 
 export interface DayScheduleBooking {
   id: string;
@@ -86,6 +79,8 @@ export interface DayScheduleProps {
    *  `workingHours`, qui ne définit que l'amplitude VISIBLE de la grille.
    *  `undefined` = horaires inconnus, rien n'est voilé. */
   workingRanges?: { start: number; end: number }[];
+  /** Devise du prestataire, pour les pastilles de montant. Absente = euro. */
+  currency?: string | null;
   /** Callback when a booking is pressed */
   onBookingPress?: (id: string) => void;
 }
@@ -227,6 +222,7 @@ export function DaySchedule({
   workingRanges,
   onBookingPress,
   onBlockedSlotPress,
+  currency,
 }: DayScheduleProps) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
@@ -595,7 +591,7 @@ export function DaySchedule({
                       }}
                       numberOfLines={1}
                     >
-                      {formatActivityAmount(slot.amount)}
+                      {formatPriceCompact(slot.amount, currency)}
                     </Text>
                   </View>
                 )}

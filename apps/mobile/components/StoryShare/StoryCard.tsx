@@ -43,6 +43,8 @@ try {
 import { Ionicons } from '@expo/vector-icons';
 import { APP_CONFIG, getCategoryLabel } from '@booking-app/shared/constants';
 import { RealisationStoryLayout, type StoryRealisation } from './RealisationStoryLayout';
+import { formatPriceCompact } from '@booking-app/shared';
+import { devisePro } from '../../lib/devise';
 
 /**
  * Pied de story : l'adresse COMPLÈTE de la page du prestataire, sans le
@@ -2452,7 +2454,7 @@ export function StoryCard({
                       topServices.length > 3 && { fontSize: 14 },
                     ]}
                   >
-                    {service.price === 0 ? i18n.t('common.free') : `${(service.price / 100).toFixed(0)}€`}
+                    {service.price === 0 ? i18n.t('common.free') : formatPriceCompact(service.price, devisePro(), i18n.language)}
                   </Text>
                 </View>
               ))}

@@ -61,7 +61,8 @@ import {
 } from '@booking-app/shared';
 import { hasSeenStoryConsent, setStoryConsentSeen } from '../../utils/storage';
 import type { Booking, Service, Member } from '@booking-app/shared';
-import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt } from '@booking-app/shared';
+import { APP_CONFIG, publicReviewAuthor, storyReviewExcerpt, formatPriceCompact } from '@booking-app/shared';
+import { devisePro } from '../../lib/devise';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
@@ -996,10 +997,7 @@ export function StoryShareModal({
     if (!l?.enabled || !l.threshold || !l.rewardValue) return null;
     const reward =
       l.rewardType === 'amount'
-        ? `−${(l.rewardValue / 100).toLocaleString(i18n.language, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          })} €`
+        ? `−${formatPriceCompact(l.rewardValue, devisePro(), i18n.language)}`
         : `−${l.rewardValue} %`;
     const exclus = (l.excludedServiceIds ?? [])
       .map((id) => services.find((sv) => sv.id === id)?.name)
@@ -2124,7 +2122,7 @@ export function StoryShareModal({
                         {service.name}
                       </Text>
                       <Text style={[styles.serviceCheckPrice, { color: colors.textSecondary }]}>
-                        {service.price === 0 ? t('common.free') : `${(service.price / 100).toFixed(0)}€`}
+                        {service.price === 0 ? t('common.free') : formatPriceCompact(service.price, devisePro(), i18n.language)}
                       </Text>
                     </Pressable>
                   );

@@ -87,7 +87,8 @@ import {
   hasLoyaltyAccess,
   isServiceLoyaltyEligible,
   applyLoyaltyToLine,
-  getServiceMinDuration, isTeamTier, getServiceCategoryText } from '@booking-app/shared';
+  getServiceMinDuration, isTeamTier, getServiceCategoryText,
+  formatPrice } from '@booking-app/shared';
 import { type WithId } from '@booking-app/firebase';
 import { API_URL } from '../../../lib/config';
 import { getProviderText, getServiceText } from '@booking-app/shared';
@@ -212,6 +213,8 @@ function ProviderDetailScreen({
   const { provider, loading: loadingProvider, error: providerError, refresh: refreshProvider } = providerState;
   // Shop-wide promo applied to services without their own discount.
   const globalDiscount = provider?.settings?.globalDiscount ?? null;
+  // Devise du prestataire CONSULTE, pas celle du prestataire connecte.
+  const prix = (c: number) => formatPrice(c, provider?.currency);
 
   // Fetch related data (only when provider is loaded)
   const { services, loading: loadingServices, refresh: refreshServices } = useServices(provider?.id);
@@ -999,6 +1002,7 @@ function ProviderDetailScreen({
                 <View style={{ gap: spacing.lg }}>
                   {serviceGroups.map((group, index) => (
                     <ServiceCategory
+                      currency={provider?.currency}
                       key={group.id}
                       title={group.title}
                       services={group.services.map((s) => {
@@ -1175,11 +1179,11 @@ function ProviderDetailScreen({
                       )}
                       {reduced && (
                         <Text variant="body" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                          {(crossed / 100).toFixed(2)} €
+                          {prix(crossed)}
                         </Text>
                       )}
                       <Text variant="h3" style={{ color: reduced ? '#E11D48' : colors.primary }}>
-                        {(shown / 100).toFixed(2)} €
+                        {prix(shown)}
                       </Text>
                     </View>
                   );

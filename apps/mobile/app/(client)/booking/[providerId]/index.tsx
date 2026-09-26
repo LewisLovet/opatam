@@ -22,6 +22,7 @@ import { useTheme } from '../../../../theme';
 import { Text, Card, EmptyState, ServiceCategory, useToast } from '../../../../components';
 import { isServiceLoyaltyEligible,
   getCommonAvailableDays,
+  formatPrice,
 } from '@booking-app/shared';
 import { useLoyaltyPreview } from '../../../../hooks/useLoyaltyPreview';
 import { useBooking } from '../../../../contexts';
@@ -65,6 +66,9 @@ export default function MemberSelectionScreen() {
   const { categories } = useServiceCategories(providerId);
   const { members, loading: loadingMembers, error: membersError } = useMembers(providerId);
   const { locations } = useLocations(providerId);
+  // Devise du prestataire CONSULTE, pas celle du prestataire connecte : cet
+  // ecran est cote cliente, `devisePro()` y donnerait une devise etrangere.
+  const prix = (c: number) => formatPrice(c, provider?.currency);
 
   // Service awaiting its variation/option choices (picker overlay).
   const [pendingChoiceService, setPendingChoiceService] = useState<WithId<Service> | null>(null);
@@ -310,15 +314,15 @@ export default function MemberSelectionScreen() {
                               variant="caption"
                               style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
                             >
-                              {(lineOriginal / 100).toFixed(2)} €
+                              {prix(lineOriginal)}
                             </Text>
                             <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
                               {'  '}
-                              {(linePrice / 100).toFixed(2)} €
+                              {prix(linePrice)}
                             </Text>
                           </Text>
                         ) : (
-                          `${(eff.price / 100).toFixed(2)} €`
+                          prix(eff.price)
                         )}
                       </Text>
                     </View>
@@ -371,14 +375,14 @@ export default function MemberSelectionScreen() {
                     variant="bodySmall"
                     style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
                   >
-                    {(cartTotalOriginal / 100).toFixed(2)} €
+                    {prix(cartTotalOriginal)}
                   </Text>
                 )}
                 <Text
                   variant="body"
                   style={{ fontWeight: '700', color: cartHasPromo ? '#E11D48' : colors.primary }}
                 >
-                  {(cartTotalPriceFinal / 100).toFixed(2)} €
+                  {prix(cartTotalPriceFinal)}
                 </Text>
               </View>
             </View>
@@ -507,6 +511,7 @@ export default function MemberSelectionScreen() {
               }
               return groups.map((g) => (
                 <ServiceCategory
+                  currency={provider?.currency}
                   key={g.id}
                   title={g.title}
                   services={g.items.map((s) => {

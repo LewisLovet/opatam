@@ -32,6 +32,7 @@ import i18n from '../../lib/i18n';
 import { deltaPercent, type Period,
   DEFAULT_CURRENCY,
   formatPrice as formatPrice0,
+  getCurrency,
 } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
@@ -184,6 +185,8 @@ function KpiCard({
 // ---------------------------------------------------------------------------
 
 export default function StatsScreen() {
+  // Symbole de la devise du prestataire connecte, pour les axes des graphes.
+  const symboleDevise = getCurrency(devisePro()).symbol;
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
@@ -315,10 +318,12 @@ export default function StatsScreen() {
                 title={t('proStats.revenueChartTitle')}
                 valueKey="revenue"
                 chartType={stats.chartType}
+                // Symbole de la devise du prestataire, pas l'euro : un
+                // salon suisse lisait « 12k€ » sur son propre chiffre.
                 formatYAxis={(v) =>
                   v >= 100_000
-                    ? `${Math.round(v / 100_000)}k€`
-                    : `${(v / 100).toFixed(0)}€`
+                    ? `${Math.round(v / 100_000)}k${symboleDevise}`
+                    : `${(v / 100).toFixed(0)}${symboleDevise}`
                 }
                 // Precise value when the user taps a bar / point —
                 // avoids the abbreviated "1k€" you get on the

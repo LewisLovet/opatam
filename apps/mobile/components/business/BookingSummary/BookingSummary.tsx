@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Avatar } from '../../Avatar';
+import { formatPrice } from '@booking-app/shared';
 
 export interface BookingSummaryProps {
   /** Service name */
@@ -23,6 +24,14 @@ export interface BookingSummaryProps {
   providerPhotoURL?: string | null;
   /** Member name (optional) */
   memberName?: string | null;
+  /**
+   * Devise du prestataire consulte. Absente = euro, pour la compatibilite.
+   *
+   * Passee en propriete et non lue dans un module : ce composant sert le
+   * tunnel CLIENT, ou la devise est celle du prestataire qu'on reserve, pas
+   * celle du prestataire connecte.
+   */
+  currency?: string | null;
 }
 
 export function BookingSummary({
@@ -32,11 +41,11 @@ export function BookingSummary({
   providerName,
   providerPhotoURL,
   memberName,
+  currency,
 }: BookingSummaryProps) {
   const { colors, spacing, radius } = useTheme();
 
-  // Format price from cents to euros
-  const formattedPrice = (price / 100).toFixed(2).replace('.', ',');
+  const formattedPrice = formatPrice(price, currency);
 
   // Format duration
   const formattedDuration = duration >= 60
@@ -72,7 +81,7 @@ export function BookingSummary({
         </View>
         <View style={styles.priceContainer}>
           <Text variant="h3" style={styles.price}>
-            {formattedPrice} €
+            {formattedPrice}
           </Text>
         </View>
       </View>

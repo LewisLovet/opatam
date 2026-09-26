@@ -210,7 +210,10 @@ export default function ConfirmBookingScreen() {
     // annoncait 0,49 et le serveur facturait le bareme de la devise.
     return { amount: combined.amount, fee: clientServiceFee(combined.amount, provider.currency) };
   })();
-  const eurosExact = (c: number) => `${(c / 100).toFixed(2)} €`;
+  // Devise du prestataire CONSULTE. Surtout pas `devisePro()` : cet ecran est
+  // cote cliente, et le module porte la devise du prestataire CONNECTE.
+  const deviseProv = provider?.currency;
+  const prix = (c: number) => formatPrice(c, deviseProv);
 
   // Get locations to display location info
   const { locations } = useLocations(providerId);
@@ -660,7 +663,7 @@ export default function ConfirmBookingScreen() {
             <View style={[styles.priceRow, { marginBottom: spacing.xs }]}>
               <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.travel.feeLine')}</Text>
               <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                {travelQuote.fee === 0 ? t('bookingFlow.travel.freeShort') : `${(travelQuote.fee / 100).toFixed(2)} €`}
+                {travelQuote.fee === 0 ? t('bookingFlow.travel.freeShort') : prix(travelQuote.fee)}
               </Text>
             </View>
           )}
@@ -672,13 +675,13 @@ export default function ConfirmBookingScreen() {
                   variant="bodySmall"
                   style={{ textDecorationLine: 'line-through', color: colors.textMuted }}
                 >
-                  {(cartOriginal / 100).toFixed(2)} €
+                  {prix(cartOriginal)}
                 </Text>
               )}
               <Text variant="h2" style={{ color: cartHasPromo ? '#E11D48' : colors.primary }}>
                 {cartPrice + travelFee === 0
                   ? t('common.free')
-                  : `${((cartPrice + travelFee) / 100).toFixed(2)} €`}
+                  : prix((cartPrice + travelFee))}
               </Text>
             </View>
           </View>
@@ -705,24 +708,24 @@ export default function ConfirmBookingScreen() {
             >
               <View style={styles.priceRow}>
                 <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.depositNow')}</Text>
-                <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.amount)}</Text>
+                <Text variant="bodySmall" style={{ fontWeight: '600' }}>{prix(depositPreview.amount)}</Text>
               </View>
               {depositPreview.fee > 0 && (
                 <View style={styles.priceRow}>
                   <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.platformFee')}</Text>
-                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{eurosExact(depositPreview.fee)}</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '600' }}>{prix(depositPreview.fee)}</Text>
                 </View>
               )}
               <View style={styles.priceRow}>
                 <Text variant="body" style={{ fontWeight: '700' }}>{t('bookingFlow.confirm.payToday')}</Text>
                 <Text variant="body" style={{ fontWeight: '700', color: colors.primary }}>
-                  {eurosExact(depositPreview.amount + depositPreview.fee)}
+                  {prix(depositPreview.amount + depositPreview.fee)}
                 </Text>
               </View>
               <View style={styles.priceRow}>
                 <Text variant="bodySmall" color="textSecondary">{t('bookingFlow.confirm.restOnSite')}</Text>
                 <Text variant="bodySmall" style={{ fontWeight: '600' }}>
-                  {eurosExact(Math.max(0, cartPrice + travelFee - depositPreview.amount))}
+                  {prix(Math.max(0, cartPrice + travelFee - depositPreview.amount))}
                 </Text>
               </View>
             </View>
@@ -757,14 +760,14 @@ export default function ConfirmBookingScreen() {
                           {ePromo ? (
                             <Text variant="caption">
                               <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                                {(e.original / 100).toFixed(2)} €
+                                {prix(e.original)}
                               </Text>
                               <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
-                                {'  '}{(e.price / 100).toFixed(2)} €
+                                {'  '}{prix(e.price)}
                               </Text>
                             </Text>
                           ) : (
-                            `${(e.price / 100).toFixed(2)} €`
+                            prix(e.price)
                           )}
                         </Text>
                       </View>
@@ -779,14 +782,14 @@ export default function ConfirmBookingScreen() {
                     {cartHasPromo ? (
                       <Text variant="caption">
                         <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                          {(cartOriginal / 100).toFixed(2)} €
+                          {prix(cartOriginal)}
                         </Text>
                         <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600' }}>
-                          {'  '}{(cartPrice / 100).toFixed(2)} €
+                          {'  '}{prix(cartPrice)}
                         </Text>
                       </Text>
                     ) : (
-                      `${(cartPrice / 100).toFixed(2)} €`
+                      prix(cartPrice)
                     )}
                   </Text>
                 </>

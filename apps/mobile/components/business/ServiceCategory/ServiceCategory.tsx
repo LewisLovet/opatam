@@ -55,6 +55,8 @@ export interface ServiceCategoryProps {
   collapsible?: boolean;
   /** Default expanded state */
   defaultExpanded?: boolean;
+  /** Devise du prestataire consulte, transmise a chaque carte. Absente = euro. */
+  currency?: string | null;
 }
 
 export function ServiceCategory({
@@ -64,6 +66,7 @@ export function ServiceCategory({
   onSelectService,
   collapsible = false,
   defaultExpanded = true,
+  currency,
 }: ServiceCategoryProps) {
   const { colors, spacing, radius } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -230,6 +233,7 @@ export function ServiceCategory({
         <View style={[styles.servicesList, { gap: spacing.sm }]}>
           {services.map((service) => (
             <ServiceCard
+              currency={currency}
               key={service.id}
               name={service.name}
               description={service.description}

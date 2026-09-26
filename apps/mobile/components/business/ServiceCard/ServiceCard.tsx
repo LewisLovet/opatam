@@ -9,6 +9,7 @@ import { View, StyleSheet, Pressable, Image, Modal, Dimensions } from 'react-nat
 import type { NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { formatPrice } from '@booking-app/shared';
 import { formatDiscountBadge } from '@booking-app/shared';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
@@ -51,6 +52,14 @@ export interface ServiceCardProps {
   selected?: boolean;
   /** Press handler */
   onPress?: () => void;
+  /**
+   * Devise du prestataire consulte. Absente = euro.
+   *
+   * Passee en propriete : cette carte sert le tunnel CLIENT, ou la devise est
+   * celle du prestataire qu'on reserve — pas celle du prestataire connecte,
+   * que porte le module `lib/devise`.
+   */
+  currency?: string | null;
 }
 
 const PROMO_COLOR = '#E11D48';
@@ -87,17 +96,20 @@ export function ServiceCard({
   priceFrom = false,
   selected = false,
   onPress,
+  currency,
 }: ServiceCardProps) {
   const { colors, spacing, radius, shadows } = useTheme();
   const { t } = useTranslation();
 
-  const formatPrice = (euros: number, eurosMax?: number | null): string => {
-    if (euros === 0 && !eurosMax) return t('common.free');
-    const fmt = (v: number) => (v % 1 === 0 ? `${v} €` : `${v.toFixed(2)} €`);
-    if (eurosMax && eurosMax > euros) {
-      return t('components.serviceCard.priceRange', { min: fmt(euros), max: fmt(eurosMax) });
+  // Les prix arrivent ici en UNITES (euros), pas en centimes : d'ou la
+  // multiplication avant `formatPrice`, qui attend des unites mineures.
+  const formatPrix = (unites: number, unitesMax?: number | null): string => {
+    if (unites === 0 && !unitesMax) return t('common.free');
+    const fmt = (v: number) => formatPrice(Math.round(v * 100), currency);
+    if (unitesMax && unitesMax > unites) {
+      return t('components.serviceCard.priceRange', { min: fmt(unites), max: fmt(unitesMax) });
     }
-    return fmt(euros);
+    return fmt(unites);
   };
 
   const hasPromo =
@@ -222,7 +234,7 @@ export function ServiceCard({
                   fontSize: 11,
                 }}
               >
-                {formatPrice(originalPrice!)}
+                {formatPrix(originalPrice!)}
               </Text>
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -254,7 +266,7 @@ export function ServiceCard({
                     },
                   ]}
                 >
-                  {formatPrice(price, priceMax)}
+                  {formatPrix(price, priceMax)}
                 </Text>
               </View>
               {hasPromo && (

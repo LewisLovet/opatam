@@ -23,12 +23,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, Avatar, useToast, UpgradeToStudioModal } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
-import { PLAN_LIMITS } from '@booking-app/shared';
+import { PLAN_LIMITS, getCurrency } from '@booking-app/shared';
 import { locationService, memberService, auth as firebaseAuth, type WithId } from '@booking-app/firebase';
 import { isValidTravelZone, type TravelZoneTier } from '@booking-app/shared';
 import { API_URL } from '../../lib/config';
 import type { Location, Member } from '@booking-app/shared/types';
 import { searchAddress, fetchPlaceDetails, type AddressSuggestion } from '../../lib/addressSearch';
+import { devisePro } from '../../lib/devise';
 
 // ---------------------------------------------------------------------------
 // Address Autocomplete (Google Places + BAN fallback)
@@ -996,7 +997,7 @@ export default function LocationsScreen() {
                                   />
                                 </View>
                                 <Text variant="caption" color="textSecondary">
-                                  {Number(row.feeEuros.replace(',', '.')) === 0 ? t('proLocations.travelZone.free') : '€'}
+                                  {Number(row.feeEuros.replace(',', '.')) === 0 ? t('proLocations.travelZone.free') : getCurrency(devisePro()).symbol}
                                 </Text>
                                 {tierRows.length > 1 && (
                                   <Pressable onPress={() => setTierRows((rows) => rows.filter((_, j) => j !== i))} hitSlop={8}>

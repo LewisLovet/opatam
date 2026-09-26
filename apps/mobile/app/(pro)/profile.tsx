@@ -30,6 +30,8 @@ import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { providerService, uploadFile, storagePaths } from '@booking-app/firebase';
 import { CATEGORIES, APP_CONFIG, PROVIDER_THEMES, THEME_FAMILIES, DEFAULT_THEME_ID, getProviderTheme } from '@booking-app/shared/constants';
 import QRCode from 'react-native-qrcode-svg';
+import { devisePro } from '../../lib/devise';
+import { formatPrice } from '@booking-app/shared';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1357,7 +1359,7 @@ export default function ProfileScreen() {
                   <View style={{ backgroundColor: c(1), paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
                     <Text variant="caption" style={{ color: c(7), fontWeight: '700' }}>−20 %</Text>
                   </View>
-                  <Text variant="bodySmall" style={{ fontWeight: '700' }}>45,00 €</Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '700' }}>{formatPrice(4500, devisePro())}</Text>
                   <Text variant="body" style={{ color: c(6), letterSpacing: 1 }}>★★★★★</Text>
                 </View>
               );
