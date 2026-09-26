@@ -334,7 +334,7 @@
         "categoryPrefix": "Category:",
         "addCategory": "Add a category (optional)",
         "durationLabel": "Duration",
-        "priceLabel": "Price (€)",
+        "priceLabel": "Price ({{devise}})",
         "freeAppointment": "Free appointment",
         "descriptionLabel": "Description (optional)",
         "descriptionPlaceholder": "Details about the service...",
@@ -516,13 +516,13 @@
       "phoneLabel": "Phone",
       "phonePlaceholder": "+33 6 12 34 56 78",
       "invalidPhone": "Invalid phone number",
-      "youSave": "You save {{amount}} €",
+      "youSave": "You save {{amount}}",
       "payOnSite": "Payment on site",
       "loginRequired": "Sign in required",
       "loginRequiredDescription": "Sign in to confirm your booking",
       "confirmButton": "Confirm booking",
       "loginButton": "Sign in to book",
-      "loyaltyApplied": "€{{amount}} loyalty discount applied 🎉",
+      "loyaltyApplied": "{{amount}} loyalty discount applied 🎉",
       "loyaltyLine": "Loyalty {{reward}} applied",
       "payTotal": "Pay {{total}}",
       "depositNow": "Deposit",
@@ -541,7 +541,7 @@
       "addressPlaceholder": "Where should they travel to?",
       "quoteLoading": "Calculating distance…",
       "quoteUnavailable": "Distance check unavailable — please try again in a few minutes.",
-      "fee": "Travel fee: {{amount}} €",
+      "fee": "Travel fee: {{amount}}",
       "feeLine": "Travel fee",
       "free": "Free travel",
       "freeShort": "Free",
@@ -712,7 +712,7 @@
     "providerCard": {
       "today": "Today",
       "tomorrow": "Tomorrow",
-      "fromPrice": "From {{price}} €",
+      "fromPrice": "From {{price}}",
       "priceOnRequest": "Price on request",
       "loyalty": "Loyalty program"
     },
@@ -1225,8 +1225,8 @@
       "tomorrowAt": "Tomorrow at {{time}}",
       "dayAt": "{{date}} at {{time}}"
     },
-    "priceRange": "From €{{min}} to €{{max}}",
-    "price": "€{{price}}",
+    "priceRange": "From {{min}} to {{max}}",
+    "price": "{{price}}",
     "errorTitle": "Error",
     "notAuth": {
       "title": "Sign in",
@@ -1632,8 +1632,8 @@
       "vip": {
         "label": "VIP",
         "shortLabel": "VIP",
-        "hint": "At least 10 confirmed appointments or €500 in total revenue.",
-        "rule": "At least 10 confirmed appointments OR at least €500 in total revenue from confirmed appointments."
+        "hint": "At least 10 confirmed appointments or {{montant}} in total revenue.",
+        "rule": "At least 10 confirmed appointments OR at least {{montant}} in total revenue from confirmed appointments."
       },
       "atRisk": {
         "label": "At risk",
@@ -2617,7 +2617,7 @@
       "percentRange": "The discount must be between 1 and 100%",
       "endAfterStart": "The end date must be after the start",
       "variationsIncomplete": "Complete at least one variation: a name and at least one named choice.",
-      "amountRange": "The discount must be between €0.01 and €10,000",
+      "amountRange": "The discount must be between {{min}} and {{max}}",
       "depositRefundHours": "Refund window: between 1 and 720 hours"
     },
     "deleteService": {
@@ -2671,8 +2671,8 @@
       "notifyTitle": "Notify my loyalty clients",
       "notifyDescription": "An email to clients who opted in to your promotions (max 1 per week).",
       "modePercent": "In %",
-      "modeAmount": "In €",
-      "amountLabel": "Discount (€)"
+      "modeAmount": "In {{devise}}",
+      "amountLabel": "Discount ({{devise}})"
     },
     "form": {
       "editTitle": "Edit",
@@ -2694,7 +2694,7 @@
       "durationLabel": "Duration",
       "durationMinUnit": "min",
       "durationPreview": "= {{duration}}",
-      "priceLabel": "Price (€)",
+      "priceLabel": "Price ({{devise}})",
       "descriptionLabel": "Description (optional)",
       "descriptionPlaceholder": "Describe this service"
     },
@@ -2718,7 +2718,7 @@
       "typePercent": "Percentage",
       "typeFixed": "Fixed amount",
       "percentLabel": "Percentage (%)",
-      "amountLabel": "Amount (€)",
+      "amountLabel": "Amount ({{devise}})",
       "refundDelayLabel": "Refund deadline (hours before the appointment)",
       "refundDelayNote": "Between 1 and 720 hours (30 days). Past this window, the deposit is not refunded if the client cancels.",
       "refundableToggle": "Deposit refundable",
@@ -2776,7 +2776,7 @@
       "variationNameLabel": "Variation name",
       "variationNamePlaceholder": "E.g. Length",
       "choicePlaceholder": "Choice (e.g. Mid-back)",
-      "priceLabel": "Price (€)",
+      "priceLabel": "Price ({{devise}})",
       "durationLabel": "Duration",
       "addChoice": "Add a choice",
       "totalPriceNote": "Price and duration = the total for this choice (not a supplement).",
@@ -3089,7 +3089,7 @@
       "originPlaceholder": "Where do you start from?",
       "originHint": "Starting point for trips — never shown to clients.",
       "tiersLabel": "Tiers (up to … km → fee)",
-      "free": "€ — free",
+      "free": "{{devise}} — free",
       "addTier": "Add a tier",
       "beyondLimit": "Beyond {{km}} km: online booking unavailable.",
       "needsOrigin": "Select your starting address or city",
@@ -3267,7 +3267,7 @@
     },
     "reward": {
       "percent": "−{{value}}%",
-      "amount": "−€{{value}}"
+      "amount": "−{{value}}"
     },
     "publicTitle": "Loyalty program",
     "publicDetail": "Every {{threshold}} completed appointments, {{reward}} off your next booking",
@@ -3310,7 +3310,7 @@
       "thresholdLabel": "Completed appointments required",
       "rewardLabel": "Reward",
       "percentValueLabel": "Discount (%)",
-      "amountValueLabel": "Discount (€)",
+      "amountValueLabel": "Discount ({{devise}})",
       "eligibleTitle": "Eligible services",
       "eligibleHint": "Untick the services not covered by the reward.",
       "noServices": "Add services first to make them eligible."
@@ -3318,7 +3318,7 @@
     "errors": {
       "threshold": "The number of appointments must be at least 1",
       "percentRange": "The percentage must be between 1 and 100",
-      "amountMin": "The amount must be at least €1"
+      "amountMin": "The amount must be at least {{min}}"
     },
     "saved": "Loyalty card saved",
     "disabledToast": "Loyalty card disabled",

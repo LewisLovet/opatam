@@ -127,7 +127,7 @@
   "loyaltyBanner": {
     "title": "Programma fedeltà",
     "percent": "Ogni {threshold} appuntamenti, −{value} % sulla tua prenotazione successiva",
-    "amount": "Ogni {threshold} appuntamenti, −{value} € sulla tua prenotazione successiva",
+    "amount": "Ogni {threshold} appuntamenti, −{value} sulla tua prenotazione successiva",
     "infoAria": "Vedi i servizi inclusi",
     "infoAll": "Vale su tutti i servizi.",
     "infoExcept": "Tutti i servizi tranne: {list}.",

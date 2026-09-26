@@ -52,7 +52,7 @@ function LoyaltyCardItem({
   const router = useRouter();
   const { t } = useTranslation();
 
-  const reward = formatLoyaltyReward(card.rewardType, card.rewardValue, t);
+  const reward = formatLoyaltyReward(card.rewardType, card.rewardValue, t, card.currency);
   // Progression sur le cycle courant ; carte armée = tous les tampons posés.
   const filled = card.armed ? card.threshold : card.confirmedCount % card.threshold;
 

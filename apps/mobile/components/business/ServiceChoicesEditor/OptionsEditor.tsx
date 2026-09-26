@@ -19,6 +19,8 @@ import { Input } from '../../Input';
 import { VariationsEditor } from './VariationsEditor';
 import { InfoFieldsEditor } from './InfoFieldsEditor';
 import { animateChange } from './animateChange';
+import { getCurrency } from '@booking-app/shared';
+import { devisePro } from '../../../lib/devise';
 
 export interface OptionsEditorProps {
   options: ServiceOption[];
@@ -102,7 +104,7 @@ export function OptionsEditor({ options, onChange }: OptionsEditorProps) {
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <Input
-                  label={t('proServices.editor.priceLabel')}
+                  label={t('proServices.editor.priceLabel', { devise: getCurrency(devisePro()).symbol })}
                   placeholder="0"
                   keyboardType="numeric"
                   value={option.price ? String(option.price / 100) : ''}

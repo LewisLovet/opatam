@@ -997,7 +997,7 @@ export default function LocationsScreen() {
                                   />
                                 </View>
                                 <Text variant="caption" color="textSecondary">
-                                  {Number(row.feeEuros.replace(',', '.')) === 0 ? t('proLocations.travelZone.free') : getCurrency(devisePro()).symbol}
+                                  {Number(row.feeEuros.replace(',', '.')) === 0 ? t('proLocations.travelZone.free', { devise: getCurrency(devisePro()).symbol }) : getCurrency(devisePro()).symbol}
                                 </Text>
                                 {tierRows.length > 1 && (
                                   <Pressable onPress={() => setTierRows((rows) => rows.filter((_, j) => j !== i))} hitSlop={8}>

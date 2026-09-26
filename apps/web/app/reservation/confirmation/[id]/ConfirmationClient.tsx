@@ -16,6 +16,7 @@ import type {
 // Valeur, pas type : le repli euro quand la reservation n'en porte pas.
 import { DEFAULT_CURRENCY } from '@booking-app/shared';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
+import { formatPriceCompact } from '@booking-app/shared';
 
 interface Booking {
   id: string;
@@ -642,7 +643,14 @@ export function ConfirmationClient({ booking, providerLoyalty = null }: Confirma
                       value:
                         providerLoyalty.rewardType === 'percent'
                           ? providerLoyalty.rewardValue
-                          : providerLoyalty.rewardValue / 100,
+                          // Montant DEJA formate, devise comprise : la chaine
+                          // traduite ne porte plus de symbole, sa place
+                          // changeant d'une langue a l'autre.
+                          : formatPriceCompact(
+                              providerLoyalty.rewardValue,
+                              booking.currency,
+                              locale,
+                            ),
                     },
                   )}
                 </p>

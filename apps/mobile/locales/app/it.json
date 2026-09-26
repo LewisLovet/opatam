@@ -334,7 +334,7 @@
         "categoryPrefix": "Categoria:",
         "addCategory": "Aggiungi una categoria (facoltativo)",
         "durationLabel": "Durata",
-        "priceLabel": "Prezzo (€)",
+        "priceLabel": "Prezzo ({{devise}})",
         "freeAppointment": "Appuntamento gratuito",
         "descriptionLabel": "Descrizione (facoltativa)",
         "descriptionPlaceholder": "Dettagli sul servizio...",
@@ -516,13 +516,13 @@
       "phoneLabel": "Telefono",
       "phonePlaceholder": "320 123 4567",
       "invalidPhone": "Numero di telefono non valido",
-      "youSave": "Risparmi {{amount}} €",
+      "youSave": "Risparmi {{amount}}",
       "payOnSite": "Pagamento sul posto",
       "loginRequired": "Accesso richiesto",
       "loginRequiredDescription": "Accedi per confermare la tua prenotazione",
       "confirmButton": "Conferma la prenotazione",
       "loginButton": "Accedi per prenotare",
-      "loyaltyApplied": "Sconto fedeltà di {{amount}} € applicato 🎉",
+      "loyaltyApplied": "Sconto fedeltà di {{amount}} applicato 🎉",
       "loyaltyLine": "Fedeltà {{reward}} applicata",
       "payTotal": "Paga {{total}}",
       "depositNow": "Acconto",
@@ -541,7 +541,7 @@
       "addressPlaceholder": "Dove deve spostarsi?",
       "quoteLoading": "Calcolo della distanza…",
       "quoteUnavailable": "Verifica della distanza non disponibile — riprova tra qualche minuto.",
-      "fee": "Spese di trasferta: {{amount}} €",
+      "fee": "Spese di trasferta: {{amount}}",
       "feeLine": "Spese di trasferta",
       "free": "Trasferta gratuita",
       "freeShort": "Gratuita",
@@ -712,7 +712,7 @@
     "providerCard": {
       "today": "Oggi",
       "tomorrow": "Domani",
-      "fromPrice": "A partire da {{price}} €",
+      "fromPrice": "A partire da {{price}}",
       "priceOnRequest": "Prezzo su richiesta",
       "loyalty": "Programma fedeltà"
     },
@@ -1225,8 +1225,8 @@
       "tomorrowAt": "Domani alle {{time}}",
       "dayAt": "{{date}} alle {{time}}"
     },
-    "priceRange": "Da {{min}} a {{max}} €",
-    "price": "{{price}} €",
+    "priceRange": "Da {{min}} a {{max}}",
+    "price": "{{price}}",
     "errorTitle": "Errore",
     "notAuth": {
       "title": "Accedi",
@@ -1632,8 +1632,8 @@
       "vip": {
         "label": "VIP",
         "shortLabel": "VIP",
-        "hint": "Almeno 10 appuntamenti confermati o 500 € complessivi.",
-        "rule": "Almeno 10 appuntamenti confermati OPPURE almeno 500 € di fatturato complessivo sugli appuntamenti confermati."
+        "hint": "Almeno 10 appuntamenti confermati o {{montant}} complessivi.",
+        "rule": "Almeno 10 appuntamenti confermati OPPURE almeno {{montant}} di fatturato complessivo sugli appuntamenti confermati."
       },
       "atRisk": {
         "label": "A rischio",
@@ -2617,7 +2617,7 @@
       "percentRange": "Lo sconto deve essere tra 1 e 100 %",
       "endAfterStart": "La data di fine deve essere dopo l'inizio",
       "variationsIncomplete": "Completa almeno una variante: un nome e almeno una scelta con nome.",
-      "amountRange": "Lo sconto deve essere compreso tra 0,01 € e 10 000 €",
+      "amountRange": "Lo sconto deve essere compreso tra {{min}} e {{max}}",
       "depositRefundHours": "Termine di rimborso: tra 1 e 720 ore"
     },
     "deleteService": {
@@ -2671,8 +2671,8 @@
       "notifyTitle": "Avvisare i miei clienti fedeltà",
       "notifyDescription": "Un’email ai clienti che hanno accettato le tue promozioni (max 1 a settimana).",
       "modePercent": "In %",
-      "modeAmount": "In €",
-      "amountLabel": "Sconto (€)"
+      "modeAmount": "In {{devise}}",
+      "amountLabel": "Sconto ({{devise}})"
     },
     "form": {
       "editTitle": "Modifica",
@@ -2694,7 +2694,7 @@
       "durationLabel": "Durata",
       "durationMinUnit": "min",
       "durationPreview": "= {{duration}}",
-      "priceLabel": "Prezzo (€)",
+      "priceLabel": "Prezzo ({{devise}})",
       "descriptionLabel": "Descrizione (facoltativa)",
       "descriptionPlaceholder": "Descrivi questo servizio"
     },
@@ -2718,7 +2718,7 @@
       "typePercent": "Percentuale",
       "typeFixed": "Importo fisso",
       "percentLabel": "Percentuale (%)",
-      "amountLabel": "Importo (€)",
+      "amountLabel": "Importo ({{devise}})",
       "refundDelayLabel": "Termine di rimborso (ore prima dell'appuntamento)",
       "refundDelayNote": "Tra 1 e 720 ore (30 giorni). Oltre questo termine, l'acconto non viene rimborsato se il cliente annulla.",
       "refundableToggle": "Acconto rimborsabile",
@@ -2776,7 +2776,7 @@
       "variationNameLabel": "Nome della variante",
       "variationNamePlaceholder": "Es.: Lunghezza",
       "choicePlaceholder": "Scelta (es.: Metà schiena)",
-      "priceLabel": "Prezzo (€)",
+      "priceLabel": "Prezzo ({{devise}})",
       "durationLabel": "Durata",
       "addChoice": "Aggiungi una scelta",
       "totalPriceNote": "Prezzo e durata = il totale per questa scelta (non un extra).",
@@ -3089,7 +3089,7 @@
       "originPlaceholder": "Da dove parti?",
       "originHint": "Punto di partenza dei viaggi — mai mostrato alle clienti.",
       "tiersLabel": "Scaglioni (fino a … km → tariffa)",
-      "free": "€ — gratuito",
+      "free": "{{devise}} — gratuito",
       "addTier": "Aggiungi uno scaglione",
       "beyondLimit": "Oltre {{km}} km: prenotazione online non disponibile.",
       "needsOrigin": "Seleziona il tuo indirizzo o la tua città di partenza",
@@ -3267,7 +3267,7 @@
     },
     "reward": {
       "percent": "−{{value}} %",
-      "amount": "−{{value}} €"
+      "amount": "−{{value}}"
     },
     "publicTitle": "Programma fedeltà",
     "publicDetail": "Ogni {{threshold}} appuntamenti onorati, {{reward}} sulla tua prenotazione successiva",
@@ -3310,7 +3310,7 @@
       "thresholdLabel": "Numero di appuntamenti onorati richiesti",
       "rewardLabel": "Premio",
       "percentValueLabel": "Sconto (%)",
-      "amountValueLabel": "Sconto (€)",
+      "amountValueLabel": "Sconto ({{devise}})",
       "eligibleTitle": "Servizi inclusi",
       "eligibleHint": "Deseleziona i servizi non inclusi nel premio.",
       "noServices": "Aggiungi prima dei servizi per renderli idonei."
@@ -3318,7 +3318,7 @@
     "errors": {
       "threshold": "Il numero di appuntamenti deve essere almeno 1",
       "percentRange": "La percentuale deve essere compresa tra 1 e 100",
-      "amountMin": "L'importo deve essere di almeno 1 €"
+      "amountMin": "L'importo deve essere di almeno {{min}}"
     },
     "saved": "Carta fedeltà salvata",
     "disabledToast": "Carta fedeltà disattivata",

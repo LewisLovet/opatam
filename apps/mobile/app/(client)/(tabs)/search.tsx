@@ -243,6 +243,7 @@ export default function SearchScreen() {
         city={item.cities[0] || ''}
         rating={item.rating}
         minPrice={item.minPrice}
+        currency={item.currency}
         nextAvailableSlot={item.nextAvailableSlot}
         isVerified={item.isVerified}
         hasLoyalty={isLoyaltyConfigValid(item.settings?.loyalty) && hasLoyaltyAccess(item)}
@@ -433,6 +434,7 @@ export default function SearchScreen() {
                     city={provider.cities[0] || ''}
                     rating={provider.rating}
                     minPrice={provider.minPrice}
+                    currency={provider.currency}
                     nextAvailableSlot={provider.nextAvailableSlot}
                     isVerified={provider.isVerified}
                     onPress={() => navigateToProvider(provider.slug, provider)}

@@ -686,7 +686,7 @@ function ProviderDetailScreen({
                 <Text variant="caption" style={{ color: colors.textSecondary, marginTop: 1 }}>
                   {t('loyalty.publicDetail', {
                     threshold: publicLoyalty.threshold,
-                    reward: formatLoyaltyReward(publicLoyalty.rewardType, publicLoyalty.rewardValue, t),
+                    reward: formatLoyaltyReward(publicLoyalty.rewardType, publicLoyalty.rewardValue, t, provider?.currency),
                   })}
                 </Text>
               </View>
@@ -736,6 +736,7 @@ function ProviderDetailScreen({
                         publicLoyalty.rewardType,
                         publicLoyalty.rewardValue,
                         t,
+                        provider?.currency,
                       ),
                     })}
                   </Text>

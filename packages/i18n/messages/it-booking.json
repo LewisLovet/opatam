@@ -218,7 +218,7 @@
     "title": "Scarica l'app Opatam",
     "subtitle": "Ritrova i tuoi appuntamenti, ricevi i promemoria e prenota in un clic.",
     "loyaltyPercent": "Programma fedeltà: ogni {threshold} appuntamenti prenotati dall'app, −{value} %. Scaricala per accumulare i tuoi punti.",
-    "loyaltyAmount": "Programma fedeltà: ogni {threshold} appuntamenti prenotati dall'app, −{value} €. Scaricala per accumulare i tuoi punti."
+    "loyaltyAmount": "Programma fedeltà: ogni {threshold} appuntamenti prenotati dall'app, −{value}. Scaricala per accumulare i tuoi punti."
   },
   "proCta": {
     "title": "Sei anche tu un professionista?",

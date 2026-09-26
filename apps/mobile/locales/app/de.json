@@ -334,7 +334,7 @@
         "categoryPrefix": "Kategorie:",
         "addCategory": "Kategorie hinzufügen (optional)",
         "durationLabel": "Dauer",
-        "priceLabel": "Preis (€)",
+        "priceLabel": "Preis ({{devise}})",
         "freeAppointment": "Kostenloser Termin",
         "descriptionLabel": "Beschreibung (optional)",
         "descriptionPlaceholder": "Details zur Leistung …",
@@ -516,13 +516,13 @@
       "phoneLabel": "Telefon",
       "phonePlaceholder": "0151 23456789",
       "invalidPhone": "Ungültige Telefonnummer",
-      "youSave": "Sie sparen {{amount}} €",
+      "youSave": "Sie sparen {{amount}}",
       "payOnSite": "Zahlung vor Ort",
       "loginRequired": "Anmeldung erforderlich",
       "loginRequiredDescription": "Melden Sie sich an, um Ihre Buchung zu bestätigen",
       "confirmButton": "Buchung bestätigen",
       "loginButton": "Zum Buchen anmelden",
-      "loyaltyApplied": "Treuerabatt von {{amount}} € angerechnet 🎉",
+      "loyaltyApplied": "Treuerabatt von {{amount}} angerechnet 🎉",
       "loyaltyLine": "Treuerabatt {{reward}} angerechnet",
       "payTotal": "{{total}} zahlen",
       "depositNow": "Anzahlung",
@@ -541,7 +541,7 @@
       "addressPlaceholder": "Wohin soll die Anfahrt gehen?",
       "quoteLoading": "Entfernung wird berechnet…",
       "quoteUnavailable": "Entfernungsprüfung nicht möglich — bitte in einigen Minuten erneut versuchen.",
-      "fee": "Anfahrtskosten: {{amount}} €",
+      "fee": "Anfahrtskosten: {{amount}}",
       "feeLine": "Anfahrtskosten",
       "free": "Anfahrt kostenlos",
       "freeShort": "Kostenlos",
@@ -712,7 +712,7 @@
     "providerCard": {
       "today": "Heute",
       "tomorrow": "Morgen",
-      "fromPrice": "Ab {{price}} €",
+      "fromPrice": "Ab {{price}}",
       "priceOnRequest": "Preis auf Anfrage",
       "loyalty": "Treueprogramm"
     },
@@ -1225,8 +1225,8 @@
       "tomorrowAt": "Morgen um {{time}}",
       "dayAt": "{{date}} um {{time}}"
     },
-    "priceRange": "Von {{min}} bis {{max}} €",
-    "price": "{{price}} €",
+    "priceRange": "Von {{min}} bis {{max}}",
+    "price": "{{price}}",
     "errorTitle": "Fehler",
     "notAuth": {
       "title": "Melden Sie sich an",
@@ -1632,8 +1632,8 @@
       "vip": {
         "label": "VIP",
         "shortLabel": "VIP",
-        "hint": "Mindestens 10 bestätigte Termine oder 500 € Gesamtumsatz.",
-        "rule": "Mindestens 10 bestätigte Termine ODER mindestens 500 € Gesamtumsatz aus bestätigten Terminen."
+        "hint": "Mindestens 10 bestätigte Termine oder {{montant}} Gesamtumsatz.",
+        "rule": "Mindestens 10 bestätigte Termine ODER mindestens {{montant}} Gesamtumsatz aus bestätigten Terminen."
       },
       "atRisk": {
         "label": "Gefährdet",
@@ -2617,7 +2617,7 @@
       "percentRange": "Der Rabatt muss zwischen 1 und 100 % liegen",
       "endAfterStart": "Das Enddatum muss nach dem Beginn liegen",
       "variationsIncomplete": "Vervollständigen Sie mindestens eine Variante: ein Name und mindestens eine benannte Auswahl.",
-      "amountRange": "Der Rabatt muss zwischen 0,01 € und 10.000 € liegen",
+      "amountRange": "Der Rabatt muss zwischen {{min}} und {{max}} liegen",
       "depositRefundHours": "Erstattungsfrist: zwischen 1 und 720 Stunden"
     },
     "deleteService": {
@@ -2671,8 +2671,8 @@
       "notifyTitle": "Meine Treuekunden informieren",
       "notifyDescription": "Eine E-Mail an die Kunden, die Ihre Angebote akzeptiert haben (höchstens 1 pro Woche).",
       "modePercent": "In %",
-      "modeAmount": "In €",
-      "amountLabel": "Rabatt (€)"
+      "modeAmount": "In {{devise}}",
+      "amountLabel": "Rabatt ({{devise}})"
     },
     "form": {
       "editTitle": "Bearbeiten",
@@ -2694,7 +2694,7 @@
       "durationLabel": "Dauer",
       "durationMinUnit": "Min.",
       "durationPreview": "= {{duration}}",
-      "priceLabel": "Preis (€)",
+      "priceLabel": "Preis ({{devise}})",
       "descriptionLabel": "Beschreibung (optional)",
       "descriptionPlaceholder": "Beschreiben Sie diese Leistung"
     },
@@ -2718,7 +2718,7 @@
       "typePercent": "Prozentsatz",
       "typeFixed": "Fester Betrag",
       "percentLabel": "Prozentsatz (%)",
-      "amountLabel": "Betrag (€)",
+      "amountLabel": "Betrag ({{devise}})",
       "refundDelayLabel": "Erstattungsfrist (Stunden vor dem Termin)",
       "refundDelayNote": "Zwischen 1 und 720 Stunden (30 Tage). Nach Ablauf wird die Anzahlung bei einer Stornierung nicht erstattet.",
       "refundableToggle": "Anzahlung erstattungsfähig",
@@ -2776,7 +2776,7 @@
       "variationNameLabel": "Name der Variante",
       "variationNamePlaceholder": "z. B. Länge",
       "choicePlaceholder": "Auswahl (z. B. Mittellang)",
-      "priceLabel": "Preis (€)",
+      "priceLabel": "Preis ({{devise}})",
       "durationLabel": "Dauer",
       "addChoice": "Auswahl hinzufügen",
       "totalPriceNote": "Preis und Dauer = der Gesamtwert für diese Auswahl (kein Aufschlag).",
@@ -3089,7 +3089,7 @@
       "originPlaceholder": "Von wo starten Sie?",
       "originHint": "Startpunkt der Fahrten — wird Kundinnen nie angezeigt.",
       "tiersLabel": "Stufen (bis … km → Gebühr)",
-      "free": "€ — kostenlos",
+      "free": "{{devise}} — kostenlos",
       "addTier": "Stufe hinzufügen",
       "beyondLimit": "Jenseits von {{km}} km: Online-Buchung nicht möglich.",
       "needsOrigin": "Wählen Sie Ihre Startadresse oder -stadt",
@@ -3267,7 +3267,7 @@
     },
     "reward": {
       "percent": "−{{value}} %",
-      "amount": "−{{value}} €"
+      "amount": "−{{value}}"
     },
     "publicTitle": "Treueprogramm",
     "publicDetail": "Alle {{threshold}} wahrgenommenen Termine {{reward}} auf Ihre nächste Buchung",
@@ -3310,7 +3310,7 @@
       "thresholdLabel": "Erforderliche wahrgenommene Termine",
       "rewardLabel": "Prämie",
       "percentValueLabel": "Rabatt (%)",
-      "amountValueLabel": "Rabatt (€)",
+      "amountValueLabel": "Rabatt ({{devise}})",
       "eligibleTitle": "Teilnehmende Leistungen",
       "eligibleHint": "Nehmen Sie die Häkchen bei den Leistungen weg, die nicht für die Prämie zählen.",
       "noServices": "Legen Sie zuerst Leistungen an, um sie berechtigt zu machen."
@@ -3318,7 +3318,7 @@
     "errors": {
       "threshold": "Die Anzahl der Termine muss mindestens 1 betragen",
       "percentRange": "Der Prozentsatz muss zwischen 1 und 100 liegen",
-      "amountMin": "Der Betrag muss mindestens 1 € betragen"
+      "amountMin": "Der Betrag muss mindestens {{min}} betragen"
     },
     "saved": "Treuekarte gespeichert",
     "disabledToast": "Treuekarte deaktiviert",

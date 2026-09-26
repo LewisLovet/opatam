@@ -98,13 +98,18 @@ function showAppUpgradeDialog(message: string): void {
 async function getLoyaltyAppliedMessage(bookingId: string): Promise<string | null> {
   try {
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
-    const loyalty = await Promise.race([
-      bookingService.getById(bookingId).then((b) => b?.loyalty ?? null),
+    // La resa ENTIERE, pas seulement sa fidelite : il faut aussi sa devise,
+    // figee a la creation, pour formater la reduction.
+    const resa = await Promise.race([
+      bookingService.getById(bookingId),
       timeout,
     ]);
+    const loyalty = resa?.loyalty ?? null;
     if (!loyalty || !loyalty.amountOff) return null;
-    const euros = loyalty.amountOff / 100;
-    const amount = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
+    // Montant DEJA formate, devise comprise : la chaine traduite ne porte plus
+    // de symbole, parce que sa place change d'une langue a l'autre
+    // (« €35 » en anglais, « 35 € » en francais).
+    const amount = formatPrice(loyalty.amountOff, resa?.currency, getIntlLocale());
     return i18n.t('bookingFlow.confirm.loyaltyApplied', { amount });
   } catch {
     return null;
@@ -687,7 +692,7 @@ export default function ConfirmBookingScreen() {
           </View>
           {cartHasPromo && (
             <Text variant="caption" style={{ color: '#E11D48', fontWeight: '600', marginTop: spacing.xs }}>
-              {t('bookingFlow.confirm.youSave', { amount: ((cartOriginal - cartPrice) / 100).toFixed(2) })}
+              {t('bookingFlow.confirm.youSave', { amount: prix(cartOriginal - cartPrice) })}
             </Text>
           )}
           {loyaltyPreview.rewardLabel && (
@@ -938,7 +943,7 @@ export default function ConfirmBookingScreen() {
               <Text variant="caption" style={{ marginTop: spacing.xs, color: colors.text }}>
                 {travelQuote.fee === 0
                   ? t('bookingFlow.travel.free')
-                  : t('bookingFlow.travel.fee', { amount: (travelQuote.fee / 100).toFixed(2) })}
+                  : t('bookingFlow.travel.fee', { amount: prix(travelQuote.fee) })}
                 {travelQuote.distanceKm > 0 ? ` · ${travelQuote.distanceKm} km` : ''}
               </Text>
             )}

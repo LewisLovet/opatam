@@ -20,6 +20,8 @@ import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Input } from '../../Input';
 import { animateChange } from './animateChange';
+import { getCurrency } from '@booking-app/shared';
+import { devisePro } from '../../../lib/devise';
 
 export interface VariationsEditorProps {
   variations: ServiceVariation[];
@@ -142,7 +144,7 @@ export function VariationsEditor({ variations, onChange }: VariationsEditorProps
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
                   <Input
-                    label={t('proServices.editor.priceLabel')}
+                    label={t('proServices.editor.priceLabel', { devise: getCurrency(devisePro()).symbol })}
                     placeholder="0"
                     keyboardType="numeric"
                     value={option.price ? String(option.price / 100) : ''}

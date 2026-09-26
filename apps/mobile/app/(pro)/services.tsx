@@ -505,7 +505,7 @@ export default function ServicesScreen() {
       if (gForm.mode === 'amount') {
         const cents = Math.round(Number(gForm.amount.replace(',', '.')) * 100);
         if (!Number.isFinite(cents) || cents < 1 || cents > 1_000_000) {
-          showToast({ variant: 'error', message: t('proServices.errors.amountRange') });
+          showToast({ variant: 'error', message: t('proServices.errors.amountRange', { min: formatPrice(1), max: formatPrice(1_000_000) }) });
           return;
         }
         globalDiscount = { amount: cents, ...common };
@@ -589,7 +589,7 @@ export default function ServicesScreen() {
       } else {
         rewardValue = Math.round(Number(lForm.rewardValue.replace(',', '.')) * 100);
         if (!Number.isFinite(rewardValue) || rewardValue < 100) {
-          showToast({ variant: 'error', message: t('proLoyalty.errors.amountMin') });
+          showToast({ variant: 'error', message: t('proLoyalty.errors.amountMin', { min: formatPrice(100) }) });
           return;
         }
       }
@@ -1018,7 +1018,7 @@ export default function ServicesScreen() {
       if (form.discountMode === 'amount') {
         const cents = Math.round(Number(form.discountAmount.replace(',', '.')) * 100);
         if (!Number.isFinite(cents) || cents < 1 || cents > 1_000_000) {
-          showToast({ variant: 'error', message: t('proServices.errors.amountRange') });
+          showToast({ variant: 'error', message: t('proServices.errors.amountRange', { min: formatPrice(1), max: formatPrice(1_000_000) }) });
           return null;
         }
         // Un seul des deux champs est écrit : le schéma refuse la combinaison.
@@ -2023,7 +2023,7 @@ export default function ServicesScreen() {
                     </View>
 
                     <Input
-                      label={t('proServices.form.priceLabel')}
+                      label={t('proServices.form.priceLabel', { devise: symboleDevise })}
                       placeholder="0"
                       value={form.price}
                       onChangeText={(t) => setForm((p) => ({ ...p, price: t }))}
@@ -2200,7 +2200,7 @@ export default function ServicesScreen() {
                         </View>
 
                         <Input
-                          label={form.depositType === 'percent' ? t('proServices.deposit.percentLabel') : t('proServices.deposit.amountLabel')}
+                          label={form.depositType === 'percent' ? t('proServices.deposit.percentLabel') : t('proServices.deposit.amountLabel', { devise: symboleDevise })}
                           placeholder={form.depositType === 'percent' ? '30' : '10'}
                           value={form.depositValue}
                           onChangeText={(t) =>
@@ -2318,7 +2318,7 @@ export default function ServicesScreen() {
                             >
                               {mode === 'percent'
                                 ? t('proServices.promo.modePercent')
-                                : t('proServices.promo.modeAmount')}
+                                : t('proServices.promo.modeAmount', { devise: symboleDevise })}
                             </Text>
                           </Pressable>
                         ))}
@@ -2326,7 +2326,7 @@ export default function ServicesScreen() {
 
                       {form.discountMode === 'amount' ? (
                         <Input
-                          label={t('proServices.promo.amountLabel')}
+                          label={t('proServices.promo.amountLabel', { devise: symboleDevise })}
                           placeholder="5"
                           value={form.discountAmount}
                           onChangeText={(v) =>
@@ -3246,14 +3246,14 @@ export default function ServicesScreen() {
                       >
                         {mode === 'percent'
                           ? t('proServices.promo.modePercent')
-                          : t('proServices.promo.modeAmount')}
+                          : t('proServices.promo.modeAmount', { devise: symboleDevise })}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
                 {gForm.mode === 'amount' ? (
                   <Input
-                    label={t('proServices.promo.amountLabel')}
+                    label={t('proServices.promo.amountLabel', { devise: symboleDevise })}
                     placeholder="5"
                     value={gForm.amount}
                     onChangeText={(v) =>
@@ -3440,7 +3440,7 @@ export default function ServicesScreen() {
                   })}
                 </View>
                 <Input
-                  label={lForm.rewardType === 'percent' ? t('proLoyalty.modal.percentValueLabel') : t('proLoyalty.modal.amountValueLabel')}
+                  label={lForm.rewardType === 'percent' ? t('proLoyalty.modal.percentValueLabel') : t('proLoyalty.modal.amountValueLabel', { devise: symboleDevise })}
                   placeholder={lForm.rewardType === 'percent' ? '10' : '5'}
                   value={lForm.rewardValue}
                   onChangeText={(v) =>

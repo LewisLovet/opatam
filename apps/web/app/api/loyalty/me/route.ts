@@ -130,6 +130,9 @@ export async function GET(request: NextRequest) {
           threshold: loyalty.threshold,
           rewardType: loyalty.rewardType,
           rewardValue: loyalty.rewardValue,
+          // Devise du prestataire : une recompense en montant fixe s'affichait
+          // « −10 € » meme pour un salon suisse.
+          currency: (p.currency as string | undefined) ?? null,
           remaining: loyaltyRemaining(confirmedCount, loyalty.threshold),
           // Fidélité v2 : pas de récompense armée tant que la carte n'est
           // pas activée (même gate que la route de réservation).

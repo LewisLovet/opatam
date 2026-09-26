@@ -127,7 +127,7 @@
   "loyaltyBanner": {
     "title": "Treueprogramm",
     "percent": "Alle {threshold} Termine −{value} % auf Ihre nächste Buchung",
-    "amount": "Alle {threshold} Termine −{value} € auf Ihre nächste Buchung",
+    "amount": "Alle {threshold} Termine −{value} auf Ihre nächste Buchung",
     "infoAria": "Teilnehmende Leistungen ansehen",
     "infoAll": "Alle Leistungen nehmen teil.",
     "infoExcept": "Alle Leistungen außer: {list}.",

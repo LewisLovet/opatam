@@ -625,6 +625,7 @@ export default function HomeScreen() {
                     city={provider.cities[0] || ''}
                     rating={provider.rating}
                     minPrice={provider.minPrice}
+                    currency={provider.currency}
                     isVerified={provider.isVerified}
                     distance={isNearby ? provider.distance : undefined}
                     onPress={() => navigateToProvider(provider.slug, provider)}

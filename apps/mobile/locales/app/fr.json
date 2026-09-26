@@ -334,7 +334,7 @@
         "categoryPrefix": "Catégorie :",
         "addCategory": "Ajouter une catégorie (facultatif)",
         "durationLabel": "Durée",
-        "priceLabel": "Prix (€)",
+        "priceLabel": "Prix ({{devise}})",
         "freeAppointment": "RDV gratuit",
         "descriptionLabel": "Description (optionnel)",
         "descriptionPlaceholder": "Details sur la prestation...",
@@ -516,13 +516,13 @@
       "phoneLabel": "Téléphone",
       "phonePlaceholder": "06 12 34 56 78",
       "invalidPhone": "Numéro de téléphone invalide",
-      "youSave": "Vous économisez {{amount}} €",
+      "youSave": "Vous économisez {{amount}}",
       "payOnSite": "Paiement sur place",
       "loginRequired": "Connexion requise",
       "loginRequiredDescription": "Connectez-vous pour confirmer votre réservation",
       "confirmButton": "Confirmer la réservation",
       "loginButton": "Se connecter pour réserver",
-      "loyaltyApplied": "Réduction fidélité de {{amount}} € appliquée 🎉",
+      "loyaltyApplied": "Réduction fidélité de {{amount}} appliquée 🎉",
       "loyaltyLine": "Fidélité {{reward}} appliquée",
       "payTotal": "Payer {{total}}",
       "depositNow": "Acompte",
@@ -541,7 +541,7 @@
       "addressPlaceholder": "Où faut-il se déplacer ?",
       "quoteLoading": "Calcul de la distance…",
       "quoteUnavailable": "Vérification de la distance impossible — réessayez dans quelques minutes.",
-      "fee": "Frais de déplacement : {{amount}} €",
+      "fee": "Frais de déplacement : {{amount}}",
       "feeLine": "Frais de déplacement",
       "free": "Déplacement offert",
       "freeShort": "Offert",
@@ -712,7 +712,7 @@
     "providerCard": {
       "today": "Aujourd'hui",
       "tomorrow": "Demain",
-      "fromPrice": "À partir de {{price}} €",
+      "fromPrice": "À partir de {{price}}",
       "priceOnRequest": "Prix sur demande",
       "loyalty": "Programme de fidélité"
     },
@@ -1225,8 +1225,8 @@
       "tomorrowAt": "Demain à {{time}}",
       "dayAt": "{{date}} à {{time}}"
     },
-    "priceRange": "De {{min}} à {{max}} €",
-    "price": "{{price}} €",
+    "priceRange": "De {{min}} à {{max}}",
+    "price": "{{price}}",
     "errorTitle": "Erreur",
     "notAuth": {
       "title": "Connectez-vous",
@@ -1632,8 +1632,8 @@
       "vip": {
         "label": "VIP",
         "shortLabel": "VIP",
-        "hint": "Au moins 10 RDV confirmés ou 500 € cumulés.",
-        "rule": "Au moins 10 RDV confirmés OU au moins 500 € de CA cumulé sur les RDV confirmés."
+        "hint": "Au moins 10 RDV confirmés ou {{montant}} cumulés.",
+        "rule": "Au moins 10 RDV confirmés OU au moins {{montant}} de CA cumulé sur les RDV confirmés."
       },
       "atRisk": {
         "label": "À risque",
@@ -2617,7 +2617,7 @@
       "percentRange": "La réduction doit être entre 1 et 100 %",
       "endAfterStart": "La date de fin doit être après le début",
       "variationsIncomplete": "Complétez au moins une variation : un nom et au moins un choix nommé.",
-      "amountRange": "La réduction doit être comprise entre 0,01 € et 10 000 €",
+      "amountRange": "La réduction doit être comprise entre {{min}} et {{max}}",
       "depositRefundHours": "Délai de remboursement : entre 1 et 720 heures"
     },
     "deleteService": {
@@ -2671,8 +2671,8 @@
       "notifyTitle": "Prévenir mes clients fidélité",
       "notifyDescription": "Un email aux clients qui ont accepté vos promotions (1 par semaine maximum).",
       "modePercent": "En %",
-      "modeAmount": "En €",
-      "amountLabel": "Réduction (€)"
+      "modeAmount": "En {{devise}}",
+      "amountLabel": "Réduction ({{devise}})"
     },
     "form": {
       "editTitle": "Modifier",
@@ -2694,7 +2694,7 @@
       "durationLabel": "Durée",
       "durationMinUnit": "min",
       "durationPreview": "= {{duration}}",
-      "priceLabel": "Prix (€)",
+      "priceLabel": "Prix ({{devise}})",
       "descriptionLabel": "Description (optionnel)",
       "descriptionPlaceholder": "Décrivez cette prestation"
     },
@@ -2718,7 +2718,7 @@
       "typePercent": "Pourcentage",
       "typeFixed": "Montant fixe",
       "percentLabel": "Pourcentage (%)",
-      "amountLabel": "Montant (€)",
+      "amountLabel": "Montant ({{devise}})",
       "refundDelayLabel": "Délai de remboursement (heures avant le RDV)",
       "refundDelayNote": "Entre 1 et 720 heures (30 jours). Passé ce délai, l'acompte n'est pas remboursé si le client annule.",
       "refundableToggle": "Acompte remboursable",
@@ -2776,7 +2776,7 @@
       "variationNameLabel": "Nom de la variation",
       "variationNamePlaceholder": "Ex : Longueur",
       "choicePlaceholder": "Choix (ex : Mi-dos)",
-      "priceLabel": "Prix (€)",
+      "priceLabel": "Prix ({{devise}})",
       "durationLabel": "Durée",
       "addChoice": "Ajouter un choix",
       "totalPriceNote": "Prix et durée = le total pour ce choix (pas un supplément).",
@@ -3089,7 +3089,7 @@
       "originPlaceholder": "D'où partez-vous ?",
       "originHint": "Point de départ des trajets — jamais montré aux clientes.",
       "tiersLabel": "Paliers (jusqu'à … km → frais)",
-      "free": "€ — offert",
+      "free": "{{devise}} — offert",
       "addTier": "Ajouter un palier",
       "beyondLimit": "Au-delà de {{km}} km : réservation en ligne impossible.",
       "needsOrigin": "Sélectionnez votre adresse ou ville de départ",
@@ -3267,7 +3267,7 @@
     },
     "reward": {
       "percent": "−{{value}} %",
-      "amount": "−{{value}} €"
+      "amount": "−{{value}}"
     },
     "publicTitle": "Programme de fidélité",
     "publicDetail": "Tous les {{threshold}} RDV honorés, {{reward}} sur votre réservation suivante",
@@ -3310,7 +3310,7 @@
       "thresholdLabel": "Nombre de RDV honorés requis",
       "rewardLabel": "Récompense",
       "percentValueLabel": "Réduction (%)",
-      "amountValueLabel": "Réduction (€)",
+      "amountValueLabel": "Réduction ({{devise}})",
       "eligibleTitle": "Prestations concernées",
       "eligibleHint": "Décochez les prestations non concernées par la récompense.",
       "noServices": "Ajoutez d'abord des prestations pour les rendre éligibles."
@@ -3318,7 +3318,7 @@
     "errors": {
       "threshold": "Le nombre de RDV doit être d'au moins 1",
       "percentRange": "Le pourcentage doit être compris entre 1 et 100",
-      "amountMin": "Le montant doit être d'au moins 1 €"
+      "amountMin": "Le montant doit être d'au moins {{min}}"
     },
     "saved": "Carte de fidélité enregistrée",
     "disabledToast": "Carte de fidélité désactivée",

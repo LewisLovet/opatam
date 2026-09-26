@@ -20,6 +20,7 @@ import { InfosSection } from './InfosSection';
 import { MobileBookingBar } from './MobileBookingBar';
 import { DemoBanner } from './DemoBanner';
 import { PlayStoreButton } from '@/components/common/PlayStoreButton';
+import { formatPriceCompact } from '@booking-app/shared';
 
 // Serialized types (dates as strings from server)
 interface SerializedProvider {
@@ -328,7 +329,18 @@ export function ProviderPageClient({
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         {loyalty.rewardType === 'percent'
                           ? t('percent', { threshold: loyalty.threshold, value: loyalty.rewardValue })
-                          : t('amount', { threshold: loyalty.threshold, value: loyalty.rewardValue / 100 })}
+                          : t('amount', {
+                              threshold: loyalty.threshold,
+                              // Montant DEJA formate, devise comprise : la
+                              // chaine traduite ne porte plus de symbole,
+                              // parce que sa place change d'une langue a
+                              // l'autre (« −€10 » / « −10 € »).
+                              value: formatPriceCompact(
+                                loyalty.rewardValue,
+                                provider.currency,
+                                locale,
+                              ),
+                            })}
                       </p>
                     </div>
                     <button

@@ -218,7 +218,7 @@
     "title": "Descarregue a app Opatam",
     "subtitle": "Encontre as suas marcações, receba lembretes e marque com um clique.",
     "loyaltyPercent": "Programa de fidelização: a cada {threshold} marcações feitas na app, −{value} %. Descarregue-a para acumular os seus pontos.",
-    "loyaltyAmount": "Programa de fidelização: a cada {threshold} marcações feitas na app, −{value} €. Descarregue-a para acumular os seus pontos."
+    "loyaltyAmount": "Programa de fidelização: a cada {threshold} marcações feitas na app, −{value}. Descarregue-a para acumular os seus pontos."
   },
   "proCta": {
     "title": "Também é profissional?",

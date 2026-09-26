@@ -334,7 +334,7 @@
         "categoryPrefix": "Categoria:",
         "addCategory": "Adicionar uma categoria (facultativo)",
         "durationLabel": "Duração",
-        "priceLabel": "Preço (€)",
+        "priceLabel": "Preço ({{devise}})",
         "freeAppointment": "Marcação gratuita",
         "descriptionLabel": "Descrição (opcional)",
         "descriptionPlaceholder": "Detalhes sobre o serviço...",
@@ -516,13 +516,13 @@
       "phoneLabel": "Telefone",
       "phonePlaceholder": "912 345 678",
       "invalidPhone": "Número de telefone inválido",
-      "youSave": "Poupa {{amount}} €",
+      "youSave": "Poupa {{amount}}",
       "payOnSite": "Pagamento no local",
       "loginRequired": "Início de sessão necessário",
       "loginRequiredDescription": "Inicie sessão para confirmar a sua reserva",
       "confirmButton": "Confirmar a reserva",
       "loginButton": "Iniciar sessão para reservar",
-      "loyaltyApplied": "Desconto de fidelização de {{amount}} € aplicado 🎉",
+      "loyaltyApplied": "Desconto de fidelização de {{amount}} aplicado 🎉",
       "loyaltyLine": "Fidelização {{reward}} aplicada",
       "payTotal": "Pagar {{total}}",
       "depositNow": "Sinal",
@@ -541,7 +541,7 @@
       "addressPlaceholder": "Para onde é a deslocação?",
       "quoteLoading": "A calcular a distância…",
       "quoteUnavailable": "Verificação da distância indisponível — tente novamente dentro de minutos.",
-      "fee": "Taxa de deslocação: {{amount}} €",
+      "fee": "Taxa de deslocação: {{amount}}",
       "feeLine": "Taxa de deslocação",
       "free": "Deslocação gratuita",
       "freeShort": "Grátis",
@@ -712,7 +712,7 @@
     "providerCard": {
       "today": "Hoje",
       "tomorrow": "Amanhã",
-      "fromPrice": "A partir de {{price}} €",
+      "fromPrice": "A partir de {{price}}",
       "priceOnRequest": "Preço sob consulta",
       "loyalty": "Programa de fidelização"
     },
@@ -1225,8 +1225,8 @@
       "tomorrowAt": "Amanhã às {{time}}",
       "dayAt": "{{date}} às {{time}}"
     },
-    "priceRange": "De {{min}} a {{max}} €",
-    "price": "{{price}} €",
+    "priceRange": "De {{min}} a {{max}}",
+    "price": "{{price}}",
     "errorTitle": "Erro",
     "notAuth": {
       "title": "Inicie sessão",
@@ -1632,8 +1632,8 @@
       "vip": {
         "label": "VIP",
         "shortLabel": "VIP",
-        "hint": "Pelo menos 10 marcações confirmadas ou 500 € acumulados.",
-        "rule": "Pelo menos 10 marcações confirmadas OU pelo menos 500 € de faturação acumulada nas marcações confirmadas."
+        "hint": "Pelo menos 10 marcações confirmadas ou {{montant}} acumulados.",
+        "rule": "Pelo menos 10 marcações confirmadas OU pelo menos {{montant}} de faturação acumulada nas marcações confirmadas."
       },
       "atRisk": {
         "label": "Em risco",
@@ -2617,7 +2617,7 @@
       "percentRange": "O desconto deve estar entre 1 e 100 %",
       "endAfterStart": "A data de fim deve ser posterior à de início",
       "variationsIncomplete": "Complete pelo menos uma variante: um nome e pelo menos uma escolha com nome.",
-      "amountRange": "O desconto deve estar entre 0,01 € e 10 000 €",
+      "amountRange": "O desconto deve estar entre {{min}} e {{max}}",
       "depositRefundHours": "Prazo de reembolso: entre 1 e 720 horas"
     },
     "deleteService": {
@@ -2671,8 +2671,8 @@
       "notifyTitle": "Avisar os meus clientes de fidelização",
       "notifyDescription": "Um email aos clientes que aceitaram as suas promoções (máx. 1 por semana).",
       "modePercent": "Em %",
-      "modeAmount": "Em €",
-      "amountLabel": "Desconto (€)"
+      "modeAmount": "Em {{devise}}",
+      "amountLabel": "Desconto ({{devise}})"
     },
     "form": {
       "editTitle": "Editar",
@@ -2694,7 +2694,7 @@
       "durationLabel": "Duração",
       "durationMinUnit": "min",
       "durationPreview": "= {{duration}}",
-      "priceLabel": "Preço (€)",
+      "priceLabel": "Preço ({{devise}})",
       "descriptionLabel": "Descrição (opcional)",
       "descriptionPlaceholder": "Descreva este serviço"
     },
@@ -2718,7 +2718,7 @@
       "typePercent": "Percentagem",
       "typeFixed": "Valor fixo",
       "percentLabel": "Percentagem (%)",
-      "amountLabel": "Valor (€)",
+      "amountLabel": "Valor ({{devise}})",
       "refundDelayLabel": "Prazo de reembolso (horas antes da marcação)",
       "refundDelayNote": "Entre 1 e 720 horas (30 dias). Depois deste prazo, o sinal não é devolvido se o cliente cancelar.",
       "refundableToggle": "Sinal reembolsável",
@@ -2776,7 +2776,7 @@
       "variationNameLabel": "Nome da variante",
       "variationNamePlaceholder": "Ex.: Comprimento",
       "choicePlaceholder": "Escolha (ex.: Meio das costas)",
-      "priceLabel": "Preço (€)",
+      "priceLabel": "Preço ({{devise}})",
       "durationLabel": "Duração",
       "addChoice": "Adicionar uma escolha",
       "totalPriceNote": "Preço e duração = o total para esta escolha (não é um suplemento).",
@@ -3089,7 +3089,7 @@
       "originPlaceholder": "De onde parte?",
       "originHint": "Ponto de partida das deslocações — nunca mostrado às clientes.",
       "tiersLabel": "Escalões (até … km → taxa)",
-      "free": "€ — grátis",
+      "free": "{{devise}} — grátis",
       "addTier": "Adicionar um escalão",
       "beyondLimit": "Para além de {{km}} km: reserva online indisponível.",
       "needsOrigin": "Selecione a sua morada ou cidade de partida",
@@ -3267,7 +3267,7 @@
     },
     "reward": {
       "percent": "−{{value}} %",
-      "amount": "−{{value}} €"
+      "amount": "−{{value}}"
     },
     "publicTitle": "Programa de fidelização",
     "publicDetail": "A cada {{threshold}} marcações cumpridas, {{reward}} na sua reserva seguinte",
@@ -3310,7 +3310,7 @@
       "thresholdLabel": "Número de marcações cumpridas necessárias",
       "rewardLabel": "Recompensa",
       "percentValueLabel": "Desconto (%)",
-      "amountValueLabel": "Desconto (€)",
+      "amountValueLabel": "Desconto ({{devise}})",
       "eligibleTitle": "Serviços abrangidos",
       "eligibleHint": "Desmarque os serviços não abrangidos pela recompensa.",
       "noServices": "Adicione primeiro serviços para os tornar elegíveis."
@@ -3318,7 +3318,7 @@
     "errors": {
       "threshold": "O número de marcações tem de ser pelo menos 1",
       "percentRange": "A percentagem tem de estar entre 1 e 100",
-      "amountMin": "O montante tem de ser de pelo menos 1 €"
+      "amountMin": "O montante tem de ser de pelo menos {{min}}"
     },
     "saved": "Cartão de fidelização guardado",
     "disabledToast": "Cartão de fidelização desativado",

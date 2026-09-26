@@ -13,6 +13,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useAuth } from '../contexts';
 import { API_URL } from '../lib/config';
+import { formatPriceCompact } from '@booking-app/shared';
+import { getIntlLocale } from '../lib/i18n';
 
 /** Une carte, telle que renvoyée par GET /api/loyalty/me. */
 export interface LoyaltyCard {
@@ -24,6 +26,8 @@ export interface LoyaltyCard {
   threshold: number;
   rewardType: 'percent' | 'amount';
   rewardValue: number;
+  /** Devise du prestataire, pour une recompense en montant. Absente = euro. */
+  currency?: string | null;
   /** RDV honorés restants avant récompense (0 = armée). */
   remaining: number;
   /** true = la prochaine réservation est réduite (gated par l'activation). */
@@ -133,11 +137,14 @@ export function formatLoyaltyReward(
   rewardType: 'percent' | 'amount',
   rewardValue: number,
   t: TFunction,
+  /** Devise du prestataire. Absente = euro, comme avant. */
+  devise?: string | null,
 ): string {
   if (rewardType === 'percent') {
     return t('loyalty.reward.percent', { value: rewardValue });
   }
-  const euros = rewardValue / 100;
-  const value = Number.isInteger(euros) ? String(euros) : euros.toFixed(2);
+  // Montant DEJA formate : la chaine traduite ne porte plus de symbole, parce
+  // que sa place change d'une langue a l'autre (« −€10 » / « −10 € »).
+  const value = formatPriceCompact(rewardValue, devise, getIntlLocale());
   return t('loyalty.reward.amount', { value });
 }

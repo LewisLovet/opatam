@@ -8,7 +8,8 @@ import { View, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { Rating, formatDistance, getCategoryLabel, capitalizeWords } from '@booking-app/shared';
+import { Rating, formatDistance, getCategoryLabel, capitalizeWords, formatPriceCompact } from '@booking-app/shared';
+import { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
 import { Text } from '../../Text';
 import { Card } from '../../Card';
@@ -26,6 +27,8 @@ export interface ProviderCardProps {
   rating: Rating;
   /** Minimum price in centimes (null if no services) */
   minPrice: number | null;
+  /** Devise du prestataire affiche. Absente = euro. */
+  currency?: string | null;
   /** Next available slot (Firestore Date or null) */
   nextAvailableSlot?: Date | null;
   /** Distance in km (from user location) */
@@ -43,13 +46,9 @@ export interface ProviderCardProps {
 // Placeholder blur hash (gray blur)
 const PLACEHOLDER_BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
 
-/**
- * Format price from centimes to euros
- */
-function formatPrice(centimes: number): string {
-  const euros = centimes / 100;
-  return euros % 1 === 0 ? `${euros}` : euros.toFixed(2);
-}
+// Le prix est formate par `formatPriceCompact`, devise comprise : la chaine
+// traduite « À partir de {{price}} » ne porte plus de symbole, parce que sa
+// place change d'une langue a l'autre.
 
 function formatNextAvailable(
   date: any,
@@ -85,6 +84,7 @@ export function ProviderCard({
   city,
   rating,
   minPrice,
+  currency,
   nextAvailableSlot,
   distance,
   isVerified = false,
@@ -239,7 +239,7 @@ export function ProviderCard({
             <Text variant="bodySmall" color="primary" style={{ fontWeight: '600' }}>
               {minPrice === 0
                 ? t('common.free')
-                : t('components.providerCard.fromPrice', { price: formatPrice(minPrice) })}
+                : t('components.providerCard.fromPrice', { price: formatPriceCompact(minPrice, currency, getIntlLocale()) })}
             </Text>
           ) : (
             <Text variant="bodySmall" color="textMuted">

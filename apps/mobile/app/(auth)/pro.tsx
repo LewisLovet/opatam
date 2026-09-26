@@ -60,6 +60,7 @@ import {
   SERVICE_BASE_DURATION_MAX,
   ACQUISITION_CHANNELS,
   type AcquisitionChannel,
+  getCurrency,
   getCurrencyForCountry,
 } from '@booking-app/shared';
 import { EMAIL_REGEX as SHARED_EMAIL_REGEX, suggestEmailDomain } from '@booking-app/shared';
@@ -1852,7 +1853,7 @@ export default function ProRegisterScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Input
-                    label={t('auth.pro.step3.priceLabel')}
+                    label={t('auth.pro.step3.priceLabel', { devise: getCurrency(getCurrencyForCountry(data.countryCode)).symbol })}
                     placeholder="0"
                     value={svc.price}
                     onChangeText={(v: string) => updateServiceField(index, 'price', v)}

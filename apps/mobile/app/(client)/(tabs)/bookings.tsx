@@ -4,7 +4,7 @@
  */
 
 import type { TFunction } from 'i18next';
-import { ajouterJours } from '@booking-app/shared';
+import { ajouterJours, formatPriceCompact } from '@booking-app/shared';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -153,20 +153,20 @@ function BookingCard({
               </Text>
             ) : booking.priceMax ? (
               <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-                {t('bookings.priceRange', { min: (booking.price / 100).toFixed(0), max: (booking.priceMax / 100).toFixed(0) })}
+                {t('bookings.priceRange', { min: formatPriceCompact(booking.price, booking.currency, getIntlLocale()), max: formatPriceCompact(booking.priceMax, booking.currency, getIntlLocale()) })}
               </Text>
             ) : booking.originalPrice != null && booking.originalPrice > booking.price ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 4 }}>
                 <Text variant="caption" style={{ textDecorationLine: 'line-through', color: colors.textMuted }}>
-                  {t('bookings.price', { price: (booking.originalPrice / 100).toFixed(0) })}
+                  {t('bookings.price', { price: formatPriceCompact(booking.originalPrice, booking.currency, getIntlLocale()) })}
                 </Text>
                 <Text variant="caption" style={{ fontWeight: '700', color: '#E11D48' }}>
-                  {t('bookings.price', { price: (booking.price / 100).toFixed(0) })}
+                  {t('bookings.price', { price: formatPriceCompact(booking.price, booking.currency, getIntlLocale()) })}
                 </Text>
               </View>
             ) : (
               <Text variant="caption" style={{ fontWeight: '700', color: colors.primary, marginLeft: 8 }}>
-                {t('bookings.price', { price: (booking.price / 100).toFixed(0) })}
+                {t('bookings.price', { price: formatPriceCompact(booking.price, booking.currency, getIntlLocale()) })}
               </Text>
             )}
           </View>
