@@ -38,6 +38,7 @@ import {
 } from '@booking-app/shared';
 import { bookingService } from '@booking-app/firebase';
 import { API_URL } from '../../../../lib/config';
+import { basculerSurCompte, revenirSurPlateforme } from '../../../../lib/stripeCompte';
 import { searchAddress, type AddressSuggestion } from '../../../../lib/addressSearch';
 import i18n, { getAppLocale, getIntlLocale, normalizeAppLocale } from '../../../../lib/i18n';
 import { recordPositiveMomentAndMaybeAskReview } from '../../../../lib/appReview';
@@ -417,9 +418,13 @@ export default function ConfirmBookingScreen() {
         // through `charge.refunded` listening on Connect events) will
         // flip it to `confirmed`. If the user cancels here, the cron
         // will purge the booking after 30 min.
-        // No `stripeAccountId` needed — the API uses Destination charges,
-        // so the PaymentIntent is on the platform. Funds get routed to
-        // the pro's connected account via `transfer_data` automatically.
+        // Le paiement est DIRECT : le PaymentIntent, le Customer et la clé
+        // éphémère vivent sur le compte Stripe du prestataire. Le SDK natif
+        // doit donc basculer sur ce compte avant d'ouvrir la feuille, sinon
+        // il cherche le PaymentIntent sur la plateforme et ne le trouve pas.
+        // Le retour sur la plateforme se fait dans le `finally` de cette
+        // fonction — le réglage est global au module natif, et le laisser sur
+        // le compte d'un salon casserait l'abonnement Sérénité ensuite.
         // La feuille Stripe n'affiche qu'un total et coupe les libellés
         // longs : le bouton reste court (« Payer 88,99 € »), le détail est
         // dans le récapitulatif en haut de l'écran.
@@ -429,7 +434,12 @@ export default function ConfirmBookingScreen() {
         // refuse un code qui ne lui correspond pas, et le libelle du bouton
         // affichait des euros quel que soit le pays.
         const devisePaiement = String(data.currency || DEFAULT_CURRENCY).toUpperCase();
+        // Renvoyé par le serveur, qui l'a lu sur le compte Stripe lui-même.
+        const paysMarchand = String(data.merchantCountryCode || 'FR').toUpperCase();
         const montant = (c: number) => formatPrice(c, devisePaiement);
+        if (data.connectAccountId) {
+          await basculerSurCompte(String(data.connectAccountId));
+        }
         const init = await initPaymentSheet({
           merchantDisplayName: provider.businessName ?? 'Opatam',
           ...(fraisService > 0 && depositCents > 0
@@ -439,11 +449,13 @@ export default function ConfirmBookingScreen() {
           customerId: data.customer,
           customerEphemeralKeySecret: data.ephemeralKey,
           allowsDelayedPaymentMethods: false,
-          // `merchantCountryCode` reste FR : avec des destination charges,
-          // le marchand est la PLATEFORME, pas le prestataire. Seule la
-          // devise doit suivre le PaymentIntent.
-          applePay: { merchantCountryCode: 'FR' },
-          googlePay: { merchantCountryCode: 'FR', currencyCode: devisePaiement },
+          // Le marchand est le PRESTATAIRE : Apple Pay et Google Pay refusent
+          // un pays qui ne correspond pas à celui du compte qui encaisse. Le
+          // serveur le lit chez Stripe, pas dans le profil du prestataire —
+          // les comptes créés avant la correction du pays sont français quoi
+          // que déclare leur fiche, et Stripe n'autorise pas à le changer.
+          applePay: { merchantCountryCode: paysMarchand },
+          googlePay: { merchantCountryCode: paysMarchand, currencyCode: devisePaiement },
           returnURL: 'opatam://stripe-redirect',
           defaultBillingDetails: {
             email: userData.email,
@@ -590,6 +602,11 @@ export default function ConfirmBookingScreen() {
       });
     } finally {
       setIsSubmitting(false);
+      // Le compte Stripe du SDK est GLOBAL au module natif. Le laisser sur
+      // celui d'un salon ferait échouer tout paiement suivant sur la
+      // plateforme, l'abonnement Sérénité en premier. On revient donc
+      // systématiquement, succès comme échec comme abandon.
+      void revenirSurPlateforme();
     }
   };
 

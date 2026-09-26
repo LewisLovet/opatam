@@ -332,54 +332,19 @@ interface ServiceForDeposit {
   } | null;
 }
 
-/**
- * Frais de traitement Stripe estimés pour un encaissement par carte, en
- * centimes : **1,5 % + 0,25 €**, le tarif des cartes de l'Espace économique
- * européen.
- *
- * POURQUOI UNE ESTIMATION. Stripe ne facture qu'APRÈS le paiement, alors que
- * le montant à reverser au prestataire doit être fixé AVANT, à la création du
- * PaymentIntent. Il faut donc anticiper. Vérifié contre les frais réellement
- * prélevés sur les acomptes : 13,00 € → 0,45 €, 12,00 € → 0,43 €,
- * 15,00 € → 0,48 € — la formule tombe juste au centime.
- *
- * CE QU'ELLE NE COUVRE PAS. Une carte hors EEE coûte davantage (3,25 %). La
- * différence reste alors à la charge de la plateforme : l'écart est rare, et
- * il vaut mieux le supporter que sur-prélever un prestataire.
- *
- * Le remboursement d'un acompte ne restitue PAS ces frais — c'est la règle de
- * Stripe, aucune implémentation ne la contourne.
- */
-export function estimateStripeCardFee(amountCents: number): number {
-  if (amountCents <= 0) return 0;
-  return Math.round(amountCents * 0.015) + 25;
-}
-
-/**
- * Montant à reverser au prestataire pour un acompte encaissé par la
- * plateforme, frais de traitement déduits.
- *
- * Aligne le tunnel mobile sur le tunnel web. Le web crée le paiement SUR le
- * compte du prestataire (paiement direct) : Stripe y prélève sa commission,
- * le prestataire reçoit le net. Le mobile passe par un paiement à destination
- * et transférait jusqu'ici la TOTALITÉ, laissant la commission à la charge de
- * la plateforme. Le même acompte rapportait donc au prestataire 0,45 € de plus
- * selon l'appareil de sa cliente, aux frais d'Opatam.
- *
- * Le paiement à destination est un CHOIX d'intégration, pas une contrainte :
- * `@stripe/stripe-react-native` expose `stripeAccountId` sur `StripeProvider`
- * et `initStripe`, donc le paiement direct y est possible. Ce qu'il coûterait,
- * c'est le partage des cartes enregistrées : en direct, le Customer appartient
- * au compte du salon, et une cliente qui réserve chez deux salons ressaisit sa
- * carte. Déduire les frais ici règle le problème d'argent sans ce prix-là.
- *
- * Ce n'est PAS une commission de plateforme : Opatam ne prélève rien, elle
- * cesse simplement de payer les frais de Stripe à la place du prestataire.
- * L'engagement « 0 % de commission » reste entier.
- */
-export function depositTransferAmount(depositCents: number): number {
-  return Math.max(0, depositCents - estimateStripeCardFee(depositCents));
-}
+// `estimateStripeCardFee` et `depositTransferAmount` ont été supprimées le
+// 2026-09-27. Elles estimaient les frais de Stripe (1,5 % + 0,25 €) pour les
+// déduire du transfert au prestataire, parce que le tunnel mobile encaissait
+// sur le compte de la plateforme et devait fixer le montant à reverser AVANT
+// que Stripe ne facture.
+//
+// Le mobile est passé en paiement direct comme le web : Stripe prélève
+// désormais SES frais sur le compte du prestataire, au tarif réel et pour la
+// bonne devise. Opatam n'a plus à les estimer — et une estimation en euros
+// n'aurait de toute façon rien voulu dire sur un acompte en francs.
+//
+// Les frais d'OPATAM, eux, restent bien distincts : voir `clientServiceFee`
+// juste en dessous.
 
 /**
  * Frais de service Opatam facturés à la CLIENTE sur un acompte, en plus de

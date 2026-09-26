@@ -163,9 +163,23 @@ export const purgePendingPaymentBookings = onSchedule(
       const paymentIntentId: string | undefined = data.deposit?.paymentIntentId;
 
       if (paymentIntentId) {
+        // Sur quel compte vit ce PaymentIntent ? Depuis le passage du tunnel
+        // mobile en paiement direct, il est sur le compte du PRESTATAIRE :
+        // l'interroger sur la plateforme renverrait « no such payment_intent »,
+        // le cron garderait la reservation indefiniment et le creneau resterait
+        // bloque. Les reservations d'avant n'ont pas le champ et restent
+        // interrogees sur la plateforme, ou elles se trouvent bien.
+        const compteConnecte: string | undefined = data.deposit?.connectAccountId;
+        const surLeBonCompte = compteConnecte
+          ? { stripeAccount: compteConnecte }
+          : undefined;
         let status: string | null = null;
         try {
-          const pi = await getStripe().paymentIntents.retrieve(paymentIntentId);
+          const pi = await getStripe().paymentIntents.retrieve(
+            paymentIntentId,
+            undefined,
+            surLeBonCompte,
+          );
           status = pi.status;
         } catch (err) {
           // Can't verify → keep it (deleting a possibly-paid booking is far

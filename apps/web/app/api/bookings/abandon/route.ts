@@ -75,10 +75,26 @@ export async function POST(request: NextRequest) {
 
     if (paymentIntentId) {
       const stripe = getStripeDev();
+      // Sur quel compte vit ce PaymentIntent ? Depuis le passage du tunnel
+      // mobile en paiement direct, il est sur le compte du PRESTATAIRE :
+      // l'interroger sur la plateforme renverrait « no such payment_intent »,
+      // la vérification échouerait et AUCUN créneau ne serait jamais libéré.
+      // Les réservations d'avant n'ont pas le champ et restent interrogées
+      // sur la plateforme, où elles se trouvent bien.
+      const compteConnecte = booking.deposit?.connectAccountId as
+        | string
+        | undefined;
+      const surLeBonCompte = compteConnecte
+        ? { stripeAccount: compteConnecte }
+        : undefined;
       let piStatus: string | null = null;
       let piId: string | null = null;
       try {
-        const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+        const pi = await stripe.paymentIntents.retrieve(
+          paymentIntentId,
+          undefined,
+          surLeBonCompte,
+        );
         piStatus = pi.status;
         piId = pi.id;
       } catch (err) {
@@ -114,7 +130,11 @@ export async function POST(request: NextRequest) {
       // Genuinely unpaid → cancel the intent so it doesn't linger in
       // requires_payment_method, then delete below.
       try {
-        await stripe.paymentIntents.cancel(paymentIntentId);
+        await stripe.paymentIntents.cancel(
+          paymentIntentId,
+          undefined,
+          surLeBonCompte,
+        );
       } catch (err) {
         console.warn(
           '[BOOKINGS/ABANDON] PI cancel failed (non-blocking):',

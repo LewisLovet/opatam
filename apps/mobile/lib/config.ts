@@ -74,6 +74,16 @@ export const STRIPE_PUBLISHABLE_KEY =
   __DEV__ && envStripeKey ? envStripeKey : PROD_STRIPE_PUBLISHABLE_KEY;
 
 /**
+ * Identifiant marchand Apple Pay.
+ *
+ * Exporté ici et non plus déclaré dans `_layout.tsx` : le tunnel de
+ * réservation doit ré-initialiser le SDK Stripe sur le compte du prestataire
+ * avant d'ouvrir la feuille de paiement, et doit donc repasser exactement les
+ * mêmes valeurs. Deux copies de cette chaîne divergeraient un jour.
+ */
+export const APPLE_PAY_MERCHANT_ID = 'merchant.com.kamerleontech.opatam';
+
+/**
  * Adresse publique de la fiche d'un prestataire — celle que voient ses
  * clientes. Passe par `API_URL`, donc pointe sur le serveur local en dev et
  * sur opatam.com en production.

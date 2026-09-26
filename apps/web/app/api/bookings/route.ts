@@ -10,11 +10,11 @@ import {
   isLoyaltyConfigValid,
   isLoyaltyRewardArmed,
   hasLoyaltyAccess,
-  depositTransferAmount,
   clientServiceFee,
   DEFAULT_CURRENCY,
   formatPrice,
 } from '@booking-app/shared';
+import type Stripe from 'stripe';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
@@ -68,6 +68,32 @@ async function resolveClientAccount(
     return account?.uid ?? null;
   } catch {
     return null; // aucun compte à cette adresse — cas le plus fréquent
+  }
+}
+
+/**
+ * Pays du compte Stripe connecte, pour Apple Pay et Google Pay.
+ *
+ * En paiement direct le MARCHAND est le prestataire : les deux portefeuilles
+ * refusent un pays qui ne correspond pas a celui du compte qui encaisse.
+ * On le lit donc chez Stripe et non dans le profil : les comptes crees avant
+ * la correction du pays sont francais quoi que declare le prestataire, et
+ * Stripe n'autorise pas a changer le pays d'un compte existant.
+ *
+ * Repli sur la France en cas d'echec : c'est le pays de la grande majorite
+ * des comptes, et un portefeuille indisponible vaut mieux qu'un tunnel qui
+ * s'arrete. La carte, elle, marche dans tous les cas.
+ */
+async function paysDuCompteConnecte(
+  stripe: Stripe,
+  accountId: string,
+): Promise<string> {
+  try {
+    const compte = await stripe.accounts.retrieve(accountId);
+    return (compte.country ?? 'FR').toUpperCase();
+  } catch (err) {
+    console.error('[BOOKINGS] pays du compte connecte illisible:', err);
+    return 'FR';
   }
 }
 
@@ -458,80 +484,90 @@ export async function POST(request: NextRequest) {
         stripeAccount: providerData.stripeConnectAccountId,
       } as const;
 
-      // Mobile native flow → Stripe PaymentSheet via Destination Charges.
+      // Mobile native flow → Stripe PaymentSheet en PAIEMENT DIRECT, comme
+      // le web. Client, cle ephemere et PaymentIntent vivent sur le compte
+      // du prestataire ; les frais Opatam remontent par
+      // `application_fee_amount`.
       //
-      // Why destination instead of direct charges (which the web uses):
-      // the React Native SDK's `useStripe()` hook can't switch accounts
-      // per call — `stripeAccountId` is only on the top-level
-      // `StripeProvider`. Remounting it per booking is hostile.
+      // Ce flux etait en destination charges, au motif que le SDK React
+      // Native ne peut pas changer de compte par appel — `stripeAccountId`
+      // n'existe que sur `StripeProvider`. C'est vrai du COMPOSANT, mais le
+      // SDK exporte aussi `initStripe()`, qui appelle le meme `initialise`
+      // natif de facon imperative : l'app bascule donc le SDK sur le compte
+      // du pro juste avant d'ouvrir la feuille, sans rien remonter.
       //
-      // Destination charges sidestep this entirely: the PaymentIntent
-      // and Customer live on the platform, and `transfer_data` routes
-      // the funds to the pro's connected account. PaymentSheet works
-      // with zero special config.
+      // Trois consequences, toutes voulues :
+      //   - le prestataire supporte les FRAIS REELS de Stripe, preleves par
+      //     Stripe sur son compte, au lieu d'une estimation maison qu'on
+      //     deduisait du transfert ;
+      //   - il devient le marchand : le releve bancaire de la cliente porte
+      //     son enseigne, plus « Opatam » ;
+      //   - `deposit.connectAccountId` est desormais renseigne, ce qui suffit
+      //     a router le remboursement sur le bon compte (voir
+      //     `refund-deposit.ts`, qui branche deja sur ce champ). Les
+      //     reservations d'AVANT gardent le champ vide et donc l'ancienne
+      //     voie : rien a migrer.
       //
-      // The trade-off: bank statement shows "Opatam" (platform) instead
-      // of the pro's brand. Acceptable since the customer booked
-      // through the Opatam app — they expect the platform name.
+      // PREREQUIS DE DEPLOIEMENT : `payment_intent.succeeded` doit etre
+      // abonne sur le point de terminaison CONNECT. En direct, l'evenement
+      // arrive du compte du prestataire et non plus de la plateforme ; sans
+      // cet abonnement la reservation ne passerait jamais a `confirmed`.
       if (isMobileClient) {
         try {
-          const customer = await stripe.customers.create({
-            email: booking.clientInfo.email,
-            name: booking.clientInfo.name,
-          });
+          const customer = await stripe.customers.create(
+            {
+              email: booking.clientInfo.email,
+              name: booking.clientInfo.name,
+            },
+            stripeAccountOpts,
+          );
 
           const ephemeralKey = await stripe.ephemeralKeys.create(
             { customer: customer.id },
-            { apiVersion: '2025-04-30.basil' },
+            { apiVersion: '2025-04-30.basil', ...stripeAccountOpts },
           );
 
           // Frais de service Opatam, payés par la cliente en plus de l'acompte
           // et conservés par la plateforme (le transfert au pro ne change pas).
           const serviceFee =
           booking.deposit.serviceFee ?? clientServiceFee(booking.deposit.amount, providerData.currency);
-          const paymentIntent = await stripe.paymentIntents.create({
-            amount: booking.deposit.amount + serviceFee,
-            currency: deviseDeLaResa(booking),
-            customer: customer.id,
-            automatic_payment_methods: { enabled: true },
-            description:
-              `Acompte — ${booking.serviceName} chez ${booking.providerName}` +
-              // Le libelle apparait sur le releve bancaire de la cliente :
-              // il doit porter la devise reellement debitee, pas l'euro.
-              (serviceFee > 0
-                ? ` (dont ${formatPrice(serviceFee, providerData.currency)} de frais de plateforme)`
-                : ''),
-            transfer_data: {
-              destination: providerData.stripeConnectAccountId,
-              // Frais de traitement déduits, comme sur le tunnel web.
-              //
-              // Sans ce montant, Stripe transfère la TOTALITÉ et prélève sa
-              // commission sur le solde de la plateforme : chaque acompte
-              // encaissé depuis l'app coûtait 0,45 € à Opatam, alors que le
-              // même acompte encaissé depuis le site ne lui coûtait rien —
-              // le web crée le paiement sur le compte du prestataire, qui
-              // supporte donc les frais.
-              //
-              // Opatam ne prélève toujours AUCUNE commission : elle cesse
-              // simplement de payer celle de Stripe à la place du pro.
-              amount: depositTransferAmount(booking.deposit.amount),
+          const deviseResa = deviseDeLaResa(booking);
+          const paymentIntent = await stripe.paymentIntents.create(
+            {
+              amount: booking.deposit.amount + serviceFee,
+              currency: deviseResa,
+              customer: customer.id,
+              automatic_payment_methods: { enabled: true },
+              description:
+                `Acompte — ${booking.serviceName} chez ${booking.providerName}` +
+                // Le libelle apparait sur le releve bancaire de la cliente :
+                // il doit porter la devise reellement debitee, pas l'euro.
+                (serviceFee > 0
+                  ? ` (dont ${formatPrice(serviceFee, booking.currency)} de frais de plateforme)`
+                  : ''),
+              // Frais Opatam remontes a la plateforme. Stripe preleve SES
+              // propres frais sur le compte du prestataire, directement et
+              // au tarif reel — plus d'estimation a deduire du transfert.
+              ...(serviceFee > 0 ? { application_fee_amount: serviceFee } : {}),
+              metadata: {
+                bookingId: booking.id,
+                providerId: booking.providerId,
+                serviceId: booking.serviceId,
+                depositAmount: String(booking.deposit.amount),
+                serviceFee: String(serviceFee),
+              },
             },
-            metadata: {
-              bookingId: booking.id,
-              providerId: booking.providerId,
-              serviceId: booking.serviceId,
-              depositAmount: String(booking.deposit.amount),
-              serviceFee: String(serviceFee),
-            },
-          });
+            stripeAccountOpts,
+          );
 
-          // connectAccountId stays NULL → tells the refund helper to
-          // refund on the platform (no Stripe-Account header).
+          // Renseigne : dit au remboursement de se faire sur le compte du
+          // prestataire, avec l'en-tete Stripe-Account.
           await getAdminFirestore()
             .collection('bookings')
             .doc(booking.id)
             .update({
               'deposit.paymentIntentId': paymentIntent.id,
+              'deposit.connectAccountId': providerData.stripeConnectAccountId,
             });
 
           return NextResponse.json(
@@ -546,7 +582,20 @@ export async function POST(request: NextRequest) {
               depositAmount: booking.deposit.amount,
               // Google Pay refuse un code de devise qui ne correspond pas a
               // celui du PaymentIntent : il doit venir du serveur.
-              currency: deviseDeLaResa(booking).toUpperCase(),
+              currency: deviseResa.toUpperCase(),
+              // Le SDK mobile doit basculer sur ce compte avant d'ouvrir la
+              // feuille : en paiement direct, le PaymentIntent n'existe pas
+              // sur la plateforme.
+              connectAccountId: providerData.stripeConnectAccountId,
+              // Pays du compte connecte, lu chez Stripe et non deduit du
+              // profil : Apple Pay et Google Pay exigent le pays du MARCHAND,
+              // et le marchand est desormais le prestataire. Les comptes
+              // crees avant la correction du pays sont francais quoi que dise
+              // leur profil — c'est leur realite chez Stripe qui compte.
+              merchantCountryCode: await paysDuCompteConnecte(
+                stripe,
+                providerData.stripeConnectAccountId,
+              ),
             },
             { status: 201 },
           );
