@@ -39,8 +39,33 @@ const cible = process.env.FIRESTORE_EMULATOR_HOST
   : 'PRODUCTION';
 console.log(`Cible : ${cible} — mode : ${APPLY ? 'APPLICATION' : 'DRY-RUN (aucune écriture)'}\n`);
 
+/**
+ * Identifiants. Contre l'ÉMULATEUR, aucun n'est nécessaire. En PRODUCTION,
+ * l'initialisation « projectId seul » s'en remettait aux identifiants par
+ * défaut de la machine, qui n'existent pas sur un poste de développement :
+ * le script échouait à la première lecture. Ordre de recherche explicite :
+ *   1. `SA_PATH` — chemin d'un compte de service ;
+ *   2. `service-account.json` à la racine du dépôt (celui du serveur web) ;
+ *   3. les identifiants par défaut (`GOOGLE_APPLICATION_CREDENTIALS`, gcloud).
+ */
+const projectId = process.env.GCLOUD_PROJECT ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'opatam-da04b';
 if (admin.apps.length === 0) {
-  admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'opatam-da04b' });
+  if (process.env.FIRESTORE_EMULATOR_HOST) {
+    admin.initializeApp({ projectId });
+  } else {
+    const { existsSync, readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const candidats = [process.env.SA_PATH, resolve(process.cwd(), 'service-account.json')].filter(Boolean);
+    const chemin = candidats.find((c) => existsSync(c));
+    if (chemin) {
+      const sa = JSON.parse(readFileSync(chemin, 'utf8'));
+      admin.initializeApp({ credential: admin.credential.cert(sa), projectId: sa.project_id ?? projectId });
+      console.log(`Identifiants : compte de service ${chemin} (projet ${sa.project_id ?? projectId})`);
+    } else {
+      console.log('Identifiants : par défaut (GOOGLE_APPLICATION_CREDENTIALS / gcloud) — posez SA_PATH si ça échoue.');
+      admin.initializeApp({ projectId });
+    }
+  }
 }
 const db = admin.firestore();
 

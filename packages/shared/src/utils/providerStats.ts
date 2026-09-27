@@ -345,14 +345,17 @@ export function aggregateBookingsToDaily(
 export function mergeActivitiesIntoDailies(
   activities: BlockedSlot[],
   dailies: Map<string, ProviderStatsDaily>,
-  opts: { providerId: string; timezone?: string },
+  opts: { providerId: string; timezone?: string; providerCurrency?: string | null },
 ): Map<string, ProviderStatsDaily> {
   const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const reference = deviseReference(opts.providerCurrency);
 
   for (const slot of activities) {
     if (!slot.category) continue;
     const amount = slot.amount ?? 0;
     if (amount <= 0) continue;
+    // Devise FIGÉE sur l'activité ; absente = EUR (activité d'avant).
+    const devise = groupeDevise(slot);
 
     const date = dateKeyInTz(slot.startDate, tz);
     let daily = dailies.get(date);
@@ -361,9 +364,11 @@ export function mergeActivitiesIntoDailies(
       dailies.set(date, daily);
     }
 
-    daily.activityRevenue += amount;
+    if (!daily.activityRevenueByCurrency) daily.activityRevenueByCurrency = {};
+    daily.activityRevenueByCurrency[devise] = (daily.activityRevenueByCurrency[devise] ?? 0) + amount;
+    if (devise === reference) daily.activityRevenue += amount;
     daily.activityCount += 1;
-    upsertActivityBreakdown(daily.activitiesByCategory, slot.category, amount);
+    upsertActivityBreakdown(daily.activitiesByCategory, slot.category, amount, devise, reference);
   }
 
   return dailies;
@@ -373,14 +378,16 @@ function upsertActivityBreakdown(
   list: ProviderStatsActivityBreakdown[],
   category: ActivityCategory,
   amount: number,
+  devise: string,
+  reference: string,
 ): void {
   let entry = list.find((e) => e.category === category);
   if (!entry) {
-    entry = { category, count: 0, revenue: 0 };
+    entry = { category, count: 0, revenue: 0, revenueByCurrency: {} };
     list.push(entry);
   }
   entry.count += 1;
-  entry.revenue += amount;
+  ajouterMontant(entry, devise, amount, reference);
 }
 
 function upsertServiceBreakdown(
@@ -496,16 +503,25 @@ export function aggregateDailiesToMonthly(
 
     // "Autres revenus" track — defaults guard against legacy daily
     // docs written before activityRevenue was added to the schema.
-    monthly.activityRevenue += daily.activityRevenue ?? 0;
+    // Fusion PAR DEVISE ; un daily d'avant le multidevise vaut l'euro.
+    {
+      const reference = deviseReference(providerCurrency);
+      const seaux = daily.activityRevenueByCurrency ?? { EUR: daily.activityRevenue ?? 0 };
+      if (!monthly.activityRevenueByCurrency) monthly.activityRevenueByCurrency = {};
+      for (const [devise, montant] of Object.entries(seaux)) {
+        monthly.activityRevenueByCurrency[devise] = (monthly.activityRevenueByCurrency[devise] ?? 0) + montant;
+        if (devise === reference) monthly.activityRevenue += montant;
+      }
+    }
     monthly.activityCount += daily.activityCount ?? 0;
     for (const c of daily.activitiesByCategory ?? []) {
       let entry = monthly.activitiesByCategory.find((x) => x.category === c.category);
       if (!entry) {
-        entry = { category: c.category, count: 0, revenue: 0 };
+        entry = { category: c.category, count: 0, revenue: 0, revenueByCurrency: {} };
         monthly.activitiesByCategory.push(entry);
       }
       entry.count += c.count;
-      entry.revenue += c.revenue;
+      fusionnerParDevise(entry, c, deviseReference(providerCurrency));
     }
 
     // Union client hashes across the month.
@@ -733,6 +749,7 @@ export function aggregateFullPipeline(
   if (opts.activities && opts.activities.length > 0) {
     mergeActivitiesIntoDailies(opts.activities, dailyMap, {
       providerId: opts.providerId,
+      providerCurrency: opts.providerCurrency,
       timezone: opts.timezone,
     });
   }

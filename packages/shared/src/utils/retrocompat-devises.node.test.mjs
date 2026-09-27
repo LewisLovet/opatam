@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { deviseDeLaReservation, peutChangerDevise, DEFAULT_CURRENCY } from '../constants/currencies.ts';
 import { formatPrice } from './prix.ts';
-import { revenueByCurrencyFromDailies, autresDevises, totalsFromDailies } from './statsAggregate.ts';
+import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies } from './statsAggregate.ts';
 
 const ancien = { businessName: 'Salon d’avant', settings: {} }; // pas de `currency`
 
@@ -123,4 +123,44 @@ describe('7. stories, fidélité et acomptes lisent la devise du pro connecté',
       assert.ok(!/currency:\s*'EUR'/.test(src), `${chemin} force encore currency: 'EUR'`);
     });
   }
+});
+
+describe('2 bis. affichage juste AVANT tout recalcul (devise de référence)', () => {
+  // Un daily d'AVANT le multidevise : `revenue` en euros, pas de seaux.
+  const legacy = [{ revenue: 8000, bookingsCount: 1, confirmedCount: 1, cancelledCount: 0, noshowCount: 0,
+    activityRevenue: 1500, activityCount: 1, clientHashes: [], newClientHashes: [] }];
+
+  it('sous une référence CHF, un ancien montant EUR n’est PAS affiché comme du CHF', () => {
+    const t = totalsFromDailies(legacy, 'CHF');
+    assert.equal(t.revenue, 0, 'le CA principal (CHF) doit être nul');
+    assert.deepEqual(t.revenueByCurrency, { EUR: 8000 }, 'et l’euro apparaît dans SA ligne, une seule fois');
+    assert.equal(t.activityRevenue, 0);
+    assert.deepEqual(t.activityRevenueByCurrency, { EUR: 1500 });
+  });
+
+  it('sous une référence EUR, rien ne change pour les comptes existants', () => {
+    const t = totalsFromDailies(legacy, 'EUR');
+    assert.equal(t.revenue, 8000);
+    assert.equal(t.activityRevenue, 1500);
+    assert.deepEqual(autresDevises(t.revenueByCurrency, 'EUR'), []);
+  });
+
+  it('sans référence, l’ancien comportement (champs plats) est conservé', () => {
+    assert.equal(totalsFromDailies(legacy).revenue, 8000);
+  });
+});
+
+describe('3. activités payantes : devise figée, jamais additionnées', () => {
+  it('une activité EUR d’avant et une activité CHF d’après restent séparées', () => {
+    const docs = [
+      { activityRevenue: 2000 },                                        // avant : pas de seaux → EUR
+      { activityRevenue: 3000, activityRevenueByCurrency: { CHF: 3000 } },
+    ];
+    assert.deepEqual(activityRevenueByCurrencyFromDailies(docs), { EUR: 2000, CHF: 3000 });
+    for (const v of Object.values(activityRevenueByCurrencyFromDailies(docs))) assert.notEqual(v, 5000);
+  });
+
+  it('un montant nul ne crée pas de ligne', () => {
+    assert.deepEqual(activityRevenueByCurrencyFromDailies([{ activityRevenue: 0 }]), {});
+  });
 });

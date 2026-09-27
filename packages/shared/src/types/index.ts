@@ -447,6 +447,8 @@ export interface ProviderStatsActivityBreakdown {
   count: number;
   /** Sum of `amount` (cents) for paid activities in this category. */
   revenue: number;
+  /** Même montant PAR DEVISE ; `revenue` = groupe de référence seul. */
+  revenueByCurrency?: Record<string, number>;
 }
 
 /**
@@ -492,6 +494,8 @@ export interface ProviderStatsDaily {
    * daily docs that pre-date this field.
    */
   activityRevenue: number;
+  /** « Autres revenus » PAR DEVISE ; `activityRevenue` = groupe de référence seul. */
+  activityRevenueByCurrency?: Record<string, number>;
   /** Number of paid activities on this day. */
   activityCount: number;
   /** Per-category breakdown of activity revenue. */
@@ -549,6 +553,8 @@ export interface ProviderStatsMonthly {
    *  rolled up across the calendar month. See ProviderStatsDaily
    *  for full semantics. */
   activityRevenue: number;
+  /** « Autres revenus » PAR DEVISE ; `activityRevenue` = groupe de référence seul. */
+  activityRevenueByCurrency?: Record<string, number>;
   activityCount: number;
   activitiesByCategory: ProviderStatsActivityBreakdown[];
 
@@ -1432,6 +1438,13 @@ export interface BlockedSlot {
    *  Phase 2. NOT counted in any ProviderClient revenue since
    *  activities aren't tied to a client. */
   amount?: number | null;
+  /**
+   * Devise du montant, FIGÉE à la création de l'activité — jamais réécrite à
+   * la modification. Absente (activité d'avant le multidevise) = EUR. Sans
+   * ce champ, un prestataire passé de l'euro au franc voyait ses anciennes
+   * activités en euros comptées comme des francs.
+   */
+  currency?: string | null;
   createdAt: Date;
 }
 

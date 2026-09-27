@@ -102,6 +102,7 @@ export function blockedSlotFromFirestore(
   return {
     category: (raw.category ?? null) as BlockedSlotLike['category'],
     amount: typeof raw.amount === 'number' ? raw.amount : null,
+    currency: (raw.currency as string | null | undefined) ?? null,
     startDate,
   };
 }
@@ -156,6 +157,7 @@ export async function recomputeDailyDoc(
     mergeActivitiesIntoDailies(activities, dailies, {
       providerId,
       timezone: DEFAULT_TIMEZONE,
+      providerCurrency: ctx.currency,
     });
   }
 

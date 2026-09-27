@@ -32,6 +32,8 @@ export interface PeriodTotals {
    * and CA hors-RDV side by side without conflating the two.
    */
   activityRevenue: number;
+  /** « Autres revenus » PAR DEVISE ; un daily d'avant vaut l'euro. */
+  activityRevenueByCurrency: Record<string, number>;
   activityCount: number;
   /** Distinct client identities across the period (union of hashes). */
   uniqueClients: number;
@@ -58,6 +60,21 @@ export function revenueByCurrencyFromDailies(
   return out;
 }
 
+/** « Autres revenus » par devise ; un document sans seaux date d'avant et vaut l'euro. */
+export function activityRevenueByCurrencyFromDailies(
+  docs: readonly { activityRevenue?: number; activityRevenueByCurrency?: Record<string, number> }[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of docs) {
+    const seaux = d.activityRevenueByCurrency ?? { EUR: d.activityRevenue ?? 0 };
+    for (const [devise, montant] of Object.entries(seaux)) {
+      if (montant === 0) continue;
+      out[devise] = (out[devise] ?? 0) + montant;
+    }
+  }
+  return out;
+}
+
 /** Devises AUTRES que la référence, avec leur total — ce que l'écran affiche à part. */
 export function autresDevises(
   byCurrency: Record<string, number> | undefined,
@@ -71,6 +88,15 @@ export function autresDevises(
 
 export function totalsFromDailies(
   dailies: ProviderStatsDaily[],
+  /**
+   * Devise de RÉFÉRENCE du prestataire. Quand elle est donnée, `revenue` et
+   * `activityRevenue` sont DÉRIVÉS des seaux (le groupe de cette devise) au
+   * lieu d'additionner les champs plats : un document d'avant le
+   * multidevise, écrit en euros sous une autre référence, ne peut plus être
+   * à la fois affiché comme du franc ET compté dans la ligne EUR. C'est ce
+   * qui rend l'affichage juste AVANT tout recalcul des agrégats.
+   */
+  reference?: string | null,
 ): PeriodTotals {
   const clientHashes = new Set<string>();
   const newClientHashes = new Set<string>();
@@ -83,6 +109,7 @@ export function totalsFromDailies(
   let activityCount = 0;
 
   const revenueByCurrency = revenueByCurrencyFromDailies(dailies);
+  const activityRevenueByCurrency = activityRevenueByCurrencyFromDailies(dailies);
   for (const d of dailies) {
     revenue += d.revenue;
     bookingsCount += d.bookingsCount;
@@ -98,14 +125,16 @@ export function totalsFromDailies(
     for (const h of d.newClientHashes) newClientHashes.add(h);
   }
 
+  const ref = reference ? reference.toUpperCase() : null;
   return {
-    revenue,
+    revenue: ref ? (revenueByCurrency[ref] ?? 0) : revenue,
     revenueByCurrency,
     bookingsCount,
     confirmedCount,
     cancelledCount,
     noshowCount,
-    activityRevenue,
+    activityRevenue: ref ? (activityRevenueByCurrency[ref] ?? 0) : activityRevenue,
+    activityRevenueByCurrency,
     activityCount,
     uniqueClients: clientHashes.size,
     newClients: newClientHashes.size,
@@ -114,9 +143,10 @@ export function totalsFromDailies(
 
 export function totalsFromMonthlies(
   monthlies: ProviderStatsMonthly[],
+  reference?: string | null,
 ): PeriodTotals {
   // Identical shape — share the implementation.
-  return totalsFromDailies(monthlies as unknown as ProviderStatsDaily[]);
+  return totalsFromDailies(monthlies as unknown as ProviderStatsDaily[], reference);
 }
 
 /**
@@ -132,11 +162,14 @@ export function activityBreakdownFromDailies(
     for (const c of d.activitiesByCategory ?? []) {
       let entry = acc.get(c.category);
       if (!entry) {
-        entry = { category: c.category, count: 0, revenue: 0 };
+        entry = { category: c.category, count: 0, revenue: 0, revenueByCurrency: {} };
         acc.set(c.category, entry);
       }
       entry.count += c.count;
       entry.revenue += c.revenue;
+      for (const [devise, montant] of Object.entries(c.revenueByCurrency ?? { EUR: c.revenue })) {
+        entry.revenueByCurrency![devise] = (entry.revenueByCurrency![devise] ?? 0) + montant;
+      }
     }
   }
   return [...acc.values()].sort((a, b) => b.revenue - a.revenue);

@@ -105,6 +105,7 @@ export interface ProviderStatsActivityBreakdown {
   category: ActivityCategory;
   count: number;
   revenue: number;
+  revenueByCurrency?: Record<string, number>;
 }
 
 /**
@@ -115,6 +116,8 @@ export interface ProviderStatsActivityBreakdown {
 export interface BlockedSlotLike {
   category?: ActivityCategory | null;
   amount?: number | null;
+  /** Devise du montant, figee a la creation. Absente = EUR. */
+  currency?: string | null;
   startDate: Date;
 }
 
@@ -133,6 +136,7 @@ export interface ProviderStatsDaily {
   /** Paid-activity revenue track. See @booking-app/shared for full
    *  semantics. Defaults to 0 — backward-compatible with older docs. */
   activityRevenue: number;
+  activityRevenueByCurrency?: Record<string, number>;
   activityCount: number;
   activitiesByCategory: ProviderStatsActivityBreakdown[];
   clientHashes: string[];
@@ -156,6 +160,7 @@ export interface ProviderStatsMonthly {
   /** Meme montant PAR DEVISE ; `revenue` ne porte que le groupe de reference. */
   revenueByCurrency?: Record<string, number>;
   activityRevenue: number;
+  activityRevenueByCurrency?: Record<string, number>;
   activityCount: number;
   activitiesByCategory: ProviderStatsActivityBreakdown[];
   clientHashes: string[];
@@ -470,13 +475,16 @@ function upsertService(arr: ProviderStatsServiceBreakdown[], b: BookingLike, ref
 export function mergeActivitiesIntoDailies(
   activities: BlockedSlotLike[],
   dailies: Map<string, ProviderStatsDaily>,
-  opts: { providerId: string; timezone?: string },
+  opts: { providerId: string; timezone?: string; providerCurrency?: string | null },
 ): Map<string, ProviderStatsDaily> {
   const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const reference = deviseReference(opts.providerCurrency);
   for (const slot of activities) {
     if (!slot.category) continue;
     const amount = slot.amount ?? 0;
     if (amount <= 0) continue;
+    // Devise FIGEE sur l'activite ; absente = EUR (activite d'avant).
+    const devise = groupeDevise(slot);
 
     const date = dateKeyInTz(slot.startDate, tz);
     let daily = dailies.get(date);
@@ -485,15 +493,17 @@ export function mergeActivitiesIntoDailies(
       dailies.set(date, daily);
     }
 
-    daily.activityRevenue += amount;
+    if (!daily.activityRevenueByCurrency) daily.activityRevenueByCurrency = {};
+    daily.activityRevenueByCurrency[devise] = (daily.activityRevenueByCurrency[devise] ?? 0) + amount;
+    if (devise === reference) daily.activityRevenue += amount;
     daily.activityCount += 1;
     let entry = daily.activitiesByCategory.find((e) => e.category === slot.category);
     if (!entry) {
-      entry = { category: slot.category, count: 0, revenue: 0 };
+      entry = { category: slot.category, count: 0, revenue: 0, revenueByCurrency: {} };
       daily.activitiesByCategory.push(entry);
     }
     entry.count += 1;
-    entry.revenue += amount;
+    ajouterMontant(entry, devise, amount, reference);
   }
   return dailies;
 }
@@ -544,13 +554,21 @@ export function aggregateDailiesToMonthly(
     fusionnerParDevise(m, d, reference);
     // "Autres revenus" rollup — defaults guard against legacy daily
     // docs written before activityRevenue was added to the schema.
-    m.activityRevenue += d.activityRevenue ?? 0;
+    // Fusion PAR DEVISE ; un daily d'avant le multidevise vaut l'euro.
+    {
+      const seaux = d.activityRevenueByCurrency ?? { EUR: d.activityRevenue ?? 0 };
+      if (!m.activityRevenueByCurrency) m.activityRevenueByCurrency = {};
+      for (const [devise, montant] of Object.entries(seaux)) {
+        m.activityRevenueByCurrency[devise] = (m.activityRevenueByCurrency[devise] ?? 0) + montant;
+        if (devise === reference) m.activityRevenue += montant;
+      }
+    }
     m.activityCount += d.activityCount ?? 0;
     for (const c of d.activitiesByCategory ?? []) {
       let e = m.activitiesByCategory.find((x) => x.category === c.category);
-      if (!e) { e = { category: c.category, count: 0, revenue: 0 }; m.activitiesByCategory.push(e); }
+      if (!e) { e = { category: c.category, count: 0, revenue: 0, revenueByCurrency: {} }; m.activitiesByCategory.push(e); }
       e.count += c.count;
-      e.revenue += c.revenue;
+      fusionnerParDevise(e, c, reference);
     }
     for (const h of d.clientHashes) if (!m.clientHashes.includes(h)) m.clientHashes.push(h);
     for (const h of d.newClientHashes) if (!m.newClientHashes.includes(h)) m.newClientHashes.push(h);

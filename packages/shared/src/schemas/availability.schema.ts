@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSupportedCurrency } from '../constants/currencies';
 
 // Time format regex: HH:mm (24-hour format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -134,6 +135,13 @@ export const blockedSlotSchema = z.object({
     .int({ message: 'Le montant doit être en centimes (entier)' })
     .min(0, { message: 'Le montant doit être positif ou nul' })
     .max(100_000_000, { message: 'Montant trop élevé' })
+    .nullable()
+    .optional(),
+  /** Devise du montant, figée à la création. Déclarée ici sous peine d'être
+   *  retirée par zod ; contrainte à la liste des devises supportées. */
+  currency: z
+    .string()
+    .refine(isSupportedCurrency, { message: 'Devise non prise en charge' })
     .nullable()
     .optional(),
   isRecurring: z.boolean().default(false),

@@ -85,7 +85,11 @@ interface State {
 
 export default function StatistiquesPage() {
   // Symbole de la devise du prestataire, pour les axes des graphes.
-  const symboleDevise = getCurrency(useDevise()).symbol;
+  // Devise de RÉFÉRENCE : les totaux sont DÉRIVÉS des seaux par devise, donc
+  // justes même avant le recalcul des agrégats (un document d'avant écrit en
+  // euros ne peut pas être affiché comme du franc).
+  const deviseRef = useDevise();
+  const symboleDevise = getCurrency(deviseRef).symbol;
   const { user, provider } = useAuth();
   const [state, setState] = useState<State>({
     loading: true,
@@ -238,11 +242,11 @@ export default function StatistiquesPage() {
     const bounds = periodBounds(state.period);
     const isMonthly = bounds.granularity === 'monthly';
     const totals = isMonthly
-      ? totalsFromMonthlies(state.monthlies)
-      : totalsFromDailies(state.dailies);
+      ? totalsFromMonthlies(state.monthlies, deviseRef)
+      : totalsFromDailies(state.dailies, deviseRef);
     const totalsPrev = isMonthly
-      ? totalsFromMonthlies(state.monthliesPrev)
-      : totalsFromDailies(state.dailiesPrev);
+      ? totalsFromMonthlies(state.monthliesPrev, deviseRef)
+      : totalsFromDailies(state.dailiesPrev, deviseRef);
 
     // Build a continuous trend (no gaps) merging bookings + page
     // views by date/month key. Days/months with no data render as
@@ -325,7 +329,7 @@ export default function StatistiquesPage() {
       noshowRate,
       isCompletelyEmpty,
     };
-  }, [state, provider]);
+  }, [state, provider, deviseRef]);
 
   // ── Render ─────────────────────────────────────────────────────
   if (!user?.id) return null;

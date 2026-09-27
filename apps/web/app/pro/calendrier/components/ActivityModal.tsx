@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { isBlockedPeriodValid } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 import {
   Modal,
   ModalHeader,
@@ -144,6 +145,9 @@ export function ActivityModal({
   // can hold partial states like "12." while the user is typing.
   // Empty string = no amount (this is an unpaid activity).
   const [amount, setAmount] = useState('');
+  // Devise FIGÉE sur l'activité à sa création ; jamais réécrite à la
+  // modification, sinon une ancienne activité en euros deviendrait des francs.
+  const deviseProv = useDevise();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -302,6 +306,7 @@ export function ActivityModal({
           title: title.trim(),
           address: address.trim() || null,
           amount: amountCents,
+          currency: deviseProv,
         });
         toast.success('Activité ajoutée à votre agenda');
       }

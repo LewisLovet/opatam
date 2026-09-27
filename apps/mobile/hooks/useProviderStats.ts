@@ -16,6 +16,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { devisePro } from '../lib/devise';
 import {
   collection,
   getDocs,
@@ -207,11 +208,11 @@ export function useProviderStats(
 
       const isMonthly = bounds.granularity === 'monthly';
       const totals = isMonthly
-        ? totalsFromMonthlies(monthlies)
-        : totalsFromDailies(dailies);
+        ? totalsFromMonthlies(monthlies, devisePro())
+        : totalsFromDailies(dailies, devisePro());
       const totalsPrev = isMonthly
-        ? totalsFromMonthlies(monthliesPrev)
-        : totalsFromDailies(dailiesPrev);
+        ? totalsFromMonthlies(monthliesPrev, devisePro())
+        : totalsFromDailies(dailiesPrev, devisePro());
 
       const completionRate = totals.bookingsCount === 0
         ? 0

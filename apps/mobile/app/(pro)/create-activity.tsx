@@ -659,6 +659,8 @@ export default function CreateActivityScreen() {
           title: title.trim(),
           address: address.trim() || null,
           amount: amountCents,
+          // Devise FIGEE a la creation (surface pro) ; pas renvoyee a la modification.
+          currency: devisePro(),
         });
         setConfirmation({ titre: t('proActivity.addedTitle'), sousTitre: title.trim() });
       }

@@ -122,6 +122,7 @@ export async function backfillProviderStats(
       mergeActivitiesIntoDailies(activities, dailyMap, {
         providerId,
         timezone: DEFAULT_TIMEZONE,
+        providerCurrency,
       });
     }
     const dailyArr: ProviderStatsDaily[] = [...dailyMap.values()].sort((a, b) =>
@@ -290,6 +291,14 @@ export const runProviderStatsBackfill = onCall<BackfillRequest, Promise<Backfill
   async (req) => {
     if (!req.auth?.uid) {
       throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    // Réservé aux ADMINISTRATEURS. Un simple utilisateur connecté pouvait
+    // recalculer les statistiques d'un prestataire — voire de toute la
+    // plateforme — et écrire des documents d'agrégats. Même garde que les
+    // autres callables sensibles : `users/{uid}.isAdmin === true`.
+    const appelant = await admin.firestore().doc(`users/${req.auth.uid}`).get();
+    if (appelant.data()?.isAdmin !== true) {
+      throw new HttpsError('permission-denied', 'Réservé aux administrateurs');
     }
     const providerId = req.data.providerId;
     if (!providerId || typeof providerId !== 'string') {
