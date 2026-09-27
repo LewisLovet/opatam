@@ -53,6 +53,16 @@
         "emulators:start"
       ],
       "port": 4000
+    },
+    {
+      "name": "web-chf",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/lewislovet/Developer/booking-app' && export PATH=/Users/lewislovet/.nvm/versions/node/v22.9.0/bin:$PATH && export NEXT_DIST_DIR=.next-3003 && export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 && export NEXT_PUBLIC_APP_URL=http://localhost:3003 && export STRIPE_API_KEY=\"$(python3 -c \"import re;s=open('apps/web/.env.local').read();m=re.search(r'^STRIPE_SECRET_KEY_DEV=(.+)$',s,re.M);print(m.group(1).strip().strip('\\\"').strip(\\\"'\\\") if m else '')\")\" && export STRIPE_WEBHOOK_SECRET_DEV=\"$(stripe listen --print-secret)\" && export STRIPE_WEBHOOK_SECRET_DEV_CONNECT=\"$STRIPE_WEBHOOK_SECRET_DEV\" && pnpm --filter @booking-app/web exec next dev --hostname 0.0.0.0 --port 3003"
+      ],
+      "port": 3003,
+      "autoPort": false
     }
   ]
 }

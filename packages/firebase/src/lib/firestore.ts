@@ -1,5 +1,6 @@
 import {
   getFirestore,
+  connectFirestoreEmulator,
   collection,
   doc,
   getDoc,
@@ -32,6 +33,26 @@ import { app } from './config';
  * Firestore instance
  */
 export const db: Firestore = getFirestore(app);
+
+/**
+ * Émulateur Firestore, quand `FIRESTORE_EMULATOR_HOST` est posé.
+ *
+ * Le SDK ADMIN honore cette variable tout seul ; le SDK CLIENT, lui, ne la
+ * lit jamais. Or les routes d'API l'utilisent aussi (`bookingService`,
+ * `providerService`) : sans ce branchement, un serveur de dev pointé sur
+ * l'émulateur écrivait ses réservations dans l'émulateur par le SDK admin
+ * et allait les relire EN PRODUCTION par le SDK client. C'est ce qui rend
+ * un parcours de bout en bout possible sans toucher aux vraies données.
+ *
+ * Sans effet hors développement : la variable n'existe ni sur Vercel ni
+ * dans l'application mobile (`process` y est absent, d'où la garde).
+ */
+const hoteEmulateur =
+  typeof process !== 'undefined' ? process.env?.FIRESTORE_EMULATOR_HOST : undefined;
+if (hoteEmulateur) {
+  const [hote, port] = hoteEmulateur.split(':');
+  connectFirestoreEmulator(db, hote || '127.0.0.1', Number(port) || 8080);
+}
 
 /**
  * Collection references
