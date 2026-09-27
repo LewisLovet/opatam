@@ -18,7 +18,7 @@ export const travelZoneTiersSchema = z
         .number()
         .int({ message: 'Le frais doit être un montant entier en centimes' })
         .min(0, { message: 'Le frais ne peut pas être négatif' })
-        .max(50000, { message: 'Le frais ne peut pas dépasser 500 €' }),
+        .max(50000, { message: 'Le frais ne peut pas dépasser 500 dans votre devise' }),
     }),
   )
   .min(1, { message: 'Au moins un palier est requis' })

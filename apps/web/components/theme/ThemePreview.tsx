@@ -1,6 +1,8 @@
 'use client';
 
 import { providerThemeVars, providerThemeDarkVars } from '@/lib/providerTheme';
+import { formatPrice } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 /**
  * Aperçu compact d'une gamme, sur les éléments qui la portent réellement.
@@ -21,6 +23,8 @@ import { providerThemeVars, providerThemeDarkVars } from '@/lib/providerTheme';
  * page — deux se marcheraient dessus, la règle étant globale.
  */
 export function ThemePreview({ themeId }: { themeId?: string | null }) {
+  // L'aperçu d'un thème montre un prix : il suit la devise du prestataire.
+  const devise = useDevise();
   const dark = providerThemeDarkVars(themeId);
   const css =
     `[data-theme-preview]{${providerThemeVars(themeId)}}` +

@@ -32,6 +32,8 @@ import {
   sanitizeInfoFields,
 } from './choiceHelpers';
 import { deriveServiceBasePricing } from '@booking-app/shared';
+import { formatPriceCompact } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -65,6 +67,8 @@ export function ServiceEditor({
   depositsEnabled,
   defaultDeposit,
 }: ServiceEditorProps) {
+  // Devise du prestataire, pour les bornes annoncées dans les messages.
+  const deviseProv = useDevise();
   const router = useRouter();
   const toast = useToast();
   const isEditing = !!service;
@@ -201,7 +205,7 @@ export function ServiceEditor({
         if (!Number.isFinite(a) || a < 1) {
           next.discountPercent = 'La réduction doit être d\u2019au moins 1 centime';
         } else if (a > 1_000_000) {
-          next.discountPercent = 'La réduction ne peut pas dépasser 10 000 €';
+          next.discountPercent = `La réduction ne peut pas dépasser ${formatPriceCompact(1_000_000, deviseProv)}`;
         }
       } else {
         const p = formData.discount.percent;

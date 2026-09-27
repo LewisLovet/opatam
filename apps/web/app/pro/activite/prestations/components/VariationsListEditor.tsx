@@ -6,6 +6,8 @@ import { NumberField } from '@/components/ui';
 import { newVariation, newVariationOption, moveItem } from './choiceHelpers';
 import { ReorderControls } from './ReorderControls';
 import { useFreshIds } from './useFreshIds';
+import { getCurrency } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface VariationsListEditorProps {
   variations: ServiceVariation[];
@@ -80,6 +82,8 @@ function VariationCard({
   onChange: (patch: Partial<ServiceVariation>) => void;
   onRemove: () => void;
 }) {
+  // Symbole de la devise du prestataire, pour le suffixe du champ de prix.
+  const symboleDevise = getCurrency(useDevise()).symbol;
   const updateOption = (id: string, patch: Partial<ServiceVariationOption>) =>
     onChange({
       options: variation.options.map((o) => (o.id === id ? { ...o, ...patch } : o)),
@@ -153,7 +157,7 @@ function VariationCard({
                 className="w-full pl-2.5 pr-5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                €
+                {symboleDevise}
               </span>
             </div>
             <div className="relative w-20 flex-shrink-0">

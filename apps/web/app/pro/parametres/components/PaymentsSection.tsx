@@ -20,6 +20,8 @@ import { Input, useToast } from '@/components/ui';
 import { canUseDepositsClient } from '@/lib/feature-flags';
 import { isAccessOverrideActive, isBaseTrialActive, hasDepositAccess } from '@booking-app/shared';
 import { auth as firebaseAuth } from '@booking-app/firebase';
+import { formatPriceCompact } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface ConnectStatus {
   accountId: string | null;
@@ -46,6 +48,9 @@ interface ConnectStatus {
  * sync immediately rather than waiting for the webhook.
  */
 export function PaymentsSection() {
+  // Les montants d'exemple suivent la devise du prestataire.
+  const deviseProvEx = useDevise();
+  const exempleAcompte = (cents: number) => formatPriceCompact(cents, deviseProvEx);
   const { user, provider, refreshProvider } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -767,7 +772,7 @@ export function PaymentsSection() {
                     suffix="%"
                   />
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                    Ex. 30 % d'un service à 40 € = acompte de 12 €
+                    Ex. 30 % d'un service à {exempleAcompte(4000)} = acompte de {exempleAcompte(1200)}
                   </p>
                 </div>
 

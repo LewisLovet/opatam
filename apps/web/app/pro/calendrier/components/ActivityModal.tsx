@@ -36,7 +36,7 @@ import {
   type Member,
 } from '@booking-app/shared';
 import {
-  Loader2, Clock, Users, Euro,
+  Loader2, Clock, Users, Wallet,
   Briefcase, Dumbbell, Handshake, Heart, FileText, Plane, Zap, Circle,
 } from 'lucide-react';
 
@@ -477,7 +477,7 @@ export function ActivityModal({
                 Montant (optionnel)
               </label>
               <div className="relative">
-                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+                <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                 <input
                   type="text"
                   inputMode="decimal"

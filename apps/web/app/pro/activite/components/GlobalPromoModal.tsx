@@ -5,7 +5,12 @@ import { Modal, Button, Input, Switch, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { providerService } from '@booking-app/firebase';
 import type { ServiceDiscount } from '@booking-app/shared';
-import { isAmountDiscount } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
+import {
+  isAmountDiscount,
+  getCurrency,
+  formatPriceCompact,
+} from '@booking-app/shared';
 
 interface GlobalPromoModalProps {
   isOpen: boolean;
@@ -17,6 +22,9 @@ interface GlobalPromoModalProps {
  * to every prestation that doesn't carry its own `discount`.
  */
 export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
+  // Symbole et devise du prestataire, pour les libellés, suffixes et bornes.
+  const deviseProv = useDevise();
+  const symboleDevise = getCurrency(deviseProv).symbol;
   const { provider, refreshProvider } = useAuth();
   const toast = useToast();
   const current = provider?.settings?.globalDiscount ?? null;
@@ -64,7 +72,7 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
           return;
         }
         if (amount > 1_000_000) {
-          setError('La réduction ne peut pas dépasser 10 000 €.');
+          setError(`La réduction ne peut pas dépasser ${formatPriceCompact(1_000_000, deviseProv)}.`);
           return;
         }
       } else if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
@@ -139,19 +147,19 @@ export function GlobalPromoModal({ isOpen, onClose }: GlobalPromoModalProps) {
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                   }`}
                 >
-                  {m === 'percent' ? 'En %' : 'En €'}
+                  {m === 'percent' ? 'En %' : `En ${symboleDevise}`}
                 </button>
               ))}
             </div>
 
             {mode === 'amount' ? (
               <Input
-                label="Réduction (€)"
+                label={`Réduction (${symboleDevise})`}
                 numericValue={amount / 100}
                 onNumericChange={(v) => setAmount(Math.round(v * 100))}
                 min={0}
                 step={0.5}
-                suffix="€"
+                suffix={symboleDevise}
               />
             ) : (
               <Input

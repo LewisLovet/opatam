@@ -13,7 +13,8 @@ import { useState } from 'react';
 import { Search, X, HelpCircle } from 'lucide-react';
 import type { ProviderClientTag } from '@booking-app/shared';
 import { Badge } from '@/components/ui';
-import { TAG_META } from './tagMeta';
+import { TAG_META, libelleTag } from './tagMeta';
+import { useDevise } from '@/contexts/DeviseContext';
 
 export type SortKey =
   | 'lastBooking-desc'
@@ -49,6 +50,8 @@ export function ClientFilters({
   filteredCount,
   onChange,
 }: Props) {
+  // Devise du prestataire, pour le seuil du statut VIP.
+  const devise = useDevise();
   const [legendOpen, setLegendOpen] = useState(false);
 
   const hasActiveFilters =
@@ -114,7 +117,7 @@ export function ClientFilters({
               key={tag.value}
               type="button"
               onClick={() => toggleTag(tag.value)}
-              title={tag.hint}
+              title={libelleTag(tag.hint, devise)}
               className={[
                 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
                 active
@@ -165,7 +168,7 @@ export function ClientFilters({
                   {tag.label}
                 </Badge>
                 <span className="text-xs text-gray-600 dark:text-gray-300">
-                  {tag.rule}
+                  {libelleTag(tag.rule, devise)}
                 </span>
               </li>
             ))}

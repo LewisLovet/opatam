@@ -60,7 +60,7 @@ export const serviceDiscountSchema = z
       .number()
       .int({ message: 'Le montant doit être un nombre entier de centimes' })
       .min(1, { message: 'La réduction doit être d\'au moins 1 centime' })
-      .max(1_000_000, { message: 'La réduction ne peut pas dépasser 10 000 €' })
+      .max(1_000_000, { message: 'La réduction ne peut pas dépasser 10 000 dans votre devise' })
       .optional(),
     /** Variation-option / option ids excluded from the promo (per-line control). */
     excludedIds: z.array(z.string()).optional(),
@@ -122,7 +122,7 @@ const choicePriceSchema = z
   .number()
   .int({ message: 'Le prix doit être en centimes (nombre entier)' })
   .min(0, { message: 'Le prix ne peut pas être négatif' })
-  .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000€' });
+  .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000 dans votre devise' });
 
 const choiceDurationSchema = z
   .number()
@@ -196,12 +196,12 @@ export const createServiceSchema = z.object({
     .number({ required_error: 'Le prix est requis' })
     .int({ message: 'Le prix doit être en centimes (nombre entier)' })
     .min(0, { message: 'Le prix ne peut pas être négatif' })
-    .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000€' }),
+    .max(1000000, { message: 'Le prix ne peut pas dépasser 10 000 dans votre devise' }),
   priceMax: z
     .number()
     .int({ message: 'Le prix max doit être en centimes (nombre entier)' })
     .min(0, { message: 'Le prix max ne peut pas être négatif' })
-    .max(1000000, { message: 'Le prix max ne peut pas dépasser 10 000€' })
+    .max(1000000, { message: 'Le prix max ne peut pas dépasser 10 000 dans votre devise' })
     .nullable()
     .optional(),
   bufferTime: z

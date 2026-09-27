@@ -1,3 +1,4 @@
+import { formatPriceCompact } from '@booking-app/shared';
 /**
  * Centralised metadata for the six provider-client tags.
  *
@@ -31,6 +32,9 @@ export interface TagMeta {
 
 /** Order matters — chips render in the order shown. New / Habitué /
  *  VIP first since those are the most actionable categories. */
+/** Seuil de chiffre d'affaires cumulé du statut VIP, en unités mineures. */
+const VIP_REVENUE_CENTS = 50_000;
+
 export const TAG_META: TagMeta[] = [
   {
     value: 'new',
@@ -50,8 +54,10 @@ export const TAG_META: TagMeta[] = [
     value: 'vip',
     label: 'VIP',
     variant: 'success',
-    hint: 'Au moins 10 RDV confirmés ou 500 € cumulés.',
-    rule: 'Au moins 10 RDV confirmés OU au moins 500 € de CA cumulé sur les RDV confirmés.',
+    // Le seuil est un montant en unites mineures : sa devise est celle du
+    // prestataire. Le libelle est donc construit a l'affichage, pas ici.
+    hint: 'Au moins 10 RDV confirmés ou {{montant}} cumulés.',
+    rule: 'Au moins 10 RDV confirmés OU au moins {{montant}} de CA cumulé sur les RDV confirmés.',
   },
   {
     value: 'at_risk',
@@ -86,3 +92,19 @@ export const TAG_META_BY_VALUE: Record<ProviderClientTag, TagMeta> =
     },
     {} as Record<ProviderClientTag, TagMeta>,
   );
+
+/**
+ * Remplit le `{{montant}}` des libellés VIP avec la devise du prestataire.
+ *
+ * Le seuil est un montant en unités mineures (50 000) : il ne vaut « 500 € »
+ * que pour un prestataire en euro. Les libellés portent donc un paramètre, et
+ * cette fonction le remplit — plutôt qu'une phrase figée qui aurait annoncé
+ * des euros à un salon suisse.
+ *
+ * Une chaîne sans paramètre traverse la fonction sans changer : les autres
+ * étiquettes n'ont rien à voir avec l'argent.
+ */
+export function libelleTag(texte: string, devise: string | null | undefined): string {
+  if (!texte.includes('{{montant}}')) return texte;
+  return texte.replace('{{montant}}', formatPriceCompact(VIP_REVENUE_CENTS, devise));
+}

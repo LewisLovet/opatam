@@ -35,7 +35,7 @@ import {
   schedulingService,
   memberService,
 } from '@booking-app/firebase';
-import { ACQUISITION_CHANNELS, CATEGORIES, DAYS_OF_WEEK, getCountryLabel, getCurrencyForCountry, SUPPORTED_CURRENCIES, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
+import { ACQUISITION_CHANNELS, CATEGORIES, getCurrency, DAYS_OF_WEEK, getCountryLabel, getCurrencyForCountry, SUPPORTED_CURRENCIES, SERVICE_CATEGORY_SUGGESTIONS, getServiceMinPrice, getServiceMinDuration, deriveServiceBasePricing, formatPrice, suggestEmailDomain, EMAIL_REGEX } from '@booking-app/shared';
 import type { ServiceVariation, ServiceOption, ServiceInfoField, AcquisitionChannel } from '@booking-app/shared';
 import { RegisterLivePreview, type RegisterPreviewData } from './LivePreview';
 import { trackEvent } from '@/lib/meta-pixel';
@@ -1244,7 +1244,7 @@ export default function RegisterPage() {
                   max={1440}
                 />
                 <Input
-                  label="Prix (€)"
+                  label={`Prix (${getCurrency(data.currency).symbol})`}
                   placeholder="0"
                   numericValue={svc.price ?? 0}
                   onNumericChange={(p) => updateService(index, 'price', p)}

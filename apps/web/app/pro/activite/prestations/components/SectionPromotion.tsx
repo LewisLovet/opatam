@@ -2,7 +2,11 @@
 
 import { Input, Switch } from '@/components/ui';
 import { Tag, Check } from 'lucide-react';
-import { buildServiceDiscountPreview, type DiscountPreviewRow } from '@booking-app/shared';
+import {
+  buildServiceDiscountPreview,
+  getCurrency,
+  type DiscountPreviewRow,
+} from '@booking-app/shared';
 import { EditorSection } from './EditorSection';
 import {
   DEFAULT_DISCOUNT_AMOUNT,
@@ -11,6 +15,7 @@ import {
 } from './types';
 import type { ServiceFormData } from './types';
 import { usePrix } from '@/contexts/DeviseContext';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface SectionPromotionProps {
   data: ServiceFormData;
@@ -93,6 +98,9 @@ function PriceLine({ row, onToggle }: { row: DiscountPreviewRow; onToggle?: () =
  * picks exactly what goes on sale.
  */
 export function SectionPromotion({ data, errors, update }: SectionPromotionProps) {
+  // Symbole et devise du prestataire, pour les libellés, suffixes et bornes.
+  const deviseProv = useDevise();
+  const symboleDevise = getCurrency(deviseProv).symbol;
   const euro = usePrix();
   const promo = data.discount;
   const enabled = promo !== null;
@@ -122,7 +130,7 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
   return (
     <EditorSection
       title="Promotion"
-      description="Une réduction en % ou en € sur cette prestation."
+      description={`Une réduction en % ou en ${symboleDevise} sur cette prestation.`}
       icon={<Tag className="w-5 h-5" />}
       defaultOpen={enabled}
       forceOpen={!!errors.discountPercent || !!errors.discountEnd}
@@ -156,19 +164,19 @@ export function SectionPromotion({ data, errors, update }: SectionPromotionProps
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                 }`}
               >
-                {mode === 'percent' ? 'En %' : 'En €'}
+                {mode === 'percent' ? 'En %' : `En ${symboleDevise}`}
               </button>
             ))}
           </div>
 
           {promo.mode === 'amount' ? (
             <Input
-              label="Réduction (€)"
+              label={`Réduction (${symboleDevise})`}
               numericValue={promo.amount / 100}
               onNumericChange={(v) => setPromo({ amount: Math.round(v * 100) })}
               min={0}
               step={0.5}
-              suffix="€"
+              suffix={symboleDevise}
               error={errors.discountPercent}
             />
           ) : (

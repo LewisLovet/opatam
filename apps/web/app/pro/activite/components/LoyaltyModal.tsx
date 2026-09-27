@@ -6,6 +6,8 @@ import { Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { providerService } from '@booking-app/firebase';
 import type { LoyaltySettings, Service } from '@booking-app/shared';
+import { getCurrency, formatPrice } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -26,6 +28,9 @@ interface LoyaltyModalProps {
  * logique que `ServiceDiscount.excludedIds` côté promos).
  */
 export function LoyaltyModal({ isOpen, onClose, services }: LoyaltyModalProps) {
+  // Symbole et devise du prestataire, pour les libellés, suffixes et bornes.
+  const deviseProv = useDevise();
+  const symboleDevise = getCurrency(deviseProv).symbol;
   const { provider, refreshProvider } = useAuth();
   const toast = useToast();
   const current = provider?.settings?.loyalty ?? null;
@@ -82,7 +87,7 @@ export function LoyaltyModal({ isOpen, onClose, services }: LoyaltyModalProps) {
         return;
       }
       if (rewardType === 'amount' && rewardValue < 1) {
-        setError('Le montant de la réduction doit être supérieur à 0 €.');
+        setError(`Le montant de la réduction doit être supérieur à ${formatPrice(0, deviseProv)}.`);
         return;
       }
       if (services.length > 0 && excludedServiceIds.length >= services.length) {
@@ -188,12 +193,12 @@ export function LoyaltyModal({ isOpen, onClose, services }: LoyaltyModalProps) {
               />
             ) : (
               <Input
-                label="Réduction (€)"
+                label={`Réduction (${symboleDevise})`}
                 numericValue={rewardValue / 100}
                 onNumericChange={(n) => setRewardValue(Math.round(n * 100))}
                 decimal
                 min={0.01}
-                suffix="€"
+                suffix={symboleDevise}
               />
             )}
 

@@ -8,6 +8,8 @@ import { ReorderControls } from './ReorderControls';
 import { useFreshIds } from './useFreshIds';
 import { VariationsListEditor } from './VariationsListEditor';
 import { InfoFieldsListEditor } from './InfoFieldsListEditor';
+import { getCurrency } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface OptionsListEditorProps {
   options: ServiceOption[];
@@ -72,6 +74,8 @@ function OptionCard({
   onChange: (patch: Partial<ServiceOption>) => void;
   onRemove: () => void;
 }) {
+  // Symbole de la devise du prestataire, pour le suffixe du champ de prix.
+  const symboleDevise = getCurrency(useDevise()).symbol;
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4 space-y-3">
       {/* Name + price + duration + reorder + remove */}
@@ -106,7 +110,7 @@ function OptionCard({
             className="w-full pl-2.5 pr-6 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-            €
+            {symboleDevise}
           </span>
         </div>
         <div className="relative w-28">

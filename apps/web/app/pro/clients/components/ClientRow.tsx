@@ -17,7 +17,8 @@ import { Avatar, Badge } from '@/components/ui';
 import type { ProviderClient } from '@booking-app/shared';
 import { Mail, Phone, ChevronRight } from 'lucide-react';
 import { formatRevenue } from './format';
-import { TAG_META_BY_VALUE } from './tagMeta';
+import { TAG_META_BY_VALUE, libelleTag } from './tagMeta';
+import { useDevise } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -27,6 +28,8 @@ interface Props {
 }
 
 export function ClientRow({ client, onClick }: Props) {
+  // Devise du prestataire, pour le seuil du statut VIP.
+  const devise = useDevise();
   const fullName = client.name || 'Client sans nom';
   const lastVisit = formatRelativeDate(client.lastBookingAt);
 
@@ -56,7 +59,7 @@ export function ClientRow({ client, onClick }: Props) {
                 variant={meta.variant}
                 size="sm"
                 className="flex-shrink-0"
-                title={meta.hint}
+                title={libelleTag(meta.hint, devise)}
               >
                 {meta.label}
               </Badge>

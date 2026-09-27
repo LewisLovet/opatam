@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownRight, ArrowUpRight, Eye, Euro, Users, Calendar } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Eye, Wallet, Users, Calendar } from 'lucide-react';
 import { deltaPercent, formatPrice, PERIOD_LABELS, type Period } from '@booking-app/shared';
 
 interface Props {
@@ -15,7 +15,7 @@ export function KpiBar({ period, revenue, bookings, uniqueClients, pageViews }: 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <KpiCard
-        icon={<Euro className="w-5 h-5" />}
+        icon={<Wallet className="w-5 h-5" />}
         label="CA réalisé"
         value={formatPrice(revenue.current)}
         delta={deltaPercent(revenue.current, revenue.previous)}

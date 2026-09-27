@@ -5,6 +5,7 @@ import {
   deriveServiceBasePricing,
   formatPrice,
   formatDuration,
+  getCurrency,
 } from '@booking-app/shared';
 import { Input, Textarea, ConfirmDialog } from '@/components/ui';
 import { ClipboardList, Layers } from 'lucide-react';
@@ -12,6 +13,7 @@ import { EditorSection } from './EditorSection';
 import { ServicePhotoPicker } from './ServicePhotoPicker';
 import { newVariation } from './choiceHelpers';
 import type { ServiceFormData } from './types';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface SectionEssentielProps {
   data: ServiceFormData;
@@ -49,6 +51,9 @@ export function SectionEssentiel({
   isEditing,
   update,
 }: SectionEssentielProps) {
+  // Symbole et devise du prestataire, pour les libellés, suffixes et bornes.
+  const deviseProv = useDevise();
+  const symboleDevise = getCurrency(deviseProv).symbol;
   const isVariations = data.variations.length > 0;
   const [simpleMode, setSimpleMode] = useState<SimpleMode>(() =>
     initialSimpleMode(data, isEditing),
@@ -190,7 +195,7 @@ export function SectionEssentiel({
               />
               {activeMode !== 'free' && (
                 <Input
-                  label="Prix (€)"
+                  label={`Prix (${symboleDevise})`}
                   name="price"
                   numericValue={priceInEuros}
                   onNumericChange={(euros) => update({ price: Math.round(euros * 100) })}

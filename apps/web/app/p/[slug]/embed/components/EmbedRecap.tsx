@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Clock, MapPin, User, Euro } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Tag } from 'lucide-react';
 import { useDevise } from '@/contexts/DeviseContext';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -102,7 +102,7 @@ export function EmbedRecap({ service, member, location, slotDatetime }: EmbedRec
                 {formatDuration(service.duration)}
               </span>
               <span className="inline-flex items-center gap-1">
-                <Euro className="w-3 h-3" />
+                <Tag className="w-3 h-3" />
                 {formatPrice(service.price, service.priceMax, locale, t('common.free'), devise)}
               </span>
             </div>

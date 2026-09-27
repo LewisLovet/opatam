@@ -8,6 +8,8 @@ import { VariationsListEditor } from './VariationsListEditor';
 import { OptionsListEditor } from './OptionsListEditor';
 import { InfoFieldsListEditor } from './InfoFieldsListEditor';
 import type { ServiceFormData } from './types';
+import { formatPriceCompact } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 interface SectionVariationsProps {
   data: ServiceFormData;
@@ -30,6 +32,10 @@ interface SectionVariationsProps {
  * cheapest reachable price and pulses when it changes.
  */
 export function SectionVariations({ data, update, forceOpen = false }: SectionVariationsProps) {
+  // Les montants d'exemple suivent la devise du prestataire : « 35 € » n'illustre
+  // rien pour un salon qui facture en francs.
+  const devise = useDevise();
+  const exemple = (cents: number) => formatPriceCompact(cents, devise);
   const hasVariations = data.variations.length > 0;
   const minPrice = getServiceMinPrice({
     price: data.price,
@@ -85,8 +91,8 @@ export function SectionVariations({ data, update, forceOpen = false }: SectionVa
           {!hasVariations && (
             <div className="mb-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/40 px-3 py-2.5">
               <p className="text-xs text-gray-600 dark:text-gray-300">
-                <strong>Ex :</strong> «&nbsp;Longueur&nbsp;» — Cheveux courts 35&nbsp;€ ·
-                Mi-longs 40&nbsp;€ · Longs 45&nbsp;€
+                <strong>Ex :</strong> «&nbsp;Longueur&nbsp;» — Cheveux courts {exemple(3500)} ·
+                Mi-longs {exemple(4000)} · Longs {exemple(4500)}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                 Dès la première variation, le prix de la prestation passe
