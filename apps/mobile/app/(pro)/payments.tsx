@@ -44,6 +44,7 @@ import { hasDepositAccess, isBaseTrialActive,
 } from '@booking-app/shared';
 import i18n, { getIntlLocale } from '../../lib/i18n';
 import { API_URL as BASE_URL } from '../../lib/config';
+import { devisePro } from '../../lib/devise';
 
 /** Preset chips for the default deposit percentage — 90% of pros
  *  will pick one of these, the custom input remains for the rest. */
@@ -918,12 +919,14 @@ function formatHours(h: number): string {
 }
 
 /**
- * Cents → localized EUR amount, following the current app language
- * (replaces the shared fr-FR-only formatPrice for the KPI strip).
+ * Cents → montant localise dans la DEVISE DU PRESTATAIRE connecte, selon la
+ * langue de l'application. Servait le total des acomptes encaisses avec
+ * « EUR » en dur : un salon suisse lisait ses francs en euros. L'abonnement
+ * Serenite, lui, reste en euro et ne passe pas par ici.
  */
 function formatAmount(cents: number): string {
   const locale = getIntlLocale(i18n.language);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: devisePro() }).format(cents / 100);
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────

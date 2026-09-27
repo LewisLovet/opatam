@@ -22,6 +22,11 @@
 import { NextResponse } from 'next/server';
 import { getStripe, getStripeDev, getAddonPriceId } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import {
+  REQUIRED_PLATFORM_EVENTS,
+  REQUIRED_CONNECT_EVENTS,
+  evaluateEvents,
+} from '@/lib/stripe-webhook-requirements';
 
 interface CheckResult {
   ok: boolean;
@@ -36,23 +41,8 @@ interface ModeReport {
   connectWebhook: CheckResult;
 }
 
-const REQUIRED_PLATFORM_EVENTS = [
-  'checkout.session.completed',
-  'invoice.paid',
-  'invoice.payment_failed',
-  'customer.subscription.updated',
-  'customer.subscription.deleted',
-  'account.updated',
-  'account.application.deauthorized',
-];
-
-const REQUIRED_CONNECT_EVENTS = [
-  'checkout.session.completed',
-  'checkout.session.expired',
-  'charge.refunded',
-  'charge.dispute.created',
-  'payment_intent.payment_failed',
-];
+// Les listes vivent dans un module PUR et testé : un événement oublié y fait
+// échouer un test au lieu de faire passer le contrôle au vert à tort.
 
 async function checkAddon(stripe: Stripe): Promise<CheckResult> {
   try {
@@ -170,12 +160,17 @@ async function checkWebhooks(
     v1Connect.some((e) => e.enabled_events.includes('*')) ||
     v2Connect.some((e) => e.enabled_events.includes('*'));
 
-  const missingPlatform = platformWildcard
-    ? []
-    : REQUIRED_PLATFORM_EVENTS.filter((evt) => !platformEvents.has(evt));
-  const missingConnect = connectWildcard
-    ? []
-    : REQUIRED_CONNECT_EVENTS.filter((evt) => !connectEvents.has(evt));
+  // Évaluation par le module pur (même logique que le test de régression).
+  const missingPlatform = evaluateEvents(
+    [...v1Platform, ...v2Platform].map((e) => ({ status: e.status, enabled_events: e.enabled_events })),
+    REQUIRED_PLATFORM_EVENTS,
+  ).missing;
+  const missingConnect = evaluateEvents(
+    [...v1Connect, ...v2Connect].map((e) => ({ status: e.status, enabled_events: e.enabled_events })),
+    REQUIRED_CONNECT_EVENTS,
+  ).missing;
+  void platformWildcard;
+  void connectWildcard;
 
   const platformCount = v1Platform.length + v2Platform.length;
   const connectCount = v1Connect.length + v2Connect.length;

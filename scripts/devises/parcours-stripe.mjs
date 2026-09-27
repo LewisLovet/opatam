@@ -236,6 +236,57 @@ async function chargeAboutie(chargeId) {
   throw new Error(`transaction de solde introuvable pour ${chargeId}`);
 }
 
+/**
+ * RÉTROCOMPATIBILITÉ — ancien acompte MOBILE (avant le 2026-09-27).
+ *
+ * Ces réservations ont été payées en DESTINATION CHARGE sur la plateforme
+ * (`transfer_data.destination`), et leur `deposit.connectAccountId` est nul.
+ * `refund-deposit.ts` les rembourse encore par cette voie : refund sur la
+ * PLATEFORME, sans en-tête de compte, puis renversement du transfert. Ce
+ * scénario reproduit exactement ce que fait ce code pour prouver que la voie
+ * historique fonctionne toujours après la bascule.
+ */
+async function parcoursAncienMobile() {
+  const acompte = 3500;
+  const frais = clientServiceFee(acompte, 'EUR');
+  console.log(`\n── RÉTROCOMPAT — ancien acompte mobile (destination charge, plateforme) : ${acompte} + ${frais} EUR`);
+  // Ce que faisait l'ancien serveur : PaymentIntent sur la PLATEFORME.
+  const pi = await stripe.paymentIntents.create({
+    amount: acompte + frais,
+    currency: 'eur',
+    payment_method: 'pm_card_visa',
+    confirm: true,
+    off_session: true,
+    transfer_data: { destination: compte.id, amount: acompte },
+    metadata: { parcours: 'retrocompat-mobile' },
+  });
+  verifier(pi.status === 'succeeded', 'l’ancien paiement à destination aboutit', pi.status);
+
+  // Ce que fait `refundBookingDeposit` quand `connectAccountId` est NUL et
+  // qu'il y a des frais : refund de l'acompte seul, SANS en-tête de compte,
+  // puis renversement TOTAL du transfert.
+  const remb = await stripe.refunds.create({
+    payment_intent: pi.id,
+    amount: acompte,
+    metadata: { parcours: 'retrocompat-mobile' },
+  });
+  verifier(remb.status === 'succeeded', 'le remboursement sur la PLATEFORME aboutit', remb.status);
+  verifier(remb.amount === acompte, 'seul l’acompte est rendu', String(remb.amount));
+
+  const intent = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
+  const charge = intent.latest_charge;
+  const transferId = typeof charge?.transfer === 'string' ? charge.transfer : charge?.transfer?.id;
+  verifier(!!transferId, 'le transfert vers le prestataire existe');
+  if (transferId) {
+    const transfer = await stripe.transfers.retrieve(transferId);
+    const restant = transfer.amount - transfer.amount_reversed;
+    const rev = await stripe.transfers.createReversal(transferId, { amount: restant, metadata: { parcours: 'retrocompat-mobile' } });
+    verifier(rev.amount === acompte, 'le transfert est renversé EN TOTALITÉ (pas au prorata)', `${rev.amount} attendu ${acompte}`);
+    const apres = await stripe.transfers.retrieve(transferId);
+    verifier(apres.amount_reversed === apres.amount, 'plus rien ne reste chez le prestataire');
+  }
+}
+
 console.log(`Compte connecté de test : ${compte.id} (pays ${compte.country}, règlement ${compte.default_currency})`);
 
 // Les scénarios de la consigne, pour l'euro et le franc suisse. Le franc est
@@ -249,6 +300,7 @@ await parcours({ nom: 'CHF — acompte SOUS le seuil (aucun frais)', devise: 'CH
 await parcours({ nom: 'GBP — acompte au-dessus du seuil', devise: 'GBP', acompte: 3500 });
 await parcours({ nom: 'USD — acompte au-dessus du seuil', devise: 'USD', acompte: 3500 });
 await parcours({ nom: 'CAD — acompte au-dessus du seuil', devise: 'CAD', acompte: 3500 });
+await parcoursAncienMobile();
 
 console.log(`\n${echecs === 0 ? 'TOUS LES CONTRÔLES PASSENT' : `${echecs} CONTRÔLE(S) EN ÉCHEC`}`);
 process.exit(echecs === 0 ? 0 : 1);

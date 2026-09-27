@@ -68,6 +68,8 @@ import {
 import { OverlaySheet } from '../../../components/OverlaySheet';
 import { useAuth } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
+import { devisePro } from '../../../lib/devise';
+import { autresDevises } from '@booking-app/shared';
 import {
   TAG_META_BY_VALUE,
   formatRevenue,
@@ -487,7 +489,14 @@ export default function ClientDetailScreen() {
             icon="wallet-outline"
             tint={colors.primary}
             label={t('proClientDetail.kpi.revenue')}
-            value={formatRevenue(client.totalRevenue)}
+            value={
+              // CA dans une autre devise : ajouté au libellé, jamais au montant.
+              autresDevises(client.totalRevenueByCurrency, devisePro()).length > 0
+                ? `${formatRevenue(client.totalRevenue)} · ${autresDevises(client.totalRevenueByCurrency, devisePro())
+                    .map((a) => `${formatPrice(a.montant, a.devise)} (${a.devise})`)
+                    .join(' · ')}`
+                : formatRevenue(client.totalRevenue)
+            }
           />
           <StatTile
             icon="close-circle-outline"
@@ -1009,7 +1018,8 @@ function formatRewardLabel(
         threshold: loyalty.threshold,
       })
     : t('proLoyalty.progress.rewardAmount', {
-        amount: formatPrice(loyalty.rewardValue, 'EUR', getIntlLocale(i18n.language)),
+        // Reglage du prestataire connecte, donc sa devise. Forcait « EUR ».
+        amount: formatPrice(loyalty.rewardValue, devisePro(), getIntlLocale(i18n.language)),
         threshold: loyalty.threshold,
       });
 }

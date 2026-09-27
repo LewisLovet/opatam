@@ -6,9 +6,11 @@ node_modules
 dist
 .next
 # Répertoires de build de vérification, horodatés : `.next` ne les couvre pas.
+# Un serveur de dev par port (3002, 3003…) et les builds de vérification
+# utilisent chacun leur propre répertoire `.next-<suffixe>` : la règle
+# générique couvre tous les cas, présents et futurs.
+.next-*
 # 1 Go et 1192 fichiers ont été committés par accident faute de cette ligne.
-.next-prod-build-*
-.next-3002
 .expo
 *.tsbuildinfo
 

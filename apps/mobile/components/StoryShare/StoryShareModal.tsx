@@ -533,14 +533,15 @@ export function StoryShareModal({
     let priceStrikeLabel: string | null = null;
     if (realService && realShowPrice) {
       const remise = getDiscountedMinPrice(realService, provider?.settings?.globalDiscount ?? null);
-      const prix = formatPrice(remise.price, 'EUR', i18n.language);
+      // Devise du prestataire connecte : la story est la sienne. Forcait « EUR ».
+      const prix = formatPrice(remise.price, devisePro(), i18n.language);
       // Variations ou fourchette → « à partir de », comme sur la page.
       const aPartirDe =
         (realService.variations?.length ?? 0) > 0 ||
         (typeof realService.priceMax === 'number' && realService.priceMax > realService.price);
       priceLabel = aPartirDe ? i18n.t('storyShare.realisation.fromPrice', { price: prix }) : prix;
       if (remise.original > remise.price) {
-        priceStrikeLabel = formatPrice(remise.original, 'EUR', i18n.language);
+        priceStrikeLabel = formatPrice(remise.original, devisePro(), i18n.language);
       }
     }
     return {
