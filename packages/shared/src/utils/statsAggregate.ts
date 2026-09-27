@@ -13,8 +13,14 @@ import type {
 } from '@booking-app/shared';
 
 export interface PeriodTotals {
-  /** Sum of revenue (cents) — confirmed bookings only. */
+  /** Sum of revenue (cents) — confirmed bookings only, devise de référence seule. */
   revenue: number;
+  /**
+   * Le même CA PAR DEVISE. Un daily d'avant le multidevise n'a pas de
+   * seaux : son `revenue` vaut l'euro. Deux clés = deux totaux à afficher
+   * séparément, jamais une somme.
+   */
+  revenueByCurrency: Record<string, number>;
   /** Total bookings across all statuses. */
   bookingsCount: number;
   confirmedCount: number;
@@ -33,6 +39,36 @@ export interface PeriodTotals {
   newClients: number;
 }
 
+/**
+ * CA par devise sur un jeu de documents (jour ou mois), PUR et testé.
+ *
+ * Règle : un document sans seaux date d'avant le multidevise et vaut l'euro
+ * en totalité. Aucune conversion ; les clés ne s'additionnent jamais.
+ */
+export function revenueByCurrencyFromDailies(
+  docs: readonly { revenue: number; revenueByCurrency?: Record<string, number> }[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of docs) {
+    const seaux = d.revenueByCurrency ?? { EUR: d.revenue };
+    for (const [devise, montant] of Object.entries(seaux)) {
+      out[devise] = (out[devise] ?? 0) + montant;
+    }
+  }
+  return out;
+}
+
+/** Devises AUTRES que la référence, avec leur total — ce que l'écran affiche à part. */
+export function autresDevises(
+  byCurrency: Record<string, number> | undefined,
+  reference: string,
+): { devise: string; montant: number }[] {
+  return Object.entries(byCurrency ?? {})
+    .filter(([d, m]) => d !== reference.toUpperCase() && m !== 0)
+    .map(([devise, montant]) => ({ devise, montant }))
+    .sort((a, b) => b.montant - a.montant);
+}
+
 export function totalsFromDailies(
   dailies: ProviderStatsDaily[],
 ): PeriodTotals {
@@ -46,6 +82,7 @@ export function totalsFromDailies(
   let activityRevenue = 0;
   let activityCount = 0;
 
+  const revenueByCurrency = revenueByCurrencyFromDailies(dailies);
   for (const d of dailies) {
     revenue += d.revenue;
     bookingsCount += d.bookingsCount;
@@ -63,6 +100,7 @@ export function totalsFromDailies(
 
   return {
     revenue,
+    revenueByCurrency,
     bookingsCount,
     confirmedCount,
     cancelledCount,
@@ -124,12 +162,18 @@ export function topServicesFromDailies(
           bookingsCount: 0,
           confirmedCount: 0,
           revenue: 0,
+          revenueByCurrency: {},
         };
         acc.set(s.serviceId, entry);
       }
       entry.bookingsCount += s.bookingsCount;
       entry.confirmedCount += s.confirmedCount;
+      // `revenue` reste la somme des `revenue` (groupe de référence de
+      // chaque daily) ; les seaux s'accumulent à part, jamais convertis.
       entry.revenue += s.revenue;
+      for (const [devise, montant] of Object.entries(s.revenueByCurrency ?? { EUR: s.revenue })) {
+        entry.revenueByCurrency![devise] = (entry.revenueByCurrency![devise] ?? 0) + montant;
+      }
     }
   }
   return [...acc.values()]

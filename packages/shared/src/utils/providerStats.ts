@@ -132,6 +132,7 @@ function emptyDaily(providerId: string, date: string): ProviderStatsDaily {
     cancelledCount: 0,
     noshowCount: 0,
     revenue: 0,
+    revenueByCurrency: {},
     activityRevenue: 0,
     activityCount: 0,
     activitiesByCategory: [],
@@ -155,6 +156,7 @@ function emptyMonthly(providerId: string, month: string): ProviderStatsMonthly {
     cancelledCount: 0,
     noshowCount: 0,
     revenue: 0,
+    revenueByCurrency: {},
     activityRevenue: 0,
     activityCount: 0,
     activitiesByCategory: [],
@@ -193,8 +195,53 @@ const STATUS_FIELD: Record<BookingStatus, keyof ProviderStatsDaily> = {
 // Daily aggregation — the main entry point
 // ────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────
+// Devises — RÈGLE IMPÉRATIVE : jamais de somme entre deux devises.
+// Miroir exact de functions/src/lib/providerStatsAgg.ts.
+// ────────────────────────────────────────────────────────────────
+
+/** Groupe monétaire d'une réservation : sa devise figée, EUR si historique. */
+export function groupeDevise(b: { currency?: string | null }): string {
+  return (b.currency || 'EUR').toUpperCase();
+}
+
+/** Devise de RÉFÉRENCE d'un prestataire : la sienne, EUR si absente. */
+export function deviseReference(providerCurrency: string | null | undefined): string {
+  return (providerCurrency || 'EUR').toUpperCase();
+}
+
+/**
+ * Ajoute `montant` au seau `devise`, et au champ plat `revenue` SEULEMENT si
+ * c'est la devise de référence : les autres groupes ne vivent que dans
+ * `revenueByCurrency`, et l'écran les affiche à part.
+ */
+export function ajouterMontant(
+  cible: { revenue: number; revenueByCurrency?: Record<string, number> },
+  devise: string,
+  montant: number,
+  reference: string,
+): void {
+  if (!cible.revenueByCurrency) cible.revenueByCurrency = {};
+  cible.revenueByCurrency[devise] = (cible.revenueByCurrency[devise] ?? 0) + montant;
+  if (devise === reference) cible.revenue += montant;
+}
+
+/** Fusionne les seaux d'une source ; une source d'AVANT le multidevise vaut l'euro. */
+export function fusionnerParDevise(
+  cible: { revenue: number; revenueByCurrency?: Record<string, number> },
+  source: { revenue: number; revenueByCurrency?: Record<string, number> },
+  reference: string,
+): void {
+  const seaux = source.revenueByCurrency ?? { EUR: source.revenue };
+  for (const [devise, montant] of Object.entries(seaux)) {
+    ajouterMontant(cible, devise, montant, reference);
+  }
+}
+
 export interface AggregateOptions {
   providerId: string;
+  /** Devise du prestataire : le groupe que porte le champ plat `revenue`. */
+  providerCurrency?: string | null;
   /** Provider's display name — used for the synthetic "self" member entry. */
   providerName: string;
   /** Map of memberId → { name } so we denormalize current names if a member was renamed since the booking was created. */
@@ -242,7 +289,7 @@ export function aggregateBookingsToDaily(
     // header). Daily docs are summed over a window and we trust that
     // dates < today are 100% past at read time.
     if (booking.status === 'confirmed') {
-      daily.revenue += booking.price ?? 0;
+      ajouterMontant(daily, groupeDevise(booking), booking.price ?? 0, deviseReference(opts.providerCurrency));
     }
 
     // Hour-of-day distribution (in provider tz).
@@ -264,10 +311,10 @@ export function aggregateBookingsToDaily(
     }
 
     // Per-service breakdown.
-    upsertServiceBreakdown(daily.services, booking);
+    upsertServiceBreakdown(daily.services, booking, deviseReference(opts.providerCurrency));
 
     // Per-member breakdown — null memberId is stored as "self".
-    upsertMemberBreakdown(daily.members, booking, opts);
+    upsertMemberBreakdown(daily.members, booking, opts, deviseReference(opts.providerCurrency));
   }
 
   return dailies;
@@ -339,6 +386,7 @@ function upsertActivityBreakdown(
 function upsertServiceBreakdown(
   services: ProviderStatsServiceBreakdown[],
   booking: Booking,
+  reference: string,
 ) {
   // Split a multi-prestation appointment across each prestation (its own
   // count + revenue) rather than attributing the whole total to the first
@@ -366,13 +414,14 @@ function upsertServiceBreakdown(
         bookingsCount: 0,
         confirmedCount: 0,
         revenue: 0,
+        revenueByCurrency: {},
       };
       services.push(entry);
     }
     entry.bookingsCount += 1;
     if (booking.status === 'confirmed') {
       entry.confirmedCount += 1;
-      entry.revenue += item.price ?? 0;
+      ajouterMontant(entry, groupeDevise(booking), item.price ?? 0, reference);
     }
   }
 }
@@ -381,6 +430,7 @@ function upsertMemberBreakdown(
   members: ProviderStatsMemberBreakdown[],
   booking: Booking,
   opts: AggregateOptions,
+  reference: string,
 ) {
   const memberId = booking.memberId;
   let entry = members.find((m) => m.memberId === memberId);
@@ -400,13 +450,14 @@ function upsertMemberBreakdown(
       bookingsCount: 0,
       confirmedCount: 0,
       revenue: 0,
+      revenueByCurrency: {},
     };
     members.push(entry);
   }
   entry.bookingsCount += 1;
   if (booking.status === 'confirmed') {
     entry.confirmedCount += 1;
-    entry.revenue += booking.price ?? 0;
+    ajouterMontant(entry, groupeDevise(booking), booking.price ?? 0, reference);
   }
 }
 
@@ -421,6 +472,7 @@ function upsertMemberBreakdown(
 export function aggregateDailiesToMonthly(
   dailies: ProviderStatsDaily[],
   providerId: string,
+  providerCurrency?: string | null,
 ): Map<string, ProviderStatsMonthly> {
   const monthlies = new Map<string, ProviderStatsMonthly>();
 
@@ -438,7 +490,9 @@ export function aggregateDailiesToMonthly(
     monthly.pendingPaymentCount += daily.pendingPaymentCount;
     monthly.cancelledCount += daily.cancelledCount;
     monthly.noshowCount += daily.noshowCount;
-    monthly.revenue += daily.revenue;
+    // Jamais `monthly.revenue += daily.revenue` : un daily d'avant le
+    // multidevise mélangerait deux devises. Fusion seau par seau.
+    fusionnerParDevise(monthly, daily, deviseReference(providerCurrency));
 
     // "Autres revenus" track — defaults guard against legacy daily
     // docs written before activityRevenue was added to the schema.
@@ -477,12 +531,13 @@ export function aggregateDailiesToMonthly(
           bookingsCount: 0,
           confirmedCount: 0,
           revenue: 0,
+          revenueByCurrency: {},
         };
         monthly.services.push(entry);
       }
       entry.bookingsCount += s.bookingsCount;
       entry.confirmedCount += s.confirmedCount;
-      entry.revenue += s.revenue;
+      fusionnerParDevise(entry, s, deviseReference(providerCurrency));
     }
 
     // Merge per-member.
@@ -495,12 +550,13 @@ export function aggregateDailiesToMonthly(
           bookingsCount: 0,
           confirmedCount: 0,
           revenue: 0,
+          revenueByCurrency: {},
         };
         monthly.members.push(entry);
       }
       entry.bookingsCount += m.bookingsCount;
       entry.confirmedCount += m.confirmedCount;
-      entry.revenue += m.revenue;
+      fusionnerParDevise(entry, m, deviseReference(providerCurrency));
     }
   }
 
@@ -517,6 +573,8 @@ interface ClientAggregate {
   clientHash: string;
   bookingsCount: number;
   revenue: number;
+  /** CA par devise ; `revenue` = groupe de référence seul. */
+  revenueByCurrency?: Record<string, number>;
 }
 
 /**
@@ -532,7 +590,9 @@ export function aggregateRolling(
   providerId: string,
   now: Date,
   timezone: string = DEFAULT_TIMEZONE,
+  providerCurrency?: string | null,
 ): ProviderStatsRolling {
+  const reference = deviseReference(providerCurrency);
   // Window boundaries (inclusive of today).
   const cutoff30d = new Date(now.getTime() - 30 * MS_PER_DAY);
   const cutoff90d = new Date(now.getTime() - 90 * MS_PER_DAY);
@@ -541,14 +601,14 @@ export function aggregateRolling(
     dailies.filter((d) => d.date >= dateKeyInTz(cutoff, timezone));
 
   // ── Top services per window ────────────────────────────────────
-  const topServices30d = topServicesFromDailies(dailiesAfter(cutoff30d));
-  const topServices90d = topServicesFromDailies(dailiesAfter(cutoff90d));
-  const topServicesAllTime = topServicesFromDailies(dailies);
+  const topServices30d = topServicesFromDailies(dailiesAfter(cutoff30d), reference);
+  const topServices90d = topServicesFromDailies(dailiesAfter(cutoff90d), reference);
+  const topServicesAllTime = topServicesFromDailies(dailies, reference);
 
   // ── Top clients per window — needs raw bookings for revenue ─────
-  const topClients30d = topClientsFromBookings(bookings, cutoff30d);
-  const topClients90d = topClientsFromBookings(bookings, cutoff90d);
-  const topClientsAllTime = topClientsFromBookings(bookings, null);
+  const topClients30d = topClientsFromBookings(bookings, cutoff30d, reference);
+  const topClients90d = topClientsFromBookings(bookings, cutoff90d, reference);
+  const topClientsAllTime = topClientsFromBookings(bookings, null, reference);
 
   // ── Heatmap day-of-week × hour-of-day, last 90 days ─────────────
   // Flat 168-element array (dow * 24 + hour) — Firestore rejects
@@ -576,6 +636,7 @@ export function aggregateRolling(
 
 function topServicesFromDailies(
   dailies: ProviderStatsDaily[],
+  reference: string,
   topK = 10,
 ): ProviderStatsServiceBreakdown[] {
   const acc = new Map<string, ProviderStatsServiceBreakdown>();
@@ -589,12 +650,13 @@ function topServicesFromDailies(
           bookingsCount: 0,
           confirmedCount: 0,
           revenue: 0,
+          revenueByCurrency: {},
         };
         acc.set(s.serviceId, entry);
       }
       entry.bookingsCount += s.bookingsCount;
       entry.confirmedCount += s.confirmedCount;
-      entry.revenue += s.revenue;
+      fusionnerParDevise(entry, s, reference);
     }
   }
   return [...acc.values()]
@@ -605,6 +667,7 @@ function topServicesFromDailies(
 function topClientsFromBookings(
   bookings: Booking[],
   cutoff: Date | null,
+  reference: string,
   topK = 10,
 ): ClientAggregate[] {
   const acc = new Map<string, ClientAggregate>();
@@ -614,12 +677,12 @@ function topClientsFromBookings(
     if (key === 'anonymous') continue;
     let entry = acc.get(key);
     if (!entry) {
-      entry = { clientHash: key, bookingsCount: 0, revenue: 0 };
+      entry = { clientHash: key, bookingsCount: 0, revenue: 0, revenueByCurrency: {} };
       acc.set(key, entry);
     }
     entry.bookingsCount += 1;
     if (booking.status === 'confirmed') {
-      entry.revenue += booking.price ?? 0;
+      ajouterMontant(entry, groupeDevise(booking), booking.price ?? 0, reference);
     }
   }
   return [...acc.values()]
@@ -676,7 +739,7 @@ export function aggregateFullPipeline(
   const dailyArr = [...dailyMap.values()].sort((a, b) =>
     a.date.localeCompare(b.date),
   );
-  const monthlyMap = aggregateDailiesToMonthly(dailyArr, opts.providerId);
+  const monthlyMap = aggregateDailiesToMonthly(dailyArr, opts.providerId, opts.providerCurrency);
   const monthlyArr = [...monthlyMap.values()].sort((a, b) =>
     a.month.localeCompare(b.month),
   );
@@ -686,6 +749,7 @@ export function aggregateFullPipeline(
     opts.providerId,
     now,
     opts.timezone,
+    opts.providerCurrency,
   );
   const clientsMap = aggregateBookingsToClients(
     bookings,

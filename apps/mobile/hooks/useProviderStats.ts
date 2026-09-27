@@ -55,6 +55,8 @@ export interface ProviderStats {
 
   // ── Current period ──
   revenue: number;
+  /** CA par devise ; `revenue` = devise du prestataire seule. Jamais additionnés. */
+  revenueByCurrency: Record<string, number>;
   bookingsCount: number;
   uniqueClients: number;
   pageViews: number;
@@ -113,6 +115,7 @@ export interface UseProviderStatsResult {
 const EMPTY_STATS = (period: Period): ProviderStats => ({
   period,
   revenue: 0,
+  revenueByCurrency: {},
   bookingsCount: 0,
   uniqueClients: 0,
   pageViews: 0,
@@ -294,6 +297,7 @@ export function useProviderStats(
       setStats({
         period,
         revenue: totals.revenue,
+        revenueByCurrency: totals.revenueByCurrency ?? {},
         bookingsCount: totals.bookingsCount,
         uniqueClients: totals.uniqueClients,
         pageViews: pvCurrent.total,

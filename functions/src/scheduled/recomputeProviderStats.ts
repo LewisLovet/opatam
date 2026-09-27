@@ -102,7 +102,7 @@ async function refreshRollingFor(
 ): Promise<void> {
   const cutoff90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-  const [dailiesSnap, bookingsSnap] = await Promise.all([
+  const [dailiesSnap, bookingsSnap, providerSnap] = await Promise.all([
     db.collection('providerStatsDaily').where('providerId', '==', providerId).get(),
     // For top-clients revenue we need actual bookings — top-services
     // can be derived from dailies but topClients per-client revenue
@@ -112,6 +112,9 @@ async function refreshRollingFor(
       .where('providerId', '==', providerId)
       .where('datetime', '>=', Timestamp.fromDate(cutoff90))
       .get(),
+    // La devise du prestataire, pour que les tops ne melangent pas deux
+    // devises dans leur champ plat `revenue`.
+    db.doc(`providers/${providerId}`).get(),
   ]);
 
   const dailies: ProviderStatsDaily[] = dailiesSnap.docs.map(
@@ -134,6 +137,7 @@ async function refreshRollingFor(
     providerId,
     now,
     DEFAULT_TIMEZONE,
+    (providerSnap.data()?.currency as string | undefined) ?? null,
   );
 
   await db

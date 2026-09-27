@@ -32,6 +32,7 @@ import i18n from '../../lib/i18n';
 import { deltaPercent, type Period,
   DEFAULT_CURRENCY,
   formatPrice as formatPrice0,
+  autresDevises,
   getCurrency,
 } from '@booking-app/shared';
 
@@ -227,6 +228,13 @@ export default function StatsScreen() {
                 <Text variant="h1" style={{ color: '#FFF', fontSize: 36, fontWeight: '800' }}>
                   {formatPrice(stats?.revenue ?? 0)}
                 </Text>
+                {/* CA dans une AUTRE devise (historique d'avant un changement) :
+                    affiché à part, jamais additionné au chiffre principal. */}
+                {autresDevises(stats?.revenueByCurrency, devisePro()).map((a) => (
+                  <Text key={a.devise} variant="caption" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                    + {formatPrice0(a.montant, a.devise)} ({a.devise})
+                  </Text>
+                ))}
                 {revenueDelta !== null && (
                   <View style={[
                     s.heroDelta,

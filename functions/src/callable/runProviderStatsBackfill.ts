@@ -95,6 +95,7 @@ export async function backfillProviderStats(
     }
     const providerData = providerSnap.data() ?? {};
     const providerName = (providerData.businessName as string) ?? 'Provider';
+    const providerCurrency = (providerData.currency as string | undefined) ?? null;
     const membersById: Record<string, { name: string }> = {};
     for (const m of membersSnap.docs) {
       const d = m.data();
@@ -115,7 +116,7 @@ export async function backfillProviderStats(
       .filter((s) => !!s.category && (s.amount ?? 0) > 0);
 
     // ── Run the full pipeline ─────────────────────────────────
-    const opts = { providerId, providerName, membersById, timezone: DEFAULT_TIMEZONE };
+    const opts = { providerId, providerName, membersById, timezone: DEFAULT_TIMEZONE, providerCurrency };
     const dailyMap = aggregateBookingsToDaily(bookings, opts);
     if (activities.length > 0) {
       mergeActivitiesIntoDailies(activities, dailyMap, {
@@ -126,7 +127,7 @@ export async function backfillProviderStats(
     const dailyArr: ProviderStatsDaily[] = [...dailyMap.values()].sort((a, b) =>
       a.date.localeCompare(b.date),
     );
-    const monthlyMap = aggregateDailiesToMonthly(dailyArr, providerId);
+    const monthlyMap = aggregateDailiesToMonthly(dailyArr, providerId, providerCurrency);
     const monthlyArr: ProviderStatsMonthly[] = [...monthlyMap.values()].sort((a, b) =>
       a.month.localeCompare(b.month),
     );
@@ -136,6 +137,7 @@ export async function backfillProviderStats(
       providerId,
       new Date(),
       DEFAULT_TIMEZONE,
+      providerCurrency,
     );
 
     // ── Resolve registered users for client enrichment ────────
@@ -165,7 +167,7 @@ export async function backfillProviderStats(
         }
       }
     }
-    const clientMap = aggregateBookingsToClients(bookings, { providerId, registeredUsers });
+    const clientMap = aggregateBookingsToClients(bookings, { providerId, registeredUsers, providerCurrency });
     const clientArr: ProviderClient[] = [...clientMap.values()];
 
     // ★ Preserve user-editable client fields (notes, preferences)

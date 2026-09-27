@@ -1,26 +1,40 @@
 'use client';
 
 import { ArrowDownRight, ArrowUpRight, Eye, Wallet, Users, Calendar } from 'lucide-react';
-import { deltaPercent, formatPrice, PERIOD_LABELS, type Period } from '@booking-app/shared';
+import { deltaPercent, formatPrice, autresDevises, PERIOD_LABELS, type Period } from '@booking-app/shared';
+import { useDevise, usePrix } from '@/contexts/DeviseContext';
 
 interface Props {
   period: Period;
   revenue: { current: number; previous: number };
+  /** CA des AUTRES devises de la période, affiché à part — jamais additionné. */
+  revenueByCurrency?: Record<string, number>;
   bookings: { current: number; previous: number };
   uniqueClients: { current: number; previous: number };
   pageViews: { current: number; previous: number };
 }
 
-export function KpiBar({ period, revenue, bookings, uniqueClients, pageViews }: Props) {
+export function KpiBar({ period, revenue, revenueByCurrency, bookings, uniqueClients, pageViews }: Props) {
+  // Devise du prestataire : le CA principal est dans SA devise. Un historique
+  // dans une autre devise (un salon passé de l'euro au franc) s'affiche en
+  // dessous, à part — additionner les deux serait un chiffre qui n'existe pas.
+  const devise = useDevise();
+  const prix = usePrix();
+  const autres = autresDevises(revenueByCurrency, devise);
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <KpiCard
         icon={<Wallet className="w-5 h-5" />}
         label="CA réalisé"
-        value={formatPrice(revenue.current)}
+        value={prix(revenue.current)}
         delta={deltaPercent(revenue.current, revenue.previous)}
         period={period}
         tone="primary"
+        footnote={
+          autres.length > 0
+            ? autres.map((a) => `+ ${formatPrice(a.montant, a.devise)} (${a.devise}, à part)`).join(' · ')
+            : undefined
+        }
       />
       <KpiCard
         icon={<Calendar className="w-5 h-5" />}
@@ -54,9 +68,11 @@ interface KpiCardProps {
   delta: number | null;
   period: Period;
   tone?: 'default' | 'primary';
+  /** Ligne discrète sous la valeur (ex. CA d'une autre devise). */
+  footnote?: string;
 }
 
-function KpiCard({ icon, label, value, delta, period, tone = 'default' }: KpiCardProps) {
+function KpiCard({ icon, label, value, delta, period, tone = 'default', footnote }: KpiCardProps) {
   const positive = delta !== null && delta > 0;
   const negative = delta !== null && delta < 0;
   const iconBg =
@@ -73,6 +89,9 @@ function KpiCard({ icon, label, value, delta, period, tone = 'default' }: KpiCar
           <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
             {value}
           </p>
+      {footnote && (
+        <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-gray-400">{footnote}</p>
+      )}
         </div>
       </div>
       <div className="mt-3 flex items-center gap-1.5 text-xs">

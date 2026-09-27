@@ -61,6 +61,7 @@ import { ClientHistoryList } from './ClientHistoryList';
 import { formatRevenue } from './format';
 import { TAG_META_BY_VALUE } from './tagMeta';
 import { useDevise } from '@/contexts/DeviseContext';
+import { autresDevises } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -446,6 +447,10 @@ export function ClientDrawer({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Kpi label="Réservations" value={client.bookingsCount.toString()} />
               <Kpi label="CA cumulé" value={formatRevenue(client.totalRevenue, useDevise())} />
+              {/* CA dans une autre devise : à part, jamais additionné. */}
+              {autresDevises(client.totalRevenueByCurrency, useDevise()).map((a) => (
+                <Kpi key={a.devise} label={`CA (${a.devise})`} value={formatRevenue(a.montant, a.devise)} />
+              ))}
               <Kpi
                 label="Confirmation"
                 value={confirmRate != null ? `${confirmRate}%` : '—'}

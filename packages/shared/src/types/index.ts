@@ -401,6 +401,15 @@ export interface ProviderStatsServiceBreakdown {
   confirmedCount: number;
   /** Sum of `price` for confirmed bookings (in cents). */
   revenue: number;
+  /**
+   * Même montant, PAR DEVISE (code ISO → unités mineures).
+   *
+   * `revenue` ne contient que le groupe de la devise du prestataire ; une
+   * réservation historique sans devise appartient au groupe EUR. Ces
+   * groupes ne s'additionnent JAMAIS entre eux : aucun taux n'est stocké.
+   * Absent sur les documents écrits avant le multidevise = tout en EUR.
+   */
+  revenueByCurrency?: Record<string, number>;
 }
 
 /**
@@ -414,6 +423,15 @@ export interface ProviderStatsMemberBreakdown {
   bookingsCount: number;
   confirmedCount: number;
   revenue: number;
+  /**
+   * Même montant, PAR DEVISE (code ISO → unités mineures).
+   *
+   * `revenue` ne contient que le groupe de la devise du prestataire ; une
+   * réservation historique sans devise appartient au groupe EUR. Ces
+   * groupes ne s'additionnent JAMAIS entre eux : aucun taux n'est stocké.
+   * Absent sur les documents écrits avant le multidevise = tout en EUR.
+   */
+  revenueByCurrency?: Record<string, number>;
 }
 
 /**
@@ -455,6 +473,15 @@ export interface ProviderStatsDaily {
 
   /** Revenue (cents) — sum of `price` over confirmed bookings on this day. */
   revenue: number;
+  /**
+   * Même montant, PAR DEVISE (code ISO → unités mineures).
+   *
+   * `revenue` ne contient que le groupe de la devise du prestataire ; une
+   * réservation historique sans devise appartient au groupe EUR. Ces
+   * groupes ne s'additionnent JAMAIS entre eux : aucun taux n'est stocké.
+   * Absent sur les documents écrits avant le multidevise = tout en EUR.
+   */
+  revenueByCurrency?: Record<string, number>;
 
   /**
    * "Autres revenus" — sum of `amount` (cents) over paid activities
@@ -508,6 +535,15 @@ export interface ProviderStatsMonthly {
   noshowCount: number;
 
   revenue: number;
+  /**
+   * Même montant, PAR DEVISE (code ISO → unités mineures).
+   *
+   * `revenue` ne contient que le groupe de la devise du prestataire ; une
+   * réservation historique sans devise appartient au groupe EUR. Ces
+   * groupes ne s'additionnent JAMAIS entre eux : aucun taux n'est stocké.
+   * Absent sur les documents écrits avant le multidevise = tout en EUR.
+   */
+  revenueByCurrency?: Record<string, number>;
 
   /** Paid-activity revenue track — mirror of the daily fields,
    *  rolled up across the calendar month. See ProviderStatsDaily
@@ -544,9 +580,9 @@ export interface ProviderStatsRolling {
    * the agg doc PII-free; the UI resolves names by querying recent
    * `bookings` for each hash on demand (max 10 client lookups).
    */
-  topClients30d: { clientHash: string; bookingsCount: number; revenue: number }[];
-  topClients90d: { clientHash: string; bookingsCount: number; revenue: number }[];
-  topClientsAllTime: { clientHash: string; bookingsCount: number; revenue: number }[];
+  topClients30d: { clientHash: string; bookingsCount: number; revenue: number; revenueByCurrency?: Record<string, number> }[];
+  topClients90d: { clientHash: string; bookingsCount: number; revenue: number; revenueByCurrency?: Record<string, number> }[];
+  topClientsAllTime: { clientHash: string; bookingsCount: number; revenue: number; revenueByCurrency?: Record<string, number> }[];
 
   /**
    * Day-of-week × hour-of-day heatmap over the last 90 days.
@@ -623,6 +659,12 @@ export interface ProviderClient {
   clientLocale?: string | null;
   /** Sum of `price` over confirmed bookings (cents). */
   totalRevenue: number;
+  /**
+   * CA cumulé PAR DEVISE. `totalRevenue` ne porte que le groupe de la devise
+   * du prestataire (historique sans devise = EUR) — c'est lui, et lui seul,
+   * qui décide du statut VIP : jamais une somme de plusieurs devises.
+   */
+  totalRevenueByCurrency?: Record<string, number>;
 
   firstBookingAt: Date;
   lastBookingAt: Date;

@@ -367,6 +367,7 @@ export default function StatistiquesPage() {
               current: view.totals.revenue,
               previous: view.totalsPrev.revenue,
             }}
+            revenueByCurrency={view.totals.revenueByCurrency}
             bookings={{
               current: view.totals.bookingsCount,
               previous: view.totalsPrev.bookingsCount,

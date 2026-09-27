@@ -208,7 +208,8 @@ export async function recomputeClientDoc(
 
   const clients = aggregateBookingsToClients(
     bookings,
-    { providerId, registeredUsers },
+    // La devise du prestataire : `totalRevenue` (et le VIP) = ce groupe seul.
+    { providerId, registeredUsers, providerCurrency: ctx.currency },
   );
   const client = clients.get(clientKey);
   const ref = db.collection('providerClients').doc(clientDocId(providerId, clientKey));

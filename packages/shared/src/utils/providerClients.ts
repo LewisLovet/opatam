@@ -145,6 +145,8 @@ export function computeClientTags(
 
 export interface AggregateClientsOptions {
   providerId: string;
+  /** Devise du prestataire : `totalRevenue` (et donc le VIP) = ce groupe seul. */
+  providerCurrency?: string | null;
   /**
    * Optional: identity enrichment for registered Opatam users
    * (clientId-keyed lookup). When supplied the aggregation will
@@ -219,14 +221,22 @@ export function aggregateBookingsToClients(
     // ── Counters ─────────────────────────────────────────────
     client.bookingsCount += 1;
     switch (booking.status) {
-      case 'confirmed':
+      case 'confirmed': {
         client.confirmedCount += 1;
-        client.totalRevenue += booking.price ?? 0;
+        // Le VIP se juge sur `totalRevenue` = groupe de la devise du
+        // prestataire seul ; une réservation historique sans devise = EUR.
+        const devise = (booking.currency || 'EUR').toUpperCase();
+        const reference = (opts.providerCurrency || 'EUR').toUpperCase();
+        const montant = booking.price ?? 0;
+        if (!client.totalRevenueByCurrency) client.totalRevenueByCurrency = {};
+        client.totalRevenueByCurrency[devise] = (client.totalRevenueByCurrency[devise] ?? 0) + montant;
+        if (devise === reference) client.totalRevenue += montant;
         // Carte de fidélité : connecté + post-lancement uniquement.
         if (countsTowardLoyalty(booking)) {
           client.loyaltyConfirmedCount = (client.loyaltyConfirmedCount ?? 0) + 1;
         }
         break;
+      }
       case 'cancelled':
         client.cancelledCount += 1;
         break;
@@ -287,6 +297,7 @@ function emptyClient(
     cancelledCount: 0,
     noshowCount: 0,
     totalRevenue: 0,
+    totalRevenueByCurrency: {},
     // Initialise to extremes so the first booking always replaces
     // them. Using `firstBooking.datetime` here as a sane default
     // keeps the doc valid even if the loop short-circuits.

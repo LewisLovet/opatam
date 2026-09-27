@@ -36,6 +36,8 @@ export const DEFAULT_TIMEZONE = 'Europe/Paris';
 export interface ProviderContext {
   providerName: string;
   membersById: Record<string, { name: string }>;
+  /** Devise du prestataire (EUR si absente) : le groupe du champ plat `revenue`. */
+  currency: string;
 }
 
 /**
@@ -62,6 +64,7 @@ export async function loadProviderContext(
   return {
     providerName: (providerData.businessName as string) ?? 'Provider',
     membersById,
+    currency: ((providerData.currency as string | undefined) || 'EUR').toUpperCase(),
   };
 }
 
@@ -147,6 +150,7 @@ export async function recomputeDailyDoc(
     providerName: ctx.providerName,
     membersById: ctx.membersById,
     timezone: DEFAULT_TIMEZONE,
+    providerCurrency: ctx.currency,
   });
   if (activities.length > 0) {
     mergeActivitiesIntoDailies(activities, dailies, {
@@ -174,8 +178,14 @@ export async function recomputeDailyDoc(
 export async function recomputeMonthlyDoc(
   providerId: string,
   month: string,
+  providerCurrency?: string | null,
 ): Promise<void> {
   const db = admin.firestore();
+  // La devise de reference decide de ce que porte le champ plat `revenue`.
+  // Lue ici quand l'appelant ne la passe pas : un daily d'avant le
+  // multidevise n'a pas de seaux et vaut l'euro, un daily recent en a.
+  const reference = providerCurrency
+    ?? (((await db.doc(`providers/${providerId}`).get()).data()?.currency as string | undefined) || 'EUR');
   const snap = await db
     .collection('providerStatsDaily')
     .where('providerId', '==', providerId)
@@ -194,7 +204,7 @@ export async function recomputeMonthlyDoc(
     }
   }
 
-  const monthlies = aggregateDailiesToMonthly(dailies, providerId);
+  const monthlies = aggregateDailiesToMonthly(dailies, providerId, reference);
   const monthly = monthlies.get(month);
   const ref = db.collection('providerStatsMonthly').doc(monthlyDocId(providerId, month));
   if (monthly) {
