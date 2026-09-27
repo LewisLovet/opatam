@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         //  - booking deposit checkout (metadata.bookingId set, on a
         //    connected account)
         if (session.metadata?.bookingId) {
-          await handleDepositCheckoutCompleted(db, session);
+          await aRejouerSiEchec(() => handleDepositCheckoutCompleted(db, session));
         } else {
           await handleCheckoutCompleted(db, stripe, session);
         }
@@ -172,12 +172,12 @@ export async function POST(request: NextRequest) {
         break;
       }
       case 'payment_intent.succeeded': {
-        // Mobile bookings use PaymentSheet, which creates a Destination
-        // PaymentIntent on the platform (no Checkout Session). The
+        // Mobile bookings use PaymentSheet, which creates a direct
+        // PaymentIntent on the connected account (no Checkout Session). The
         // booking confirmation therefore hangs off this event, not
         // checkout.session.completed.
         const intent = event.data.object as Stripe.PaymentIntent;
-        await handleDepositPaymentIntentSucceeded(db, intent);
+        await aRejouerSiEchec(() => handleDepositPaymentIntentSucceeded(db, intent));
         break;
       }
       default:
@@ -185,12 +185,41 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error(`[STRIPE-WEBHOOK] Error handling ${event.type}:`, error instanceof Error ? error.stack || error.message : String(error));
+    // Une confirmation d'ACOMPTE qui echoue sur Firestore doit etre rejouee
+    // par Stripe : sinon la cliente est debitee et la reservation reste
+    // « en attente de paiement » jusqu'au cron de rattrapage. Ces deux
+    // handlers sont idempotents (« deja paye » fait sortir), la relance est
+    // donc sans danger. Les autres evenements gardent le 200 : plusieurs
+    // n'ont pas de garde equivalente et boucleraient.
+    if (error instanceof ErreurARejouer) {
+      return NextResponse.json({ error: 'retry' }, { status: 500 });
+    }
     // Return 200 anyway to prevent Stripe from retrying in a loop.
     // The error is logged for investigation.
   }
 
   console.log('[STRIPE-WEBHOOK] ========== EVENT PROCESSED ==========');
   return NextResponse.json({ received: true });
+}
+
+/** Marque un echec que Stripe doit rejouer (reponse 500). */
+class ErreurARejouer extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'ErreurARejouer';
+  }
+}
+
+/**
+ * Enveloppe les handlers IDEMPOTENTS dont l'echec doit provoquer une relance.
+ * Volontairement pas applique a tout le webhook : voir le `catch` de POST.
+ */
+async function aRejouerSiEchec(fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    throw new ErreurARejouer(err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1426,7 +1455,12 @@ async function handleDepositCheckoutCompleted(
   // Pull the payment_intent id (may be expanded or just an ID)
   const paymentIntentId = extractId(session.payment_intent);
 
-  await bookingRef.update({
+  // Confirmation ET verrou de devise dans le MEME batch. Separes, un echec
+  // du verrou apres une confirmation reussie laissait le prestataire libre de
+  // changer de devise alors qu'un acompte etait deja encaisse — et la relance
+  // de Stripe ne le reparait pas, puisque « deja paye » fait sortir avant.
+  const batch = db.batch();
+  batch.update(bookingRef, {
     status: 'confirmed',
     'deposit.status': 'paid',
     'deposit.paidAt': new Date(),
@@ -1434,8 +1468,8 @@ async function handleDepositCheckoutCompleted(
     'deposit.checkoutSessionId': session.id,
     updatedAt: FieldValue.serverTimestamp(),
   });
-
-  await verrouillerDeviseDuPrestataire(db, booking.providerId);
+  await verrouillerDeviseDuPrestataire(db, booking.providerId, batch);
+  await batch.commit();
 
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (intent ${paymentIntentId})`,
@@ -1449,23 +1483,22 @@ async function handleDepositCheckoutCompleted(
  * changer ferait mentir tout l'historique, les e-mails déjà envoyés et les
  * relevés bancaires. Le déverrouillage passe par l'administration.
  *
- * Idempotent (écrit seulement si le champ est absent) et best-effort : un
- * échec ici ne doit jamais empêcher une réservation d'être confirmée.
+ * Idempotent : n'écrit que si le champ est absent. Et PAS best-effort : il
+ * ajoute son écriture au batch de la confirmation, donc l'une n'existe pas
+ * sans l'autre. Une lecture qui échoue fait échouer le handler, et le
+ * webhook répond 500 pour que Stripe rejoue l'événement.
  */
 async function verrouillerDeviseDuPrestataire(
   db: FirebaseFirestore.Firestore,
   providerId: string | undefined,
+  batch: FirebaseFirestore.WriteBatch,
 ) {
   if (!providerId) return;
-  try {
-    const ref = db.collection('providers').doc(providerId);
-    const snap = await ref.get();
-    if (!snap.exists || snap.data()?.currencyLockedAt) return;
-    await ref.update({ currencyLockedAt: new Date() });
-    console.log(`[STRIPE-WEBHOOK] devise figée pour le prestataire ${providerId}`);
-  } catch (err) {
-    console.error('[STRIPE-WEBHOOK] verrou devise impossible:', err);
-  }
+  const ref = db.collection('providers').doc(providerId);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data()?.currencyLockedAt) return;
+  batch.update(ref, { currencyLockedAt: new Date() });
+  console.log(`[STRIPE-WEBHOOK] devise figée pour le prestataire ${providerId}`);
 }
 
 /**
@@ -1500,15 +1533,17 @@ async function handleDepositPaymentIntentSucceeded(
     return;
   }
 
-  await bookingRef.update({
+  // Meme batch que la confirmation : voir handleDepositCheckoutCompleted.
+  const batch = db.batch();
+  batch.update(bookingRef, {
     status: 'confirmed',
     'deposit.status': 'paid',
     'deposit.paidAt': new Date(),
     'deposit.paymentIntentId': intent.id,
     updatedAt: FieldValue.serverTimestamp(),
   });
-
-  await verrouillerDeviseDuPrestataire(db, booking.providerId);
+  await verrouillerDeviseDuPrestataire(db, booking.providerId, batch);
+  await batch.commit();
 
   console.log(
     `[STRIPE-WEBHOOK] booking ${bookingId}: pending_payment → confirmed (PI ${intent.id})`,

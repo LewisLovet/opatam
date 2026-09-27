@@ -35,6 +35,8 @@ export interface DepositPaymentRequestEmailData {
   cancelToken?: string | null;
   /** Client language ('fr' | 'en' | 'it' | 'pt' | 'de'…). Absent = French. */
   locale?: string | null;
+  /** Devise FIGEE de la reservation. Absente = euro. */
+  currency?: string | null;
 }
 
 export interface SendResult {
@@ -215,7 +217,7 @@ export async function sendDepositPaymentRequestEmail(
   const formattedTime = formatTime(data.datetime, l);
   const endDate = new Date(data.datetime.getTime() + data.duration * 60 * 1000);
   const formattedEndTime = formatTime(endDate, l);
-  const formattedDeposit = formatPrice(data.depositAmount, l);
+  const formattedDeposit = formatPrice(data.depositAmount, l, data.currency ?? 'EUR');
   const cancelUrl = data.cancelToken
     ? `${appConfig.url}/reservation/annuler/${data.cancelToken}`
     : null;

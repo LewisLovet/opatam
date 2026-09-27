@@ -245,12 +245,12 @@ export function ProviderPageClient({
       content_category: provider.category,
       content_ids: [provider.slug],
       value: minPrice ? minPrice / 100 : undefined,
-      currency: minPrice ? 'EUR' : undefined,
+      currency: minPrice ? (provider.currency ?? 'EUR') : undefined,
     });
     trackTikTok('ViewContent', {
       contents: contenu(provider.slug, provider.businessName),
       value: minPrice ? minPrice / 100 : undefined,
-      currency: minPrice ? 'EUR' : undefined,
+      currency: minPrice ? (provider.currency ?? 'EUR') : undefined,
     });
   }, [provider.id, provider.businessName, provider.category, provider.slug, minPrice, isDemo]);
 

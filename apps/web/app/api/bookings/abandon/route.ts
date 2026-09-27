@@ -116,13 +116,25 @@ export async function POST(request: NextRequest) {
         piStatus === 'requires_capture'
       ) {
         if (piStatus === 'succeeded' && booking.status === 'pending_payment') {
-          await ref.update({
+          // Voie de rattrapage d'un webhook perdu : elle confirme, donc elle
+          // fige aussi la devise, comme le webhook — dans le meme batch.
+          const batch = db.batch();
+          batch.update(ref, {
             status: 'confirmed',
             'deposit.status': 'paid',
             'deposit.paidAt': new Date(),
             'deposit.paymentIntentId': piId,
             updatedAt: new Date(),
           });
+          const providerId = booking.providerId as string | undefined;
+          if (providerId) {
+            const pRef = db.collection('providers').doc(providerId);
+            const pSnap = await pRef.get();
+            if (pSnap.exists && !pSnap.data()?.currencyLockedAt) {
+              batch.update(pRef, { currencyLockedAt: new Date() });
+            }
+          }
+          await batch.commit();
         }
         return NextResponse.json({ abandoned: false, paid: true });
       }

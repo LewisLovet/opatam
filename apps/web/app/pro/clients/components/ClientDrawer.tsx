@@ -60,6 +60,7 @@ import {
 import { ClientHistoryList } from './ClientHistoryList';
 import { formatRevenue } from './format';
 import { TAG_META_BY_VALUE } from './tagMeta';
+import { useDevise } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -444,7 +445,7 @@ export function ClientDrawer({
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Kpi label="Réservations" value={client.bookingsCount.toString()} />
-              <Kpi label="CA cumulé" value={formatRevenue(client.totalRevenue)} />
+              <Kpi label="CA cumulé" value={formatRevenue(client.totalRevenue, useDevise())} />
               <Kpi
                 label="Confirmation"
                 value={confirmRate != null ? `${confirmRate}%` : '—'}

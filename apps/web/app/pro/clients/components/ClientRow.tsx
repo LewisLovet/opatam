@@ -98,7 +98,7 @@ export function ClientRow({ client, onClick }: Props) {
       {/* KPIs — hidden on the smallest screens to keep the row readable */}
       <div className="hidden md:flex items-center gap-6 text-right flex-shrink-0">
         <KPI label="RDV" value={client.bookingsCount.toString()} />
-        <KPI label="CA" value={formatRevenue(client.totalRevenue)} />
+        <KPI label="CA" value={formatRevenue(client.totalRevenue, devise)} />
         <KPI label="Vu" value={lastVisit} />
       </div>
 

@@ -266,6 +266,9 @@ export function BookingFlow({
   const tService = useTranslations('booking.service');
   const tCommon = useTranslations('booking.common');
   const locale = useLocale();
+  // Devise du prestataire, pour chaque prix affiche ET pour les evenements
+  // pixel/TikTok : ils annoncaient « EUR » en dur.
+  const deviseProv = provider.currency ?? DEFAULT_CURRENCY;
 
   // Determine initial service (deep-link via ?service=)
   //
@@ -576,12 +579,12 @@ export function BookingFlow({
       content_category: 'booking',
       content_ids: [provider.slug],
       value: selectedService?.price ? selectedService.price / 100 : undefined,
-      currency: selectedService?.price ? 'EUR' : undefined,
+      currency: selectedService?.price ? deviseProv : undefined,
     });
     trackTikTok('InitiateCheckout', {
       contents: contenu(provider.slug, provider.businessName),
       value: selectedService?.price ? selectedService.price / 100 : undefined,
-      currency: selectedService?.price ? 'EUR' : undefined,
+      currency: selectedService?.price ? deviseProv : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1052,7 +1055,7 @@ export function BookingFlow({
                                 </p>
                               )}
                               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                {formatDuration(line.duration)} · {formatPrice(line.price, 'EUR', locale)}
+                                {formatDuration(line.duration)} · {formatPrice(line.price, deviseProv, locale)}
                               </p>
                             </div>
                             <button
@@ -1073,7 +1076,7 @@ export function BookingFlow({
                           {t('common.total')}
                         </span>
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice, 'EUR', locale)}
+                          {formatDuration(cartTotalDuration)} · {formatPrice(cartTotalPrice, deviseProv, locale)}
                         </span>
                       </div>
                     </div>
@@ -1159,7 +1162,7 @@ export function BookingFlow({
                         ? t('flow.continue')
                         : t('flow.continueWithCart', {
                             count: state.cart.length,
-                            total: formatPrice(cartTotalPrice, 'EUR', locale),
+                            total: formatPrice(cartTotalPrice, deviseProv, locale),
                           })}
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -1205,7 +1208,7 @@ export function BookingFlow({
                     <p className="text-lg font-bold">
                       {draftHasPromo && (
                         <span className="mr-1.5 text-sm font-normal text-gray-400 line-through">
-                          {formatPrice(draftEffective.original, 'EUR', locale)}
+                          {formatPrice(draftEffective.original, deviseProv, locale)}
                         </span>
                       )}
                       <span
@@ -1215,7 +1218,7 @@ export function BookingFlow({
                             : 'text-gray-900 dark:text-white'
                         }
                       >
-                        {formatPrice(draftEffective.price, 'EUR', locale)}
+                        {formatPrice(draftEffective.price, deviseProv, locale)}
                       </span>
                     </p>
                   </div>

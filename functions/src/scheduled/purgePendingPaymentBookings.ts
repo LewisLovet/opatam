@@ -195,13 +195,24 @@ export const purgePendingPaymentBookings = onSchedule(
         if (status === 'succeeded') {
           // Paid but never confirmed (lost/late webhook) → recover it. The
           // onBookingWrite trigger sends the deferred emails on this update.
-          await doc.ref.update({
+          // Elle confirme, donc elle fige la devise, comme le webhook.
+          const batch = doc.ref.firestore.batch();
+          batch.update(doc.ref, {
             status: 'confirmed',
             'deposit.status': 'paid',
             'deposit.paidAt': new Date(),
             'deposit.paymentIntentId': paymentIntentId,
             updatedAt: FieldValue.serverTimestamp(),
           });
+          const providerId: string | undefined = data.providerId;
+          if (providerId) {
+            const pRef = doc.ref.firestore.collection('providers').doc(providerId);
+            const pSnap = await pRef.get();
+            if (pSnap.exists && !pSnap.data()?.currencyLockedAt) {
+              batch.update(pRef, { currencyLockedAt: new Date() });
+            }
+          }
+          await batch.commit();
           console.log(
             `[purge] recovered paid booking ${doc.id}: pending_payment → confirmed`,
           );

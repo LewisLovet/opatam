@@ -613,8 +613,14 @@ export default function ConfirmBookingScreen() {
       // Le compte Stripe du SDK est GLOBAL au module natif. Le laisser sur
       // celui d'un salon ferait échouer tout paiement suivant sur la
       // plateforme, l'abonnement Sérénité en premier. On revient donc
-      // systématiquement, succès comme échec comme abandon.
-      void revenirSurPlateforme();
+      // systématiquement, succès comme échec comme abandon — et on ATTEND
+      // le retour : un `void` laissait la navigation partir avant que le
+      // module natif ait rebasculé, et l'écran suivant pouvait encore parler
+      // au compte du salon. Le retour n'échoue jamais de façon utile à
+      // afficher : on ne fait que le journaliser.
+      await revenirSurPlateforme().catch((e) =>
+        console.warn('[stripe] retour sur la plateforme impossible', e),
+      );
     }
   };
 

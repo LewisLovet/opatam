@@ -723,6 +723,7 @@ export async function POST(request: NextRequest) {
             datetime: booking.datetime,
             duration: booking.duration,
             depositAmount: booking.deposit.amount,
+            currency: booking.currency ?? null,
             providerName: booking.providerName,
             checkoutUrl: session.url,
             minutesToPay: Math.round(CHECKOUT_EXPIRY_MIN_SECONDS / 60),

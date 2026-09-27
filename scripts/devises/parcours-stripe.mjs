@@ -157,11 +157,24 @@ async function parcours({ nom, devise, acompte, rembourser = true }) {
       + ` Un compte Stripe du bon pays l'éviterait.`,
     );
   }
+  // L'assertion precedente etait toujours vraie (« || true ») : elle ne
+  // verifiait rien. Celle-ci engage : la transaction de solde est dans la
+  // devise de REGLEMENT du compte, et une charge dans une autre devise porte
+  // le taux de change applique — c'est ce qui prouve que Stripe a converti.
   verifier(
-    !converti || bt.exchange_rate != null || true,
-    `devise de règlement : ${bt.currency.toUpperCase()}`,
-    converti ? 'conversion appliquée par Stripe' : 'aucune conversion',
+    bt.currency === (compte.default_currency ?? 'eur'),
+    'la transaction de solde est dans la devise de règlement du compte',
+    `${bt.currency} attendu ${compte.default_currency}`,
   );
+  if (converti) {
+    verifier(
+      typeof bt.exchange_rate === 'number' && bt.exchange_rate > 0,
+      'une charge dans une autre devise porte un taux de change',
+      String(bt.exchange_rate),
+    );
+  } else {
+    verifier(bt.exchange_rate == null, 'aucun taux de change sans conversion', String(bt.exchange_rate));
+  }
 
   if (!rembourser) return;
 

@@ -528,7 +528,8 @@ export default async function ProviderPage({ params }: PageProps) {
                 ...(s.description && { description: s.description }),
               },
               price: (getServiceMinPrice(s) / 100).toFixed(2),
-              priceCurrency: 'EUR',
+              // Devise du prestataire : un salon suisse etait indexe en euros.
+              priceCurrency: provider.currency ?? 'EUR',
             })),
           },
         }),

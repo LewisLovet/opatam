@@ -8,6 +8,7 @@ import type {
   ServiceInfoField,
 } from '@booking-app/shared';
 import type { ServiceSelections } from '@booking-app/shared';
+import { useDevise } from '@/contexts/DeviseContext';
 
 /**
  * The client-facing picker for a prestation's variations / options /
@@ -42,11 +43,13 @@ function ContribTag({
   additive?: boolean;
 }) {
   const locale = useLocale();
+  // Devise de la page (prestataire consulte ou connecte), via le contexte.
+  const devise = useDevise();
   if (price === 0 && duration === 0) return null;
   const sign = additive ? '+' : '';
   return (
     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-      {price > 0 && `${sign}${formatPrice(price, 'EUR', locale)}`}
+      {price > 0 && `${sign}${formatPrice(price, devise, locale)}`}
       {price > 0 && duration > 0 && ' · '}
       {duration > 0 && `${sign}${formatDuration(duration)}`}
     </span>
