@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { usePrix } from '@/contexts/DeviseContext';
 import { X, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import type { Booking } from '@booking-app/shared';
+import { formatPrice as formatPriceDevise } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -43,7 +43,9 @@ export function CancelBookingModal({
   // Prix dans la devise du prestataire. Ce fichier avait son propre
   // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
   // euros. Le hook lit la devise de la page, rien a passer en propriete.
-  const formatPrice = usePrix();
+  // Devise FIGÉE sur la réservation annulée : un acompte encaissé en euros
+  // se rembourse en euros, quelle que soit la devise du prestataire aujourd'hui.
+  const formatPrice = (cents: number) => formatPriceDevise(cents, booking?.currency);
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState<false | 'plain' | 'force-refund'>(false);
   const [error, setError] = useState<string | null>(null);

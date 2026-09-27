@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { deviseDeLaReservation, peutChangerDevise, DEFAULT_CURRENCY } from '../constants/currencies.ts';
 import { formatPrice } from './prix.ts';
-import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies, trendFromDailies } from './statsAggregate.ts';
+import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies, trendFromDailies, activityBreakdownFromDailies, topServicesFromDailies } from './statsAggregate.ts';
 
 const ancien = { businessName: 'Salon d’avant', settings: {} }; // pas de `currency`
 
@@ -181,4 +181,48 @@ describe('2 ter. la courbe de tendance suit la devise de référence', () => {
   it('sans référence, ancien comportement (champ plat)', () => {
     assert.deepEqual(trendFromDailies(dailies).map((p) => p.revenue), [8000, 4000]);
   });
+});
+
+describe('3 bis. détail par catégorie et top prestations suivent la référence', () => {
+  const dailies = [
+    { date: '2026-09-01', activitiesByCategory: [{ category: 'sport', count: 1, revenue: 2000 }],
+      services: [{ serviceId: 'a', serviceName: 'A', bookingsCount: 1, confirmedCount: 1, revenue: 5000 }] },      // avant : EUR
+    { date: '2026-09-02', activitiesByCategory: [{ category: 'sport', count: 1, revenue: 3000, revenueByCurrency: { CHF: 3000 } }],
+      services: [{ serviceId: 'a', serviceName: 'A', bookingsCount: 1, confirmedCount: 1, revenue: 1000, revenueByCurrency: { CHF: 1000 } }] },
+  ];
+  it('sous référence CHF, une catégorie historique EUR ne pèse pas en CHF', () => {
+    const [sport] = activityBreakdownFromDailies(dailies, 'CHF');
+    assert.equal(sport.revenue, 3000);
+    assert.deepEqual(sport.revenueByCurrency, { EUR: 2000, CHF: 3000 });
+    assert.equal(sport.count, 2, 'les compteurs, eux, s’additionnent');
+  });
+  it('sous référence CHF, le top prestations ne compte que le franc', () => {
+    const [a] = topServicesFromDailies(dailies, 10, 'CHF');
+    assert.equal(a.revenue, 1000);
+    assert.deepEqual(a.revenueByCurrency, { EUR: 5000, CHF: 1000 });
+  });
+  it('sous référence EUR ou sans référence, les comptes existants ne bougent pas', () => {
+    assert.equal(activityBreakdownFromDailies(dailies, 'EUR')[0].revenue, 2000);
+    assert.equal(activityBreakdownFromDailies(dailies)[0].revenue, 5000);
+    assert.equal(topServicesFromDailies(dailies)[0].revenue, 6000);
+  });
+});
+
+describe('2 quater. les écrans d’une réservation passée lisent SA devise, pas celle du pro', () => {
+  const racine = new URL('../../../../', import.meta.url).pathname;
+  const ecrans = {
+    'historique cliente (web)': ['apps/web/app/pro/clients/components/ClientHistoryList.tsx', /formatPrice\(b\.price,\s*b\.currency\)/],
+    'popover agenda (web)': ['apps/web/app/pro/calendrier/components/SlotPopover.tsx', /booking\.currency/],
+    'annulation (web)': ['apps/web/app/pro/reservations/components/CancelBookingModal.tsx', /booking\?\.currency/],
+    'fiche réservation (mobile)': ['apps/mobile/app/(pro)/booking-detail/[id].tsx', /booking\?\.currency \?\? devisePro\(\)/],
+    'historique cliente (mobile)': ['apps/mobile/app/(pro)/client-detail/[key].tsx', /b\.currency \?\? devisePro\(\)/],
+    'accueil pro (mobile)': ['apps/mobile/app/(pro)/(tabs)/index.tsx', /currency=\{booking\.currency\}/],
+  };
+  for (const [nom, [chemin, motif]] of Object.entries(ecrans)) {
+    it(`${nom} : devise figée de la réservation`, () => {
+      const src = readFileSync(racine + chemin, 'utf8');
+      assert.ok(motif.test(src), `${chemin} ne lit pas la devise de la réservation`);
+      assert.ok(!/const formatPrice = usePrix\(\)/.test(src), `${chemin} formate encore avec la devise du prestataire`);
+    });
+  }
 });

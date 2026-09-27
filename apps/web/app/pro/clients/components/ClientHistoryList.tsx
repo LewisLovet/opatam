@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { Booking, BookingStatus } from '@booking-app/shared';
-import { usePrix } from '@/contexts/DeviseContext';
+import { formatPrice } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -60,8 +60,6 @@ export function ClientHistoryList({
   error,
   onBookingClick,
 }: Props) {
-  // Devise du prestataire via le contexte.
-  const formatPrice = usePrix();
   if (loading) {
     return (
       <p className="text-sm text-gray-400 dark:text-gray-500">
@@ -120,7 +118,8 @@ export function ClientHistoryList({
                 </p>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums flex-shrink-0">
-                {formatPrice(b.price)}
+                {/* Devise FIGÉE sur la réservation : l'historique ne suit pas un changement de devise. */}
+                {formatPrice(b.price, b.currency)}
               </span>
             </button>
           </li>

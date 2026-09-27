@@ -58,6 +58,8 @@ export interface DayScheduleBlockedSlot {
   /** Amount earned for this activity, in cents. Optional — shown
    *  as a small badge in the bottom-right of the card. */
   amount?: number | null;
+  /** Devise FIGEE sur l'activite. Absente = la devise passee au composant. */
+  currency?: string | null;
 }
 
 export interface DayScheduleProps {
@@ -591,7 +593,7 @@ export function DaySchedule({
                       }}
                       numberOfLines={1}
                     >
-                      {formatPriceCompact(slot.amount, currency)}
+                      {formatPriceCompact(slot.amount, slot.currency ?? currency)}
                     </Text>
                   </View>
                 )}

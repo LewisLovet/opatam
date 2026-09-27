@@ -139,12 +139,15 @@ function ServiceChoiceLines({
   info,
   colors,
   spacing,
+  currency,
 }: {
   variations?: BookingSelectedVariation[];
   options?: BookingSelectedOption[];
   info?: BookingSelectedInfo[];
   colors: ReturnType<typeof useTheme>['colors'];
   spacing: ReturnType<typeof useTheme>['spacing'];
+  /** Devise FIGEE de la reservation. Absente = celle du pro connecte. */
+  currency?: string | null;
 }) {
   const hasVariations = !!variations && variations.length > 0;
   const hasOptions = !!options && options.length > 0;
@@ -162,7 +165,7 @@ function ServiceChoiceLines({
         <View key={o.optionId}>
           <Text variant="caption" color="textSecondary">
             + {o.optionName}
-            {o.price > 0 ? `  (${formatPrice(o.price)})` : ''}
+            {o.price > 0 ? `  (${formatPrice(o.price, currency ?? devisePro())})` : ''}
           </Text>
           {o.nestedVariations?.map((v) => (
             <Text
@@ -398,6 +401,11 @@ const contactPillStyles = StyleSheet.create({
 // ---------- Main screen ----------
 
 export default function ProBookingDetailScreen() {
+  // Devise FIGEE sur la reservation affichee — pas celle du prestataire
+  // aujourd'hui : un rendez-vous pris en euros reste en euros, meme si le
+  // salon est passe au franc depuis. `booking` n'est pas encore charge au
+  // premier rendu : repli sur la devise du pro connecte.
+  const prix = (cents: number) => formatPrice(cents, booking?.currency ?? devisePro());
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
@@ -781,7 +789,7 @@ export default function ProBookingDetailScreen() {
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 }}>
             <Text variant="caption" color="textSecondary">
-              {formatDuration(s.duration)} · {formatPrice(s.price)}
+              {formatDuration(s.duration)} · {prix(s.price)}
             </Text>
             {!fits ? (
               <View style={{ backgroundColor: (colors.error || '#DC2626') + '18', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
@@ -1153,7 +1161,7 @@ export default function ProBookingDetailScreen() {
       value:
         booking.travel.fee === 0
           ? t('proBookingDetail.travel.free')
-          : `${formatPrice(booking.travel.fee)} · ${booking.travel.distanceKm} km`,
+          : `${prix(booking.travel.fee)} · ${booking.travel.distanceKm} km`,
     });
   }
 
@@ -1161,7 +1169,7 @@ export default function ProBookingDetailScreen() {
     icon: 'cash-outline',
     label: t('proBookingDetail.details.price'),
     // Formule unique : total dû = prestations + déplacement.
-    value: formatPrice(booking.price + (booking.travel?.fee ?? 0)),
+    value: prix(booking.price + (booking.travel?.fee ?? 0)),
     valueColor: colors.primary,
     valueWeight: '700' as const,
   });
@@ -1176,9 +1184,9 @@ export default function ProBookingDetailScreen() {
         booking.loyalty.rewardType === 'percent'
           ? t('proLoyalty.badge.percent', {
               percent: booking.loyalty.rewardValue,
-              amount: formatPrice(booking.loyalty.amountOff),
+              amount: prix(booking.loyalty.amountOff),
             })
-          : t('proLoyalty.badge.amount', { amount: formatPrice(booking.loyalty.amountOff) }),
+          : t('proLoyalty.badge.amount', { amount: prix(booking.loyalty.amountOff) }),
       valueColor: colors.success,
       valueWeight: '700' as const,
     });
@@ -1210,7 +1218,7 @@ export default function ProBookingDetailScreen() {
     detailRows.push({
       icon: statusIcon[status],
       label: t('proBookingDetail.details.deposit'),
-      value: `${formatPrice(booking.deposit.amount)} · ${statusLabel[status]}`,
+      value: `${prix(booking.deposit.amount)} · ${statusLabel[status]}`,
       valueColor: statusColor[status],
       valueWeight: '700' as const,
     });
@@ -1221,7 +1229,7 @@ export default function ProBookingDetailScreen() {
       detailRows.push({
         icon: 'wallet-outline',
         label: t('proBookingDetail.details.remainingBalance'),
-        value: formatPrice(
+        value: prix(
           Math.max(0, booking.price + (booking.travel?.fee ?? 0) - booking.deposit.amount),
         ),
         valueColor: colors.text,
@@ -1380,11 +1388,12 @@ export default function ProBookingDetailScreen() {
                           {item.serviceName}
                         </Text>
                         <Text variant="body" style={{ fontWeight: '700', flexShrink: 0 }}>
-                          {item.price > 0 ? formatPrice(item.price) : t('common.free')}
+                          {item.price > 0 ? prix(item.price) : t('common.free')}
                         </Text>
                       </View>
                       <Text variant="caption" color="textMuted">{formatDuration(item.duration)}</Text>
                       <ServiceChoiceLines
+                        currency={booking.currency}
                         variations={item.selectedVariations}
                         options={item.selectedOptions}
                         info={item.selectedInfo}
@@ -1427,7 +1436,7 @@ export default function ProBookingDetailScreen() {
               >
                 <Text variant="body" style={{ fontWeight: '800' }}>{t('proBookingDetail.total')}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="body" style={{ fontWeight: '800' }}>{formatPrice(booking.price)}</Text>
+                  <Text variant="body" style={{ fontWeight: '800' }}>{prix(booking.price)}</Text>
                   <Text variant="caption" color="textMuted">{formatDuration(booking.duration)}</Text>
                 </View>
               </View>
@@ -1438,6 +1447,7 @@ export default function ProBookingDetailScreen() {
                 {booking.serviceName}
               </Text>
               <ServiceChoiceLines
+                currency={booking.currency}
                 variations={booking.selectedVariations}
                 options={booking.selectedOptions}
                 info={booking.selectedInfo}
@@ -1987,7 +1997,7 @@ export default function ProBookingDetailScreen() {
                           <Text variant="h3" style={{ fontWeight: '800', flex: 1 }} numberOfLines={2}>
                             {pendingConfirm.service.name}
                           </Text>
-                          <Text variant="h3" color="primary" style={{ fontWeight: '800' }}>{formatPrice(eff.price)}</Text>
+                          <Text variant="h3" color="primary" style={{ fontWeight: '800' }}>{prix(eff.price)}</Text>
                         </View>
                         {(denorm.selectedVariations.length > 0 || denorm.selectedOptions.length > 0) && (
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
@@ -2017,7 +2027,7 @@ export default function ProBookingDetailScreen() {
                         {existing.map((it, idx) => (
                           <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 }}>
                             <Text variant="bodySmall" color="textSecondary" style={{ flex: 1 }} numberOfLines={1}>{it.name}</Text>
-                            <Text variant="bodySmall" color="textSecondary">{formatPrice(it.price)}</Text>
+                            <Text variant="bodySmall" color="textSecondary">{prix(it.price)}</Text>
                           </View>
                         ))}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 }}>
@@ -2027,14 +2037,14 @@ export default function ProBookingDetailScreen() {
                               {pendingConfirm.service.name}
                             </Text>
                           </View>
-                          <Text variant="bodySmall" color="primary" style={{ fontWeight: '700' }}>{formatPrice(eff.price)}</Text>
+                          <Text variant="bodySmall" color="primary" style={{ fontWeight: '700' }}>{prix(eff.price)}</Text>
                         </View>
 
                         <View style={{ height: 1, backgroundColor: colors.border, marginVertical: spacing.sm }} />
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text variant="body" style={{ fontWeight: '800' }}>{t('proBookingDetail.addService.newTotal')}</Text>
-                          <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{formatPrice(newTotalPrice)}</Text>
+                          <Text variant="h2" color="primary" style={{ fontWeight: '800' }}>{prix(newTotalPrice)}</Text>
                         </View>
 
                         <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>

@@ -74,7 +74,8 @@ export function OtherRevenuePanel({ data, total, count, periodLabel, byCurrency 
   // reference seul ; les autres devises (activites d'avant un changement)
   // s'affichent A PART, jamais additionnees.
   const formatPrice = usePrix();
-  const autres = autresDevises(byCurrency, useDevise());
+  const devise = useDevise();
+  const autres = autresDevises(byCurrency, devise);
   if ((total === 0 || data.length === 0) && autres.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
 
@@ -126,6 +127,11 @@ export function OtherRevenuePanel({ data, total, count, periodLabel, byCurrency 
                 </span>
                 <span className="font-semibold text-gray-900 dark:text-white">
                   {formatPrice(c.revenue)}
+                  {autresDevises(c.revenueByCurrency, devise).map((x) => (
+                    <span key={x.devise} className="ml-1 text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                      + {formatPriceDevise(x.montant, x.devise)}
+                    </span>
+                  ))}
                 </span>
               </span>
             </div>

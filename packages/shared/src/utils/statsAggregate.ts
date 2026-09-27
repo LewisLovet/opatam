@@ -156,6 +156,8 @@ export function totalsFromMonthlies(
  */
 export function activityBreakdownFromDailies(
   dailies: ProviderStatsDaily[],
+  /** Devise de référence : `revenue` est alors DÉRIVÉ des seaux (voir totalsFromDailies). */
+  reference?: string | null,
 ): ProviderStatsActivityBreakdown[] {
   const acc = new Map<string, ProviderStatsActivityBreakdown>();
   for (const d of dailies) {
@@ -166,10 +168,15 @@ export function activityBreakdownFromDailies(
         acc.set(c.category, entry);
       }
       entry.count += c.count;
-      entry.revenue += c.revenue;
+      // Une entrée d'avant le multidevise n'a pas de seaux et vaut l'euro.
       for (const [devise, montant] of Object.entries(c.revenueByCurrency ?? { EUR: c.revenue })) {
         entry.revenueByCurrency![devise] = (entry.revenueByCurrency![devise] ?? 0) + montant;
       }
+      // Sans référence, l'ancien champ plat ; avec, le seau de la référence —
+      // une catégorie historique en euros ne s'affiche plus comme du franc.
+      entry.revenue = reference
+        ? (entry.revenueByCurrency![reference.toUpperCase()] ?? 0)
+        : entry.revenue + c.revenue;
     }
   }
   return [...acc.values()].sort((a, b) => b.revenue - a.revenue);
@@ -183,6 +190,8 @@ export function activityBreakdownFromDailies(
 export function topServicesFromDailies(
   dailies: ProviderStatsDaily[],
   topK = 10,
+  /** Devise de référence : `revenue` est alors DÉRIVÉ des seaux. */
+  reference?: string | null,
 ): ProviderStatsServiceBreakdown[] {
   const acc = new Map<string, ProviderStatsServiceBreakdown>();
   for (const d of dailies) {
@@ -201,12 +210,14 @@ export function topServicesFromDailies(
       }
       entry.bookingsCount += s.bookingsCount;
       entry.confirmedCount += s.confirmedCount;
-      // `revenue` reste la somme des `revenue` (groupe de référence de
-      // chaque daily) ; les seaux s'accumulent à part, jamais convertis.
-      entry.revenue += s.revenue;
+      // Les seaux s'accumulent à part, jamais convertis ; `revenue` est le
+      // seau de la référence quand elle est donnée, sinon l'ancien champ plat.
       for (const [devise, montant] of Object.entries(s.revenueByCurrency ?? { EUR: s.revenue })) {
         entry.revenueByCurrency![devise] = (entry.revenueByCurrency![devise] ?? 0) + montant;
       }
+      entry.revenue = reference
+        ? (entry.revenueByCurrency![reference.toUpperCase()] ?? 0)
+        : entry.revenue + s.revenue;
     }
   }
   return [...acc.values()]

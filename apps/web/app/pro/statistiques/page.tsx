@@ -271,7 +271,7 @@ export default function StatistiquesPage() {
     // because the rolling snapshot only carries 30d/90d/all-time.
     let topServices: ProviderStatsServiceBreakdown[] = [];
     if (state.period === '7d') {
-      topServices = topServicesFromDailies(state.dailies);
+      topServices = topServicesFromDailies(state.dailies, 10, deviseRef);
     } else if (state.rolling) {
       topServices =
         state.period === '30d'
@@ -307,6 +307,7 @@ export default function StatistiquesPage() {
       isMonthly
         ? (state.monthlies as unknown as ProviderStatsDaily[])
         : state.dailies,
+          deviseRef,
     );
 
     // True empty state — provider has literally no signal at all

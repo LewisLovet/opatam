@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { usePrix } from '@/contexts/DeviseContext';
 import { createPortal } from 'react-dom';
 import type { Booking } from '@booking-app/shared';
+import { formatPrice as formatPriceDevise } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
 
@@ -83,7 +83,8 @@ export function SlotPopover({
   // Prix dans la devise du prestataire. Ce fichier avait son propre
   // formateur avec l'euro ecrit en dur — un salon suisse y lisait des
   // euros. Le hook lit la devise de la page, rien a passer en propriete.
-  const formatPrice = usePrix();
+  // Devise FIGÉE sur la réservation affichée, pas celle du prestataire aujourd'hui.
+  const formatPrice = (cents: number) => formatPriceDevise(cents, booking.currency);
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
   const [mounted, setMounted] = useState(false);

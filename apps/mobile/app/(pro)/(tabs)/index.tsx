@@ -244,6 +244,7 @@ function TimelineBookingItem({
   memberColor,
   price,
   depositPaid,
+  currency,
   onPress,
   onConfirm,
   onCancel,
@@ -262,6 +263,8 @@ function TimelineBookingItem({
    *  deposit — null/0 otherwise. The amount still to collect in person is
    *  `price - depositPaid`. */
   depositPaid?: number | null;
+  /** Devise FIGEE de la reservation. Absente = celle du pro connecte. */
+  currency?: string | null;
   onPress: () => void;
   onConfirm?: () => void;
   onCancel?: () => void;
@@ -319,10 +322,10 @@ function TimelineBookingItem({
               )}
               {price > 0 && (
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining)}</Text>
+                  <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining, currency ?? devisePro())}</Text>
                   {hasDeposit ? (
                     <Text variant="caption" style={{ color: colors.success, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                      {t('proHome.depositPaid', { amount: formatPrice(depositPaid as number) })}
+                      {t('proHome.depositPaid', { amount: formatPrice(depositPaid as number, currency ?? devisePro()) })}
                     </Text>
                   ) : (
                     <Text variant="caption" color="textMuted" style={{ fontSize: 10 }} numberOfLines={1}>
@@ -2012,6 +2015,7 @@ export default function ProDashboardScreen() {
                     timeChip={timeChip}
                     memberColor={booking.memberColor}
                     price={booking.price}
+                    currency={booking.currency}
                     depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                     onPress={() => navigateToBooking(booking.id)}
                     onConfirm={booking.status === 'pending' ? () => handleConfirm(booking.id) : undefined}
@@ -2057,6 +2061,7 @@ export default function ProDashboardScreen() {
                   isPast={false}
                   timeChip={null}
                   price={booking.price}
+                  currency={booking.currency}
                   depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                   onPress={() => navigateToBooking(booking.id)}
                   onConfirm={() => handleConfirm(booking.id)}

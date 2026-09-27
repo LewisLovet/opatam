@@ -788,6 +788,8 @@ interface WeekBlockedSlot {
    *  for paid activities. Drives the small `120 €` badge on the
    *  card. */
   amount?: number | null;
+  /** Devise FIGEE sur l'activite. Absente = celle du pro connecte. */
+  currency?: string | null;
 }
 
 interface WeekViewProps {
@@ -1322,7 +1324,7 @@ function WeekView({
                                 }}
                                 numberOfLines={1}
                               >
-                                {formatActivityAmount(bs.amount)}
+                                {formatActivityAmount(bs.amount, bs.currency ?? devisePro())}
                               </Text>
                             </View>
                           )}
@@ -1830,6 +1832,8 @@ export default function CalendarScreen() {
         title: g.bs.title ?? null,
         address: g.bs.address ?? null,
         amount: g.bs.amount ?? null,
+        // Devise FIGEE sur l'activite ; absente = celle du pro connecte (a l'affichage).
+        currency: g.bs.currency ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, dayStart, dayEnd, memberNameMap, memberColorMap, members, t]);
@@ -1941,6 +1945,7 @@ export default function CalendarScreen() {
         categoryColor,
         title: bs.title ?? null,
         amount: bs.amount ?? null,
+        currency: bs.currency ?? null,
       };
     });
   }, [blockedSlots, viewMode, selectedMemberId, memberNameMap, memberColorMap, members, t]);
@@ -2992,7 +2997,7 @@ export default function CalendarScreen() {
                             fontVariant: ['tabular-nums'],
                           }}
                         >
-                          {formatActivityAmount(activity.amount)}
+                          {formatActivityAmount(activity.amount, activity.currency ?? devisePro())}
                         </Text>
                       )}
 

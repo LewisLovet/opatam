@@ -119,6 +119,7 @@ export function OtherRevenuePanel({ data, total, count, periodLabel, byCurrency 
                 style={{ fontWeight: '700', minWidth: 64, textAlign: 'right' }}
               >
                 {formatPrice(c.revenue, devisePro())}
+                {autresDevises(c.revenueByCurrency, devisePro()).map((x) => ` + ${formatPrice(x.montant, x.devise)}`).join('')}
               </Text>
             </View>
             <View

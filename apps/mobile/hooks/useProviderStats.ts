@@ -239,7 +239,7 @@ export function useProviderStats(
       // pull the matching window from the rolling snapshot.
       let topServices: ProviderStatsServiceBreakdown[] = [];
       if (period === '7d') {
-        topServices = topServicesFromDailies(dailies);
+        topServices = topServicesFromDailies(dailies, 10, devisePro());
       } else if (rolling) {
         topServices =
           period === '30d'
@@ -296,6 +296,7 @@ export function useProviderStats(
         isMonthly
           ? (monthlies as unknown as ProviderStatsDaily[])
           : dailies,
+              devisePro(),
       );
 
       setStats({

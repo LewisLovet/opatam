@@ -898,7 +898,8 @@ export default function ClientDetailScreen() {
                             </Text>
                           </View>
                           <Text variant="bodySmall" style={{ fontWeight: '700' }}>
-                            {b.price > 0 ? formatRevenue(b.price) : '—'}
+                            {/* Devise FIGEE de CETTE reservation, pas celle du pro aujourd'hui. */}
+                            {b.price > 0 ? formatPrice(b.price, b.currency ?? devisePro()) : '—'}
                           </Text>
                         </View>
                       </Card>
