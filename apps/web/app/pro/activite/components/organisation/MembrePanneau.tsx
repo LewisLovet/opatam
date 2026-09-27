@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui';
 import { CopierHorairesVers } from './CopierHorairesVers';
-import { formatPrice, membreRealisePrestation } from '@booking-app/shared';
+import { membreRealisePrestation } from '@booking-app/shared';
 import type { Member, Location, Service, EtatMembre } from '@booking-app/shared';
+import { usePrix } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -75,6 +76,8 @@ export function MembrePanneau({
   onOuvrirFiche,
   onDefinirHoraires,
 }: Props) {
+  // Devise du prestataire via le contexte.
+  const formatPrice = usePrix();
   const [source, setSource] = useState<string>('');
   // Désactiver déclenche une lecture des réservations puis une fenêtre :
   // sans ce verrou, un double clic lançait deux fois la manœuvre.

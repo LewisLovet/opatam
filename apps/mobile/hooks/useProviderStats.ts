@@ -96,6 +96,8 @@ export interface ProviderStats {
   // ── "Autres revenus" track (paid activities) ──
   /** Sum of paid-activity amounts on the period (cents). */
   activityRevenue: number;
+  /** « Autres revenus » PAR DEVISE ; `activityRevenue` = devise du pro seule. */
+  activityRevenueByCurrency: Record<string, number>;
   /** Count of paid activities on the period. */
   activityCount: number;
   /** Per-category breakdown, sorted by revenue desc. */
@@ -135,6 +137,7 @@ const EMPTY_STATS = (period: Period): ProviderStats => ({
   topClients: [],
   heatmap90d: null,
   activityRevenue: 0,
+  activityRevenueByCurrency: {},
   activityCount: 0,
   activitiesByCategory: [],
   cancellationRate: 0,
@@ -222,8 +225,8 @@ export function useProviderStats(
       // by date/month key. Days with no data render as a 0-bar /
       // 0-point so the timeline stays continuous.
       const bookingTrend = isMonthly
-        ? trendFromMonthlies(monthlies)
-        : trendFromDailies(dailies);
+        ? trendFromMonthlies(monthlies, devisePro())
+        : trendFromDailies(dailies, devisePro());
       const trend = buildContinuousTrend(
         bounds.start,
         bounds.end,
@@ -317,6 +320,7 @@ export function useProviderStats(
         topClients,
         heatmap90d: rolling?.heatmap90d ?? null,
         activityRevenue: totals.activityRevenue,
+        activityRevenueByCurrency: totals.activityRevenueByCurrency ?? {},
         activityCount: totals.activityCount,
         activitiesByCategory,
         cancellationRate,

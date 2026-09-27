@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
 import { formatPrice } from '@booking-app/shared';
+import { devisePro } from '../../lib/devise';
 
 /** Compact client entry — initial avatar + name + RDV count + CA. */
 interface ClientEntry {
@@ -67,7 +68,7 @@ export function TopClientsPanel({ data }: { data: ClientEntry[] }) {
                 </Text>
               </View>
               <Text variant="body" style={{ fontWeight: '700' }}>
-                {formatPrice(c.revenue)}
+                {formatPrice(c.revenue, devisePro())}
               </Text>
             </View>
           );

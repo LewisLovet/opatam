@@ -372,6 +372,7 @@ export default function StatsScreen() {
             <OtherRevenuePanel
               data={stats.activitiesByCategory}
               total={stats.activityRevenue}
+              byCurrency={stats.activityRevenueByCurrency}
               count={stats.activityCount}
               periodLabel={t(`proStats.periods.${period}`)}
             />

@@ -252,8 +252,8 @@ export default function StatistiquesPage() {
     // views by date/month key. Days/months with no data render as
     // 0 — gives a clean horizontal axis instead of collapsed gaps.
     const bookingTrend = isMonthly
-      ? trendFromMonthlies(state.monthlies)
-      : trendFromDailies(state.dailies);
+      ? trendFromMonthlies(state.monthlies, deviseRef)
+      : trendFromDailies(state.dailies, deviseRef);
     const trend = buildContinuousTrend(
       bounds.start,
       bounds.end,
@@ -397,7 +397,7 @@ export default function StatistiquesPage() {
                 ? `${Math.round(v / 100_000)} k${symboleDevise}`
                 : `${(v / 100).toFixed(0)} ${symboleDevise}`
             }
-            tooltipFormatter={(v) => [formatPrice(v), 'CA']}
+            tooltipFormatter={(v) => [formatPrice(v, deviseRef), 'CA']}
           />
 
           {/* Page-views trend — same bar/line logic */}
@@ -424,6 +424,7 @@ export default function StatistiquesPage() {
           <OtherRevenuePanel
             data={view.activitiesByCategory}
             total={view.totals.activityRevenue}
+            byCurrency={view.totals.activityRevenueByCurrency}
             count={view.totals.activityCount}
             periodLabel={PERIOD_LABELS[state.period]}
           />

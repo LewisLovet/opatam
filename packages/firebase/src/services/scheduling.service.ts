@@ -542,6 +542,10 @@ export class SchedulingService {
       // though edit (which goes straight through the repo) keeps
       // it. That's the bug users hit on first save.
       amount: validated.amount ?? null,
+      // Devise du montant, FIGEE ici. Meme piege que `amount` juste au-dessus :
+      // cette liste enumere les champs un par un, et un champ absent est perdu
+      // en silence a la creation — le schema l'accepte, la liste l'oubliait.
+      currency: validated.currency ?? null,
     });
   }
 

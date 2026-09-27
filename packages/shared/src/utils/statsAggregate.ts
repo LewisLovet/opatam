@@ -238,21 +238,45 @@ export interface TrendPoint {
 
 const MONTH_LABELS_FR = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
 
-export function trendFromDailies(dailies: ProviderStatsDaily[]): TrendPoint[] {
+/**
+ * CA d'un document pour la courbe, dans la devise de RÉFÉRENCE.
+ *
+ * Sans référence, le champ plat `revenue` (ancien comportement). Avec, le
+ * seau de cette devise — un document d'avant le multidevise n'a pas de
+ * seaux et vaut l'euro : sous une référence CHF il pèse donc 0 sur la
+ * courbe au lieu d'y apparaître comme du franc. C'est ce qui rend le
+ * graphique juste AVANT tout recalcul des agrégats.
+ */
+function revenuePourCourbe(
+  d: { revenue: number; revenueByCurrency?: Record<string, number> },
+  reference?: string | null,
+): number {
+  if (!reference) return d.revenue;
+  const seaux = d.revenueByCurrency ?? { EUR: d.revenue };
+  return seaux[reference.toUpperCase()] ?? 0;
+}
+
+export function trendFromDailies(
+  dailies: ProviderStatsDaily[],
+  reference?: string | null,
+): TrendPoint[] {
   return dailies.map((d) => ({
     key: d.date,
     label: shortDateLabelFr(d.date),
-    revenue: d.revenue,
+    revenue: revenuePourCourbe(d, reference),
     bookingsCount: d.bookingsCount,
     pageViews: 0,
   }));
 }
 
-export function trendFromMonthlies(monthlies: ProviderStatsMonthly[]): TrendPoint[] {
+export function trendFromMonthlies(
+  monthlies: ProviderStatsMonthly[],
+  reference?: string | null,
+): TrendPoint[] {
   return monthlies.map((m) => ({
     key: m.month,
     label: shortMonthLabelFr(m.month),
-    revenue: m.revenue,
+    revenue: revenuePourCourbe(m, reference),
     bookingsCount: m.bookingsCount,
     pageViews: 0,
   }));

@@ -18,8 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
+import { devisePro } from '../../lib/devise';
 import {
   formatPrice,
+  autresDevises,
   type ActivityCategory,
   type ProviderStatsActivityBreakdown,
 } from '@booking-app/shared';
@@ -39,12 +41,17 @@ interface Props {
    * panel has no chart to visually anchor the time window.
    */
   periodLabel: string;
+  /** « Autres revenus » PAR DEVISE ; les devises hors reference sont listees a part. */
+  byCurrency?: Record<string, number>;
 }
 
-export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
+export function OtherRevenuePanel({ data, total, count, periodLabel, byCurrency }: Props) {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
-  if (total === 0 || data.length === 0) return null;
+  // `total` = groupe de la devise du pro seul ; les autres devises
+  // (activites d'avant un changement) s'affichent A PART, jamais additionnees.
+  const autres = autresDevises(byCurrency, devisePro());
+  if ((total === 0 || data.length === 0) && autres.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
 
   return (
@@ -69,11 +76,16 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text variant="h3" style={{ fontWeight: '800' }}>
-            {formatPrice(total)}
+            {formatPrice(total, devisePro())}
           </Text>
           <Text variant="caption" color="textMuted">
             {t('proStats.otherRevenue.activitiesCount', { count })}
           </Text>
+          {autres.map((x) => (
+            <Text key={x.devise} variant="caption" color="textMuted">
+              + {formatPrice(x.montant, x.devise)} ({x.devise})
+            </Text>
+          ))}
         </View>
       </View>
 
@@ -106,7 +118,7 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
                 variant="body"
                 style={{ fontWeight: '700', minWidth: 64, textAlign: 'right' }}
               >
-                {formatPrice(c.revenue)}
+                {formatPrice(c.revenue, devisePro())}
               </Text>
             </View>
             <View

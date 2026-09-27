@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from '../../components';
 import { useTheme } from '../../theme';
+import { devisePro } from '../../lib/devise';
 import {
   formatPrice,
   type ProviderStatsServiceBreakdown,
@@ -52,7 +53,7 @@ export function TopServicesPanel({
                 {t('proStats.bookingsCount', { count: s.confirmedCount })}
               </Text>
               <Text variant="body" style={{ fontWeight: '700', minWidth: 64, textAlign: 'right' }}>
-                {formatPrice(s.revenue)}
+                {formatPrice(s.revenue, devisePro())}
               </Text>
             </View>
             <View

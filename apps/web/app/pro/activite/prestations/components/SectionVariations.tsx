@@ -62,7 +62,7 @@ export function SectionVariations({ data, update, forceOpen = false }: SectionVa
         badgePulse ? 'animate-editor-flash-ring' : ''
       }`}
     >
-      À partir de {formatPrice(minPrice)}
+      À partir de {formatPrice(minPrice, devise)}
     </span>
   ) : undefined;
 

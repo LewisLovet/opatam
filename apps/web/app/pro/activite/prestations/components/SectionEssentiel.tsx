@@ -173,7 +173,7 @@ export function SectionEssentiel({
               <p className="mt-1 text-primary-700/90 dark:text-primary-300/90">
                 La prestation sera affichée{' '}
                 <strong>
-                  à partir de {formatPrice(derivedBase.price)} ·{' '}
+                  à partir de {formatPrice(derivedBase.price, deviseProv)} ·{' '}
                   {formatDuration(derivedBase.duration)}
                 </strong>{' '}
                 (la combinaison la moins chère).

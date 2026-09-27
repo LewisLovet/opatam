@@ -1,6 +1,7 @@
 'use client';
 
-import { formatPrice } from '@booking-app/shared';
+import { usePrix } from '@/contexts/DeviseContext';
+
 
 interface ClientEntry {
   clientHash: string;
@@ -19,6 +20,9 @@ interface Props {
 }
 
 export function TopClientsPanel({ data }: Props) {
+  // Devise du prestataire via le contexte : le partage `formatPrice` sans
+  // devise rend l'euro par defaut, meme pour un salon suisse.
+  const formatPrice = usePrix();
   return (
     <section className="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
       <header className="mb-4">

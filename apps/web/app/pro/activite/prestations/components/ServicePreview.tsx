@@ -7,12 +7,12 @@ import {
   validateServiceSelections,
   emptyServiceSelections,
   getServiceMinPrice,
-  formatPrice,
   formatDuration,
   type ServiceSelections,
 } from '@booking-app/shared';
 import { ServiceChoicesPicker } from '@/components/booking/ServiceChoicesPicker';
 import type { ServiceFormData } from './types';
+import { usePrix } from '@/contexts/DeviseContext';
 
 /**
  * Live "client view" of the prestation. Renders the exact booking-flow
@@ -43,6 +43,8 @@ export function ServicePreview({
   onPublish?: () => void;
   publishing?: boolean;
 }) {
+  // Devise du prestataire via le contexte (l'import partage rendait l'euro).
+  const formatPrice = usePrix();
   const [selections, setSelections] = useState<ServiceSelections>(() =>
     emptyServiceSelections(),
   );

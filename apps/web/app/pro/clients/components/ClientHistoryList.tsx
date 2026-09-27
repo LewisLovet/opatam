@@ -15,8 +15,8 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { formatPrice } from '@booking-app/shared';
 import type { Booking, BookingStatus } from '@booking-app/shared';
+import { usePrix } from '@/contexts/DeviseContext';
 
 type WithId<T> = { id: string } & T;
 
@@ -60,6 +60,8 @@ export function ClientHistoryList({
   error,
   onBookingClick,
 }: Props) {
+  // Devise du prestataire via le contexte.
+  const formatPrice = usePrix();
   if (loading) {
     return (
       <p className="text-sm text-gray-400 dark:text-gray-500">

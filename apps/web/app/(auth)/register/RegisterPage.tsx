@@ -1227,7 +1227,7 @@ export default function RegisterPage() {
               <p className="text-xs text-primary-800 dark:text-primary-200">
                 Prix et durée définis par les variations ci-dessous — à partir de{' '}
                 <strong>
-                  {formatPrice(getServiceMinPrice({ price: 0, variations: svc.variations }))}
+                  {formatPrice(getServiceMinPrice({ price: 0, variations: svc.variations }), data.currency)}
                 </strong>
                 . Supprimez toutes les variations pour revenir à un prix fixe.
               </p>

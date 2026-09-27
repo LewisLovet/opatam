@@ -1,5 +1,7 @@
 'use client';
 
+import { useDevise, usePrix } from '@/contexts/DeviseContext';
+
 /**
  * "Autres revenus" panel — surfaces the paid-activity revenue track
  * (workshops, off-platform consultations, etc.) on the stats page.
@@ -16,7 +18,8 @@
  */
 
 import {
-  formatPrice,
+  formatPrice as formatPriceDevise,
+  autresDevises,
   type ActivityCategory,
   type ProviderStatsActivityBreakdown,
 } from '@booking-app/shared';
@@ -62,10 +65,17 @@ interface Props {
    * an explicit cue.
    */
   periodLabel: string;
+  /** « Autres revenus » PAR DEVISE ; les devises hors reference sont listees a part. */
+  byCurrency?: Record<string, number>;
 }
 
-export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
-  if (total === 0 || data.length === 0) return null;
+export function OtherRevenuePanel({ data, total, count, periodLabel, byCurrency }: Props) {
+  // Devise du prestataire via le contexte. `total` est le groupe de
+  // reference seul ; les autres devises (activites d'avant un changement)
+  // s'affichent A PART, jamais additionnees.
+  const formatPrice = usePrix();
+  const autres = autresDevises(byCurrency, useDevise());
+  if ((total === 0 || data.length === 0) && autres.length === 0) return null;
   const max = Math.max(...data.map((d) => d.revenue), 1);
 
   return (
@@ -86,6 +96,11 @@ export function OtherRevenuePanel({ data, total, count, periodLabel }: Props) {
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {count} activité{count > 1 ? 's' : ''}
           </div>
+          {autres.map((a) => (
+            <div key={a.devise} className="text-[11px] text-gray-500 dark:text-gray-400">
+              + {formatPriceDevise(a.montant, a.devise)} ({a.devise}, à part)
+            </div>
+          ))}
         </div>
       </header>
 

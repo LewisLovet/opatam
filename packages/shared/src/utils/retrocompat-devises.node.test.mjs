@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { deviseDeLaReservation, peutChangerDevise, DEFAULT_CURRENCY } from '../constants/currencies.ts';
 import { formatPrice } from './prix.ts';
-import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies } from './statsAggregate.ts';
+import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies, trendFromDailies } from './statsAggregate.ts';
 
 const ancien = { businessName: 'Salon d’avant', settings: {} }; // pas de `currency`
 
@@ -162,5 +162,23 @@ describe('3. activités payantes : devise figée, jamais additionnées', () => {
 
   it('un montant nul ne crée pas de ligne', () => {
     assert.deepEqual(activityRevenueByCurrencyFromDailies([{ activityRevenue: 0 }]), {});
+  });
+});
+
+describe('2 ter. la courbe de tendance suit la devise de référence', () => {
+  const dailies = [
+    { date: '2026-09-01', revenue: 8000, bookingsCount: 2 },                                   // avant : EUR
+    { date: '2026-09-02', revenue: 4000, revenueByCurrency: { CHF: 4000 }, bookingsCount: 1 }, // après : CHF
+  ];
+  it('sous référence CHF, le jour historique EUR pèse 0 — pas 8000 francs', () => {
+    const pts = trendFromDailies(dailies, 'CHF');
+    assert.equal(pts[0].revenue, 0);
+    assert.equal(pts[1].revenue, 4000);
+  });
+  it('sous référence EUR, la courbe des comptes existants ne change pas', () => {
+    assert.deepEqual(trendFromDailies(dailies, 'EUR').map((p) => p.revenue), [8000, 0]);
+  });
+  it('sans référence, ancien comportement (champ plat)', () => {
+    assert.deepEqual(trendFromDailies(dailies).map((p) => p.revenue), [8000, 4000]);
   });
 });

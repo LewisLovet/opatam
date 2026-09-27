@@ -1,12 +1,16 @@
 'use client';
 
-import { formatPrice, type ProviderStatsServiceBreakdown } from '@booking-app/shared';
+import { type ProviderStatsServiceBreakdown } from '@booking-app/shared';
+import { usePrix } from '@/contexts/DeviseContext';
 
 interface Props {
   data: ProviderStatsServiceBreakdown[];
 }
 
 export function TopServicesPanel({ data }: Props) {
+  // Devise du prestataire via le contexte : le partage `formatPrice` sans
+  // devise rend l'euro par defaut, meme pour un salon suisse.
+  const formatPrice = usePrix();
   const max = Math.max(...data.map((s) => s.revenue), 1);
 
   return (
