@@ -5,6 +5,7 @@
 
 import { Resend } from 'resend';
 import { envoyerEmail, metaDepuis } from '../lib/emailJournal';
+import { telHref } from '../lib/telephone';
 import { defineString } from 'firebase-functions/params';
 import type {
   BookingSelectedVariation,
@@ -406,6 +407,23 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Le BOUTON d'appel : le numéro du prestataire, visible, et cliquable pour
+ * appeler d'un geste depuis un téléphone. Une ligne de plus dans le tableau
+ * des détails se lisait comme une information parmi d'autres ; ici, c'est une
+ * action. Rendu en `<table>` centrée, comme les autres boutons de l'e-mail :
+ * c'est ce que les clients de messagerie savent aligner.
+ */
+function boutonAppelHtml(phone: string | null | undefined, locale: EmailLocale = 'fr'): string {
+  if (!phone) return '';
+  const href = telHref(phone);
+  if (!href) return '';
+  const c = EMAIL_TEXTS.common[locale];
+  return `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;"><tr><td align="center">
+    <a href="tel:${escapeHtml(href)}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600; color: #3f3f46;">&#x1F4DE;&nbsp;&nbsp;${c.callCta} ${escapeHtml(phone)}</a>
+  </td></tr></table>`;
 }
 
 /** Address-privacy aware location rows. Protected-but-not-revealed → "Secteur"
@@ -1519,13 +1537,13 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${locationAddressRowsHtml(data, l)}
                       ${data.travel?.addressLine ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.clientAddress}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.addressLine}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
-                      ${data.providerPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.phone}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;"><a href="tel:${escapeHtml(data.providerPhone.replace(/\s+/g, ''))}" style="color: #18181b; text-decoration: none;">${escapeHtml(data.providerPhone)}</a></td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l, data.currency)}</td></tr>
                       ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.travelFee}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l, null, data.currency)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l, null, data.currency)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null, data.currency)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
+                  ${boutonAppelHtml(data.providerPhone, l)}
                   ${loyaltyBlockHtml(data.loyalty ?? null, data.businessName, l)}
                   ${addressPendingNoticeHtml(data, l)}
                   ${accessInstructionsBlockHtml(data, l)}

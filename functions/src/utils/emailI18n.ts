@@ -221,6 +221,9 @@ export const EMAIL_TEXTS = {
       calendarGoogle: 'Google',
       calendarGoogleText: 'Google Calendar',
       calendarApple: 'Apple / Outlook',
+      // Bouton d'appel : le numéro du prestataire est DANS le bouton,
+      // ce libellé le précède (« Appeler 06 12 34 56 78 »).
+      callCta: 'Appeler',
       cancelCta: 'Annuler le rendez-vous',
       cancelLineText: (url: string) => `Annuler le rendez-vous : ${url}`,
       rebookCta: 'Reprendre rendez-vous',
@@ -282,6 +285,9 @@ export const EMAIL_TEXTS = {
       calendarGoogle: 'Google',
       calendarGoogleText: 'Google Calendar',
       calendarApple: 'Apple / Outlook',
+      // Bouton d'appel : le numéro du prestataire est DANS le bouton,
+      // ce libellé le précède (« Appeler 06 12 34 56 78 »).
+      callCta: 'Call',
       cancelCta: 'Cancel appointment',
       cancelLineText: (url: string) => `Cancel appointment: ${url}`,
       rebookCta: 'Book again',
@@ -343,6 +349,9 @@ export const EMAIL_TEXTS = {
       calendarGoogle: 'Google',
       calendarGoogleText: 'Google Calendar',
       calendarApple: 'Apple / Outlook',
+      // Bouton d'appel : le numéro du prestataire est DANS le bouton,
+      // ce libellé le précède (« Appeler 06 12 34 56 78 »).
+      callCta: 'Chiama',
       cancelCta: "Annulla l'appuntamento",
       cancelLineText: (url: string) => `Annulla l'appuntamento: ${url}`,
       rebookCta: 'Prenota di nuovo',
@@ -404,6 +413,9 @@ export const EMAIL_TEXTS = {
       calendarGoogle: 'Google',
       calendarGoogleText: 'Google Calendar',
       calendarApple: 'Apple / Outlook',
+      // Bouton d'appel : le numéro du prestataire est DANS le bouton,
+      // ce libellé le précède (« Appeler 06 12 34 56 78 »).
+      callCta: 'Ligar',
       cancelCta: 'Anular a marcação',
       cancelLineText: (url: string) => `Anular a marcação: ${url}`,
       rebookCta: 'Marcar de novo',
@@ -465,6 +477,9 @@ export const EMAIL_TEXTS = {
       calendarGoogle: 'Google',
       calendarGoogleText: 'Google Calendar',
       calendarApple: 'Apple / Outlook',
+      // Bouton d'appel : le numéro du prestataire est DANS le bouton,
+      // ce libellé le précède (« Appeler 06 12 34 56 78 »).
+      callCta: 'Anrufen',
       cancelCta: 'Termin stornieren',
       cancelLineText: (url: string) => `Termin stornieren: ${url}`,
       rebookCta: 'Neuen Termin buchen',
