@@ -36,11 +36,11 @@ const formulaires = {
 
 describe('1. le service écrit la série champ par champ, sans rien perdre', () => {
   it('blockPeriodRecurrent pose seriesId ET la règle sur CHAQUE occurrence', () => {
-    const corps = service.slice(service.indexOf('async blockPeriodRecurrent('), service.indexOf('async unblockSeries('));
-    assert.match(corps, /genererOccurrences\(validated, validated\.recurrence\)/);
+    const corps = service.slice(service.indexOf('private async preparerSerie('), service.indexOf('async unblockSeries('));
+    assert.match(corps, /genererOccurrences\(validated, regle, horloge\)/);
     assert.match(corps, /seriesId: serie,/);
     assert.match(corps, /recurrence: \{/);
-    assert.match(corps, /createMany\(providerId, docs\)/);
+    assert.match(service, /createMany\(providerId, docs\)/);
   });
   it('documentDeBlocage garde les champs déjà perdus une fois (amount, currency, spanMode)', () => {
     const debut = service.indexOf('private documentDeBlocage(');
@@ -57,9 +57,9 @@ describe('1. le service écrit la série champ par champ, sans rien perdre', () 
   it('« celle-ci et les suivantes » ne touche pas au passé : filtre sur startDate ≥ from', () => {
     const corps = service.slice(service.indexOf('async unblockSeries('), service.indexOf('async updateSeriesFrom('));
     assert.match(corps, /o\.startDate\.getTime\(\) >= from\.getTime\(\)/);
-    const maj = service.slice(service.indexOf('async updateSeriesFrom('), service.indexOf('async rendezVousRecouverts('));
-    assert.match(maj, /this\.unblockSeries\(providerId, seriesId, from\)/);
-    assert.match(maj, /this\.blockPeriodRecurrent\(providerId, input, seriesId\)/, 'la suite est régénérée sous le MÊME seriesId');
+    const maj = service.slice(service.indexOf('async updateSeriesFrom('), service.indexOf('async rendezVousRecouvertsParMembre('));
+    assert.match(maj, /o\.startDate\.getTime\(\) >= from\.getTime\(\)/, 'seules les occurrences à venir sont remplacées');
+    assert.match(maj, /this\.preparerSerie\(providerId, input, seriesId\)/, 'la suite est régénérée sous le MÊME seriesId');
   });
   it('les rendez-vous recouverts sont jugés avec la lecture du moteur, dans le fuseau du lieu', () => {
     const corps = service.slice(service.indexOf('async rendezVousRecouvertsParMembre('), service.indexOf('private verifierPeriode('));
@@ -135,6 +135,95 @@ describe('3 bis. la portée choisie survit à l’avertissement de conflits', ()
     const src = lire(formulaires['web · BlockPeriodModal']);
     assert.match(src, /rendezVousRecouvertsParMembre\(/);
     assert.doesNotMatch(src, /targets\.map\(\(m\) => schedulingService\.rendezVousRecouverts\(/, 'plus une requête par membre');
+  });
+});
+
+describe('3 ter. les six points de l’audit externe', () => {
+  const service = lire('packages/firebase/src/services/scheduling.service.ts');
+
+  it('1. le jour affiché EST le jour enregistré : une seule normalisation, partagée', () => {
+    const rec = lire('packages/shared/src/utils/recurrence.ts');
+    assert.match(rec, /export function reglePourPeriode\(/, 'le paquet partagé décide des jours');
+    for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity']) {
+      const src = lire(formulaires[nom]);
+      assert.match(src, /regleAEnregistrer\(/, `${nom} enregistre la règle normalisée`);
+    }
+    for (const chemin of [
+      'apps/web/app/pro/calendrier/components/RecurrenceFields.tsx',
+      'apps/mobile/components/business/RecurrenceFields/RecurrenceFields.tsx',
+    ]) {
+      const src = lire(chemin);
+      assert.match(src, /const weekdays = value \? regleAEnregistrer\(/, 'l’aperçu montre la règle normalisée');
+      assert.doesNotMatch(src, /trierJoursSemaine\(\[\.\.\.value\.weekdays/, 'plus de normalisation locale, divergente');
+    }
+    assert.match(lire('packages/shared/src/schemas/availability.schema.ts'), /reglePourPeriode\(data\.recurrence, data\)/);
+  });
+
+  it('2. remplacer une série n’efface plus avant de créer', () => {
+    const depot = lire('packages/firebase/src/repositories/blockedSlot.repository.ts');
+    assert.match(depot, /async remplacerSerie\(/);
+    assert.match(depot, /if \(idsASupprimer\.length \+ docs\.length <= 450\)/, 'un seul lot quand ça tient');
+    const maj = service.slice(service.indexOf('async updateSeriesFrom('), service.indexOf('async rendezVousRecouvertsParMembre('));
+    assert.match(maj, /remplacerSerie\(providerId, aRemplacer/);
+    assert.doesNotMatch(maj, /this\.unblockSeries\(/, 'plus de suppression préalable');
+  });
+
+  it('3. la génération se fait dans le fuseau du LIEU', () => {
+    const prep = service.slice(service.indexOf('private async preparerSerie('), service.indexOf('async unblockSeries('));
+    assert.match(prep, /horlogeDuFuseau\(await this\.fuseauDuLieuDuMembre\(providerId, validated\.memberId\)\)/);
+    assert.match(prep, /genererOccurrences\(validated, regle, horloge\)/);
+    const hor = lire('packages/shared/src/utils/fuseaux.ts');
+    assert.match(hor, /export function horlogeDuFuseau\(/, 'l’horloge vit avec le socle horaire');
+    assert.match(hor, /instantApresSaut/, 'heure inexistante : on décale, on ne saute pas l’occurrence');
+    assert.match(hor, /return r\.premiere;/, 'heure doublée : la première, comme le moteur');
+    assert.doesNotMatch(lire('packages/shared/src/utils/recurrence.ts'), /^import /m, 'le générateur reste sans dépendance');
+    for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity']) {
+      assert.match(lire(formulaires[nom]), /fuseauDuMembre\(/, `${nom} aligne son aperçu sur le fuseau du lieu`);
+    }
+  });
+
+  it('4. un blocage marque la prochaine disponibilité à recalculer', () => {
+    const trig = lire('functions/src/triggers/onBlockedSlotWriteNextSlot.ts');
+    assert.match(trig, /document: 'providers\/\{providerId\}\/blockedSlots\/\{blockedSlotId\}'/);
+    assert.match(trig, /nextSlotDirty === true\) return;/, 'une série ne réécrit pas N fois le prestataire');
+    const cron = lire('functions/src/scheduled/recalculateDirtySlots.ts');
+    assert.match(cron, /schedule: 'every 5 minutes'/);
+    assert.match(cron, /nextSlotDirty', '==', true/);
+    assert.match(cron, /calculateNextAvailableSlot\(doc\.id\)/);
+    const index = lire('functions/src/index.ts');
+    assert.match(index, /onBlockedSlotWriteNextSlot/);
+    assert.match(index, /recalculateDirtySlots/);
+  });
+
+  it('5. modifier une série garde la devise FIGÉE de l’activité', () => {
+    for (const chemin of [
+      'apps/web/app/pro/calendrier/components/ActivityModal.tsx',
+      'apps/mobile/app/(pro)/create-activity.tsx',
+    ]) {
+      const src = lire(chemin);
+      assert.match(src, /existingCurrency/, `${chemin} relit la devise figée`);
+      assert.match(src, /currency: existingCurrency \?\? devise/, 'la devise du jour ne sert qu’à la création');
+      assert.doesNotMatch(src, /updateSeriesFrom\([^)]*\{[^}]*currency: devise(Prov|Pro)\(?\)?,/s, 'plus de devise du jour sur une série');
+    }
+  });
+
+  it('6. les stats comptent dans le fuseau du lieu, et le mois ne s’écrit plus en concurrence', () => {
+    const ctx = lire('functions/src/lib/providerStatsRecompute.ts');
+    assert.match(ctx, /timezone: string;/, 'le contexte porte le fuseau');
+    assert.match(ctx, /locations`\)\.get\(\)/, 'lu sur les LIEUX, pas sur provider.settings');
+    assert.match(ctx, /timezone: ctx\.timezone/);
+    assert.match(ctx, /await db\.runTransaction\(async \(tx\) => \{\s*await tx\.get\(ref\);/, 'le doc mensuel est lu dans la transaction : c’est le point de contention');
+    for (const t of ['onBlockedSlotWriteProviderStats', 'onBookingWriteProviderStats']) {
+      const src = lire(`functions/src/triggers/${t}.ts`);
+      assert.match(src, /dateKeyInTz\([^,]+, ctx\.timezone\)/, `${t} : clé de jour dans le fuseau du lieu`);
+    }
+  });
+
+  it('bonus : « cette occurrence seulement » ne cherche plus de conflits dans toute la série', () => {
+    for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity']) {
+      const src = lire(formulaires[nom]);
+      assert.match(src, /existingSeriesId && quoi === 'cette'/, `${nom} limite le contrôle à la période écrite`);
+    }
   });
 });
 

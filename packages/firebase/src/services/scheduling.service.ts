@@ -8,7 +8,7 @@ import {
   providerRepository,
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, Booking, TimeSlot } from '@booking-app/shared';
-import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences } from '@booking-app/shared';
+import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences, reglePourPeriode, horlogeDuFuseau } from '@booking-app/shared';
 import {
   ajouterJours,
   bornesDeJourLocal,
@@ -249,6 +249,15 @@ export class SchedulingService {
    * `undefined` quand le lieu n'a pas encore de fuseau : le moteur garde
    * alors son repli de compatibilité. On ne DEVINE jamais.
    */
+  /**
+   * Le fuseau du lieu d'un membre — celui dans lequel ses heures sont
+   * saisies et lues. Exposé pour que les formulaires annoncent, dans leur
+   * aperçu de récurrence, exactement ce que le service va écrire.
+   */
+  async fuseauDuMembre(providerId: string, memberId: string | null | undefined): Promise<string | undefined> {
+    return this.fuseauDuLieuDuMembre(providerId, memberId);
+  }
+
   private async fuseauDuLieuDuMembre(
     providerId: string,
     memberId: string | null | undefined,
@@ -508,22 +517,42 @@ export class SchedulingService {
     /** Réutiliser une série existante (« celle-ci et les suivantes »). */
     seriesId?: string,
   ): Promise<{ seriesId: string; ids: string[] }> {
+    const { seriesId: serie, docs } = await this.preparerSerie(providerId, input, seriesId);
+    const ids = await blockedSlotRepository.createMany(providerId, docs);
+    return { seriesId: serie, ids };
+  }
+
+  /**
+   * Les documents d'une série, prêts à écrire — sans rien écrire. Partagé
+   * par la création et par la réécriture de « celle-ci et les suivantes »,
+   * pour que les deux produisent EXACTEMENT les mêmes occurrences.
+   */
+  private async preparerSerie(
+    providerId: string,
+    input: BlockedSlotInput,
+    seriesId?: string,
+  ): Promise<{ seriesId: string; docs: Array<Omit<BlockedSlot, 'id' | 'createdAt'>> }> {
     const validated = parseOrThrow(blockedSlotSchema, input);
     if (!validated.recurrence) throw new Error('Aucune règle de récurrence');
     this.verifierPeriode(validated);
-    const occurrences = genererOccurrences(validated, validated.recurrence);
+    // Le fuseau du LIEU, pas celui de l'appareil : chaque occurrence garde
+    // l'heure murale du salon, de part et d'autre d'un changement d'heure
+    // comme si le pro saisit depuis un autre pays.
+    const horloge = horlogeDuFuseau(await this.fuseauDuLieuDuMembre(providerId, validated.memberId));
+    // La règle EFFECTIVE — celle qu'on écrira, et celle qu'on déplie.
+    const regle = reglePourPeriode(validated.recurrence, validated, horloge);
+    const occurrences = genererOccurrences(validated, regle, horloge);
     const serie = seriesId ?? blockedSlotRepository.nouvelIdentifiant(providerId);
     const docs = occurrences.map((o) => ({
       ...this.documentDeBlocage(validated, o.startDate, o.endDate),
       seriesId: serie,
       recurrence: {
-        intervalWeeks: validated.recurrence!.intervalWeeks,
-        weekdays: [...validated.recurrence!.weekdays],
-        until: validated.recurrence!.until,
+        intervalWeeks: regle.intervalWeeks,
+        weekdays: [...regle.weekdays],
+        until: regle.until,
       },
     }));
-    const ids = await blockedSlotRepository.createMany(providerId, docs);
-    return { seriesId: serie, ids };
+    return { seriesId: serie, docs };
   }
 
   /**
@@ -552,10 +581,22 @@ export class SchedulingService {
     from: Date,
     input: BlockedSlotInput,
   ): Promise<{ seriesId: string; ids: string[] }> {
-    await this.unblockSeries(providerId, seriesId, from);
-    if (input.recurrence) return this.blockPeriodRecurrent(providerId, input, seriesId);
-    const id = await this.blockPeriod(providerId, input);
-    return { seriesId, ids: [id] };
+    const occurrences = await blockedSlotRepository.getBySeries(providerId, seriesId);
+    const aRemplacer = occurrences
+      .filter((o) => o.startDate.getTime() >= from.getTime())
+      .map((o) => o.id);
+    if (!input.recurrence) {
+      // « Arrêter la répétition ici » : la suite disparaît, et la période
+      // saisie devient un blocage isolé — dans la même écriture.
+      const validated = parseOrThrow(blockedSlotSchema, input);
+      this.verifierPeriode(validated);
+      const doc = this.documentDeBlocage(validated, validated.startDate, validated.endDate);
+      const { ids } = await blockedSlotRepository.remplacerSerie(providerId, aRemplacer, [doc]);
+      return { seriesId, ids };
+    }
+    const { docs } = await this.preparerSerie(providerId, input, seriesId);
+    const { ids } = await blockedSlotRepository.remplacerSerie(providerId, aRemplacer, docs);
+    return { seriesId, ids };
   }
 
   /**

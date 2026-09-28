@@ -14,14 +14,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { Booking, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
   ChoixPortee,
   AvertissementConflits,
   brouillonDepuisRegle,
-  versRegle,
+  regleAEnregistrer,
   type RecurrenceDraft,
 } from './RecurrenceFields';
 import { useDevise } from '@/contexts/DeviseContext';
@@ -172,6 +172,15 @@ export function ActivityModal({
    */
   const [porteeRetenue, setPorteeRetenue] = useState<'cette' | 'suivantes'>('cette');
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
+  /** Fuseau du LIEU du membre : l'aperçu compte comme le service écrira. */
+  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  /**
+   * Devise FIGÉE de l'activité en cours d'édition. Réécrire une série avec
+   * la devise du prestataire AUJOURD'HUI transformait en francs des
+   * occurrences consenties en euros — la règle est la même que pour une
+   * réservation : la devise se fige à la création et ne se relit jamais.
+   */
+  const [existingCurrency, setExistingCurrency] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -227,6 +236,7 @@ export function ActivityModal({
           );
           setExistingSeriesId(existing.seriesId ?? null);
           setExistingStart(startDt);
+          setExistingCurrency(existing.currency ?? null);
           setRecurrence(existing.recurrence ? brouillonDepuisRegle(existing.recurrence) : null);
         } else {
           // Create mode defaults
@@ -248,6 +258,7 @@ export function ActivityModal({
           setRecurrence(null);
           setExistingSeriesId(null);
           setExistingStart(null);
+          setExistingCurrency(null);
         }
         setPortee(null);
         setConflits(null);
@@ -319,10 +330,21 @@ export function ActivityModal({
       title: title.trim(),
       address: address.trim() || null,
       amount: amountCents,
-      recurrence: recurrence ? versRegle(recurrence) : null,
+      recurrence: recurrence ? regleAEnregistrer(recurrence, { startDate: startDt, endDate: endDt }, fuseau) : null,
     };
     return { startDt, endDt, member, amountCents, input };
   };
+
+  // Le fuseau du lieu du membre visé, pour que l'aperçu dise vrai.
+  useEffect(() => {
+    if (!isOpen || !memberId) { setFuseau(undefined); return; }
+    let annule = false;
+    schedulingService
+      .fuseauDuMembre(providerId, memberId)
+      .then((tz) => { if (!annule) setFuseau(tz); })
+      .catch(() => { if (!annule) setFuseau(undefined); });
+    return () => { annule = true; };
+  }, [isOpen, providerId, memberId]);
 
   const handleSave = () => {
     if (!saisie()) return;
@@ -345,7 +367,12 @@ export function ActivityModal({
     try {
       if (!ignorerConflits) {
         const base = { startDate: s.startDt, endDate: s.endDt };
-        const dates = recurrence ? genererOccurrences(base, versRegle(recurrence)) : [base];
+        // « Cette occurrence seulement » n'écrit qu'une période : inutile de
+        // déplier la série pour y chercher des conflits qu'on ne créera pas.
+        const serie = recurrence && !(isEditing && existingSeriesId && quoi === 'cette');
+        const dates = serie
+          ? genererOccurrences(base, regleAEnregistrer(recurrence!, base, fuseau), horlogeDuFuseau(fuseau))
+          : [base];
         const periodes = dates.map((d) => ({ ...d, allDay: false, startTime, endTime, spanMode: 'continuous' as const }));
         const touches = await schedulingService.rendezVousRecouverts(providerId, s.member.id, periodes);
         if (touches.length > 0) {
@@ -361,13 +388,15 @@ export function ActivityModal({
           // devise figée à la création est reprise telle quelle.
           await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
             ...s.input,
-            currency: deviseProv,
+            // La devise FIGÉE de la série, jamais celle du prestataire aujourd'hui.
+            currency: existingCurrency ?? deviseProv,
           });
           toast.success('Cette activité et les suivantes ont été modifiées');
         } else if (!existingSeriesId && s.input.recurrence) {
           // Une activité isolée devient une série : la remplacer.
           await schedulingService.unblockPeriod(providerId, editId);
-          await schedulingService.blockPeriodRecurrent(providerId, { ...s.input, currency: deviseProv });
+          // L'activité existait déjà : elle garde SA devise en devenant série.
+          await schedulingService.blockPeriodRecurrent(providerId, { ...s.input, currency: existingCurrency ?? deviseProv });
           toast.success('Activité répétée');
         } else {
           await blockedSlotRepository.update(providerId, editId, {
@@ -567,8 +596,9 @@ export function ActivityModal({
             <RecurrenceFields
               value={recurrence}
               onChange={setRecurrence}
-              baseStartIso={date}
-              baseEndIso={date}
+              baseStart={combine(date, startTime)}
+              baseEnd={combine(date, endTime)}
+              fuseau={fuseau}
               enSerie={!!existingSeriesId}
               disabled={saving || deleting}
             />

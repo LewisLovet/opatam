@@ -65,33 +65,37 @@ export const onBlockedSlotWriteProviderStats = onDocumentWritten(
     if (!beforePaid && !afterPaid) return;
 
     try {
-      // Identify affected days. `startDate` is what the aggregator
-      // uses as the day key, so we only care about that field.
-      const days = new Set<string>();
-      if (beforePaid) {
-        const d = toDate(before!.startDate);
-        if (d) days.add(dateKeyInTz(d, DEFAULT_TIMEZONE));
-      }
-      if (afterPaid) {
-        const d = toDate(after!.startDate);
-        if (d) days.add(dateKeyInTz(d, DEFAULT_TIMEZONE));
-      }
-      if (days.size === 0) return;
-
-      const months = new Set<string>();
-      for (const d of days) months.add(d.slice(0, 7));
-
+      // Le CONTEXTE d'abord : il porte le fuseau du lieu, et c'est lui qui
+      // décide de la journée. Calculer la clé en Europe/Paris rangeait une
+      // activité réunionnaise de début de matinée sur la veille — donc un
+      // recalcul du mauvais jour, et le bon jamais recalculé.
       const ctx = await loadProviderContext(providerId);
       if (!ctx) {
         console.warn(`[onBlockedSlotWriteProviderStats] provider ${providerId} not found`);
         return;
       }
 
+      // Identify affected days. `startDate` is what the aggregator
+      // uses as the day key, so we only care about that field.
+      const days = new Set<string>();
+      if (beforePaid) {
+        const d = toDate(before!.startDate);
+        if (d) days.add(dateKeyInTz(d, ctx.timezone));
+      }
+      if (afterPaid) {
+        const d = toDate(after!.startDate);
+        if (d) days.add(dateKeyInTz(d, ctx.timezone));
+      }
+      if (days.size === 0) return;
+
+      const months = new Set<string>();
+      for (const d of days) months.add(d.slice(0, 7));
+
       for (const date of days) {
         await recomputeDailyDoc(providerId, date, ctx);
       }
       for (const month of months) {
-        await recomputeMonthlyDoc(providerId, month);
+        await recomputeMonthlyDoc(providerId, month, ctx.currency);
       }
     } catch (err) {
       console.error('[onBlockedSlotWriteProviderStats] failed', err);

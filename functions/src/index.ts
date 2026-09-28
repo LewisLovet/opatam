@@ -31,6 +31,7 @@ export { onServiceDiscountPromoEmail } from './triggers/onServiceDiscountPromoEm
 export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from './triggers/onStatsUpdate';
 export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderStats';
 export { onBlockedSlotWriteProviderStats } from './triggers/onBlockedSlotWriteProviderStats';
+export { onBlockedSlotWriteNextSlot } from './triggers/onBlockedSlotWriteNextSlot';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onAppNotificationPublish } from './triggers/onAppNotificationPublish';
 export { onSupportMessageCreate } from './triggers/onSupportMessageCreate';
@@ -40,6 +41,7 @@ export { onProviderReferralAggregate } from './triggers/onProviderReferralAggreg
 
 // Scheduled
 export { recalculateExpiredSlots } from './scheduled/recalculateExpiredSlots';
+export { recalculateDirtySlots } from './scheduled/recalculateDirtySlots';
 export { sendBookingReminders } from './scheduled/sendBookingReminders';
 export { sendReviewRequests } from './scheduled/sendReviewRequests';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';

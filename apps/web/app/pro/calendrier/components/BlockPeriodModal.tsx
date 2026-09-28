@@ -30,14 +30,14 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
   ChoixPortee,
   AvertissementConflits,
   brouillonDepuisRegle,
-  versRegle,
+  regleAEnregistrer,
   type RecurrenceDraft,
 } from './RecurrenceFields';
 import { Loader2, Ban } from 'lucide-react';
@@ -138,6 +138,12 @@ export function BlockPeriodModal({
   const [porteeRetenue, setPorteeRetenue] = useState<'cette' | 'suivantes'>('cette');
   /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
+  /**
+   * Fuseau du LIEU du membre visé. L'aperçu de la répétition compte alors
+   * les occurrences comme le service les écrira — sinon l'écran annonce
+   * « 14 fois » là où la base en produit 13, un jour de bascule.
+   */
+  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -256,6 +262,19 @@ export function BlockPeriodModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, providerId, editId]);
 
+  // Le fuseau suit le PREMIER membre visé : c'est lui que l'aperçu décrit.
+  // Le service, lui, utilise le fuseau de chaque membre pour ce qu'il écrit.
+  useEffect(() => {
+    const cible = selectedMemberIds[0];
+    if (!isOpen || !cible) { setFuseau(undefined); return; }
+    let annule = false;
+    schedulingService
+      .fuseauDuMembre(providerId, cible)
+      .then((tz) => { if (!annule) setFuseau(tz); })
+      .catch(() => { if (!annule) setFuseau(undefined); });
+    return () => { annule = true; };
+  }, [isOpen, providerId, selectedMemberIds[0]]);
+
   const allSelected =
     members.length > 0 && selectedMemberIds.length === members.length;
 
@@ -299,15 +318,22 @@ export function BlockPeriodModal({
         endTime: allDay ? null : endTime,
         spanMode,
         reason: reason.trim() || null,
-        recurrence: recurrence ? versRegle(recurrence) : null,
+        recurrence: recurrence ? regleAEnregistrer(recurrence, { startDate: startDt, endDate: endDt }, fuseau) : null,
       },
     };
   };
 
-  /** Les périodes réellement écrites : la série dépliée, ou la période seule. */
-  const periodesAEcrire = (startDt: Date, endDt: Date) => {
+  /**
+   * Les périodes réellement écrites. « Cette occurrence seulement » n'en
+   * écrit qu'UNE : déplier toute la série pour chercher des conflits
+   * signalait des rendez-vous qu'on n'allait même pas toucher.
+   */
+  const periodesAEcrire = (startDt: Date, endDt: Date, quoi: 'cette' | 'suivantes') => {
     const base = { startDate: startDt, endDate: endDt };
-    const dates = recurrence ? genererOccurrences(base, versRegle(recurrence)) : [base];
+    const serie = recurrence && !(isEditing && existingSeriesId && quoi === 'cette');
+    const dates = serie
+      ? genererOccurrences(base, regleAEnregistrer(recurrence!, base, fuseau), horlogeDuFuseau(fuseau))
+      : [base];
     return dates.map((d) => ({
       ...d,
       allDay,
@@ -316,6 +342,12 @@ export function BlockPeriodModal({
       spanMode,
     }));
   };
+
+  /** La période telle qu'elle est saisie à l'instant — aperçu ET écriture. */
+  const periodeSaisie = () => ({
+    startDate: allDay ? combine(startDate, '00:00') : combine(startDate, startTime),
+    endDate: allDay ? combine(endDate, '23:59') : combine(endDate, endTime),
+  });
 
   const handleSave = () => {
     if (selectedMemberIds.length === 0) {
@@ -351,7 +383,7 @@ export function BlockPeriodModal({
       // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
-        const periodes = periodesAEcrire(s.startDt, s.endDt);
+        const periodes = periodesAEcrire(s.startDt, s.endDt, quoi);
         const parMembre = await schedulingService.rendezVousRecouvertsParMembre(
           providerId,
           targets.map((m) => m.id),
@@ -610,8 +642,9 @@ export function BlockPeriodModal({
             <RecurrenceFields
               value={recurrence}
               onChange={setRecurrence}
-              baseStartIso={startDate}
-              baseEndIso={endDate}
+              baseStart={periodeSaisie().startDate}
+              baseEnd={periodeSaisie().endDate}
+              fuseau={fuseau}
               enSerie={!!existingSeriesId}
               disabled={saving || deleting}
             />

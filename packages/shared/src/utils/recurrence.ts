@@ -10,25 +10,52 @@
  * dates, une fois, à la création.
  *
  * Sémantique :
- *   - la période saisie est la PREMIÈRE occurrence ; sa durée (en jours
- *     calendaires) et ses heures sont reprises telles quelles ;
+ *   - la période saisie est la PREMIÈRE occurrence, reprise VERBATIM ; sa
+ *     durée (en jours calendaires) et ses heures valent pour les suivantes ;
  *   - `weekdays` : les jours de la semaine où une occurrence COMMENCE
  *     (`Date.getDay()` : 0 = dimanche … 6 = samedi). Il doit contenir le jour
  *     de la période saisie, sinon celle-ci ne serait pas une occurrence
- *     d'elle-même ;
+ *     d'elle-même — `reglePourPeriode` s'en charge, et c'est le SEUL endroit
+ *     qui décide ;
  *   - `intervalWeeks` : 1 = chaque semaine, 2 = une semaine sur deux… Les
  *     semaines sont comptées à partir de celle de la période saisie
  *     (semaines du lundi au dimanche) ;
- *   - `until` : dernier jour où une occurrence peut COMMENCER, inclus.
+ *   - `until` : dernier jour où une occurrence peut COMMENCER, inclus. C'est
+ *     une DATE, saisie dans un champ date : elle est toujours lue par ses
+ *     composantes locales, jamais réinterprétée dans un autre fuseau.
  *
- * Arithmétique de CALENDRIER, jamais de durées : « samedi prochain à 9 h »
- * est une date locale, pas « + 7 × 24 h ». Les dates sont construites par
- * leurs composantes locales, ce qui traverse les changements d'heure sans
- * décaler l'heure murale — exactement comme les formulaires qui saisissent
- * la période de base.
- *
- * Aucun import : ce module est chargé tel quel par `node --test`.
+ * LE FUSEAU. Sans horloge, l'arithmétique est celle de l'appareil : c'est
+ * ce que font déjà les formulaires, et cela suffit tant que le pro et son
+ * salon sont au même endroit. Avec l'horloge du LIEU
+ * (`horlogeDuFuseau(tz)`), chaque occurrence garde l'heure murale DU SALON,
+ * y compris de part et d'autre d'un changement d'heure et même si le pro
+ * saisit depuis un autre pays. Le service passe toujours celle du lieu ;
+ * les écrans la passent dès qu'ils la connaissent, pour que l'aperçu
+ * annonce ce qui sera écrit.
  */
+/**
+ * Une date calendaire, « YYYY-MM-DD ». Volontairement redéclarée ici plutôt
+ * qu'importée de `fuseaux.ts` : ce module ne dépend de rien, et c'est le
+ * même type (un alias de `string`).
+ */
+type JourCalendaire = string;
+
+/**
+ * Ce qu'il faut savoir d'un fuseau pour poser des occurrences dedans.
+ *
+ * INJECTÉE, pas importée : ce module reste sans dépendance, donc chargeable
+ * tel quel par `node --test`, et la résolution des heures qui n'existent pas
+ * (ou qui existent deux fois) reste au seul endroit qui la traite
+ * correctement — `fuseaux.ts`. `horlogeDuFuseau` en fabrique une.
+ */
+export interface HorlogeLocale {
+  /** Le jour calendaire d'un instant, dans ce fuseau. */
+  jour(d: Date): JourCalendaire;
+  /** Les minutes depuis minuit d'un instant, dans ce fuseau. */
+  minutes(d: Date): number;
+  /** L'instant de cette heure murale, ce jour-là, dans ce fuseau. */
+  instant(jour: JourCalendaire, minutes: number): Date;
+}
 
 export interface RecurrenceRule {
   /** 1 = chaque semaine, 2 = toutes les deux semaines… borné par `INTERVALLE_MAX_SEMAINES`. */
@@ -56,8 +83,8 @@ export const HORIZON_MAX_JOURS = 366;
 /** 7 jours × 53 semaines : la borne haute théorique, et une garde. */
 export const OCCURRENCES_MAX = 371;
 
-/** Jour calendaire local, comparable (`YYYY-MM-DD`). */
-export function jourLocalDe(d: Date): string {
+/** Jour calendaire local à l'APPAREIL, comparable (`YYYY-MM-DD`). */
+export function jourLocalDe(d: Date): JourCalendaire {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const j = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${m}-${j}`;
@@ -70,7 +97,34 @@ export function joursEntre(a: Date, b: Date): number {
   return Math.round((ub - ua) / 86_400_000);
 }
 
-/** Même heure murale, `n` jours calendaires plus tard. */
+/** Décale une date CALENDAIRE de n jours. Arithmétique de calendrier, sans fuseau. */
+export function ajouterJoursCal(jour: JourCalendaire, n: number): JourCalendaire {
+  const [an, mo, jo] = jour.split('-').map(Number);
+  const d = new Date(Date.UTC(2000, mo - 1, jo + n));
+  d.setUTCFullYear(an, mo - 1, jo + n);
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const j = String(d.getUTCDate()).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${m}-${j}`;
+}
+
+/** Jour de la semaine d'une date CALENDAIRE — 0 = dimanche, partout pareil. */
+export function jourSemaineCal(jour: JourCalendaire): number {
+  const [an, mo, jo] = jour.split('-').map(Number);
+  const d = new Date(Date.UTC(2000, mo - 1, jo));
+  d.setUTCFullYear(an, mo - 1, jo);
+  return d.getUTCDay();
+}
+
+/** Nombre de jours entre deux dates CALENDAIRES (`YYYY-MM-DD`), signé. */
+export function joursEntreJours(a: JourCalendaire, b: JourCalendaire): number {
+  const ms = (j: JourCalendaire) => {
+    const [an, mo, jo] = j.split('-').map(Number);
+    return Date.UTC(an, mo - 1, jo);
+  };
+  return Math.round((ms(b) - ms(a)) / 86_400_000);
+}
+
+/** Même heure murale, `n` jours calendaires plus tard, dans le fuseau de l'appareil. */
 export function decalerJours(d: Date, n: number): Date {
   return new Date(
     d.getFullYear(),
@@ -91,6 +145,32 @@ export function depuisLundi(weekday: number): number {
 /** Les jours proposés dans l'ordre lundi → dimanche, dédoublonnés. */
 export function trierJoursSemaine(weekdays: number[]): number[] {
   return Array.from(new Set(weekdays)).sort((a, b) => depuisLundi(a) - depuisLundi(b));
+}
+
+/**
+ * La règle EFFECTIVE pour cette période — l'unique endroit qui décide des
+ * jours répétés.
+ *
+ * Deux invariants, que ni un écran ni un appelant n'ont à redire :
+ *   - le jour de la période saisie fait toujours partie des jours répétés,
+ *     puisque cette période EST la première occurrence ;
+ *   - une période de plusieurs jours ne se répète que sur son jour de
+ *     départ : « du samedi au dimanche, les mardis aussi » n'a pas de sens.
+ *
+ * L'aperçu à l'écran et l'écriture passent par ici, sinon l'un annonce ce
+ * que l'autre n'écrit pas — c'est exactement ce qui arrivait quand le
+ * formulaire normalisait pour afficher mais enregistrait le brouillon.
+ */
+export function reglePourPeriode(
+  rule: RecurrenceRule,
+  base: PeriodeDeBase,
+  horloge?: HorlogeLocale,
+): RecurrenceRule {
+  const debut = jourDe(base.startDate, horloge);
+  const jourBase = jourSemaineCal(debut);
+  const multiJours = joursEntreJours(debut, jourDe(base.endDate, horloge)) > 0;
+  const weekdays = multiJours ? [jourBase] : trierJoursSemaine([...rule.weekdays, jourBase]);
+  return { ...rule, weekdays };
 }
 
 /** Pourquoi une règle est irrecevable — un code, que chaque surface traduit. */
@@ -120,7 +200,11 @@ export const MESSAGES_REGLE_INVALIDE: Record<RegleInvalide, string> = {
  * le mobile le traduit dans la langue de l'app, le web prend le français
  * par `messageRegleInvalide`.
  */
-export function raisonRegleInvalide(base: PeriodeDeBase, rule: RecurrenceRule): RegleInvalide | null {
+export function raisonRegleInvalide(
+  base: PeriodeDeBase,
+  rule: RecurrenceRule,
+  horloge?: HorlogeLocale,
+): RegleInvalide | null {
   if (!Number.isInteger(rule.intervalWeeks) || rule.intervalWeeks < 1 || rule.intervalWeeks > INTERVALLE_MAX_SEMAINES) {
     return 'intervalle';
   }
@@ -128,19 +212,25 @@ export function raisonRegleInvalide(base: PeriodeDeBase, rule: RecurrenceRule): 
   if (jours.length === 0 || jours.some((j) => !Number.isInteger(j) || j < 0 || j > 6)) {
     return 'aucunJour';
   }
-  if (!jours.includes(base.startDate.getDay())) return 'jourDeBaseAbsent';
-  const duree = joursEntre(base.startDate, base.endDate);
+  const debut = jourDe(base.startDate, horloge);
+  if (!jours.includes(jourSemaineCal(debut))) return 'jourDeBaseAbsent';
+  const duree = joursEntreJours(debut, jourDe(base.endDate, horloge));
   if (duree < 0) return 'finAvantDebut';
   if (duree > 0 && jours.length > 1) return 'plusieursJoursMultiJours';
-  const horizon = joursEntre(base.startDate, rule.until);
+  // `until` vient d'un champ date : toujours lu par ses composantes locales.
+  const horizon = joursEntreJours(debut, jourLocalDe(rule.until));
   if (horizon < 0) return 'finAvantPremiere';
   if (horizon > HORIZON_MAX_JOURS) return 'horizon';
   return null;
 }
 
 /** Le message français de `raisonRegleInvalide`, ou `null`. */
-export function messageRegleInvalide(base: PeriodeDeBase, rule: RecurrenceRule): string | null {
-  const code = raisonRegleInvalide(base, rule);
+export function messageRegleInvalide(
+  base: PeriodeDeBase,
+  rule: RecurrenceRule,
+  horloge?: HorlogeLocale,
+): string | null {
+  const code = raisonRegleInvalide(base, rule, horloge);
   return code ? MESSAGES_REGLE_INVALIDE[code] : null;
 }
 
@@ -148,38 +238,52 @@ export function messageRegleInvalide(base: PeriodeDeBase, rule: RecurrenceRule):
  * Toutes les occurrences de la série, la période de base comprise, par
  * ordre chronologique. Lève si la règle est invalide : appeler
  * `raisonRegleInvalide` d'abord pour un message à afficher.
+ *
+ * Passez l'horloge du LIEU pour que chaque occurrence garde l'heure murale
+ * du salon ; sans elle, c'est l'heure murale de l'appareil.
  */
-export function genererOccurrences(base: PeriodeDeBase, rule: RecurrenceRule): Occurrence[] {
-  const raison = messageRegleInvalide(base, rule);
+export function genererOccurrences(
+  base: PeriodeDeBase,
+  rule: RecurrenceRule,
+  horloge?: HorlogeLocale,
+): Occurrence[] {
+  const raison = messageRegleInvalide(base, rule, horloge);
   if (raison) throw new Error(raison);
 
-  const duree = joursEntre(base.startDate, base.endDate);
+  const jourDebut = jourDe(base.startDate, horloge);
+  const jourFin = jourDe(base.endDate, horloge);
+  const duree = joursEntreJours(jourDebut, jourFin);
   const jours = trierJoursSemaine(rule.weekdays);
-  const jourBase = jourLocalDe(base.startDate);
   const jourLimite = jourLocalDe(rule.until);
-  // Lundi de la semaine de la période de base, à l'heure de début.
-  const lundi = decalerJours(base.startDate, -depuisLundi(base.startDate.getDay()));
+  // Lundi de la semaine de la période de base.
+  const lundi = ajouterJoursCal(jourDebut, -depuisLundi(jourSemaineCal(jourDebut)));
+  // Les heures murales à reproduire — du salon si on a son horloge.
+  const minDebut = horloge ? horloge.minutes(base.startDate) : null;
+  const minFin = horloge ? horloge.minutes(base.endDate) : null;
 
   const occurrences: Occurrence[] = [];
   for (let semaine = 0; ; semaine += rule.intervalWeeks) {
     let auDela = false;
     for (const weekday of jours) {
-      const depart = decalerJours(lundi, semaine * 7 + depuisLundi(weekday));
-      const jour = jourLocalDe(depart);
-      if (jour < jourBase) continue;
+      const jour = ajouterJoursCal(lundi, semaine * 7 + depuisLundi(weekday));
+      if (jour < jourDebut) continue;
       if (jour > jourLimite) { auDela = true; break; }
-      // La fin garde l'heure de fin saisie, `duree` jours après le départ.
-      const finBase = base.endDate;
-      const fin = new Date(
-        depart.getFullYear(),
-        depart.getMonth(),
-        depart.getDate() + duree,
-        finBase.getHours(),
-        finBase.getMinutes(),
-        finBase.getSeconds(),
-        finBase.getMilliseconds(),
-      );
-      occurrences.push({ startDate: depart, endDate: fin });
+      if (jour === jourDebut) {
+        // La période saisie, VERBATIM : elle est la première occurrence, et
+        // la recomposer depuis ses composantes en perdrait les secondes.
+        occurrences.push({ startDate: base.startDate, endDate: base.endDate });
+      } else if (horloge && minDebut !== null && minFin !== null) {
+        occurrences.push({
+          startDate: horloge.instant(jour, minDebut),
+          endDate: horloge.instant(ajouterJoursCal(jour, duree), minFin),
+        });
+      } else {
+        const ecart = joursEntreJours(jourDebut, jour);
+        occurrences.push({
+          startDate: decalerJours(base.startDate, ecart),
+          endDate: decalerJours(base.endDate, ecart),
+        });
+      }
       if (occurrences.length > OCCURRENCES_MAX) {
         throw new Error('Trop d’occurrences : réduisez la période de répétition');
       }
@@ -187,4 +291,9 @@ export function genererOccurrences(base: PeriodeDeBase, rule: RecurrenceRule): O
     if (auDela) break;
   }
   return occurrences;
+}
+
+/** Le jour calendaire d'un instant — celui du lieu si on a son horloge. */
+function jourDe(d: Date, horloge?: HorlogeLocale): JourCalendaire {
+  return horloge ? horloge.jour(d) : jourLocalDe(d);
 }

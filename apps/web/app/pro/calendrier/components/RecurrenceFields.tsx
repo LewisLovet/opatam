@@ -10,13 +10,19 @@
  * la décrire et la compter.
  *
  * Le brouillon garde `until` en `YYYY-MM-DD`, comme les champs de date des
- * formulaires ; `versRegle` le convertit en `Date` locale pour le service.
+ * formulaires. Il n'arrive JAMAIS tel quel au service : `regleAEnregistrer`
+ * le passe par `reglePourPeriode`, la même normalisation que l'aperçu
+ * affiché ici et que le schéma zod. Le brouillon pouvait sinon garder un
+ * jour de semaine périmé après un changement de date — l'écran annonçait
+ * alors une règle que la base ne recevait pas.
  */
 import { useMemo } from 'react';
 import { Input } from '@/components/ui';
 import {
   genererOccurrences,
   messageRegleInvalide,
+  reglePourPeriode,
+  horlogeDuFuseau,
   trierJoursSemaine,
   INTERVALLE_MAX_SEMAINES,
   type RecurrenceRule,
@@ -47,10 +53,9 @@ function isoDepuisDate(d: Date): string {
 }
 
 /** Brouillon par défaut : chaque semaine, le jour de la période, pendant trois mois. */
-export function brouillonParDefaut(baseStartIso: string): RecurrenceDraft {
-  const base = dateLocaleDepuisIso(baseStartIso);
-  const until = new Date(base.getFullYear(), base.getMonth() + 3, base.getDate());
-  return { intervalWeeks: 1, weekdays: [base.getDay()], until: isoDepuisDate(until) };
+export function brouillonParDefaut(baseStart: Date): RecurrenceDraft {
+  const until = new Date(baseStart.getFullYear(), baseStart.getMonth() + 3, baseStart.getDate());
+  return { intervalWeeks: 1, weekdays: [baseStart.getDay()], until: isoDepuisDate(until) };
 }
 
 /** Un brouillon depuis une règle enregistrée (édition d'une occurrence). */
@@ -58,8 +63,21 @@ export function brouillonDepuisRegle(rule: RecurrenceRule): RecurrenceDraft {
   return { intervalWeeks: rule.intervalWeeks, weekdays: [...rule.weekdays], until: isoDepuisDate(rule.until) };
 }
 
-export function versRegle(draft: RecurrenceDraft): RecurrenceRule {
+function versRegle(draft: RecurrenceDraft): RecurrenceRule {
   return { intervalWeeks: draft.intervalWeeks, weekdays: trierJoursSemaine(draft.weekdays), until: dateLocaleDepuisIso(draft.until) };
+}
+
+/**
+ * La règle à ENREGISTRER pour cette période — ce que l'écran affiche, mot
+ * pour mot. Passe par `reglePourPeriode`, comme le schéma et le service :
+ * un seul endroit décide des jours répétés.
+ */
+export function regleAEnregistrer(
+  draft: RecurrenceDraft,
+  base: { startDate: Date; endDate: Date },
+  fuseau?: string,
+): RecurrenceRule {
+  return reglePourPeriode(versRegle(draft), base, horlogeDuFuseau(fuseau));
 }
 
 /** « Chaque semaine le samedi, jusqu'au 3 mai 2026 ». */
@@ -77,37 +95,36 @@ interface RecurrenceFieldsProps {
   /** `null` = pas de répétition. */
   value: RecurrenceDraft | null;
   onChange: (next: RecurrenceDraft | null) => void;
-  /** Période de base, `YYYY-MM-DD` : fixe le jour obligatoire et le point de départ. */
-  baseStartIso: string;
-  baseEndIso: string;
+  /** Période de base : fixe le jour obligatoire et le point de départ. */
+  baseStart: Date;
+  baseEnd: Date;
+  /** Fuseau du LIEU — l'aperçu compte alors comme le service écrira. */
+  fuseau?: string;
   /** Vrai quand la période en édition appartient déjà à une série. */
   enSerie?: boolean;
   disabled?: boolean;
 }
 
-export function RecurrenceFields({ value, onChange, baseStartIso, baseEndIso, enSerie, disabled }: RecurrenceFieldsProps) {
-  const base = dateLocaleDepuisIso(baseStartIso);
-  const jourDeBase = base.getDay();
-  const plusieursJours = baseEndIso > baseStartIso;
+export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, enSerie, disabled }: RecurrenceFieldsProps) {
+  const periode = { startDate: baseStart, endDate: baseEnd };
+  const jourDeBase = baseStart.getDay();
+  const plusieursJours = baseEnd.toDateString() !== baseStart.toDateString();
 
-  // Le jour de la période saisie fait toujours partie de la règle : c'est
-  // la première occurrence. Sur plusieurs jours, il est le SEUL possible.
-  const weekdays = value
-    ? plusieursJours
-      ? [jourDeBase]
-      : trierJoursSemaine([...value.weekdays, jourDeBase])
-    : [];
+  // Les jours RÉELLEMENT répétés, décidés par le paquet partagé : le jour
+  // de la période saisie en fait toujours partie, et sur plusieurs jours il
+  // est le seul possible.
+  const weekdays = value ? regleAEnregistrer(value, periode, fuseau).weekdays : [];
 
   const apercu = useMemo(() => {
     if (!value) return null;
-    const rule = versRegle({ ...value, weekdays });
-    const periode = { startDate: base, endDate: dateLocaleDepuisIso(baseEndIso) };
-    const raison = messageRegleInvalide(periode, rule);
+    const rule = regleAEnregistrer(value, periode, fuseau);
+    const horloge = horlogeDuFuseau(fuseau);
+    const raison = messageRegleInvalide(periode, rule, horloge);
     if (raison) return { erreur: raison, texte: null, nombre: 0 };
-    const nombre = genererOccurrences(periode, rule).length;
+    const nombre = genererOccurrences(periode, rule, horloge).length;
     return { erreur: null, texte: decrireRecurrence(rule), nombre };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.intervalWeeks, value?.until, weekdays.join(','), baseStartIso, baseEndIso]);
+  }, [value?.intervalWeeks, value?.until, value?.weekdays?.join(','), baseStart.getTime(), baseEnd.getTime(), fuseau]);
 
   const toggleJour = (j: number) => {
     if (!value || j === jourDeBase || plusieursJours) return;
@@ -122,7 +139,7 @@ export function RecurrenceFields({ value, onChange, baseStartIso, baseEndIso, en
           type="checkbox"
           checked={value !== null}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.checked ? brouillonParDefaut(baseStartIso) : null)}
+          onChange={(e) => onChange(e.target.checked ? brouillonParDefaut(baseStart) : null)}
           className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
         />
         <span className="text-sm text-gray-700 dark:text-gray-300 inline-flex items-center gap-1.5">
@@ -153,7 +170,7 @@ export function RecurrenceFields({ value, onChange, baseStartIso, baseEndIso, en
               label="Jusqu'au"
               type="date"
               value={value.until}
-              min={baseStartIso}
+              min={isoDepuisDate(baseStart)}
               disabled={disabled}
               onChange={(e) => onChange({ ...value, until: e.target.value })}
               required

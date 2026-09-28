@@ -22,10 +22,10 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, type RecurrenceDraft } from '../../components';
+import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -399,6 +399,8 @@ export default function BlockSlotScreen() {
   /** En édition : la série dont la période fait partie, et son début — pour « celle-ci et les suivantes ». */
   const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
   const [existingStart, setExistingStart] = useState<Date | null>(null);
+  /** Fuseau du LIEU du membre visé : l'aperçu compte comme le service écrira. */
+  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
   const [reason, setReason] = useState('');
   const [isCustomReason, setIsCustomReason] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -459,6 +461,18 @@ export default function BlockSlotScreen() {
       cancelled = true;
     };
   }, [providerId, editId]);
+
+  // Le fuseau suit le PREMIER membre visé — celui que l'aperçu décrit.
+  useEffect(() => {
+    const cible = selectedMemberIds[0];
+    if (!providerId || !cible) { setFuseau(undefined); return; }
+    let annule = false;
+    schedulingService
+      .fuseauDuMembre(providerId, cible)
+      .then((tz) => { if (!annule) setFuseau(tz); })
+      .catch(() => { if (!annule) setFuseau(undefined); });
+    return () => { annule = true; };
+  }, [providerId, selectedMemberIds[0]]);
 
   const allSelected = members.length > 0 && selectedMemberIds.length === members.length;
 
@@ -533,7 +547,8 @@ export default function BlockSlotScreen() {
     endTime: allDay ? null : formatTime(endDate),
     spanMode,
     reason: reason.trim() || null,
-    recurrence,
+    // La règle NORMALISÉE — celle que l'écran annonce, pas le brouillon.
+    recurrence: recurrence ? regleAEnregistrer(recurrence, { startDate, endDate }, fuseau) : null,
   });
 
   const handleSubmit = () => {
@@ -571,8 +586,11 @@ export default function BlockSlotScreen() {
       // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
-        const dates = recurrence
-          ? genererOccurrences({ startDate, endDate }, recurrence)
+        // « Cette occurrence seulement » n'écrit qu'une période : inutile de
+        // déplier la série pour y chercher des conflits qu'on ne créera pas.
+        const serie = recurrence && !(editId && existingSeriesId && quoi === 'cette');
+        const dates = serie
+          ? genererOccurrences({ startDate, endDate }, base.recurrence!, horlogeDuFuseau(fuseau))
           : [{ startDate, endDate }];
         const periodes = dates.map((d) => ({ ...d, allDay, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode }));
         const parMembre = await Promise.all(
@@ -885,6 +903,7 @@ export default function BlockSlotScreen() {
             onChange={setRecurrence}
             baseStart={startDate}
             baseEnd={endDate}
+            fuseau={fuseau}
             enSerie={!!existingSeriesId}
             disabled={isSubmitting}
           />

@@ -38,6 +38,13 @@ export interface ProviderContext {
   membersById: Record<string, { name: string }>;
   /** Devise du prestataire (EUR si absente) : le groupe du champ plat `revenue`. */
   currency: string;
+  /**
+   * Fuseau du LIEU principal — celui qui décide de la journée à laquelle un
+   * rendez-vous ou une activité appartient. `Europe/Paris` en dernier
+   * recours seulement : un salon à La Réunion voyait ses matinées comptées
+   * la veille, et son mois se fermer avec un jour de décalage.
+   */
+  timezone: string;
 }
 
 /**
@@ -50,9 +57,10 @@ export async function loadProviderContext(
   providerId: string,
 ): Promise<ProviderContext | null> {
   const db = admin.firestore();
-  const [providerSnap, membersSnap] = await Promise.all([
+  const [providerSnap, membersSnap, locationsSnap] = await Promise.all([
     db.doc(`providers/${providerId}`).get(),
     db.collection(`providers/${providerId}/members`).get(),
+    db.collection(`providers/${providerId}/locations`).get(),
   ]);
   if (!providerSnap.exists) return null;
   const providerData = providerSnap.data() ?? {};
@@ -61,10 +69,19 @@ export async function loadProviderContext(
     const d = m.data();
     membersById[m.id] = { name: (d.name as string) ?? '—' };
   }
+  // Le fuseau du lieu par défaut, sinon du premier lieu qui en déclare un.
+  // Surtout PAS `provider.settings.timezone` : ce champ est faux sur des
+  // comptes existants, et c'est le LIEU qui décide de la journée.
+  const lieux = locationsSnap.docs.map((d) => d.data());
+  const timezone =
+    (lieux.find((l) => l.isDefault && typeof l.timezone === 'string')?.timezone as string | undefined)
+    ?? (lieux.find((l) => typeof l.timezone === 'string')?.timezone as string | undefined)
+    ?? DEFAULT_TIMEZONE;
   return {
     providerName: (providerData.businessName as string) ?? 'Provider',
     membersById,
     currency: ((providerData.currency as string | undefined) || 'EUR').toUpperCase(),
+    timezone,
   };
 }
 
@@ -150,13 +167,13 @@ export async function recomputeDailyDoc(
     providerId,
     providerName: ctx.providerName,
     membersById: ctx.membersById,
-    timezone: DEFAULT_TIMEZONE,
+    timezone: ctx.timezone,
     providerCurrency: ctx.currency,
   });
   if (activities.length > 0) {
     mergeActivitiesIntoDailies(activities, dailies, {
       providerId,
-      timezone: DEFAULT_TIMEZONE,
+      timezone: ctx.timezone,
       providerCurrency: ctx.currency,
     });
   }
@@ -188,30 +205,45 @@ export async function recomputeMonthlyDoc(
   // multidevise n'a pas de seaux et vaut l'euro, un daily recent en a.
   const reference = providerCurrency
     ?? (((await db.doc(`providers/${providerId}`).get()).data()?.currency as string | undefined) || 'EUR');
-  const snap = await db
+  const requete = db
     .collection('providerStatsDaily')
     .where('providerId', '==', providerId)
     .where('date', '>=', `${month}-01`)
-    .where('date', '<', nextMonthKey(month) + '-01')
-    .get();
-
-  const dailies: ProviderStatsDaily[] = snap.docs.map(
-    (d) => d.data() as ProviderStatsDaily,
-  );
-  // Hydrate any Timestamp into Date — daily docs were written by us
-  // so most fields are Dates already; defensive only.
-  for (const d of dailies) {
-    if ((d.updatedAt as unknown) instanceof Timestamp) {
-      d.updatedAt = (d.updatedAt as unknown as Timestamp).toDate();
-    }
-  }
-
-  const monthlies = aggregateDailiesToMonthly(dailies, providerId, reference);
-  const monthly = monthlies.get(month);
+    .where('date', '<', nextMonthKey(month) + '-01');
   const ref = db.collection('providerStatsMonthly').doc(monthlyDocId(providerId, month));
-  if (monthly) {
-    await ref.set(monthly, { merge: false });
-  } else {
-    await ref.delete().catch(() => undefined);
-  }
+
+  /**
+   * TRANSACTION, et le document mensuel est LU avant d'être écrit.
+   *
+   * Une série d'activités payantes écrit N occurrences d'un coup : autant de
+   * déclenchements du trigger, donc autant de recalculs du MÊME mois, en
+   * parallèle. Chacun relisait les journalières puis écrasait le mois — et
+   * celui qui avait lu le plus tôt pouvait écrire le dernier, figeant un
+   * total partiel jusqu'au prochain recalcul.
+   *
+   * Lire le document mensuel dans la transaction crée le point de
+   * contention : le second recalcul est rejoué, relit les journalières
+   * (entre-temps complètes) et écrit un mois juste.
+   */
+  await db.runTransaction(async (tx) => {
+    await tx.get(ref);
+    const snap = await tx.get(requete);
+    const dailies: ProviderStatsDaily[] = snap.docs.map(
+      (d) => d.data() as ProviderStatsDaily,
+    );
+    // Hydrate any Timestamp into Date — daily docs were written by us
+    // so most fields are Dates already; defensive only.
+    for (const d of dailies) {
+      if ((d.updatedAt as unknown) instanceof Timestamp) {
+        d.updatedAt = (d.updatedAt as unknown as Timestamp).toDate();
+      }
+    }
+    const monthlies = aggregateDailiesToMonthly(dailies, providerId, reference);
+    const monthly = monthlies.get(month);
+    if (monthly) {
+      tx.set(ref, monthly);
+    } else {
+      tx.delete(ref);
+    }
+  });
 }

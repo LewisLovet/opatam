@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isSupportedCurrency } from '../constants/currencies';
-import { INTERVALLE_MAX_SEMAINES, messageRegleInvalide } from '../utils/recurrence';
+import { INTERVALLE_MAX_SEMAINES, messageRegleInvalide, reglePourPeriode } from '../utils/recurrence';
 
 // Time format regex: HH:mm (24-hour format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -173,7 +173,11 @@ export const blockedSlotSchema = z.object({
   { message: 'Les heures de début et de fin sont requises pour les créneaux non journée entière' }
 ).superRefine((data, ctx) => {
   if (!data.recurrence) return;
-  const raison = messageRegleInvalide(data, data.recurrence);
+  // Normalisée d'abord : le jour de la période fait partie des jours répétés,
+  // et une période multi-jours se réduit à son jour de départ. Sans horloge
+  // ici — le schéma juge la forme ; le service renormalise dans le fuseau
+  // du lieu, qu'il est seul à connaître.
+  const raison = messageRegleInvalide(data, reglePourPeriode(data.recurrence, data));
   if (raison) ctx.addIssue({ code: z.ZodIssueCode.custom, message: raison, path: ['recurrence'] });
 });
 

@@ -17,10 +17,12 @@ import {
   genererOccurrences,
   raisonRegleInvalide,
   messageRegleInvalide,
+  reglePourPeriode,
   joursEntre,
   trierJoursSemaine,
   HORIZON_MAX_JOURS,
 } from './recurrence.ts';
+import { horlogeDuFuseau } from './fuseaux.ts';
 
 before(() => {
   assert.equal(process.env.TZ, 'Europe/Paris', 'lancer avec TZ=Europe/Paris');
@@ -152,12 +154,87 @@ describe('6. le schéma zod DÉCLARE les champs (zod retire les clés inconnues 
   it('seriesId et recurrence sont dans blockedSlotSchema, isRecurring a disparu', () => {
     assert.match(schema, /seriesId: z\.string\(\)/);
     assert.match(schema, /recurrence: z\s*\.object\(/);
-    assert.match(schema, /messageRegleInvalide\(data, data\.recurrence\)/, 'le schéma juge la règle avec le même code que le générateur');
+    assert.match(schema, /messageRegleInvalide\(data, reglePourPeriode\(data\.recurrence, data\)\)/, 'le schéma NORMALISE puis juge, avec le même code que le générateur');
     assert.doesNotMatch(schema, /isRecurring|recurringDays/, 'les anciens champs jamais implémentés ont été retirés');
   });
   it('le type BlockedSlot porte seriesId et recurrence', () => {
     const types = readFileSync(resolve(ici, '../types/index.ts'), 'utf8');
     assert.match(types, /seriesId\?: string \| null;/);
     assert.match(types, /recurrence\?: BlockedSlotRecurrence \| null;/);
+  });
+});
+
+describe('7. l’horloge du LIEU — les occurrences gardent l’heure du salon', () => {
+  // La machine est à Paris (voir `before`). Le salon, lui, est à La Réunion
+  // (UTC+4, sans changement d'heure) : c'est le cas réel du dépôt.
+  const horloge = horlogeDuFuseau('Indian/Reunion');
+
+  it('un samedi 09:00 à La Réunion reste 09:00 là-bas, de semaine en semaine', () => {
+    // 09:00 à La Réunion = 06:00 à Paris en hiver, 07:00 en été.
+    const depart = new Date(Date.UTC(2026, 2, 21, 5, 0)); // sam. 21 mars, 09:00 Réunion
+    const base = { startDate: depart, endDate: new Date(Date.UTC(2026, 2, 21, 9, 0)) };
+    const occ = genererOccurrences(base, { intervalWeeks: 1, weekdays: [6], until: d(2026, 4, 11) }, horloge);
+    const heures = occ.map((o) =>
+      new Intl.DateTimeFormat('fr-FR', { timeZone: 'Indian/Reunion', dateStyle: 'short', timeStyle: 'short' }).format(o.startDate),
+    );
+    assert.deepEqual(heures, ['21/03/2026 09:00', '28/03/2026 09:00', '04/04/2026 09:00', '11/04/2026 09:00']);
+  });
+
+  it('le passage à l’heure d’été de PARIS ne décale plus rien pour ce salon', () => {
+    const depart = new Date(Date.UTC(2026, 2, 21, 5, 0));
+    const base = { startDate: depart, endDate: new Date(Date.UTC(2026, 2, 21, 9, 0)) };
+    const avec = genererOccurrences(base, { intervalWeeks: 1, weekdays: [6], until: d(2026, 4, 4) }, horloge);
+    const sans = genererOccurrences(base, { intervalWeeks: 1, weekdays: [6], until: d(2026, 4, 4) });
+    // Sans horloge, l'occurrence d'après le 29 mars suit l'heure de PARIS
+    // et glisse d'une heure pour le salon réunionnais. Avec, elle ne bouge pas.
+    assert.notEqual(avec.at(-1).startDate.getTime(), sans.at(-1).startDate.getTime());
+    assert.equal(avec.at(-1).startDate.getTime(), Date.UTC(2026, 3, 4, 5, 0));
+  });
+
+  it('la première occurrence reste la période saisie, à la milliseconde près', () => {
+    const depart = new Date(Date.UTC(2026, 2, 21, 5, 0, 37, 123));
+    const base = { startDate: depart, endDate: new Date(Date.UTC(2026, 2, 21, 9, 0)) };
+    const occ = genererOccurrences(base, { intervalWeeks: 1, weekdays: [6], until: d(2026, 3, 28) }, horloge);
+    assert.equal(occ[0].startDate.getTime(), depart.getTime());
+  });
+
+  it('une heure qui n’existe pas ce jour-là décale l’occurrence, ne la supprime pas', () => {
+    // Paris, 29 mars 2026 : 02:30 n'existe pas. Le salon est à Paris ici.
+    const paris = horlogeDuFuseau('Europe/Paris');
+    const base = { startDate: d(2026, 3, 22, 2, 30), endDate: d(2026, 3, 22, 4, 0) };
+    const occ = genererOccurrences(base, { intervalWeeks: 1, weekdays: [0], until: d(2026, 3, 29) }, paris);
+    assert.equal(occ.length, 2, 'aucune occurrence n’est perdue');
+    // 02:30 n'existe pas : l'occurrence est décalée du SAUT (une heure),
+    // donc 03:30 — et surtout, elle existe toujours.
+    const heure = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', timeStyle: 'short' }).format(occ[1].startDate);
+    assert.equal(heure, '03:30');
+  });
+
+  it('sans horloge, rien ne change : c’est le comportement d’avant', () => {
+    const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) };
+    const occ = genererOccurrences(base, { intervalWeeks: 1, weekdays: [6], until: d(2026, 5, 3) });
+    assert.equal(occ.length, 5);
+    assert.deepEqual(occ.map((o) => ymdhm(o.startDate).slice(11)), ['09:00', '09:00', '09:00', '09:00', '09:00']);
+  });
+});
+
+describe('8. reglePourPeriode — le seul juge des jours répétés', () => {
+  it('ajoute le jour de la période saisie, même si le brouillon l’a oublié', () => {
+    const base = { startDate: d(2026, 6, 4, 14), endDate: d(2026, 6, 4, 16) }; // jeudi
+    const r = reglePourPeriode({ intervalWeeks: 1, weekdays: [1], until: d(2026, 6, 30) }, base);
+    assert.deepEqual(r.weekdays, [1, 4], 'lundi gardé, jeudi ajouté');
+    assert.equal(raisonRegleInvalide(base, r), null);
+  });
+  it('une période de plusieurs jours se réduit à son jour de départ', () => {
+    const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) }; // sam → dim
+    const r = reglePourPeriode({ intervalWeeks: 1, weekdays: [1, 3, 6], until: d(2026, 5, 3) }, base);
+    assert.deepEqual(r.weekdays, [6]);
+    assert.equal(raisonRegleInvalide(base, r), null, 'et devient valide');
+  });
+  it('normaliser deux fois ne change rien', () => {
+    const base = { startDate: d(2026, 6, 4, 14), endDate: d(2026, 6, 4, 16) };
+    const rule = { intervalWeeks: 2, weekdays: [1], until: d(2026, 8, 1) };
+    const une = reglePourPeriode(rule, base);
+    assert.deepEqual(reglePourPeriode(une, base).weekdays, une.weekdays);
   });
 });

@@ -37,14 +37,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, type RecurrenceDraft } from '../../components';
+import { Text, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   schedulingService,
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { genererOccurrences } from '@booking-app/shared';
+import { genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { Member, ActivityCategory, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -483,6 +483,15 @@ export default function CreateActivityScreen() {
   /** En édition : la série dont l'activité fait partie, et son début. */
   const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
   const [existingStart, setExistingStart] = useState<Date | null>(null);
+  /** Fuseau du LIEU du membre : l'aperçu compte comme le service écrira. */
+  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  /**
+   * Devise FIGÉE de l'activité éditée. Réécrire une série avec la devise du
+   * prestataire AUJOURD'HUI transformait en francs des occurrences
+   * consenties en euros : la devise se fige à la création, comme pour une
+   * réservation, et ne se relit jamais.
+   */
+  const [existingCurrency, setExistingCurrency] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Confirmation animée après l'enregistrement ; `null` = pas affichée.
@@ -541,6 +550,7 @@ export default function CreateActivityScreen() {
           }
           setExistingSeriesId(existing.seriesId ?? null);
           setExistingStart(new Date(startDt));
+          setExistingCurrency(existing.currency ?? null);
           setRecurrence(existing.recurrence ?? null);
           return;
         }
@@ -563,6 +573,17 @@ export default function CreateActivityScreen() {
       cancelled = true;
     };
   }, [providerId, memberIdParam, editId, router]);
+
+  // Le fuseau du lieu du membre choisi, pour que l'aperçu dise vrai.
+  useEffect(() => {
+    if (!providerId || !selectedMemberId) { setFuseau(undefined); return; }
+    let annule = false;
+    schedulingService
+      .fuseauDuMembre(providerId, selectedMemberId)
+      .then((tz) => { if (!annule) setFuseau(tz); })
+      .catch(() => { if (!annule) setFuseau(undefined); });
+    return () => { annule = true; };
+  }, [providerId, selectedMemberId]);
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
   const activeCategory = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
@@ -665,14 +686,19 @@ export default function CreateActivityScreen() {
         title: title.trim(),
         address: address.trim() || null,
         amount: amountCents,
-        recurrence,
+        // La règle NORMALISÉE — celle que l'écran annonce, pas le brouillon.
+        recurrence: recurrence
+          ? regleAEnregistrer(recurrence, { startDate: startTime, endDate: endTime }, fuseau)
+          : null,
       };
 
       // 1. Les rendez-vous que ces créneaux recouvriraient. On prévient,
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
-        const dates = recurrence
-          ? genererOccurrences({ startDate: startTime, endDate: endTime }, recurrence)
+        // « Cette occurrence seulement » n'écrit qu'une période.
+        const serie = recurrence && !(editId && existingSeriesId && quoi === 'cette');
+        const dates = serie
+          ? genererOccurrences({ startDate: startTime, endDate: endTime }, base.recurrence!, horlogeDuFuseau(fuseau))
           : [{ startDate: startTime, endDate: endTime }];
         const periodes = dates.map((d) => ({ ...d, allDay: false, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode: 'continuous' as const }));
         const touches: WithId<Booking>[] = await schedulingService.rendezVousRecouverts(providerId, selectedMember.id, periodes);
@@ -700,13 +726,15 @@ export default function CreateActivityScreen() {
           //     la devise figée à la création est reprise telle quelle.
           await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
             ...base,
-            currency: devisePro(),
+            // La devise FIGEE de la serie, jamais celle du prestataire aujourd'hui.
+            currency: existingCurrency ?? devisePro(),
           });
           setConfirmation({ titre: t('recurrence.seriesUpdated'), sousTitre: title.trim() });
         } else if (!existingSeriesId && recurrence) {
           // 2b. Une activité isolée devient une série : la remplacer.
           await schedulingService.unblockPeriod(providerId, editId);
-          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, { ...base, currency: devisePro() });
+          // L'activite existait deja : elle garde SA devise en devenant serie.
+          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, { ...base, currency: existingCurrency ?? devisePro() });
           setConfirmation({ titre: t('recurrence.saved', { count: ids.length }), sousTitre: title.trim() });
         } else {
           // 2c. Cette occurrence seulement : PATCH des champs du formulaire.
@@ -1045,6 +1073,7 @@ export default function CreateActivityScreen() {
             onChange={setRecurrence}
             baseStart={startTime}
             baseEnd={endTime}
+            fuseau={fuseau}
             enSerie={!!existingSeriesId}
             disabled={isSubmitting}
           />

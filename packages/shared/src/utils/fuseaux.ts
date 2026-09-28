@@ -37,6 +37,8 @@
  * ce fichier se recopie tel quel, il ne dépend de rien.
  */
 
+import type { HorlogeLocale } from './recurrence';
+
 /** Une journée calendaire, « YYYY-MM-DD ». */
 export type JourCalendaire = string;
 
@@ -381,4 +383,34 @@ export function dureeDuJourLocal(jour: JourCalendaire, fuseau: string): number {
 /** Une journée locale dure-t-elle autre chose que 24 h ? */
 export function estJourDeBascule(jour: JourCalendaire, fuseau: string): boolean {
   return dureeDuJourLocal(jour, fuseau) !== JOUR_MS / MINUTE;
+}
+
+/**
+ * L'horloge de ce fuseau, pour le générateur de récurrences.
+ *
+ * `recurrence.ts` ne dépend de rien — c'est ce qui le rend chargeable tel
+ * quel et lisible d'un bout à l'autre. Le fuseau y entre par une
+ * `HorlogeLocale`, fabriquée ici : les deux cas qui comptent vraiment —
+ * l'heure qui n'existe pas, celle qui existe deux fois — restent traités à
+ * l'endroit qui sait les traiter, juste au-dessus.
+ *
+ * Le type est importé en `import type` : il disparaît à la compilation, et
+ * ce fichier garde donc zéro dépendance à l'exécution.
+ */
+export function horlogeDuFuseau(fuseau: string | null | undefined): HorlogeLocale | undefined {
+  if (!fuseau) return undefined;
+  return {
+    jour: (d: Date) => jourLocal(d, fuseau),
+    minutes: (d: Date) => minutesLocales(d, fuseau),
+    instant: (jour: JourCalendaire, minutes: number) => {
+      const r = resoudreHeureLocale(jour, minutes, fuseau);
+      if (r.etat === 'exacte') return r.instant;
+      // On ne SAUTE pas l'occurrence : une absence qui disparaît du planning
+      // est pire qu'une absence décalée d'une heure. Heure inexistante →
+      // l'instant où l'horloge reprend ; heure doublée → la première,
+      // comme partout ailleurs dans le moteur.
+      if (r.etat === 'inexistante') return r.instantApresSaut;
+      return r.premiere;
+    },
+  };
 }

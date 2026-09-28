@@ -63,6 +63,16 @@ export class BlockedSlotRepository {
     return docRef.id;
   }
 
+  /** Le document tel que Firestore l'attend : dates en Timestamp, création horodatée. */
+  private versFirestore(data: Omit<BlockedSlot, 'id' | 'createdAt'>): Record<string, unknown> {
+    return removeUndefined({
+      ...data,
+      startDate: Timestamp.fromDate(data.startDate),
+      endDate: Timestamp.fromDate(data.endDate),
+      createdAt: serverTimestamp(),
+    } as Record<string, unknown>);
+  }
+
   /** Un identifiant neuf de cette collection — pour nommer une série avant d'écrire. */
   nouvelIdentifiant(providerId: string): string {
     return doc(this.getCollectionRef(providerId)).id;
@@ -86,15 +96,7 @@ export class BlockedSlotRepository {
       const batch = writeBatch(this.db);
       for (const data of docs.slice(i, i + 400)) {
         const ref = doc(this.getCollectionRef(providerId));
-        batch.set(
-          ref,
-          removeUndefined({
-            ...data,
-            startDate: Timestamp.fromDate(data.startDate),
-            endDate: Timestamp.fromDate(data.endDate),
-            createdAt: serverTimestamp(),
-          } as Record<string, unknown>),
-        );
+        batch.set(ref, this.versFirestore(data));
         ids.push(ref.id);
       }
       await batch.commit();
@@ -113,6 +115,39 @@ export class BlockedSlotRepository {
     return snap.docs
       .map((d) => ({ id: d.id, ...convertTimestamps<BlockedSlot>(d.data()) }))
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  }
+
+  /**
+   * Remplace des occurrences par d'autres — suppressions et créations dans
+   * la MÊME écriture quand elles tiennent dans un lot Firestore (500
+   * opérations). C'est le cas courant : une série compte au plus 371
+   * occurrences, et « celle-ci et les suivantes » n'en réécrit qu'une part.
+   *
+   * Au-delà, on n'a plus d'atomicité possible : on CRÉE D'ABORD, on
+   * supprime ensuite. Une panne laisse alors des doublons — visibles, et
+   * que le pro peut retirer — plutôt qu'une série effacée sans
+   * remplacement, qui, elle, rouvre silencieusement des créneaux.
+   */
+  async remplacerSerie(
+    providerId: string,
+    idsASupprimer: string[],
+    docs: Array<Omit<BlockedSlot, 'id' | 'createdAt'>>,
+  ): Promise<{ ids: string[]; atomique: boolean }> {
+    if (idsASupprimer.length + docs.length <= 450) {
+      const batch = writeBatch(this.db);
+      for (const id of idsASupprimer) batch.delete(this.getDocRef(providerId, id));
+      const ids: string[] = [];
+      for (const data of docs) {
+        const ref = doc(this.getCollectionRef(providerId));
+        batch.set(ref, this.versFirestore(data));
+        ids.push(ref.id);
+      }
+      await batch.commit();
+      return { ids, atomique: true };
+    }
+    const ids = await this.createMany(providerId, docs);
+    await this.deleteMany(providerId, idsASupprimer);
+    return { ids, atomique: false };
   }
 
   /** Supprime des blocages par lots atomiques de 400. */

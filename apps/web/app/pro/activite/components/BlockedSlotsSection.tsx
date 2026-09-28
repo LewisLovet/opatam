@@ -17,7 +17,7 @@ import {
   RecurrenceFields,
   AvertissementConflits,
   decrireRecurrence,
-  versRegle,
+  regleAEnregistrer,
   type RecurrenceDraft,
 } from '../../calendrier/components/RecurrenceFields';
 
@@ -31,6 +31,8 @@ interface BlockedSlotsSectionProps {
   onDelete: (slotId: string) => Promise<void>;
   /** Supprime les occurrences À VENIR d'une série (celles déjà passées restent). */
   onDeleteSeries?: (seriesId: string) => Promise<void>;
+  /** Fuseau du lieu, pour que l'aperçu de répétition compte comme la base. */
+  fuseau?: string;
   /** Les rendez-vous que la saisie recouvrirait — on prévient avant d'écrire, on n'annule rien. */
   verifierConflits?: (data: BlockedSlotFormData) => Promise<WithId<Booking>[]>;
   hasTeams?: boolean;
@@ -91,6 +93,7 @@ export function BlockedSlotsSection({
   onAdd,
   onDelete,
   onDeleteSeries,
+  fuseau,
   verifierConflits,
   hasTeams = false,
 }: BlockedSlotsSectionProps) {
@@ -163,7 +166,9 @@ export function BlockedSlotsSection({
 
   const donneesAEnvoyer = (): BlockedSlotFormData => ({
     ...formData,
-    recurrence: recurrenceDraft ? versRegle(recurrenceDraft) : null,
+    recurrence: recurrenceDraft
+      ? regleAEnregistrer(recurrenceDraft, { startDate: formData.startDate, endDate: formData.endDate }, fuseau)
+      : null,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -475,8 +480,9 @@ export function BlockedSlotsSection({
             <RecurrenceFields
               value={recurrenceDraft}
               onChange={setRecurrenceDraft}
-              baseStartIso={toDayKey(formData.startDate)}
-              baseEndIso={toDayKey(formData.endDate)}
+              baseStart={formData.startDate}
+              baseEnd={formData.endDate}
+              fuseau={fuseau}
               disabled={loading}
             />
             {periodError && (

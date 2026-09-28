@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import {
   genererOccurrences,
   raisonRegleInvalide,
+  reglePourPeriode,
+  horlogeDuFuseau,
   trierJoursSemaine,
   INTERVALLE_MAX_SEMAINES,
   type RecurrenceRule,
@@ -29,6 +31,20 @@ import { Switch } from '../../Switch';
 
 /** Brouillon de règle : identique à `RecurrenceRule`, nommé pour l'écran. */
 export type RecurrenceDraft = RecurrenceRule;
+
+/**
+ * La règle à ENREGISTRER pour cette période — ce que l'écran affiche, mot
+ * pour mot. Passe par `reglePourPeriode`, comme le schéma et le service :
+ * le brouillon pouvait sinon garder un jour de semaine périmé après un
+ * changement de date, et la base recevait autre chose que l'aperçu.
+ */
+export function regleAEnregistrer(
+  draft: RecurrenceDraft,
+  base: { startDate: Date; endDate: Date },
+  fuseau?: string,
+): RecurrenceRule {
+  return reglePourPeriode(draft, base, horlogeDuFuseau(fuseau));
+}
 
 /** Le 4 janvier 2026 est un dimanche : `4 + getDay()` donne le bon nom. */
 function nomDuJour(weekday: number, forme: 'long' | 'short' = 'long'): string {
@@ -67,12 +83,14 @@ export interface RecurrenceFieldsProps {
   /** Période de base : fixe le jour obligatoire et le point de départ. */
   baseStart: Date;
   baseEnd: Date;
+  /** Fuseau du LIEU — l'aperçu compte alors comme le service écrira. */
+  fuseau?: string;
   /** Vrai quand la période en édition appartient déjà à une série. */
   enSerie?: boolean;
   disabled?: boolean;
 }
 
-export function RecurrenceFields({ value, onChange, baseStart, baseEnd, enSerie, disabled }: RecurrenceFieldsProps) {
+export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, enSerie, disabled }: RecurrenceFieldsProps) {
   const { t } = useTranslation();
   const { colors, spacing, radius } = useTheme();
   const [pickerOuvert, setPickerOuvert] = useState(false);
@@ -80,24 +98,20 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, enSerie,
   const jourDeBase = baseStart.getDay();
   const plusieursJours = baseEnd.toDateString() !== baseStart.toDateString();
 
-  // Le jour de la période saisie fait toujours partie de la règle : c'est
-  // la première occurrence. Sur plusieurs jours, il est le SEUL possible.
-  const weekdays = value
-    ? plusieursJours
-      ? [jourDeBase]
-      : trierJoursSemaine([...value.weekdays, jourDeBase])
-    : [];
+  const periode = { startDate: baseStart, endDate: baseEnd };
+  // Les jours RÉELLEMENT répétés, décidés par le paquet partagé.
+  const weekdays = value ? regleAEnregistrer(value, periode, fuseau).weekdays : [];
 
   const apercu = useMemo(() => {
     if (!value) return null;
-    const rule: RecurrenceRule = { ...value, weekdays };
-    const periode = { startDate: baseStart, endDate: baseEnd };
-    const code = raisonRegleInvalide(periode, rule);
+    const rule = regleAEnregistrer(value, periode, fuseau);
+    const horloge = horlogeDuFuseau(fuseau);
+    const code = raisonRegleInvalide(periode, rule, horloge);
     if (code) return { erreur: t(`recurrence.errors.${code}`), texte: null, nombre: 0 };
-    const nombre = genererOccurrences(periode, rule).length;
+    const nombre = genererOccurrences(periode, rule, horloge).length;
     return { erreur: null, texte: decrireRecurrence(rule), nombre };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.intervalWeeks, value?.until?.getTime(), weekdays.join(','), baseStart.getTime(), baseEnd.getTime()]);
+  }, [value?.intervalWeeks, value?.until?.getTime(), value?.weekdays?.join(','), baseStart.getTime(), baseEnd.getTime(), fuseau]);
 
   const toggleJour = (j: number) => {
     if (!value || j === jourDeBase || plusieursJours) return;

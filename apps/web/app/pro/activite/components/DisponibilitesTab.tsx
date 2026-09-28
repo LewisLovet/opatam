@@ -19,7 +19,7 @@ import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
 import { CopierHorairesVers } from './organisation/CopierHorairesVers';
 import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
-import { horairesEnVigueur, resumerHoraires, genererOccurrences } from '@booking-app/shared';
+import { horairesEnVigueur, resumerHoraires, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -376,7 +376,8 @@ export function DisponibilitesTab() {
   const verifierConflitsFermeture = async (data: BlockedSlotFormData) => {
     if (!provider) return [];
     const base = { startDate: data.startDate, endDate: data.endDate };
-    const dates = data.recurrence ? genererOccurrences(base, data.recurrence) : [base];
+    const fuseau = await schedulingService.fuseauDuMembre(provider.id, data.memberId);
+    const dates = data.recurrence ? genererOccurrences(base, data.recurrence, horlogeDuFuseau(fuseau)) : [base];
     const periodes = dates.map((d) => ({
       ...d,
       allDay: data.allDay,

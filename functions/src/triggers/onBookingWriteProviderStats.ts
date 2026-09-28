@@ -109,9 +109,18 @@ export const onBookingWriteProviderStats = onDocumentWritten(
       const beforeBooking = before ? bookingFromFirestore(before) : null;
       const afterBooking = after ? bookingFromFirestore(after) : null;
 
+      // ── Fetch provider context (name + members + fuseau) once ──
+      // Le contexte vient AVANT les clés de jour : c'est lui qui porte le
+      // fuseau du lieu, et une journée n'a de sens que dans un fuseau.
+      const ctx = await loadProviderContext(providerId);
+      if (!ctx) {
+        console.warn(`[onBookingWriteProviderStats] provider ${providerId} not found`);
+        return;
+      }
+
       const days = new Set<string>();
-      if (beforeBooking) days.add(dateKeyInTz(beforeBooking.datetime, DEFAULT_TIMEZONE));
-      if (afterBooking) days.add(dateKeyInTz(afterBooking.datetime, DEFAULT_TIMEZONE));
+      if (beforeBooking) days.add(dateKeyInTz(beforeBooking.datetime, ctx.timezone));
+      if (afterBooking) days.add(dateKeyInTz(afterBooking.datetime, ctx.timezone));
 
       const months = new Set<string>();
       for (const d of days) months.add(d.slice(0, 7));
@@ -124,13 +133,6 @@ export const onBookingWriteProviderStats = onDocumentWritten(
       if (afterBooking) {
         const k = getClientKey(afterBooking);
         if (k !== 'anonymous') clientKeys.add(k);
-      }
-
-      // ── Fetch provider context (name + members) once ─────────
-      const ctx = await loadProviderContext(providerId);
-      if (!ctx) {
-        console.warn(`[onBookingWriteProviderStats] provider ${providerId} not found`);
-        return;
       }
 
       // ── Re-aggregate each affected day ───────────────────────
