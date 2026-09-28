@@ -27,7 +27,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { memberService, schedulingService } from '@booking-app/firebase';
 import type { Member, BlockedSlot, Service } from '@booking-app/shared';
-import { ACTIVITY_CATEGORY_META, formatPriceCompact } from '@booking-app/shared';
+import {
+  ACTIVITY_CATEGORY_META,
+  formatPriceCompact,
+  DEFAULT_CURRENCY,
+} from '@booking-app/shared';
 import { devisePro } from '../../../lib/devise';
 import type { WithId } from '@booking-app/firebase';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
@@ -1324,7 +1328,7 @@ function WeekView({
                                 }}
                                 numberOfLines={1}
                               >
-                                {formatActivityAmount(bs.amount, bs.currency ?? devisePro())}
+                                {formatActivityAmount(bs.amount, bs.currency ?? DEFAULT_CURRENCY)}
                               </Text>
                             </View>
                           )}
@@ -2497,7 +2501,6 @@ export default function CalendarScreen() {
           >
             {dayBookings.length > 0 || dayBlockedSlots.length > 0 ? (
               <DaySchedule
-                currency={devisePro()}
                 date={selectedDate}
                 bookings={dayBookings}
                 blockedSlots={dayBlockedSlots}
@@ -2997,7 +3000,7 @@ export default function CalendarScreen() {
                             fontVariant: ['tabular-nums'],
                           }}
                         >
-                          {formatActivityAmount(activity.amount, activity.currency ?? devisePro())}
+                          {formatActivityAmount(activity.amount, activity.currency ?? DEFAULT_CURRENCY)}
                         </Text>
                       )}
 

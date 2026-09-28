@@ -17,6 +17,7 @@ import {
   type TrendPoint, isTeamTier,
   DEFAULT_CURRENCY,
   formatPrice as formatPrice0,
+  deviseDeLaReservation,
 } from '@booking-app/shared';
 import { Sparkline } from '../../../components/stats/Sparkline';
 import { WelcomeOverlay } from '../../../components/WelcomeOverlay';
@@ -322,10 +323,10 @@ function TimelineBookingItem({
               )}
               {price > 0 && (
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining, currency ?? devisePro())}</Text>
+                  <Text variant="body" style={{ fontWeight: '700' }}>{formatPrice(remaining, currency ?? DEFAULT_CURRENCY)}</Text>
                   {hasDeposit ? (
                     <Text variant="caption" style={{ color: colors.success, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                      {t('proHome.depositPaid', { amount: formatPrice(depositPaid as number, currency ?? devisePro()) })}
+                      {t('proHome.depositPaid', { amount: formatPrice(depositPaid as number, currency ?? DEFAULT_CURRENCY) })}
                     </Text>
                   ) : (
                     <Text variant="caption" color="textMuted" style={{ fontSize: 10 }} numberOfLines={1}>
@@ -2015,7 +2016,7 @@ export default function ProDashboardScreen() {
                     timeChip={timeChip}
                     memberColor={booking.memberColor}
                     price={booking.price}
-                    currency={booking.currency}
+                    currency={deviseDeLaReservation(booking)}
                     depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                     onPress={() => navigateToBooking(booking.id)}
                     onConfirm={booking.status === 'pending' ? () => handleConfirm(booking.id) : undefined}
@@ -2061,7 +2062,7 @@ export default function ProDashboardScreen() {
                   isPast={false}
                   timeChip={null}
                   price={booking.price}
-                  currency={booking.currency}
+                  currency={deviseDeLaReservation(booking)}
                   depositPaid={booking.deposit?.status === 'paid' ? booking.deposit.amount : null}
                   onPress={() => navigateToBooking(booking.id)}
                   onConfirm={() => handleConfirm(booking.id)}

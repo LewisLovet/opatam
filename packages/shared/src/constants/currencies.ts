@@ -186,3 +186,33 @@ export function clientServiceFee(depositCents: number, currency?: string | null)
   if (!Number.isFinite(depositCents) || depositCents < seuil) return 0;
   return fee;
 }
+
+/**
+ * Peut-on ajouter au prix d'une réservation une prestation au tarif ACTUEL du
+ * prestataire ? Seulement si les deux montants sont dans la même devise.
+ *
+ * Le cas concret : une réservation historique (sans devise, donc en euros)
+ * chez un prestataire passé au franc. Additionner 35,00 € et 40,00 CHF
+ * donnerait un nombre qui n'est ni l'un ni l'autre — et il serait ensuite
+ * débité tel quel. Aucune conversion automatique : aucun taux n'est stocké,
+ * et la cliente a consenti à un montant dans UNE devise.
+ *
+ * Pure : la décision est prise AVANT toute écriture par l'appelant.
+ */
+export function verifierMemeDevise(
+  booking: { currency?: string | null } | null | undefined,
+  provider: { currency?: string | null } | null | undefined,
+): { ok: true; devise: string } | { ok: false; deviseReservation: string; devisePrestataire: string; message: string } {
+  const deviseReservation = deviseDeLaReservation(booking);
+  const devisePrestataire = (provider?.currency ?? DEFAULT_CURRENCY).toUpperCase();
+  if (deviseReservation === devisePrestataire) return { ok: true, devise: deviseReservation };
+  return {
+    ok: false,
+    deviseReservation,
+    devisePrestataire,
+    message:
+      `Cette réservation est en ${deviseReservation} et vos prestations sont maintenant en ${devisePrestataire} : `
+      + 'impossible d’ajouter une prestation sans mélanger deux devises. '
+      + 'Créez une nouvelle réservation, ou modifiez celle-ci sans ajouter de prestation.',
+  };
+}

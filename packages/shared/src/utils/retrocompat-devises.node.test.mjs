@@ -16,7 +16,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { deviseDeLaReservation, peutChangerDevise, DEFAULT_CURRENCY } from '../constants/currencies.ts';
+import { deviseDeLaReservation, peutChangerDevise, verifierMemeDevise, DEFAULT_CURRENCY } from '../constants/currencies.ts';
 import { formatPrice } from './prix.ts';
 import { revenueByCurrencyFromDailies, activityRevenueByCurrencyFromDailies, autresDevises, totalsFromDailies, trendFromDailies, activityBreakdownFromDailies, topServicesFromDailies } from './statsAggregate.ts';
 
@@ -214,15 +214,46 @@ describe('2 quater. les écrans d’une réservation passée lisent SA devise, p
     'historique cliente (web)': ['apps/web/app/pro/clients/components/ClientHistoryList.tsx', /formatPrice\(b\.price,\s*b\.currency\)/],
     'popover agenda (web)': ['apps/web/app/pro/calendrier/components/SlotPopover.tsx', /booking\.currency/],
     'annulation (web)': ['apps/web/app/pro/reservations/components/CancelBookingModal.tsx', /booking\?\.currency/],
-    'fiche réservation (mobile)': ['apps/mobile/app/(pro)/booking-detail/[id].tsx', /booking\?\.currency \?\? devisePro\(\)/],
-    'historique cliente (mobile)': ['apps/mobile/app/(pro)/client-detail/[key].tsx', /b\.currency \?\? devisePro\(\)/],
-    'accueil pro (mobile)': ['apps/mobile/app/(pro)/(tabs)/index.tsx', /currency=\{booking\.currency\}/],
+    'fiche réservation (mobile)': ['apps/mobile/app/(pro)/booking-detail/[id].tsx', /deviseDeLaReservation\(booking/],
+    'historique cliente (mobile)': ['apps/mobile/app/(pro)/client-detail/[key].tsx', /deviseDeLaReservation\(b\)/],
+    'accueil pro (mobile)': ['apps/mobile/app/(pro)/(tabs)/index.tsx', /currency=\{deviseDeLaReservation\(booking\)\}/],
   };
   for (const [nom, [chemin, motif]] of Object.entries(ecrans)) {
     it(`${nom} : devise figée de la réservation`, () => {
       const src = readFileSync(racine + chemin, 'utf8');
       assert.ok(motif.test(src), `${chemin} ne lit pas la devise de la réservation`);
       assert.ok(!/const formatPrice = usePrix\(\)/.test(src), `${chemin} formate encore avec la devise du prestataire`);
+      // Le MAUVAIS repli : une réservation historique renvoyée dans la devise
+      // ACTUELLE du prestataire au lieu de l'euro.
+      assert.ok(!/currency \?\? devisePro\(\)/.test(src), `${chemin} replie une donnée historique sur la devise actuelle`);
     });
   }
+  it('les activités historiques de l’agenda valent l’euro, pas la devise actuelle', () => {
+    for (const chemin of ['apps/mobile/app/(pro)/(tabs)/calendar.tsx', 'apps/mobile/components/business/DaySchedule/DaySchedule.tsx']) {
+      const src = readFileSync(racine + chemin, 'utf8');
+      assert.ok(/currency \?\? DEFAULT_CURRENCY/.test(src), `${chemin} ne replie pas sur DEFAULT_CURRENCY`);
+      assert.ok(!/currency \?\? devisePro\(\)/.test(src), `${chemin} replie une activité historique sur la devise actuelle`);
+    }
+  });
 });
+
+describe('8. ajouter une prestation à une réservation d’une autre devise', () => {
+  it('réservation HISTORIQUE (EUR) chez un prestataire passé en CHF : refusé, sans conversion', () => {
+    const r = verifierMemeDevise({ price: 3500 }, { currency: 'CHF' });
+    assert.equal(r.ok, false);
+    assert.equal(r.deviseReservation, 'EUR');
+    assert.equal(r.devisePrestataire, 'CHF');
+    assert.match(r.message, /EUR/); assert.match(r.message, /CHF/);
+  });
+  it('réservation CHF chez un prestataire CHF : autorisé', () => {
+    assert.deepEqual(verifierMemeDevise({ currency: 'CHF' }, { currency: 'chf' }), { ok: true, devise: 'CHF' });
+  });
+  it('réservation historique chez un prestataire resté en euro : autorisé', () => {
+    assert.equal(verifierMemeDevise({}, {}).ok, true);
+    assert.equal(verifierMemeDevise({ currency: null }, { currency: null }).ok, true);
+  });
+  it('réservation CHF chez un prestataire déverrouillé repassé en EUR : refusé', () => {
+    assert.equal(verifierMemeDevise({ currency: 'CHF' }, { currency: 'EUR' }).ok, false);
+  });
+});
+

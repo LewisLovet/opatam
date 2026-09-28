@@ -40,6 +40,7 @@ import {
   applyLoyaltyToLine,
   type CreateBookingInput,
   DEFAULT_CURRENCY,
+  verifierMemeDevise,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 import type { BookingFilters } from '../repositories/booking.repository';
@@ -979,6 +980,17 @@ export class BookingService {
     const mutableStatuses: BookingStatus[] = ['pending_payment', 'pending', 'confirmed'];
     if (!mutableStatuses.includes(booking.status)) {
       throw new Error('Ce rendez-vous ne peut plus être modifié.');
+    }
+
+    // Meme devise, ou rien. Une reservation historique (sans devise) est en
+    // euros ; si le prestataire est passe au franc depuis, le tarif actuel de
+    // la prestation est en francs, et `booking.price + effective.price`
+    // additionnerait deux devises — puis ce total serait debite tel quel.
+    // Decide ici, AVANT toute lecture de prestation et toute ecriture.
+    const proPourDevise = await providerRepository.getById(booking.providerId);
+    const memeDevise = verifierMemeDevise(booking, proPourDevise);
+    if (!memeDevise.ok) {
+      throw new Error(memeDevise.message);
     }
 
     const service = await serviceRepository.getById(booking.providerId, serviceId);

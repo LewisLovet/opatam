@@ -8,7 +8,7 @@ import { closedBands } from '../../../lib/workingRanges';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { formatPriceCompact } from '@booking-app/shared';
+import { formatPriceCompact, DEFAULT_CURRENCY } from '@booking-app/shared';
 import { useTheme, type Colors } from '../../../theme';
 import { Text } from '../../Text';
 import { type BookingStatus } from '../BookingStatusBadge';
@@ -58,7 +58,7 @@ export interface DayScheduleBlockedSlot {
   /** Amount earned for this activity, in cents. Optional — shown
    *  as a small badge in the bottom-right of the card. */
   amount?: number | null;
-  /** Devise FIGEE sur l'activite. Absente = la devise passee au composant. */
+  /** Devise FIGEE sur l'activite. Absente = activite historique, en euros. */
   currency?: string | null;
 }
 
@@ -81,8 +81,6 @@ export interface DayScheduleProps {
    *  `workingHours`, qui ne définit que l'amplitude VISIBLE de la grille.
    *  `undefined` = horaires inconnus, rien n'est voilé. */
   workingRanges?: { start: number; end: number }[];
-  /** Devise du prestataire, pour les pastilles de montant. Absente = euro. */
-  currency?: string | null;
   /** Callback when a booking is pressed */
   onBookingPress?: (id: string) => void;
 }
@@ -224,7 +222,6 @@ export function DaySchedule({
   workingRanges,
   onBookingPress,
   onBlockedSlotPress,
-  currency,
 }: DayScheduleProps) {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
@@ -593,7 +590,7 @@ export function DaySchedule({
                       }}
                       numberOfLines={1}
                     >
-                      {formatPriceCompact(slot.amount, slot.currency ?? currency)}
+                      {formatPriceCompact(slot.amount, slot.currency ?? DEFAULT_CURRENCY)}
                     </Text>
                   </View>
                 )}

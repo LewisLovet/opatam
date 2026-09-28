@@ -43,6 +43,7 @@ import {
   buildBookingSelections,
   emptyServiceSelections,
   DEFAULT_CURRENCY,
+  deviseDeLaReservation,
 } from '@booking-app/shared';
 import type {
   Booking,
@@ -165,7 +166,7 @@ function ServiceChoiceLines({
         <View key={o.optionId}>
           <Text variant="caption" color="textSecondary">
             + {o.optionName}
-            {o.price > 0 ? `  (${formatPrice(o.price, currency ?? devisePro())})` : ''}
+            {o.price > 0 ? `  (${formatPrice(o.price, currency ?? DEFAULT_CURRENCY)})` : ''}
           </Text>
           {o.nestedVariations?.map((v) => (
             <Text
@@ -405,7 +406,12 @@ export default function ProBookingDetailScreen() {
   // aujourd'hui : un rendez-vous pris en euros reste en euros, meme si le
   // salon est passe au franc depuis. `booking` n'est pas encore charge au
   // premier rendu : repli sur la devise du pro connecte.
-  const prix = (cents: number) => formatPrice(cents, booking?.currency ?? devisePro());
+  // La regle CENTRALE : une reservation qui existe sans devise est
+  // HISTORIQUE et vaut l'euro — jamais la devise actuelle du prestataire.
+  // Le repli sur `devisePro()` ne joue que tant que la reservation n'est
+  // pas encore chargee.
+  const prix = (cents: number) =>
+    formatPrice(cents, deviseDeLaReservation(booking, { currency: devisePro() }));
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
@@ -1393,7 +1399,7 @@ export default function ProBookingDetailScreen() {
                       </View>
                       <Text variant="caption" color="textMuted">{formatDuration(item.duration)}</Text>
                       <ServiceChoiceLines
-                        currency={booking.currency}
+                        currency={deviseDeLaReservation(booking)}
                         variations={item.selectedVariations}
                         options={item.selectedOptions}
                         info={item.selectedInfo}
@@ -1447,7 +1453,7 @@ export default function ProBookingDetailScreen() {
                 {booking.serviceName}
               </Text>
               <ServiceChoiceLines
-                currency={booking.currency}
+                currency={deviseDeLaReservation(booking)}
                 variations={booking.selectedVariations}
                 options={booking.selectedOptions}
                 info={booking.selectedInfo}

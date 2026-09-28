@@ -64,6 +64,7 @@ import {
   effectiveLoyaltyCount,
   LOYALTY_ADJUSTMENT_REASONS,
   type LoyaltyAdjustmentReason,
+  deviseDeLaReservation,
 } from '@booking-app/shared';
 import { OverlaySheet } from '../../../components/OverlaySheet';
 import { useAuth } from '../../../contexts';
@@ -899,7 +900,7 @@ export default function ClientDetailScreen() {
                           </View>
                           <Text variant="bodySmall" style={{ fontWeight: '700' }}>
                             {/* Devise FIGEE de CETTE reservation, pas celle du pro aujourd'hui. */}
-                            {b.price > 0 ? formatPrice(b.price, b.currency ?? devisePro()) : '—'}
+                            {b.price > 0 ? formatPrice(b.price, deviseDeLaReservation(b)) : '—'}
                           </Text>
                         </View>
                       </Card>
