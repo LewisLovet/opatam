@@ -42,9 +42,13 @@ describe('2. le bouton dans le gabarit HTML', () => {
 
   it('le numéro est DANS le bouton, et le bouton appelle', () => {
     assert.match(bouton, /href="tel:\$\{escapeHtml\(href\)\}"/, 'lien tel: échappé');
-    assert.match(bouton, /\$\{c\.callCta\} \$\{escapeHtml\(phone\)\}/, 'libellé + numéro visibles dans le bouton');
+    assert.match(bouton, /&#x1F4DE;(&nbsp;)+\$\{escapeHtml\(phone\)\}/, 'icône d’appel puis le numéro, rien d’autre');
     assert.match(bouton, /display: inline-block/, 'rendu comme un bouton, pas comme une ligne de texte');
     assert.match(bouton, /<table role="presentation"[^>]*><tr><td align="center">/, 'centré en table, comme les autres boutons');
+  });
+  it('le bouton ne traduit RIEN : ni libellé, ni langue en paramètre', () => {
+    assert.match(bouton, /function boutonAppelHtml\(phone: string \| null \| undefined\): string/, 'pas de paramètre de langue');
+    assert.doesNotMatch(bouton, /EMAIL_TEXTS|callCta|locale/, 'l’icône et le numéro parlent d’eux-mêmes');
   });
   it('rien à composer, rien à afficher', () => {
     assert.match(bouton, /if \(!phone\) return '';/);
@@ -52,7 +56,7 @@ describe('2. le bouton dans le gabarit HTML', () => {
   });
   it('la confirmation appelle le bouton, et n’a plus de ligne « Contact » dans le tableau', () => {
     const html = src.slice(src.indexOf('function generateConfirmationHtml('), src.indexOf('function generateConfirmationText('));
-    assert.match(html, /\$\{boutonAppelHtml\(data\.providerPhone, l\)\}/);
+    assert.match(html, /\$\{boutonAppelHtml\(data\.providerPhone\)\}/);
     assert.doesNotMatch(html, /c\.labels\.phone/, 'le numéro n’est plus une ligne du tableau des détails');
   });
   it('la version texte garde la ligne « Contact » — un bouton n’existe pas en texte brut', () => {
@@ -64,15 +68,12 @@ describe('2. le bouton dans le gabarit HTML', () => {
   });
 });
 
-describe('3. les libellés, dans les cinq langues', () => {
+describe('3. les libellés', () => {
   const i18n = lire('functions/src/utils/emailI18n.ts');
-  it('« Appeler » existe partout', () => {
-    for (const lib of ["callCta: 'Appeler'", "callCta: 'Call'", "callCta: 'Chiama'", "callCta: 'Ligar'", "callCta: 'Anrufen'"]) {
-      assert.ok(i18n.includes(lib), `libellé manquant : ${lib}`);
-    }
-    assert.equal((i18n.match(/^\s*callCta: '/gm) ?? []).length, 5, 'un libellé par langue');
+  it('aucun libellé d’appel à traduire — le bouton n’en a pas', () => {
+    assert.doesNotMatch(i18n, /callCta/, 'clé morte : le bouton ne porte plus de libellé');
   });
-  it('le libellé « Contact » de la version texte reste, lui aussi, dans les cinq langues', () => {
+  it('le libellé « Contact » de la version TEXTE reste dans les cinq langues', () => {
     assert.equal((i18n.match(/^\s*phone: '/gm) ?? []).length, 5);
   });
 });

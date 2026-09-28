@@ -415,14 +415,16 @@ function escapeHtml(s: string): string {
  * des détails se lisait comme une information parmi d'autres ; ici, c'est une
  * action. Rendu en `<table>` centrée, comme les autres boutons de l'e-mail :
  * c'est ce que les clients de messagerie savent aligner.
+ *
+ * PAS de libellé « Appeler » : l'icône et le numéro suffisent, dans toutes
+ * les langues — le bouton n'a donc rien à traduire.
  */
-function boutonAppelHtml(phone: string | null | undefined, locale: EmailLocale = 'fr'): string {
+function boutonAppelHtml(phone: string | null | undefined): string {
   if (!phone) return '';
   const href = telHref(phone);
   if (!href) return '';
-  const c = EMAIL_TEXTS.common[locale];
   return `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;"><tr><td align="center">
-    <a href="tel:${escapeHtml(href)}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600; color: #3f3f46;">&#x1F4DE;&nbsp;&nbsp;${c.callCta} ${escapeHtml(phone)}</a>
+    <a href="tel:${escapeHtml(href)}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600; color: #3f3f46;">&#x1F4DE;&nbsp;&nbsp;${escapeHtml(phone)}</a>
   </td></tr></table>`;
 }
 
@@ -1543,7 +1545,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.remaining}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${formatEmailPrice(Math.max(0, data.price + (data.travel?.fee ?? 0) - data.depositPaid.amount), l, data.priceMax != null ? Math.max(0, data.priceMax + (data.travel?.fee ?? 0) - data.depositPaid.amount) : null, data.currency)} ${c.onSite}</td></tr>` : ''}
                     </table>
                   </div>
-                  ${boutonAppelHtml(data.providerPhone, l)}
+                  ${boutonAppelHtml(data.providerPhone)}
                   ${loyaltyBlockHtml(data.loyalty ?? null, data.businessName, l)}
                   ${addressPendingNoticeHtml(data, l)}
                   ${accessInstructionsBlockHtml(data, l)}
