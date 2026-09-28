@@ -149,6 +149,26 @@ async function isProviderEmailAllowed(providerId: string, type: 'newBooking' | '
 /**
  * Get provider's email from their user document
  */
+/**
+ * Numéro du prestataire, lu sur son compte (`users/{userId}.phone`) — le
+ * document `providers` n'en porte pas. Pour la ligne « Contact » des e-mails
+ * de confirmation : la cliente doit pouvoir joindre le salon vite (retard,
+ * imprévu, question avant de venir). Null = pas de ligne, jamais d'erreur.
+ */
+async function getProviderPhone(providerId: string): Promise<string | null> {
+  try {
+    const providerDoc = await admin.firestore().collection('providers').doc(providerId).get();
+    const userId = providerDoc.data()?.userId as string | undefined;
+    if (!userId) return null;
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    const phone = userDoc.data()?.phone;
+    return typeof phone === 'string' && phone.trim() ? phone.trim() : null;
+  } catch (error) {
+    console.error(`Error fetching provider phone for ${providerId}:`, error);
+    return null;
+  }
+}
+
 async function getProviderEmail(providerId: string): Promise<string | null> {
   try {
     const providerDoc = await admin.firestore().collection('providers').doc(providerId).get();
@@ -197,6 +217,7 @@ async function toEmailData(
   }
 
   const providerSlug = await getProviderSlug(booking.providerId);
+  const providerPhone = await getProviderPhone(booking.providerId);
 
   // Consigne de réservation du pro, dans la langue de la CLIENTE quand une
   // traduction existe — sinon l'original tel quel (getProviderText retombe
@@ -301,6 +322,7 @@ async function toEmailData(
     selectedOptions: booking.selectedOptions,
     selectedInfo: booking.selectedInfo,
     providerName: booking.providerName,
+    providerPhone,
     providerSlug,
     locationName: booking.locationName,
     locationAddress: resolvedAddress.address,

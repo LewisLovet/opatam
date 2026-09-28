@@ -329,6 +329,12 @@ export interface BookingEmailData {
   /** Prestation à domicile — la cliente voit toujours SA propre adresse. */
   travel?: { fee: number; addressLine: string | null; city: string } | null;
   providerName: string;
+  /**
+   * Numéro du prestataire (celui de son compte), pour que la cliente sache
+   * comment le joindre vite : retard, imprévu, question avant de venir.
+   * Absent = pas de ligne « Contact ».
+   */
+  providerPhone?: string | null;
   providerSlug?: string;
   locationName?: string;
   locationAddress?: string;
@@ -1513,6 +1519,7 @@ function generateConfirmationHtml(data: ConfirmationTemplateData): string {
                       ${locationAddressRowsHtml(data, l)}
                       ${data.travel?.addressLine ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.clientAddress}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.addressLine}</td></tr>` : ''}
                       ${data.memberName ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.with}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.memberName}</td></tr>` : ''}
+                      ${data.providerPhone ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.phone}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;"><a href="tel:${escapeHtml(data.providerPhone.replace(/\s+/g, ''))}" style="color: #18181b; text-decoration: none;">${escapeHtml(data.providerPhone)}</a></td></tr>` : ''}
                       <tr><td style="padding: 8px 0 4px; font-size: 14px; color: #71717a;">${c.labels.price}</td><td style="padding: 8px 0 4px; font-size: 16px; color: #18181b; font-weight: 600;">${data.formattedPrice}${promoNoteHtml(data.price, data.originalPrice, l, data.currency)}</td></tr>
                       ${data.travel ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.travelFee}</td><td style="padding: 4px 0; font-size: 14px; color: #18181b; font-weight: 500;">${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l, null, data.currency)}</td></tr>` : ''}
                       ${data.depositPaid ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #71717a;">${c.labels.depositPaid}</td><td style="padding: 4px 0; font-size: 14px; color: #16a34a; font-weight: 600;">${formatEmailPrice(data.depositPaid.amount, l, null, data.currency)}</td></tr>` : ''}
@@ -1576,6 +1583,7 @@ ${data.items && data.items.length >= 2
 ${data.locationName ? `- ${c.labels.location}${c.colon} ${data.locationName}` : ''}
 ${locationAddressLineText(data, l)}${addressPendingNoticeText(data, l)}${accessInstructionsBlockText(data, l)}
 ${data.memberName ? `- ${c.labels.with}${c.colon} ${data.memberName}` : ''}
+${data.providerPhone ? `- ${c.labels.phone}${c.colon} ${data.providerPhone}` : ''}
 ${data.travel?.addressLine ? `- ${c.labels.clientAddress}${c.colon} ${data.travel.addressLine}` : ''}
 - ${c.labels.price}${c.colon} ${data.formattedPrice}${promoNoteText(data.price, data.originalPrice, l, data.currency)}
 ${data.travel ? `- ${c.labels.travelFee}${c.colon} ${data.travel.fee === 0 ? c.labels.travelFree : formatEmailPrice(data.travel.fee, l, null, data.currency)}` : ''}
