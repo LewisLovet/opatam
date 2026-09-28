@@ -3453,5 +3453,53 @@
       "writeUs": "Write to the team",
       "notAnswered": "This doesn't answer my question — write to the team"
     }
+  },
+  "recurrence": {
+    "toggle": "Repeat",
+    "frequency": "Frequency",
+    "everyWeek": "Every week",
+    "everyNWeeks": "Every {{count}} weeks",
+    "daysLabel": "On",
+    "dayLabel": "On",
+    "until": "Until",
+    "untilTitle": "End of repetition",
+    "multiDayNote": "A multi-day period repeats on its starting day.",
+    "summary": "{{rule}} — {{count}} times.",
+    "describeWeekly": "Every week {{days}}, until {{until}}",
+    "describeEveryN": "Every {{n}} weeks {{days}}, until {{until}}",
+    "dayOne": "on {{day}}",
+    "dayMany": "on {{days}}",
+    "and": " and ",
+    "seriesNote": "The repetition applies to “this one and the following”.",
+    "errors": {
+      "intervalle": "The interval must be between 1 and 4 weeks",
+      "aucunJour": "Choose at least one day of the week",
+      "jourDeBaseAbsent": "The day of the entered period must be among the repeated days",
+      "plusieursJoursMultiJours": "A multi-day period can only repeat on a single weekday",
+      "finAvantDebut": "The end date must be on or after the start date",
+      "finAvantPremiere": "The end of the repetition must be after the first occurrence",
+      "horizon": "A repetition cannot exceed one year"
+    },
+    "scope": {
+      "title": "This period is part of a repetition",
+      "saveMessage": "Apply the changes to which occurrences?",
+      "deleteMessage": "Delete which occurrences?",
+      "thisOne": "This one only",
+      "following": "This one and the following"
+    },
+    "conflicts": {
+      "title_one": "One appointment falls within this period",
+      "title_other": "{{count}} appointments fall within these dates",
+      "message": "They will not be cancelled: it is up to you to move them or notify the clients.\n\n{{list}}",
+      "more": "… and {{count}} more",
+      "proceed": "Continue anyway"
+    },
+    "saved_one": "Repetition saved: {{count}} occurrence",
+    "saved_other": "Repetition saved: {{count}} occurrences",
+    "seriesUpdated": "This occurrence and the following ones have been updated",
+    "seriesDeleted_one": "{{count}} occurrence deleted",
+    "seriesDeleted_other": "{{count}} occurrences deleted",
+    "listSummary": "{{rule}} · {{count}} upcoming",
+    "deleteSeriesMessage": "Delete all upcoming occurrences of this repetition?"
   }
 }

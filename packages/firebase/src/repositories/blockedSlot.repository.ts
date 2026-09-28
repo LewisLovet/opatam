@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   Timestamp,
   onSnapshot,
+  writeBatch,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -60,6 +61,67 @@ export class BlockedSlotRepository {
 
     const docRef = await addDoc(this.getCollectionRef(providerId), docData);
     return docRef.id;
+  }
+
+  /** Un identifiant neuf de cette collection — pour nommer une série avant d'écrire. */
+  nouvelIdentifiant(providerId: string): string {
+    return doc(this.getCollectionRef(providerId)).id;
+  }
+
+  /**
+   * Crée plusieurs blocages d'un coup — les occurrences d'une série.
+   *
+   * Par lots atomiques de 400 (la limite Firestore est 500) : une série
+   * d'un an tient dans un seul lot, et une panne au milieu ne laisse pas
+   * une demi-série. Les identifiants sont tirés AVANT l'écriture pour être
+   * rendus dans l'ordre des occurrences. Les `Date` imbriquées
+   * (`recurrence.until`) deviennent des Timestamp par le SDK lui-même.
+   */
+  async createMany(
+    providerId: string,
+    docs: Array<Omit<BlockedSlot, 'id' | 'createdAt'>>,
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = writeBatch(this.db);
+      for (const data of docs.slice(i, i + 400)) {
+        const ref = doc(this.getCollectionRef(providerId));
+        batch.set(
+          ref,
+          removeUndefined({
+            ...data,
+            startDate: Timestamp.fromDate(data.startDate),
+            endDate: Timestamp.fromDate(data.endDate),
+            createdAt: serverTimestamp(),
+          } as Record<string, unknown>),
+        );
+        ids.push(ref.id);
+      }
+      await batch.commit();
+    }
+    return ids;
+  }
+
+  /**
+   * Toutes les occurrences d'une série, par date de début. Égalité seule,
+   * tri en mémoire : une série compte au plus quelques centaines de
+   * documents, pas de quoi exiger un index composite.
+   */
+  async getBySeries(providerId: string, seriesId: string): Promise<WithId<BlockedSlot>[]> {
+    const q = query(this.getCollectionRef(providerId), where('seriesId', '==', seriesId));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...convertTimestamps<BlockedSlot>(d.data()) }))
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  }
+
+  /** Supprime des blocages par lots atomiques de 400. */
+  async deleteMany(providerId: string, ids: string[]): Promise<void> {
+    for (let i = 0; i < ids.length; i += 400) {
+      const batch = writeBatch(this.db);
+      for (const id of ids.slice(i, i + 400)) batch.delete(this.getDocRef(providerId, id));
+      await batch.commit();
+    }
   }
 
   /**

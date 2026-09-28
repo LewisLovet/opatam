@@ -37,14 +37,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Input, Loader, SubscriptionRequiredModal } from '../../components';
+import { Text, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   schedulingService,
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import type { Member, ActivityCategory } from '@booking-app/shared';
+import { genererOccurrences } from '@booking-app/shared';
+import type { Member, ActivityCategory, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 function formatDateShort(date: Date): string {
@@ -477,6 +478,11 @@ export default function CreateActivityScreen() {
   // persisted as null on the doc.
   const [amount, setAmount] = useState('');
   const [activePicker, setActivePicker] = useState<PickerMode>(null);
+  /** Répétition saisie ; `null` = activité isolée. */
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
+  /** En édition : la série dont l'activité fait partie, et son début. */
+  const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
+  const [existingStart, setExistingStart] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Confirmation animée après l'enregistrement ; `null` = pas affichée.
@@ -533,6 +539,9 @@ export default function CreateActivityScreen() {
           } else {
             setAmount('');
           }
+          setExistingSeriesId(existing.seriesId ?? null);
+          setExistingStart(new Date(startDt));
+          setRecurrence(existing.recurrence ?? null);
           return;
         }
 
@@ -595,7 +604,25 @@ export default function CreateActivityScreen() {
 
   // ─── Submit ─────────────────────────────────────────────────────────
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+    if (!providerId) return;
+    if (editId && existingSeriesId) {
+      // En série, la question de la portée vient AVANT tout le reste.
+      Alert.alert(t('recurrence.scope.title'), t('recurrence.scope.saveMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('recurrence.scope.thisOne'), onPress: () => void soumettre('cette', false) },
+        { text: t('recurrence.scope.following'), onPress: () => void soumettre('suivantes', false) },
+      ]);
+      return;
+    }
+    void soumettre('cette', false);
+  };
+
+  /**
+   * Écrit, dans cet ordre : prévenir des rendez-vous recouverts (une fois),
+   * puis modifier cette occurrence / réécrire la suite de la série / créer.
+   */
+  const soumettre = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
     if (!providerId) return;
     if (!selectedMember) {
       Alert.alert(t('proActivity.errorTitle'), t('proActivity.selectMember'));
@@ -625,40 +652,89 @@ export default function CreateActivityScreen() {
 
     try {
       setIsSubmitting(true);
+      const base: BlockedSlotInput = {
+        memberId: selectedMember.id,
+        locationId: selectedMember.locationId,
+        startDate: startTime,
+        endDate: endTime,
+        allDay: false,
+        startTime: formatTime(startTime),
+        endTime: formatTime(endTime),
+        reason: notes.trim() || null,
+        category,
+        title: title.trim(),
+        address: address.trim() || null,
+        amount: amountCents,
+        recurrence,
+      };
+
+      // 1. Les rendez-vous que ces créneaux recouvriraient. On prévient,
+      //    on n'annule rien — et on ne pose la question qu'une fois.
+      if (!ignorerConflits) {
+        const dates = recurrence
+          ? genererOccurrences({ startDate: startTime, endDate: endTime }, recurrence)
+          : [{ startDate: startTime, endDate: endTime }];
+        const periodes = dates.map((d) => ({ ...d, allDay: false, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode: 'continuous' as const }));
+        const touches: WithId<Booking>[] = await schedulingService.rendezVousRecouverts(providerId, selectedMember.id, periodes);
+        if (touches.length > 0) {
+          const lignes = touches
+            .slice(0, 6)
+            .map((b) => `${formatDateShort(b.datetime)} ${formatTime(b.datetime)} — ${b.clientInfo.name} · ${b.serviceName}`);
+          if (touches.length > 6) lignes.push(t('recurrence.conflicts.more', { count: touches.length - 6 }));
+          setIsSubmitting(false);
+          Alert.alert(
+            t('recurrence.conflicts.title', { count: touches.length }),
+            t('recurrence.conflicts.message', { list: lignes.join('\n') }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('recurrence.conflicts.proceed'), onPress: () => void soumettre(quoi, true) },
+            ],
+          );
+          return;
+        }
+      }
+
       if (editId) {
-        // Edit path: PATCH only the fields the form covers. We don't
-        // re-validate via blockPeriod (which always creates) — going
-        // straight through the repo lets the doc keep its createdAt.
-        await blockedSlotRepository.update(providerId, editId, {
-          memberId: selectedMember.id,
-          locationId: selectedMember.locationId,
-          startDate: startTime,
-          endDate: endTime,
-          allDay: false,
-          startTime: formatTime(startTime),
-          endTime: formatTime(endTime),
-          reason: notes.trim() || null,
-          category,
-          title: title.trim(),
-          address: address.trim() || null,
-          amount: amountCents,
-        });
-        setConfirmation({ titre: t('proActivity.updatedTitle'), sousTitre: title.trim() });
+        if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+          // 2a. La suite de la série est réécrite depuis cette occurrence ;
+          //     la devise figée à la création est reprise telle quelle.
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
+            ...base,
+            currency: devisePro(),
+          });
+          setConfirmation({ titre: t('recurrence.seriesUpdated'), sousTitre: title.trim() });
+        } else if (!existingSeriesId && recurrence) {
+          // 2b. Une activité isolée devient une série : la remplacer.
+          await schedulingService.unblockPeriod(providerId, editId);
+          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, { ...base, currency: devisePro() });
+          setConfirmation({ titre: t('recurrence.saved', { count: ids.length }), sousTitre: title.trim() });
+        } else {
+          // 2c. Cette occurrence seulement : PATCH des champs du formulaire.
+          //     On ne repasse pas par blockPeriod (qui crée toujours) — le
+          //     document garde son createdAt, et sa règle de série.
+          await blockedSlotRepository.update(providerId, editId, {
+            memberId: selectedMember.id,
+            locationId: selectedMember.locationId,
+            startDate: startTime,
+            endDate: endTime,
+            allDay: false,
+            startTime: formatTime(startTime),
+            endTime: formatTime(endTime),
+            reason: notes.trim() || null,
+            category,
+            title: title.trim(),
+            address: address.trim() || null,
+            amount: amountCents,
+          });
+          setConfirmation({ titre: t('proActivity.updatedTitle'), sousTitre: title.trim() });
+        }
+      } else if (recurrence) {
+        // 3a. Série : toutes les occurrences, devise FIGÉE sur chacune.
+        const { ids } = await schedulingService.blockPeriodRecurrent(providerId, { ...base, currency: devisePro() });
+        setConfirmation({ titre: t('recurrence.saved', { count: ids.length }), sousTitre: title.trim() });
       } else {
         await schedulingService.blockPeriod(providerId, {
-          memberId: selectedMember.id,
-          locationId: selectedMember.locationId,
-          startDate: startTime,
-          endDate: endTime,
-          allDay: false,
-          isRecurring: false,
-          startTime: formatTime(startTime),
-          endTime: formatTime(endTime),
-          reason: notes.trim() || null,
-          category,
-          title: title.trim(),
-          address: address.trim() || null,
-          amount: amountCents,
+          ...base,
           // Devise FIGEE a la creation (surface pro) ; pas renvoyee a la modification.
           currency: devisePro(),
         });
@@ -679,8 +755,37 @@ export default function CreateActivityScreen() {
   // Two-step confirm to avoid accidental taps. Returns to the
   // calendar on success — the calendar's useFocusEffect picks up
   // the change and re-fetches blockedSlots automatically.
+  const supprimer = async (quoi: 'cette' | 'suivantes') => {
+    if (!editId || !providerId) return;
+    try {
+      setIsSubmitting(true);
+      if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+        await schedulingService.unblockSeries(providerId, existingSeriesId, existingStart);
+      } else {
+        await schedulingService.unblockPeriod(providerId, editId);
+      }
+      router.back();
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      Alert.alert(
+        t('proActivity.errorTitle'),
+        error instanceof Error ? error.message : t('proActivity.deleteError'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDelete = () => {
     if (!editId || !providerId) return;
+    if (existingSeriesId) {
+      Alert.alert(t('recurrence.scope.title'), t('recurrence.scope.deleteMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('recurrence.scope.thisOne'), style: 'destructive', onPress: () => void supprimer('cette') },
+        { text: t('recurrence.scope.following'), style: 'destructive', onPress: () => void supprimer('suivantes') },
+      ]);
+      return;
+    }
     Alert.alert(
       t('proActivity.deleteConfirmTitle'),
       t('proActivity.deleteConfirmMessage', {
@@ -691,23 +796,7 @@ export default function CreateActivityScreen() {
         {
           text: t('proActivity.delete'),
           style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsSubmitting(true);
-              await schedulingService.unblockPeriod(providerId, editId);
-              router.back();
-            } catch (error) {
-              console.error('Error deleting activity:', error);
-              Alert.alert(
-                t('proActivity.errorTitle'),
-                error instanceof Error
-                  ? error.message
-                  : t('proActivity.deleteError'),
-              );
-            } finally {
-              setIsSubmitting(false);
-            }
-          },
+          onPress: () => void supprimer('cette'),
         },
       ],
     );
@@ -947,6 +1036,18 @@ export default function CreateActivityScreen() {
               );
             })}
           </View>
+        </View>
+
+        {/* ── Répétition ── */}
+        <View style={{ marginTop: spacing.md }}>
+          <RecurrenceFields
+            value={recurrence}
+            onChange={setRecurrence}
+            baseStart={startTime}
+            baseEnd={endTime}
+            enSerie={!!existingSeriesId}
+            disabled={isSubmitting}
+          />
         </View>
 
         {/* ── Détails, facultatifs ── */}

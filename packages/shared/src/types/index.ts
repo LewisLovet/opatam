@@ -1445,7 +1445,31 @@ export interface BlockedSlot {
    * activités en euros comptées comme des francs.
    */
   currency?: string | null;
+  /**
+   * Série de récurrence dont cette occurrence est issue. Absent = blocage
+   * isolé. Il n'y a PAS de document de série : la règle est copiée sur
+   * chaque occurrence (`recurrence`), et « celle-ci et les suivantes » se
+   * résout par `seriesId` + `startDate`. Voir `utils/recurrence.ts`.
+   */
+  seriesId?: string | null;
+  /** Règle de la série, copiée sur chaque occurrence. Absente hors série. */
+  recurrence?: BlockedSlotRecurrence | null;
   createdAt: Date;
+}
+
+/**
+ * Règle de récurrence d'une période bloquée ou d'une activité. Les
+ * occurrences sont MATÉRIALISÉES à la création (un `blockedSlot` chacune) :
+ * aucun lecteur ne déplie cette règle, elle sert à décrire la série et à
+ * la régénérer quand on modifie « celle-ci et les suivantes ».
+ */
+export interface BlockedSlotRecurrence {
+  /** 1 = chaque semaine, 2 = une semaine sur deux… (1 à 4). */
+  intervalWeeks: number;
+  /** Jours de départ des occurrences, `Date.getDay()` (0 = dimanche). */
+  weekdays: number[];
+  /** Dernier jour de départ possible, inclus. Obligatoire : pas de série sans fin. */
+  until: Date;
 }
 
 // Booking types

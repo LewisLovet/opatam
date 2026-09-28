@@ -3453,5 +3453,53 @@
       "writeUs": "Scrivi al team",
       "notAnswered": "Non risponde alla mia domanda — scrivi al team"
     }
+  },
+  "recurrence": {
+    "toggle": "Ripeti",
+    "frequency": "Frequenza",
+    "everyWeek": "Ogni settimana",
+    "everyNWeeks": "Ogni {{count}} settimane",
+    "daysLabel": "I giorni",
+    "dayLabel": "Il giorno",
+    "until": "Fino al",
+    "untilTitle": "Fine della ripetizione",
+    "multiDayNote": "Un periodo di più giorni si ripete nel suo giorno di inizio.",
+    "summary": "{{rule}} — {{count}} volte.",
+    "describeWeekly": "Ogni settimana {{days}}, fino al {{until}}",
+    "describeEveryN": "Ogni {{n}} settimane {{days}}, fino al {{until}}",
+    "dayOne": "il {{day}}",
+    "dayMany": "i giorni {{days}}",
+    "and": " e ",
+    "seriesNote": "La ripetizione si applica a « questa e le successive ».",
+    "errors": {
+      "intervalle": "L'intervallo deve essere tra 1 e 4 settimane",
+      "aucunJour": "Scegli almeno un giorno della settimana",
+      "jourDeBaseAbsent": "Il giorno del periodo inserito deve far parte dei giorni ripetuti",
+      "plusieursJoursMultiJours": "Un periodo di più giorni si ripete solo in un giorno della settimana",
+      "finAvantDebut": "La data di fine deve essere uguale o successiva alla data di inizio",
+      "finAvantPremiere": "La fine della ripetizione deve essere successiva alla prima occorrenza",
+      "horizon": "Una ripetizione non può superare un anno"
+    },
+    "scope": {
+      "title": "Questo periodo fa parte di una ripetizione",
+      "saveMessage": "A quali occorrenze applicare le modifiche?",
+      "deleteMessage": "Quali occorrenze eliminare?",
+      "thisOne": "Solo questa",
+      "following": "Questa e le successive"
+    },
+    "conflicts": {
+      "title_one": "Un appuntamento cade in questo periodo",
+      "title_other": "{{count}} appuntamenti cadono in queste date",
+      "message": "Non verranno annullati: sta a te spostarli o avvisare.\n\n{{list}}",
+      "more": "… e altri {{count}}",
+      "proceed": "Continua comunque"
+    },
+    "saved_one": "Ripetizione salvata: {{count}} occorrenza",
+    "saved_other": "Ripetizione salvata: {{count}} occorrenze",
+    "seriesUpdated": "Questa occorrenza e le successive sono state modificate",
+    "seriesDeleted_one": "{{count}} occorrenza eliminata",
+    "seriesDeleted_other": "{{count}} occorrenze eliminate",
+    "listSummary": "{{rule}} · {{count}} in arrivo",
+    "deleteSeriesMessage": "Eliminare tutte le occorrenze future di questa ripetizione?"
   }
 }

@@ -7,8 +7,8 @@ import {
   serviceRepository,
   providerRepository,
 } from '../repositories';
-import type { Availability, AvailabilityConflict, BlockedSlot, TimeSlot } from '@booking-app/shared';
-import { isServiceOpenOnDay, blockedWindowForDay } from '@booking-app/shared';
+import type { Availability, AvailabilityConflict, BlockedSlot, Booking, TimeSlot } from '@booking-app/shared';
+import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences } from '@booking-app/shared';
 import {
   ajouterJours,
   bornesDeJourLocal,
@@ -486,15 +486,115 @@ export class SchedulingService {
    * memberId est maintenant obligatoire
    */
   async blockPeriod(providerId: string, input: BlockedSlotInput): Promise<string> {
-    // Validate input
     const validated = parseOrThrow(blockedSlotSchema, input);
+    this.verifierPeriode(validated);
+    if (validated.recurrence) {
+      // Une récurrence passe par la série : même validation, N documents.
+      const { ids } = await this.blockPeriodRecurrent(providerId, input);
+      return ids[0];
+    }
+    return blockedSlotRepository.create(providerId, this.documentDeBlocage(validated, validated.startDate, validated.endDate));
+  }
 
-    // Validate dates
+  /**
+   * Bloque une période RÉCURRENTE : toutes les occurrences sont écrites
+   * maintenant, chacune un vrai `blockedSlot` portant `seriesId` et la
+   * règle. Rien à déplier à la lecture, aucun lecteur ne change. Voir
+   * `utils/recurrence.ts` dans shared pour la sémantique de la règle.
+   */
+  async blockPeriodRecurrent(
+    providerId: string,
+    input: BlockedSlotInput,
+    /** Réutiliser une série existante (« celle-ci et les suivantes »). */
+    seriesId?: string,
+  ): Promise<{ seriesId: string; ids: string[] }> {
+    const validated = parseOrThrow(blockedSlotSchema, input);
+    if (!validated.recurrence) throw new Error('Aucune règle de récurrence');
+    this.verifierPeriode(validated);
+    const occurrences = genererOccurrences(validated, validated.recurrence);
+    const serie = seriesId ?? blockedSlotRepository.nouvelIdentifiant(providerId);
+    const docs = occurrences.map((o) => ({
+      ...this.documentDeBlocage(validated, o.startDate, o.endDate),
+      seriesId: serie,
+      recurrence: {
+        intervalWeeks: validated.recurrence!.intervalWeeks,
+        weekdays: [...validated.recurrence!.weekdays],
+        until: validated.recurrence!.until,
+      },
+    }));
+    const ids = await blockedSlotRepository.createMany(providerId, docs);
+    return { seriesId: serie, ids };
+  }
+
+  /**
+   * Supprime une série : toute, ou seulement « celle-ci et les suivantes »
+   * (`from` = date de début de l'occurrence choisie ; les occurrences
+   * antérieures, déjà vécues, restent).
+   */
+  async unblockSeries(providerId: string, seriesId: string, from?: Date): Promise<number> {
+    const occurrences = await blockedSlotRepository.getBySeries(providerId, seriesId);
+    const cibles = from ? occurrences.filter((o) => o.startDate.getTime() >= from.getTime()) : occurrences;
+    await blockedSlotRepository.deleteMany(providerId, cibles.map((o) => o.id));
+    return cibles.length;
+  }
+
+  /**
+   * Modifie « celle-ci et les suivantes » : les occurrences à partir de
+   * `from` sont supprimées puis régénérées depuis `input` (dont la période
+   * est la nouvelle première occurrence), sous le MÊME `seriesId`. Le
+   * passé de la série n'est pas touché. Sans `recurrence` dans `input`,
+   * la suite de la série est simplement retirée et un blocage isolé est
+   * créé : c'est « arrêter la répétition ici ».
+   */
+  async updateSeriesFrom(
+    providerId: string,
+    seriesId: string,
+    from: Date,
+    input: BlockedSlotInput,
+  ): Promise<{ seriesId: string; ids: string[] }> {
+    await this.unblockSeries(providerId, seriesId, from);
+    if (input.recurrence) return this.blockPeriodRecurrent(providerId, input, seriesId);
+    const id = await this.blockPeriod(providerId, input);
+    return { seriesId, ids: [id] };
+  }
+
+  /**
+   * Les rendez-vous d'un membre que ces périodes recouvriraient. À
+   * afficher AVANT d'enregistrer : on prévient, on n'annule rien. Même
+   * lecture des fenêtres que le moteur de créneaux (`isTimeBlockedBySlot`),
+   * dans le fuseau du lieu du membre.
+   */
+  async rendezVousRecouverts(
+    providerId: string,
+    memberId: string,
+    periodes: Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>,
+  ): Promise<WithId<Booking>[]> {
+    if (periodes.length === 0) return [];
+    const debut = new Date(Math.min(...periodes.map((p) => p.startDate.getTime())));
+    const fin = new Date(Math.max(...periodes.map((p) => p.endDate.getTime())));
+    // Une période à heures peut finir le lendemain minuit : une journée de marge de chaque côté.
+    const [fuseau, bookings] = await Promise.all([
+      this.fuseauDuLieuDuMembre(providerId, memberId),
+      bookingRepository.getUpcomingByProvider(
+        providerId,
+        new Date(debut.getTime() - 86_400_000),
+        new Date(fin.getTime() + 86_400_000),
+      ),
+    ]);
+    const duMembre = bookings.filter((b) => b.memberId === memberId);
+    const touches = duMembre.filter((b) =>
+      periodes.some((p) =>
+        this.isTimeBlockedBySlot(b.datetime, b.endDatetime, p as BlockedSlot, fuseau ?? FUSEAU_COMPAT),
+      ),
+    );
+    return touches.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+  }
+
+  /** La règle de cohérence d'une période, commune au blocage simple et à la série. */
+  private verifierPeriode(validated: BlockedSlotInput): void {
     if (validated.endDate < validated.startDate) {
       throw new Error('La date de fin doit être après la date de début');
     }
-
-    // Validate times if not all day
     if (!validated.allDay) {
       if (!validated.startTime || !validated.endTime) {
         throw new Error('Les heures sont requises si ce n\'est pas une journée entière');
@@ -518,12 +618,23 @@ export class SchedulingService {
         throw new Error('L\'heure de fin doit être après l\'heure de début');
       }
     }
+  }
 
-    return blockedSlotRepository.create(providerId, {
+  /**
+   * Le document écrit pour une période, champ par champ. Cette liste est
+   * la SEULE source : un champ accepté par le schéma mais absent ici est
+   * perdu en silence — c'est arrivé à `amount`, puis à `currency`.
+   */
+  private documentDeBlocage(
+    validated: BlockedSlotInput,
+    startDate: Date,
+    endDate: Date,
+  ): Omit<BlockedSlot, 'id' | 'createdAt'> {
+    return {
       memberId: validated.memberId,
       locationId: validated.locationId,
-      startDate: validated.startDate,
-      endDate: validated.endDate,
+      startDate,
+      endDate,
       allDay: validated.allDay,
       startTime: validated.allDay ? null : (validated.startTime ?? null),
       endTime: validated.allDay ? null : (validated.endTime ?? null),
@@ -537,16 +648,10 @@ export class SchedulingService {
       category: validated.category ?? null,
       title: validated.title ?? null,
       address: validated.address ?? null,
-      // Optional amount earned (cents). Important to whitelist
-      // here — without it the field gets dropped on create even
-      // though edit (which goes straight through the repo) keeps
-      // it. That's the bug users hit on first save.
       amount: validated.amount ?? null,
-      // Devise du montant, FIGEE ici. Meme piege que `amount` juste au-dessus :
-      // cette liste enumere les champs un par un, et un champ absent est perdu
-      // en silence a la creation — le schema l'accepte, la liste l'oubliait.
+      // Devise du montant, FIGÉE ici.
       currency: validated.currency ?? null,
-    });
+    };
   }
 
   /**

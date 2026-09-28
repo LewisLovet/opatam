@@ -30,8 +30,16 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { isBlockedPeriodValid } from '@booking-app/shared';
-import type { Member } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  RecurrenceFields,
+  ChoixPortee,
+  AvertissementConflits,
+  brouillonDepuisRegle,
+  versRegle,
+  type RecurrenceDraft,
+} from './RecurrenceFields';
 import { Loader2, Ban } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -113,6 +121,15 @@ export function BlockPeriodModal({
   const [startTime, setStartTime] = useState(initialStartTime ?? '09:00');
   const [endTime, setEndTime] = useState(initialEndTime ?? '18:00');
   const [reason, setReason] = useState('');
+  /** Répétition saisie ; `null` = période isolée. */
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
+  /** En édition : la série dont la période fait partie, et son début — pour « celle-ci et les suivantes ». */
+  const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
+  const [existingStart, setExistingStart] = useState<Date | null>(null);
+  /** Question posée en pied de modale quand la période est en série. */
+  const [portee, setPortee] = useState<'enregistrer' | 'supprimer' | null>(null);
+  /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
+  const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -187,6 +204,11 @@ export function BlockPeriodModal({
           setStartTime(existing.startTime ?? '09:00');
           setEndTime(existing.endTime ?? '18:00');
           setReason(existing.reason ?? '');
+          setExistingSeriesId(existing.seriesId ?? null);
+          setExistingStart(startDt);
+          setRecurrence(existing.recurrence ? brouillonDepuisRegle(existing.recurrence) : null);
+          setPortee(null);
+          setConflits(null);
           return;
         }
 
@@ -210,6 +232,11 @@ export function BlockPeriodModal({
         setStartTime(initialStartTime ?? '09:00');
         setEndTime(initialEndTime ?? '18:00');
         setReason('');
+        setRecurrence(null);
+        setExistingSeriesId(null);
+        setExistingStart(null);
+        setPortee(null);
+        setConflits(null);
       } catch (err) {
         console.error('[BlockPeriodModal] load failed:', err);
         toast.error('Impossible de charger les données');
@@ -234,109 +261,180 @@ export function BlockPeriodModal({
     setSelectedMemberIds(allSelected ? [] : members.map((m) => m.id));
   };
 
-  const handleSave = async () => {
-    if (selectedMemberIds.length === 0) {
-      toast.error('Sélectionnez au moins un membre');
-      return;
-    }
-    const startDt = allDay
-      ? combine(startDate, '00:00')
-      : combine(startDate, startTime);
-    const endDt = allDay
-      ? combine(endDate, '23:59')
-      : combine(endDate, endTime);
-
+  /**
+   * Ce que le formulaire décrit, prêt pour le service — la période, les
+   * heures, le motif, et la règle de répétition si elle est cochée.
+   */
+  const saisie = (): { startDt: Date; endDt: Date; input: Omit<BlockedSlotInput, 'memberId' | 'locationId'> } | null => {
+    const startDt = allDay ? combine(startDate, '00:00') : combine(startDate, startTime);
+    const endDt = allDay ? combine(endDate, '23:59') : combine(endDate, endTime);
     // Ordre des JOURS d'abord — indépendant des heures, et seul cas où
     // comparer les dates a un sens.
     if (endDate < startDate) {
       toast.error('La date de fin doit être après le début');
-      return;
+      return null;
     }
-
     // Puis la règle horaire PARTAGÉE, la même que le service et que
-    // l'écran mobile.
-    //
-    // Comparer `endDt < startDt` ne convenait pas : sur un même jour,
-    // « 22:00 → 00:00 » produit une fin à minuit du matin, donc
-    // antérieure au début — le web refusait une période pourtant valide,
-    // acceptée partout ailleurs. Et l'opérateur strict laissait passer
-    // « 14:00 → 14:00 » et « 00:00 → 00:00 », que la création faisait
-    // ensuite échouer côté service, mais que l'ÉDITION enregistrait :
-    // elle écrit directement via le repository.
-    //
-    // Placée AVANT les deux branches, la vérification couvre les deux.
-    // Garde de dernier recours : le bouton est déjà éteint dans ce cas.
+    // l'écran mobile. Garde de dernier recours : le bouton est déjà éteint.
     if (periodError) {
       toast.error(periodError);
+      return null;
+    }
+    return {
+      startDt,
+      endDt,
+      input: {
+        startDate: startDt,
+        endDate: endDt,
+        allDay,
+        startTime: allDay ? null : startTime,
+        endTime: allDay ? null : endTime,
+        spanMode,
+        reason: reason.trim() || null,
+        recurrence: recurrence ? versRegle(recurrence) : null,
+      },
+    };
+  };
+
+  /** Les périodes réellement écrites : la série dépliée, ou la période seule. */
+  const periodesAEcrire = (startDt: Date, endDt: Date) => {
+    const base = { startDate: startDt, endDate: endDt };
+    const dates = recurrence ? genererOccurrences(base, versRegle(recurrence)) : [base];
+    return dates.map((d) => ({
+      ...d,
+      allDay,
+      startTime: allDay ? null : startTime,
+      endTime: allDay ? null : endTime,
+      spanMode,
+    }));
+  };
+
+  const handleSave = () => {
+    if (selectedMemberIds.length === 0) {
+      toast.error('Sélectionnez au moins un membre');
       return;
     }
+    if (!saisie()) return;
+    // En série, la question de la portée vient AVANT tout le reste.
+    if (isEditing && existingSeriesId) {
+      setPortee('enregistrer');
+      return;
+    }
+    void enregistrer('cette', false);
+  };
 
+  /**
+   * Écrit, dans cet ordre : prévenir des rendez-vous recouverts (une fois),
+   * puis modifier cette occurrence / réécrire la suite de la série / créer.
+   */
+  const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
+    const s = saisie();
+    if (!s) return;
+    const targets = isEditing
+      ? members.filter((m) => m.id === selectedMemberIds[0])
+      : members.filter((m) => selectedMemberIds.includes(m.id));
+    if (targets.length === 0) {
+      toast.error('Membre introuvable');
+      return;
+    }
     setSaving(true);
     try {
-      if (editId) {
-        // Edit path — PATCH the existing doc. We only ever target a
-        // single member in edit mode (the doc's owner), so fan-out
-        // logic is bypassed.
-        const member = members.find((m) => m.id === selectedMemberIds[0]);
-        if (!member) {
-          toast.error('Membre introuvable');
+      // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
+      //    on n'annule rien — et on ne pose la question qu'une fois.
+      if (!ignorerConflits) {
+        const periodes = periodesAEcrire(s.startDt, s.endDt);
+        const parMembre = await Promise.all(
+          targets.map((m) => schedulingService.rendezVousRecouverts(providerId, m.id, periodes)),
+        );
+        const touches = parMembre.flat();
+        if (touches.length > 0) {
+          setConflits(touches);
           return;
         }
-        await blockedSlotRepository.update(providerId, editId, {
-          memberId: member.id,
-          locationId: member.locationId,
-          startDate: startDt,
-          endDate: endDt,
-          allDay,
-          startTime: allDay ? null : startTime,
-          endTime: allDay ? null : endTime,
-          spanMode,
-          reason: reason.trim() || null,
-        });
-        toast.success('Période modifiée');
+      }
+      setConflits(null);
+
+      if (isEditing && editId) {
+        const member = targets[0];
+        if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+          // 2a. Réécrire la suite de la série depuis cette occurrence ; sans
+          //     règle, c'est « arrêter la répétition ici ».
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
+            ...s.input,
+            memberId: member.id,
+            locationId: member.locationId,
+          });
+          toast.success('Cette occurrence et les suivantes ont été modifiées');
+        } else if (!existingSeriesId && s.input.recurrence) {
+          // 2b. Une période isolée devient une série : la remplacer.
+          await schedulingService.unblockPeriod(providerId, editId);
+          await schedulingService.blockPeriodRecurrent(providerId, {
+            ...s.input,
+            memberId: member.id,
+            locationId: member.locationId,
+          });
+          toast.success('Période répétée');
+        } else {
+          // 2c. Cette occurrence seulement — la règle copiée sur le document
+          //     ne bouge pas, l'occurrence reste dans sa série.
+          await blockedSlotRepository.update(providerId, editId, {
+            memberId: member.id,
+            locationId: member.locationId,
+            startDate: s.startDt,
+            endDate: s.endDt,
+            allDay,
+            startTime: allDay ? null : startTime,
+            endTime: allDay ? null : endTime,
+            spanMode,
+            reason: reason.trim() || null,
+          });
+          toast.success('Période modifiée');
+        }
       } else {
-        const targets = members.filter((m) => selectedMemberIds.includes(m.id));
+        // 3. Création : une période — ou une série — par membre.
         await Promise.all(
-          targets.map((member) =>
-            schedulingService.blockPeriod(providerId, {
-              memberId: member.id,
-              locationId: member.locationId,
-              startDate: startDt,
-              endDate: endDt,
-              allDay,
-              isRecurring: false,
-              startTime: allDay ? null : startTime,
-              endTime: allDay ? null : endTime,
-              spanMode,
-              reason: reason.trim() || null,
-            }),
-          ),
+          targets.map((member) => {
+            const input = { ...s.input, memberId: member.id, locationId: member.locationId };
+            return s.input.recurrence
+              ? schedulingService.blockPeriodRecurrent(providerId, input)
+              : schedulingService.blockPeriod(providerId, input);
+          }),
         );
-        toast.success(
-          targets.length > 1
-            ? `Période bloquée pour ${targets.length} membres`
-            : 'Période bloquée',
-        );
+        const combien = targets.length > 1 ? ` pour ${targets.length} membres` : '';
+        toast.success(s.input.recurrence ? `Période répétée${combien}` : `Période bloquée${combien}`);
       }
       onSaved?.();
       onClose();
     } catch (err) {
       console.error('[BlockPeriodModal] save failed:', err);
-      toast.error(
-        err instanceof Error ? err.message : 'Impossible de bloquer',
-      );
+      toast.error(err instanceof Error ? err.message : 'Impossible de bloquer');
     } finally {
       setSaving(false);
+      setPortee(null);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!editId) return;
+    if (existingSeriesId) {
+      setPortee('supprimer');
+      return;
+    }
     if (!confirm('Supprimer cette période ?')) return;
+    void supprimer('cette');
+  };
+
+  const supprimer = async (quoi: 'cette' | 'suivantes') => {
+    if (!editId) return;
     setDeleting(true);
     try {
-      await schedulingService.unblockPeriod(providerId, editId);
-      toast.success('Période supprimée');
+      if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+        const n = await schedulingService.unblockSeries(providerId, existingSeriesId, existingStart);
+        toast.success(n > 1 ? `${n} périodes supprimées` : 'Période supprimée');
+      } else {
+        await schedulingService.unblockPeriod(providerId, editId);
+        toast.success('Période supprimée');
+      }
       onSaved?.();
       onClose();
     } catch (err) {
@@ -344,6 +442,7 @@ export function BlockPeriodModal({
       toast.error('Impossible de supprimer');
     } finally {
       setDeleting(false);
+      setPortee(null);
     }
   };
 
@@ -497,6 +596,14 @@ export function BlockPeriodModal({
               </div>
             )}
 
+            <RecurrenceFields
+              value={recurrence}
+              onChange={setRecurrence}
+              baseStartIso={startDate}
+              baseEndIso={endDate}
+              enSerie={!!existingSeriesId}
+              disabled={saving || deleting}
+            />
             {periodError && (
               <p
                 role="alert"
@@ -519,6 +626,23 @@ export function BlockPeriodModal({
         )}
       </ModalBody>
       <ModalFooter>
+        {conflits ? (
+          <AvertissementConflits
+            bookings={conflits}
+            verbe={isEditing ? 'Enregistrer' : 'Bloquer'}
+            occupe={saving}
+            onConfirmer={() => void enregistrer(portee === 'enregistrer' ? 'suivantes' : 'cette', true)}
+            onAnnuler={() => { setConflits(null); setPortee(null); }}
+          />
+        ) : portee ? (
+          <ChoixPortee
+            action={portee}
+            occupe={saving || deleting}
+            onCette={() => (portee === 'supprimer' ? void supprimer('cette') : void enregistrer('cette', false))}
+            onSuivantes={() => (portee === 'supprimer' ? void supprimer('suivantes') : void enregistrer('suivantes', false))}
+            onAnnuler={() => setPortee(null)}
+          />
+        ) : (
         <div className="flex items-center justify-between gap-2 w-full">
           {isEditing ? (
             <Button
@@ -549,6 +673,7 @@ export function BlockPeriodModal({
             </Button>
           </div>
         </div>
+        )}
       </ModalFooter>
     </Modal>
   );

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isSupportedCurrency } from '../constants/currencies';
+import { INTERVALLE_MAX_SEMAINES, messageRegleInvalide } from '../utils/recurrence';
 
 // Time format regex: HH:mm (24-hour format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -144,9 +145,22 @@ export const blockedSlotSchema = z.object({
     .refine(isSupportedCurrency, { message: 'Devise non prise en charge' })
     .nullable()
     .optional(),
-  isRecurring: z.boolean().default(false),
-  recurringDays: z
-    .array(z.number().int().min(0).max(6))
+  /** Série dont ce document est une occurrence — posé par le service, jamais par un formulaire. */
+  seriesId: z.string().nullable().optional(),
+  /**
+   * Récurrence : la période saisie est la première occurrence, répétée
+   * `intervalWeeks` semaines sur `weekdays`, jusqu'au jour `until` inclus.
+   * Doit être DÉCLARÉE ici (zod retire les clés inconnues en silence). La
+   * cohérence avec la période (jour de départ, durée, horizon) est jugée
+   * par `messageRegleInvalide`, seul juge, dans le refine ci-dessous.
+   */
+  recurrence: z
+    .object({
+      intervalWeeks: z.number().int().min(1).max(INTERVALLE_MAX_SEMAINES),
+      weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+      until: z.coerce.date(),
+    })
+    .nullable()
     .optional(),
 }).refine(
   (data) => data.endDate >= data.startDate,
@@ -157,7 +171,11 @@ export const blockedSlotSchema = z.object({
     return data.startTime !== null && data.endTime !== null;
   },
   { message: 'Les heures de début et de fin sont requises pour les créneaux non journée entière' }
-);
+).superRefine((data, ctx) => {
+  if (!data.recurrence) return;
+  const raison = messageRegleInvalide(data, data.recurrence);
+  if (raison) ctx.addIssue({ code: z.ZodIssueCode.custom, message: raison, path: ['recurrence'] });
+});
 
 // Exception slot schema (one-time override)
 export const exceptionSlotSchema = z.object({

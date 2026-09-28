@@ -57,6 +57,7 @@ export * from './RatingStats';
 // Lot 3 - Pro Mode
 export * from './StatCard';
 export * from './DaySchedule';
+export * from './RecurrenceFields';
 export * from './BookingListItem';
 
 // Hours

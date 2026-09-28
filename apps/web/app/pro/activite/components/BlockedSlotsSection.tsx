@@ -10,9 +10,16 @@ import {
   Input,
   Switch,
 } from '@/components/ui';
-import { Plus, Trash2, Calendar, Clock, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, Loader2, Repeat } from 'lucide-react';
 import { isBlockedPeriodValid } from '@booking-app/shared';
-import type { BlockedSlot, Location, Member } from '@booking-app/shared';
+import type { BlockedSlot, Booking, Location, Member, RecurrenceRule } from '@booking-app/shared';
+import {
+  RecurrenceFields,
+  AvertissementConflits,
+  decrireRecurrence,
+  versRegle,
+  type RecurrenceDraft,
+} from '../../calendrier/components/RecurrenceFields';
 
 type WithId<T> = { id: string } & T;
 
@@ -22,6 +29,10 @@ interface BlockedSlotsSectionProps {
   members: WithId<Member>[];
   onAdd: (data: BlockedSlotFormData) => Promise<void>;
   onDelete: (slotId: string) => Promise<void>;
+  /** Supprime les occurrences À VENIR d'une série (celles déjà passées restent). */
+  onDeleteSeries?: (seriesId: string) => Promise<void>;
+  /** Les rendez-vous que la saisie recouvrirait — on prévient avant d'écrire, on n'annule rien. */
+  verifierConflits?: (data: BlockedSlotFormData) => Promise<WithId<Booking>[]>;
   hasTeams?: boolean;
 }
 
@@ -41,6 +52,8 @@ export interface BlockedSlotFormData {
   reason: string | null;
   memberId: string; // Obligatoire
   locationId: string; // Obligatoire (dénormalisé depuis member.locationId)
+  /** Répétition ; `null` = fermeture isolée. */
+  recurrence: RecurrenceRule | null;
 }
 
 const formatDate = (date: Date): string => {
@@ -77,6 +90,8 @@ export function BlockedSlotsSection({
   members,
   onAdd,
   onDelete,
+  onDeleteSeries,
+  verifierConflits,
   hasTeams = false,
 }: BlockedSlotsSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -97,9 +112,14 @@ export function BlockedSlotsSection({
     reason: null,
     memberId: defaultMember?.id || '',
     locationId: defaultMember?.locationId || '',
+    recurrence: null,
   });
 
   const [formData, setFormData] = useState<BlockedSlotFormData>(getDefaultFormData());
+  const [recurrenceDraft, setRecurrenceDraft] = useState<RecurrenceDraft | null>(null);
+  /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
+  const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
+  const [deletingSeriesId, setDeletingSeriesId] = useState<string | null>(null);
 
   /**
    * Période invalide, recalculée à chaque frappe.
@@ -127,6 +147,8 @@ export function BlockedSlotsSection({
 
   const resetForm = () => {
     setFormData(getDefaultFormData());
+    setRecurrenceDraft(null);
+    setConflits(null);
   };
 
   const handleOpenModal = () => {
@@ -139,18 +161,50 @@ export function BlockedSlotsSection({
     resetForm();
   };
 
+  const donneesAEnvoyer = (): BlockedSlotFormData => ({
+    ...formData,
+    recurrence: recurrenceDraft ? versRegle(recurrenceDraft) : null,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Garde de dernier recours : le bouton est déjà éteint dans ce cas.
     if (periodError) return;
+    await ajouter(false);
+  };
+
+  /** Prévient des rendez-vous recouverts (une fois), puis écrit. */
+  const ajouter = async (ignorerConflits: boolean) => {
+    const data = donneesAEnvoyer();
     setLoading(true);
     try {
-      await onAdd(formData);
+      if (!ignorerConflits && verifierConflits) {
+        const touches = await verifierConflits(data);
+        if (touches.length > 0) {
+          setConflits(touches);
+          return;
+        }
+      }
+      setConflits(null);
+      await onAdd(data);
       handleCloseModal();
     } catch (error) {
       console.error('Error adding blocked slot:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSeries = async (seriesId: string) => {
+    if (!onDeleteSeries) return;
+    if (!confirm('Supprimer toutes les fermetures à venir de cette répétition ?')) return;
+    setDeletingSeriesId(seriesId);
+    try {
+      await onDeleteSeries(seriesId);
+    } catch (error) {
+      console.error('Error deleting series:', error);
+    } finally {
+      setDeletingSeriesId(null);
     }
   };
 
@@ -183,6 +237,26 @@ export function BlockedSlotsSection({
     now.setHours(0, 0, 0, 0);
     return slot.endDate >= now;
   });
+  /**
+   * Une série se lit en UNE ligne : sa prochaine occurrence, sa règle, le
+   * nombre d'occurrences à venir. Lister 52 samedis n'aiderait personne.
+   * Les fermetures isolées gardent une ligne chacune.
+   */
+  const lignes: Array<
+    | { type: 'seule'; slot: WithId<BlockedSlot> }
+    | { type: 'serie'; seriesId: string; premiere: WithId<BlockedSlot>; nombre: number }
+  > = [];
+  const seriesVues = new Set<string>();
+  for (const slot of upcomingSlots) {
+    if (!slot.seriesId) {
+      lignes.push({ type: 'seule', slot });
+      continue;
+    }
+    if (seriesVues.has(slot.seriesId)) continue;
+    seriesVues.add(slot.seriesId);
+    const occurrences = upcomingSlots.filter((x) => x.seriesId === slot.seriesId);
+    lignes.push({ type: 'serie', seriesId: slot.seriesId, premiere: slot, nombre: occurrences.length });
+  }
 
   return (
     <div className="space-y-4">
@@ -210,9 +284,12 @@ export function BlockedSlotsSection({
         </div>
       ) : (
         <div className="space-y-2">
-          {upcomingSlots.map((slot) => (
+          {lignes.map((ligne) => {
+            const slot = ligne.type === 'serie' ? ligne.premiere : ligne.slot;
+            const serie = ligne.type === 'serie' ? ligne : null;
+            return (
             <div
-              key={slot.id}
+              key={serie ? `serie-${serie.seriesId}` : slot.id}
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
             >
               <div className="flex-1 min-w-0">
@@ -238,22 +315,31 @@ export function BlockedSlotsSection({
                     <span>{getLocationName(slot.locationId)}</span>
                   )}
                 </div>
+                {serie && slot.recurrence && (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-primary-700 dark:text-primary-300">
+                    <Repeat className="w-3 h-3" />
+                    <span>
+                      {decrireRecurrence(slot.recurrence)} · {serie.nombre} à venir
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 type="button"
-                onClick={() => handleDelete(slot.id)}
-                disabled={deletingId === slot.id}
+                onClick={() => (serie ? handleDeleteSeries(serie.seriesId) : handleDelete(slot.id))}
+                disabled={serie ? deletingSeriesId === serie.seriesId : deletingId === slot.id}
                 className="p-2 text-gray-400 hover:text-error-500 dark:hover:text-error-400 transition-colors disabled:opacity-50"
-                aria-label="Supprimer"
+                aria-label={serie ? 'Supprimer les fermetures à venir de cette répétition' : 'Supprimer'}
               >
-                {deletingId === slot.id ? (
+                {(serie ? deletingSeriesId === serie.seriesId : deletingId === slot.id) ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -386,6 +472,13 @@ export function BlockedSlotsSection({
                 </div>
               )}
 
+            <RecurrenceFields
+              value={recurrenceDraft}
+              onChange={setRecurrenceDraft}
+              baseStartIso={toDayKey(formData.startDate)}
+              baseEndIso={toDayKey(formData.endDate)}
+              disabled={loading}
+            />
             {periodError && (
               <p
                 role="alert"
@@ -442,13 +535,22 @@ export function BlockedSlotsSection({
                 </p>
               </div>
             )}
+            {conflits && (
+              <AvertissementConflits
+                bookings={conflits}
+                verbe="Ajouter"
+                occupe={loading}
+                onConfirmer={() => void ajouter(true)}
+                onAnnuler={() => setConflits(null)}
+              />
+            )}
           </ModalBody>
 
           <ModalFooter>
             <Button type="button" variant="outline" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button type="submit" disabled={loading || periodError !== null}>
+            <Button type="submit" disabled={loading || periodError !== null || conflits !== null}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

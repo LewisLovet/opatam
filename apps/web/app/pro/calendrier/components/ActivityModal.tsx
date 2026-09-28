@@ -14,7 +14,16 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { isBlockedPeriodValid } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import type { Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  RecurrenceFields,
+  ChoixPortee,
+  AvertissementConflits,
+  brouillonDepuisRegle,
+  versRegle,
+  type RecurrenceDraft,
+} from './RecurrenceFields';
 import { useDevise } from '@/contexts/DeviseContext';
 import {
   Modal,
@@ -148,6 +157,13 @@ export function ActivityModal({
   // Devise FIGÉE sur l'activité à sa création ; jamais réécrite à la
   // modification, sinon une ancienne activité en euros deviendrait des francs.
   const deviseProv = useDevise();
+  /** Répétition saisie ; `null` = activité isolée. */
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
+  /** En édition : la série dont l'activité fait partie, et son début. */
+  const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
+  const [existingStart, setExistingStart] = useState<Date | null>(null);
+  const [portee, setPortee] = useState<'enregistrer' | 'supprimer' | null>(null);
+  const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -201,6 +217,9 @@ export function ActivityModal({
               ? (existing.amount / 100).toString()
               : '',
           );
+          setExistingSeriesId(existing.seriesId ?? null);
+          setExistingStart(startDt);
+          setRecurrence(existing.recurrence ? brouillonDepuisRegle(existing.recurrence) : null);
         } else {
           // Create mode defaults
           const requested = initialMemberId
@@ -218,7 +237,12 @@ export function ActivityModal({
           setAddress('');
           setNotes('');
           setAmount('');
+          setRecurrence(null);
+          setExistingSeriesId(null);
+          setExistingStart(null);
         }
+        setPortee(null);
+        setConflits(null);
       } catch (err) {
         console.error('[ActivityModal] load failed:', err);
         toast.error('Impossible de charger les données');
@@ -232,14 +256,15 @@ export function ActivityModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editId, providerId]);
 
-  const handleSave = async () => {
+  /** Ce que le formulaire décrit, prêt pour le service ; `null` + toast si invalide. */
+  const saisie = () => {
     if (!title.trim()) {
       toast.error('Donnez un titre à votre activité');
-      return;
+      return null;
     }
     if (!memberId) {
       toast.error('Sélectionnez un membre');
-      return;
+      return null;
     }
     const startDt = combine(date, startTime);
     const endDt = combine(date, endTime);
@@ -253,12 +278,12 @@ export function ActivityModal({
       !isBlockedPeriodValid({ allDay: false, sameDay: true, startTime, endTime })
     ) {
       toast.error("L'heure de fin doit être après l'heure de début");
-      return;
+      return null;
     }
     const member = members.find((m) => m.id === memberId);
     if (!member) {
       toast.error('Membre introuvable');
-      return;
+      return null;
     }
 
     // Parse amount → integer cents. Tolerant of comma decimal
@@ -273,42 +298,94 @@ export function ActivityModal({
         ? Math.round(parsedAmount * 100)
         : null;
 
+    const input: BlockedSlotInput = {
+      memberId: member.id,
+      locationId: member.locationId,
+      startDate: startDt,
+      endDate: endDt,
+      allDay: false,
+      startTime,
+      endTime,
+      reason: notes.trim() || null,
+      category,
+      title: title.trim(),
+      address: address.trim() || null,
+      amount: amountCents,
+      recurrence: recurrence ? versRegle(recurrence) : null,
+    };
+    return { startDt, endDt, member, amountCents, input };
+  };
+
+  const handleSave = () => {
+    if (!saisie()) return;
+    if (isEditing && existingSeriesId) {
+      setPortee('enregistrer');
+      return;
+    }
+    void enregistrer('cette', false);
+  };
+
+  /**
+   * Écrit, dans cet ordre : prévenir des rendez-vous recouverts (une fois),
+   * puis modifier cette occurrence / réécrire la suite de la série / créer.
+   */
+  const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
+    const s = saisie();
+    if (!s) return;
     setSaving(true);
     try {
-      if (editId) {
-        await blockedSlotRepository.update(providerId, editId, {
-          memberId: member.id,
-          locationId: member.locationId,
-          startDate: startDt,
-          endDate: endDt,
-          allDay: false,
-          startTime,
-          endTime,
-          reason: notes.trim() || null,
-          category,
-          title: title.trim(),
-          address: address.trim() || null,
-          amount: amountCents,
-        });
-        toast.success('Activité modifiée');
+      if (!ignorerConflits) {
+        const base = { startDate: s.startDt, endDate: s.endDt };
+        const dates = recurrence ? genererOccurrences(base, versRegle(recurrence)) : [base];
+        const periodes = dates.map((d) => ({ ...d, allDay: false, startTime, endTime, spanMode: 'continuous' as const }));
+        const touches = await schedulingService.rendezVousRecouverts(providerId, s.member.id, periodes);
+        if (touches.length > 0) {
+          setConflits(touches);
+          return;
+        }
+      }
+      setConflits(null);
+
+      if (isEditing && editId) {
+        if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+          // La suite de la série est réécrite depuis cette occurrence ; la
+          // devise figée à la création est reprise telle quelle.
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
+            ...s.input,
+            currency: deviseProv,
+          });
+          toast.success('Cette activité et les suivantes ont été modifiées');
+        } else if (!existingSeriesId && s.input.recurrence) {
+          // Une activité isolée devient une série : la remplacer.
+          await schedulingService.unblockPeriod(providerId, editId);
+          await schedulingService.blockPeriodRecurrent(providerId, { ...s.input, currency: deviseProv });
+          toast.success('Activité répétée');
+        } else {
+          await blockedSlotRepository.update(providerId, editId, {
+            memberId: s.member.id,
+            locationId: s.member.locationId,
+            startDate: s.startDt,
+            endDate: s.endDt,
+            allDay: false,
+            startTime,
+            endTime,
+            reason: notes.trim() || null,
+            category,
+            title: title.trim(),
+            address: address.trim() || null,
+            amount: s.amountCents,
+          });
+          toast.success('Activité modifiée');
+        }
       } else {
-        await schedulingService.blockPeriod(providerId, {
-          memberId: member.id,
-          locationId: member.locationId,
-          startDate: startDt,
-          endDate: endDt,
-          allDay: false,
-          isRecurring: false,
-          startTime,
-          endTime,
-          reason: notes.trim() || null,
-          category,
-          title: title.trim(),
-          address: address.trim() || null,
-          amount: amountCents,
-          currency: deviseProv,
-        });
-        toast.success('Activité ajoutée à votre agenda');
+        const input = { ...s.input, currency: deviseProv };
+        if (s.input.recurrence) {
+          await schedulingService.blockPeriodRecurrent(providerId, input);
+          toast.success('Activité répétée dans votre agenda');
+        } else {
+          await schedulingService.blockPeriod(providerId, input);
+          toast.success('Activité ajoutée à votre agenda');
+        }
       }
       onSaved?.();
       onClose();
@@ -319,16 +396,31 @@ export function ActivityModal({
       );
     } finally {
       setSaving(false);
+      setPortee(null);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!editId) return;
+    if (existingSeriesId) {
+      setPortee('supprimer');
+      return;
+    }
     if (!confirm('Supprimer cette activité ?')) return;
+    void supprimer('cette');
+  };
+
+  const supprimer = async (quoi: 'cette' | 'suivantes') => {
+    if (!editId) return;
     setDeleting(true);
     try {
-      await schedulingService.unblockPeriod(providerId, editId);
-      toast.success('Activité supprimée');
+      if (quoi === 'suivantes' && existingSeriesId && existingStart) {
+        const n = await schedulingService.unblockSeries(providerId, existingSeriesId, existingStart);
+        toast.success(n > 1 ? `${n} activités supprimées` : 'Activité supprimée');
+      } else {
+        await schedulingService.unblockPeriod(providerId, editId);
+        toast.success('Activité supprimée');
+      }
       onSaved?.();
       onClose();
     } catch (err) {
@@ -336,6 +428,7 @@ export function ActivityModal({
       toast.error('Impossible de supprimer');
     } finally {
       setDeleting(false);
+      setPortee(null);
     }
   };
 
@@ -462,6 +555,15 @@ export function ActivityModal({
               </div>
             </div>
 
+            <RecurrenceFields
+              value={recurrence}
+              onChange={setRecurrence}
+              baseStartIso={date}
+              baseEndIso={date}
+              enSerie={!!existingSeriesId}
+              disabled={saving || deleting}
+            />
+
             {/* Address (optional) */}
             <Input
               label="Adresse (optionnel)"
@@ -512,6 +614,23 @@ export function ActivityModal({
       </ModalBody>
 
       <ModalFooter>
+        {conflits ? (
+          <AvertissementConflits
+            bookings={conflits}
+            verbe={isEditing ? 'Enregistrer' : 'Ajouter'}
+            occupe={saving}
+            onConfirmer={() => void enregistrer(portee === 'enregistrer' ? 'suivantes' : 'cette', true)}
+            onAnnuler={() => { setConflits(null); setPortee(null); }}
+          />
+        ) : portee ? (
+          <ChoixPortee
+            action={portee}
+            occupe={saving || deleting}
+            onCette={() => (portee === 'supprimer' ? void supprimer('cette') : void enregistrer('cette', false))}
+            onSuivantes={() => (portee === 'supprimer' ? void supprimer('suivantes') : void enregistrer('suivantes', false))}
+            onAnnuler={() => setPortee(null)}
+          />
+        ) : (
         <div className="flex items-center justify-between w-full gap-2">
           {isEditing ? (
             <Button
@@ -543,6 +662,7 @@ export function ActivityModal({
             </Button>
           </div>
         </div>
+        )}
       </ModalFooter>
     </Modal>
   );

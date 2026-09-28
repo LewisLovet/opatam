@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Card, Loader, EmptyState } from '../../components';
+import { Text, Card, Loader, EmptyState, decrireRecurrence } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { useBlockedSlots } from '../../hooks';
@@ -67,6 +67,10 @@ export default function BlockedSlotsScreen() {
     allDay: boolean;
     reason: string | null;
     memberIds: string[];
+    /** Série de récurrence : UNE ligne pour toutes ses occurrences à venir. */
+    seriesId: string | null;
+    recurrence: BlockedSlot['recurrence'] | null;
+    occurrences: number;
   }
 
   const groupedSlots = useMemo(() => {
@@ -74,8 +78,11 @@ export default function BlockedSlotsScreen() {
     for (const slot of blockedSlots) {
       const sd = slot.startDate instanceof Date ? slot.startDate : (slot.startDate as any).toDate();
       const ed = slot.endDate instanceof Date ? slot.endDate : (slot.endDate as any).toDate();
-      // Key: same start + end timestamp + allDay + reason
-      const key = `${sd.getTime()}-${ed.getTime()}-${slot.allDay}-${slot.reason || ''}`;
+      // Key: same start + end timestamp + allDay + reason — ou la SÉRIE,
+      // dont on ne montre que la prochaine occurrence et le nombre.
+      const key = slot.seriesId
+        ? `serie-${slot.seriesId}`
+        : `${sd.getTime()}-${ed.getTime()}-${slot.allDay}-${slot.reason || ''}`;
       if (!groups[key]) {
         groups[key] = {
           key,
@@ -85,10 +92,22 @@ export default function BlockedSlotsScreen() {
           allDay: slot.allDay,
           reason: slot.reason,
           memberIds: [],
+          seriesId: slot.seriesId ?? null,
+          recurrence: slot.recurrence ?? null,
+          occurrences: 0,
         };
       }
-      groups[key].slots.push(slot);
-      groups[key].memberIds.push(slot.memberId);
+      const g = groups[key];
+      g.slots.push(slot);
+      if (!g.memberIds.includes(slot.memberId)) g.memberIds.push(slot.memberId);
+      if (g.seriesId) {
+        g.occurrences += 1;
+        // La ligne porte la PREMIÈRE occurrence à venir.
+        if (sd.getTime() < g.startDate.getTime()) {
+          g.startDate = sd;
+          g.endDate = ed;
+        }
+      }
     }
     // Sort groups by startDate ascending
     return Object.values(groups).sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
@@ -107,6 +126,30 @@ export default function BlockedSlotsScreen() {
   );
 
   const handleDeleteGroup = (group: SlotGroup) => {
+    if (group.seriesId) {
+      // Une série : ses occurrences À VENIR ; celles déjà passées restent.
+      const serie = group.seriesId;
+      Alert.alert(t('proBlockedSlots.delete.title'), t('recurrence.deleteSeriesMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('proBlockedSlots.delete.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (providerId) {
+                const aujourdhui = new Date();
+                aujourdhui.setHours(0, 0, 0, 0);
+                await schedulingService.unblockSeries(providerId, serie, aujourdhui);
+                refresh();
+              }
+            } catch {
+              Alert.alert(t('proBlockedSlots.delete.errorTitle'), t('proBlockedSlots.delete.error'));
+            }
+          },
+        },
+      ]);
+      return;
+    }
     const label = group.slots.length > 1
       ? t('proBlockedSlots.delete.messageMulti', { count: group.slots.length })
       : t('proBlockedSlots.delete.messageSingle', { date: formatDate(group.startDate) });
@@ -164,6 +207,14 @@ export default function BlockedSlotsScreen() {
                 ? isMultiDay ? t('proBlockedSlots.days', { count: Math.round((ed.getTime() - sd.getTime()) / 86400000) + 1 }) : t('proBlockedSlots.allDay')
                 : `${formatTime(sd)} - ${formatTime(ed)}`}
             </Text>
+            {group.recurrence && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Ionicons name="repeat-outline" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                <Text variant="caption" style={{ color: colors.primary }}>
+                  {t('recurrence.listSummary', { rule: decrireRecurrence(group.recurrence), count: group.occurrences })}
+                </Text>
+              </View>
+            )}
             {/* Member badges */}
             {members.length > 1 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs }}>
@@ -225,9 +276,14 @@ export default function BlockedSlotsScreen() {
               supprimer des documents selon les membres cochés, ce qui
               n'est plus une modification. Dans ce cas on garde la
               suppression, et le pro recrée. */}
-          {group.slots.length === 1 && (
+          {(group.slots.length === 1 || group.seriesId) && (
             <Pressable
-              onPress={() => router.push(`/(pro)/block-slot?id=${group.slots[0].id}` as any)}
+              onPress={() => {
+                // Une série s'édite par sa prochaine occurrence ; l'écran
+                // demande ensuite « celle-ci » ou « celle-ci et les suivantes ».
+                const cible = [...group.slots].sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
+                router.push(`/(pro)/block-slot?id=${cible.id}` as any);
+              }}
               hitSlop={12}
               accessibilityLabel={t('proBlockedSlots.edit')}
               style={[

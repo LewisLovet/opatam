@@ -3453,5 +3453,53 @@
       "writeUs": "Écrire à l'équipe",
       "notAnswered": "Ça ne répond pas à ma question — écrire à l'équipe"
     }
+  },
+  "recurrence": {
+    "toggle": "Répéter",
+    "frequency": "Fréquence",
+    "everyWeek": "Chaque semaine",
+    "everyNWeeks": "Toutes les {{count}} semaines",
+    "daysLabel": "Les jours",
+    "dayLabel": "Le jour",
+    "until": "Jusqu'au",
+    "untilTitle": "Fin de la répétition",
+    "multiDayNote": "Une période de plusieurs jours se répète sur son jour de départ.",
+    "summary": "{{rule}} — {{count}} fois.",
+    "describeWeekly": "Chaque semaine {{days}}, jusqu'au {{until}}",
+    "describeEveryN": "Toutes les {{n}} semaines {{days}}, jusqu'au {{until}}",
+    "dayOne": "le {{day}}",
+    "dayMany": "les {{days}}",
+    "and": " et ",
+    "seriesNote": "La répétition s’applique à « celle-ci et les suivantes ».",
+    "errors": {
+      "intervalle": "L'intervalle doit être entre 1 et 4 semaines",
+      "aucunJour": "Choisissez au moins un jour de la semaine",
+      "jourDeBaseAbsent": "Le jour de la période saisie doit faire partie des jours répétés",
+      "plusieursJoursMultiJours": "Une période de plusieurs jours ne se répète que sur un seul jour de la semaine",
+      "finAvantDebut": "La date de fin doit être après ou égale à la date de début",
+      "finAvantPremiere": "La fin de la répétition doit être après la première occurrence",
+      "horizon": "Une répétition ne peut pas dépasser un an"
+    },
+    "scope": {
+      "title": "Cette période fait partie d’une répétition",
+      "saveMessage": "Appliquer les modifications à quelles occurrences ?",
+      "deleteMessage": "Supprimer quelles occurrences ?",
+      "thisOne": "Celle-ci seulement",
+      "following": "Celle-ci et les suivantes"
+    },
+    "conflicts": {
+      "title_one": "Un rendez-vous tombe sur cette période",
+      "title_other": "{{count}} rendez-vous tombent sur ces dates",
+      "message": "Ils ne seront pas annulés : à vous de les déplacer ou de prévenir.\n\n{{list}}",
+      "more": "… et {{count}} autre(s)",
+      "proceed": "Continuer quand même"
+    },
+    "saved_one": "Répétition enregistrée : {{count}} occurrence",
+    "saved_other": "Répétition enregistrée : {{count}} occurrences",
+    "seriesUpdated": "Cette occurrence et les suivantes ont été modifiées",
+    "seriesDeleted_one": "{{count}} occurrence supprimée",
+    "seriesDeleted_other": "{{count}} occurrences supprimées",
+    "listSummary": "{{rule}} · {{count}} à venir",
+    "deleteSeriesMessage": "Supprimer toutes les occurrences à venir de cette répétition ?"
   }
 }

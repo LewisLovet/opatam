@@ -2069,6 +2069,31 @@ export default function CalendarScreen() {
       }
 
       const label = slot?.reason || t('proCalendar.blockedSlot.fallbackLabel');
+      /**
+       * Supprime cette occurrence, ou « celle-ci et les suivantes » quand le
+       * blocage appartient à une série. Le passé de la série reste.
+       */
+      const supprimer = async (quoi: 'cette' | 'suivantes') => {
+        if (!providerId) return;
+        try {
+          if (quoi === 'suivantes' && slot?.seriesId) {
+            const serie = slot.seriesId;
+            const depuis = slot.startDate.getTime();
+            await schedulingService.unblockSeries(providerId, serie, slot.startDate);
+            setBlockedSlots((prev) => prev.filter((s) => !(s.seriesId === serie && s.startDate.getTime() >= depuis)));
+          } else {
+            await schedulingService.unblockPeriod(providerId, id);
+            // Drop the row from local state so the calendar
+            // reflects the delete without a refetch.
+            setBlockedSlots((prev) => prev.filter((s) => s.id !== id));
+          }
+        } catch (err) {
+          Alert.alert(
+            t('proCalendar.blockedSlot.errorTitle'),
+            err instanceof Error ? err.message : t('proCalendar.blockedSlot.deleteError'),
+          );
+        }
+      };
       Alert.alert(label, t('proCalendar.blockedSlot.actionsMessage'), [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -2081,19 +2106,16 @@ export default function CalendarScreen() {
         {
           text: t('proCalendar.blockedSlot.delete'),
           style: 'destructive',
-          onPress: async () => {
-            if (!providerId) return;
-            try {
-              await schedulingService.unblockPeriod(providerId, id);
-              // Drop the row from local state so the calendar
-              // reflects the delete without a refetch.
-              setBlockedSlots((prev) => prev.filter((s) => s.id !== id));
-            } catch (err) {
-              Alert.alert(
-                t('proCalendar.blockedSlot.errorTitle'),
-                err instanceof Error ? err.message : t('proCalendar.blockedSlot.deleteError'),
-              );
+          onPress: () => {
+            if (!slot?.seriesId) {
+              void supprimer('cette');
+              return;
             }
+            Alert.alert(t('recurrence.scope.title'), t('recurrence.scope.deleteMessage'), [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('recurrence.scope.thisOne'), style: 'destructive', onPress: () => void supprimer('cette') },
+              { text: t('recurrence.scope.following'), style: 'destructive', onPress: () => void supprimer('suivantes') },
+            ]);
           },
         },
       ]);

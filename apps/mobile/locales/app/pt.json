@@ -3453,5 +3453,53 @@
       "writeUs": "Escrever à equipa",
       "notAnswered": "Não responde à minha pergunta — escrever à equipa"
     }
+  },
+  "recurrence": {
+    "toggle": "Repetir",
+    "frequency": "Frequência",
+    "everyWeek": "Todas as semanas",
+    "everyNWeeks": "A cada {{count}} semanas",
+    "daysLabel": "Os dias",
+    "dayLabel": "O dia",
+    "until": "Até",
+    "untilTitle": "Fim da repetição",
+    "multiDayNote": "Um período de vários dias repete-se no seu dia de início.",
+    "summary": "{{rule}} — {{count}} vezes.",
+    "describeWeekly": "Todas as semanas {{days}}, até {{until}}",
+    "describeEveryN": "A cada {{n}} semanas {{days}}, até {{until}}",
+    "dayOne": "à {{day}}",
+    "dayMany": "às {{days}}",
+    "and": " e ",
+    "seriesNote": "A repetição aplica-se a « esta e as seguintes ».",
+    "errors": {
+      "intervalle": "O intervalo deve estar entre 1 e 4 semanas",
+      "aucunJour": "Escolha pelo menos um dia da semana",
+      "jourDeBaseAbsent": "O dia do período introduzido deve fazer parte dos dias repetidos",
+      "plusieursJoursMultiJours": "Um período de vários dias só se repete num único dia da semana",
+      "finAvantDebut": "A data de fim deve ser igual ou posterior à data de início",
+      "finAvantPremiere": "O fim da repetição deve ser posterior à primeira ocorrência",
+      "horizon": "Uma repetição não pode ultrapassar um ano"
+    },
+    "scope": {
+      "title": "Este período faz parte de uma repetição",
+      "saveMessage": "Aplicar as alterações a que ocorrências?",
+      "deleteMessage": "Eliminar que ocorrências?",
+      "thisOne": "Apenas esta",
+      "following": "Esta e as seguintes"
+    },
+    "conflicts": {
+      "title_one": "Uma marcação cai neste período",
+      "title_other": "{{count}} marcações caem nestas datas",
+      "message": "Não serão canceladas: cabe-lhe movê-las ou avisar.\n\n{{list}}",
+      "more": "… e mais {{count}}",
+      "proceed": "Continuar mesmo assim"
+    },
+    "saved_one": "Repetição guardada: {{count}} ocorrência",
+    "saved_other": "Repetição guardada: {{count}} ocorrências",
+    "seriesUpdated": "Esta ocorrência e as seguintes foram alteradas",
+    "seriesDeleted_one": "{{count}} ocorrência eliminada",
+    "seriesDeleted_other": "{{count}} ocorrências eliminadas",
+    "listSummary": "{{rule}} · {{count}} por vir",
+    "deleteSeriesMessage": "Eliminar todas as ocorrências futuras desta repetição?"
   }
 }

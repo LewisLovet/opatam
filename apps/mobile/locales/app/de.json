@@ -3453,5 +3453,53 @@
       "writeUs": "Dem Team schreiben",
       "notAnswered": "Das beantwortet meine Frage nicht — dem Team schreiben"
     }
+  },
+  "recurrence": {
+    "toggle": "Wiederholen",
+    "frequency": "Häufigkeit",
+    "everyWeek": "Jede Woche",
+    "everyNWeeks": "Alle {{count}} Wochen",
+    "daysLabel": "An den Tagen",
+    "dayLabel": "Am",
+    "until": "Bis zum",
+    "untilTitle": "Ende der Wiederholung",
+    "multiDayNote": "Ein mehrtägiger Zeitraum wiederholt sich an seinem Starttag.",
+    "summary": "{{rule}} — {{count}} Mal.",
+    "describeWeekly": "Jede Woche {{days}}, bis zum {{until}}",
+    "describeEveryN": "Alle {{n}} Wochen {{days}}, bis zum {{until}}",
+    "dayOne": "am {{day}}",
+    "dayMany": "am {{days}}",
+    "and": " und ",
+    "seriesNote": "Die Wiederholung gilt für „diesen und alle folgenden“.",
+    "errors": {
+      "intervalle": "Der Abstand muss zwischen 1 und 4 Wochen liegen",
+      "aucunJour": "Wählen Sie mindestens einen Wochentag",
+      "jourDeBaseAbsent": "Der Tag des eingegebenen Zeitraums muss zu den wiederholten Tagen gehören",
+      "plusieursJoursMultiJours": "Ein mehrtägiger Zeitraum kann nur an einem Wochentag wiederholt werden",
+      "finAvantDebut": "Das Enddatum muss am oder nach dem Startdatum liegen",
+      "finAvantPremiere": "Das Ende der Wiederholung muss nach dem ersten Termin liegen",
+      "horizon": "Eine Wiederholung darf ein Jahr nicht überschreiten"
+    },
+    "scope": {
+      "title": "Dieser Zeitraum gehört zu einer Wiederholung",
+      "saveMessage": "Auf welche Termine sollen die Änderungen angewendet werden?",
+      "deleteMessage": "Welche Termine löschen?",
+      "thisOne": "Nur diesen",
+      "following": "Diesen und alle folgenden"
+    },
+    "conflicts": {
+      "title_one": "Ein Termin fällt in diesen Zeitraum",
+      "title_other": "{{count}} Termine fallen in diese Daten",
+      "message": "Sie werden nicht storniert: Sie müssen sie verschieben oder Bescheid geben.\n\n{{list}}",
+      "more": "… und {{count}} weitere",
+      "proceed": "Trotzdem fortfahren"
+    },
+    "saved_one": "Wiederholung gespeichert: {{count}} Termin",
+    "saved_other": "Wiederholung gespeichert: {{count}} Termine",
+    "seriesUpdated": "Dieser Termin und alle folgenden wurden geändert",
+    "seriesDeleted_one": "{{count}} Termin gelöscht",
+    "seriesDeleted_other": "{{count}} Termine gelöscht",
+    "listSummary": "{{rule}} · {{count}} bevorstehend",
+    "deleteSeriesMessage": "Alle bevorstehenden Termine dieser Wiederholung löschen?"
   }
 }

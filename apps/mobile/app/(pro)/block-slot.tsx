@@ -22,11 +22,11 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
-import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal } from '../../components';
+import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
-import { isBlockedPeriodValid } from '@booking-app/shared';
-import type { Member } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences } from '@booking-app/shared';
+import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 // Date localisée via Intl sur la langue de l'app (plus de tableaux FR en dur).
@@ -394,6 +394,11 @@ export default function BlockSlotScreen() {
   /** Voir le sélecteur plus bas : deux intentions très différentes se
    *  saisissaient de la même façon sans que rien ne les distingue. */
   const [spanMode, setSpanMode] = useState<'continuous' | 'daily'>('continuous');
+  /** Répétition saisie ; `null` = période isolée. */
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
+  /** En édition : la série dont la période fait partie, et son début — pour « celle-ci et les suivantes ». */
+  const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
+  const [existingStart, setExistingStart] = useState<Date | null>(null);
   const [reason, setReason] = useState('');
   const [isCustomReason, setIsCustomReason] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -437,6 +442,9 @@ export default function BlockSlotScreen() {
         setEndDate(ed);
         setAllDay(existing.allDay);
         setSpanMode(existing.spanMode === 'daily' ? 'daily' : 'continuous');
+        setExistingSeriesId(existing.seriesId ?? null);
+        setExistingStart(new Date(sd));
+        setRecurrence(existing.recurrence ?? null);
         setReason(existing.reason ?? '');
         // Un motif absent des propositions est forcément une saisie libre.
         const presetLabels = REASON_KEYS.map((k) => i18n.t(`proBlockSlot.reasons.${k}`));
@@ -516,27 +524,109 @@ export default function BlockSlotScreen() {
 
   const invalidPeriod = periodError();
 
-  const handleSubmit = async () => {
+  /** La période et ses heures, prêtes pour le service. */
+  const saisie = (): Omit<BlockedSlotInput, 'memberId' | 'locationId'> => ({
+    startDate,
+    endDate,
+    allDay,
+    startTime: allDay ? null : formatTime(startDate),
+    endTime: allDay ? null : formatTime(endDate),
+    spanMode,
+    reason: reason.trim() || null,
+    recurrence,
+  });
+
+  const handleSubmit = () => {
     if (!providerId || selectedMemberIds.length === 0) {
       Alert.alert(t('proBlockSlot.errorTitle'), t('proBlockSlot.selectAtLeastOne'));
       return;
     }
-
     if (invalidPeriod) {
       Alert.alert(t('proBlockSlot.errorTitle'), invalidPeriod);
       return;
     }
+    // En série, la question de la portée vient AVANT tout le reste.
+    if (editId && existingSeriesId) {
+      Alert.alert(t('recurrence.scope.title'), t('recurrence.scope.saveMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('recurrence.scope.thisOne'), onPress: () => void enregistrer('cette', false) },
+        { text: t('recurrence.scope.following'), onPress: () => void enregistrer('suivantes', false) },
+      ]);
+      return;
+    }
+    void enregistrer('cette', false);
+  };
 
+  /**
+   * Écrit, dans cet ordre : prévenir des rendez-vous recouverts (une fois),
+   * puis modifier cette occurrence / réécrire la suite de la série / créer.
+   */
+  const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
+    if (!providerId) return;
+    const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id));
     try {
       setIsSubmitting(true);
+      const base = saisie();
 
-      const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id));
+      // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
+      //    on n'annule rien — et on ne pose la question qu'une fois.
+      if (!ignorerConflits) {
+        const dates = recurrence
+          ? genererOccurrences({ startDate, endDate }, recurrence)
+          : [{ startDate, endDate }];
+        const periodes = dates.map((d) => ({ ...d, allDay, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode }));
+        const parMembre = await Promise.all(
+          selectedMembers.map((m) => schedulingService.rendezVousRecouverts(providerId, m.id, periodes)),
+        );
+        const touches: WithId<Booking>[] = parMembre.flat();
+        if (touches.length > 0) {
+          const lignes = touches
+            .slice(0, 6)
+            .map((b) => `${formatDateShort(b.datetime)} ${formatTime(b.datetime)} — ${b.clientInfo.name} · ${b.serviceName}`);
+          if (touches.length > 6) lignes.push(t('recurrence.conflicts.more', { count: touches.length - 6 }));
+          setIsSubmitting(false);
+          Alert.alert(
+            t('recurrence.conflicts.title', { count: touches.length }),
+            t('recurrence.conflicts.message', { list: lignes.join('\n') }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('recurrence.conflicts.proceed'), onPress: () => void enregistrer(quoi, true) },
+            ],
+          );
+          return;
+        }
+      }
 
       if (editId) {
-        // MODIFICATION du document existant — aucune contrainte technique
-        // ne l'interdisait : le repo expose `update`, le web s'en sert
-        // déjà pour ce même type de document, et le trigger de stats
-        // traite les écritures comme les créations.
+        const member = selectedMembers[0];
+        if (quoi === 'suivantes' && existingSeriesId && existingStart && member) {
+          // 2a. Réécrire la suite de la série depuis cette occurrence ; sans
+          //     règle, c'est « arrêter la répétition ici ».
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
+            ...base,
+            memberId: member.id,
+            locationId: member.locationId,
+          });
+          Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.seriesUpdated'), [
+            { text: t('proBlockSlot.ok'), onPress: () => router.back() },
+          ]);
+          return;
+        }
+        if (!existingSeriesId && recurrence && member) {
+          // 2b. Une période isolée devient une série : la remplacer.
+          await schedulingService.unblockPeriod(providerId, editId);
+          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, {
+            ...base,
+            memberId: member.id,
+            locationId: member.locationId,
+          });
+          Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.saved', { count: ids.length }), [
+            { text: t('proBlockSlot.ok'), onPress: () => router.back() },
+          ]);
+          return;
+        }
+        // 2c. Cette occurrence seulement — la règle copiée sur le document
+        //     ne bouge pas, l'occurrence reste dans sa série.
         await blockedSlotRepository.update(providerId, editId, {
           startDate,
           endDate,
@@ -552,19 +642,29 @@ export default function BlockSlotScreen() {
         return;
       }
 
+      // 3. Création : une période — ou une série — par membre.
+      if (recurrence) {
+        const series = await Promise.all(
+          selectedMembers.map((member) =>
+            schedulingService.blockPeriodRecurrent(providerId, {
+              ...base,
+              memberId: member.id,
+              locationId: member.locationId,
+            }),
+          ),
+        );
+        const occurrences = series[0]?.ids.length ?? 0;
+        Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.saved', { count: occurrences }), [
+          { text: t('proBlockSlot.ok'), onPress: () => router.back() },
+        ]);
+        return;
+      }
       await Promise.all(
         selectedMembers.map((member) =>
           schedulingService.blockPeriod(providerId, {
+            ...base,
             memberId: member.id,
             locationId: member.locationId,
-            startDate,
-            endDate,
-            allDay,
-            isRecurring: false,
-            startTime: allDay ? null : formatTime(startDate),
-            endTime: allDay ? null : formatTime(endDate),
-            spanMode,
-            reason: reason.trim() || null,
           }),
         ),
       );
@@ -777,6 +877,18 @@ export default function BlockSlotScreen() {
             </View>
           </>
         )}
+
+        {/* Répétition */}
+        <View style={{ marginBottom: spacing.xl }}>
+          <RecurrenceFields
+            value={recurrence}
+            onChange={setRecurrence}
+            baseStart={startDate}
+            baseEnd={endDate}
+            enSerie={!!existingSeriesId}
+            disabled={isSubmitting}
+          />
+        </View>
 
         {/* Reason section */}
         <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5, marginLeft: spacing.xs }}>

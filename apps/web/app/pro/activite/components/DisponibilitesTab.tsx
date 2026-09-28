@@ -19,7 +19,7 @@ import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
 import { CopierHorairesVers } from './organisation/CopierHorairesVers';
 import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
-import { horairesEnVigueur, resumerHoraires } from '@booking-app/shared';
+import { horairesEnVigueur, resumerHoraires, genererOccurrences } from '@booking-app/shared';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
 
 type WithId<T> = { id: string } & T;
@@ -344,24 +344,62 @@ export function DisponibilitesTab() {
     if (!provider) return;
 
     try {
-      await schedulingService.blockPeriod(provider.id, {
+      const input = {
         startDate: data.startDate,
         endDate: data.endDate,
         allDay: data.allDay,
-        isRecurring: false,
         startTime: data.startTime,
         endTime: data.endTime,
         spanMode: data.spanMode,
         reason: data.reason,
         memberId: data.memberId,
         locationId: data.locationId,
-      });
-      toast.success('Période de fermeture ajoutée');
+        recurrence: data.recurrence,
+      };
+      if (data.recurrence) {
+        await schedulingService.blockPeriodRecurrent(provider.id, input);
+        toast.success('Fermeture répétée');
+      } else {
+        await schedulingService.blockPeriod(provider.id, input);
+        toast.success('Période de fermeture ajoutée');
+      }
       const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
       setBlockedSlots(blockedSlotsData);
     } catch (error) {
       console.error('Add blocked slot error:', error);
       toast.error("Erreur lors de l'ajout");
+      throw error;
+    }
+  };
+
+  /** Les rendez-vous que la saisie recouvrirait — la série dépliée, ou la période seule. */
+  const verifierConflitsFermeture = async (data: BlockedSlotFormData) => {
+    if (!provider) return [];
+    const base = { startDate: data.startDate, endDate: data.endDate };
+    const dates = data.recurrence ? genererOccurrences(base, data.recurrence) : [base];
+    const periodes = dates.map((d) => ({
+      ...d,
+      allDay: data.allDay,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      spanMode: data.spanMode,
+    }));
+    return schedulingService.rendezVousRecouverts(provider.id, data.memberId, periodes);
+  };
+
+  /** Retire les occurrences à venir d'une série ; le passé reste tel quel. */
+  const handleDeleteSeries = async (seriesId: string) => {
+    if (!provider) return;
+    try {
+      const aujourdhui = new Date();
+      aujourdhui.setHours(0, 0, 0, 0);
+      const n = await schedulingService.unblockSeries(provider.id, seriesId, aujourdhui);
+      toast.success(n > 1 ? `${n} fermetures supprimées` : 'Fermeture supprimée');
+      const blockedSlotsData = await schedulingService.getUpcomingBlockedSlots(provider.id);
+      setBlockedSlots(blockedSlotsData);
+    } catch (error) {
+      console.error('Delete series error:', error);
+      toast.error('Erreur lors de la suppression');
       throw error;
     }
   };
@@ -511,6 +549,8 @@ export function DisponibilitesTab() {
               members={members}
               onAdd={handleAddBlockedSlot}
               onDelete={handleDeleteBlockedSlot}
+              onDeleteSeries={handleDeleteSeries}
+              verifierConflits={verifierConflitsFermeture}
               hasTeams={hasMultipleMembers}
             />
           </div>
