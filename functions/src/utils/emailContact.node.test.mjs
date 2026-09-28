@@ -42,13 +42,18 @@ describe('2. le bouton dans le gabarit HTML', () => {
 
   it('le numéro est DANS le bouton, et le bouton appelle', () => {
     assert.match(bouton, /href="tel:\$\{escapeHtml\(href\)\}"/, 'lien tel: échappé');
-    assert.match(bouton, /&#x1F4DE;(&nbsp;)+\$\{escapeHtml\(phone\)\}/, 'icône d’appel puis le numéro, rien d’autre');
+    assert.match(bouton, /<img src="\$\{assets\.icons\.phone\}"[^>]*\/>\$\{escapeHtml\(phone\)\}/, 'icône (image) puis le numéro, rien d’autre');
+    assert.doesNotMatch(bouton, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]|&#x1F|&#x26/u, 'une IMAGE, jamais un emoji');
+    assert.match(bouton, /alt=""/, 'icône décorative : images bloquées = le numéro suffit');
     assert.match(bouton, /display: inline-block/, 'rendu comme un bouton, pas comme une ligne de texte');
     assert.match(bouton, /<table role="presentation"[^>]*><tr><td align="center">/, 'centré en table, comme les autres boutons');
   });
   it('le bouton ne traduit RIEN : ni libellé, ni langue en paramètre', () => {
     assert.match(bouton, /function boutonAppelHtml\(phone: string \| null \| undefined\): string/, 'pas de paramètre de langue');
     assert.doesNotMatch(bouton, /EMAIL_TEXTS|callCta|locale/, 'l’icône et le numéro parlent d’eux-mêmes');
+  });
+  it('l’icône est servie depuis les assets publics, comme le logo des e-mails', () => {
+    assert.match(src, /phone: `\$\{ASSETS_BASE_URL\}\/assets%2Ficons%2Fphone\.png\?alt=media`/);
   });
   it('rien à composer, rien à afficher', () => {
     assert.match(bouton, /if \(!phone\) return '';/);

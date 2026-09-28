@@ -72,6 +72,17 @@ export const assets = {
     dark: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-dark.png?alt=media`,
     email: `${ASSETS_BASE_URL}/assets%2Flogos%2Flogo-email.png?alt=media`,
   },
+  icons: {
+    /**
+     * L'icône « phone » de lucide-react — celle du produit —, rastérisée en
+     * PNG 64×64 et publiée par `scripts/assets/publier-icone-email.mjs`.
+     *
+     * Une IMAGE, pas un emoji : un emoji change de dessin d'un téléphone à
+     * l'autre (et devient un pictogramme couleur là où on voulait un trait
+     * sobre). Ni SVG ni `data:` : Gmail et Outlook les retirent.
+     */
+    phone: `${ASSETS_BASE_URL}/assets%2Ficons%2Fphone.png?alt=media`,
+  },
 } as const;
 
 // Helper to format date in French.
@@ -417,14 +428,16 @@ function escapeHtml(s: string): string {
  * c'est ce que les clients de messagerie savent aligner.
  *
  * PAS de libellé « Appeler » : l'icône et le numéro suffisent, dans toutes
- * les langues — le bouton n'a donc rien à traduire.
+ * les langues — le bouton n'a donc rien à traduire. L'icône est une image
+ * (`assets.icons.phone`), jamais un emoji ; `alt=""` la rend décorative,
+ * car si les images sont bloquées le numéro se suffit à lui-même.
  */
 function boutonAppelHtml(phone: string | null | undefined): string {
   if (!phone) return '';
   const href = telHref(phone);
   if (!href) return '';
   return `<table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;"><tr><td align="center">
-    <a href="tel:${escapeHtml(href)}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600; color: #3f3f46;">&#x1F4DE;&nbsp;&nbsp;${escapeHtml(phone)}</a>
+    <a href="tel:${escapeHtml(href)}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600; color: #3f3f46;"><img src="${assets.icons.phone}" width="16" height="16" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 8px; border: 0;" />${escapeHtml(phone)}</a>
   </td></tr></table>`;
 }
 
