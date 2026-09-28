@@ -128,6 +128,14 @@ export function BlockPeriodModal({
   const [existingStart, setExistingStart] = useState<Date | null>(null);
   /** Question posée en pied de modale quand la période est en série. */
   const [portee, setPortee] = useState<'enregistrer' | 'supprimer' | null>(null);
+  /**
+   * La portée RETENUE par le professionnel (« celle-ci » / « celle-ci et les
+   * suivantes »). Distincte de `portee`, qui ne dit que QUELLE question est
+   * posée et retombe à `null` dès qu'elle a été répondue : la déduire de
+   * `portee` au moment de confirmer un conflit ramenait silencieusement à
+   * « cette occurrence seulement ».
+   */
+  const [porteeRetenue, setPorteeRetenue] = useState<'cette' | 'suivantes'>('cette');
   /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
 
@@ -328,6 +336,7 @@ export function BlockPeriodModal({
    * puis modifier cette occurrence / réécrire la suite de la série / créer.
    */
   const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
+    setPorteeRetenue(quoi);
     const s = saisie();
     if (!s) return;
     const targets = isEditing
@@ -343,10 +352,12 @@ export function BlockPeriodModal({
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
         const periodes = periodesAEcrire(s.startDt, s.endDt);
-        const parMembre = await Promise.all(
-          targets.map((m) => schedulingService.rendezVousRecouverts(providerId, m.id, periodes)),
+        const parMembre = await schedulingService.rendezVousRecouvertsParMembre(
+          providerId,
+          targets.map((m) => m.id),
+          periodes,
         );
-        const touches = parMembre.flat();
+        const touches = [...parMembre.values()].flat();
         if (touches.length > 0) {
           setConflits(touches);
           return;
@@ -631,7 +642,7 @@ export function BlockPeriodModal({
             bookings={conflits}
             verbe={isEditing ? 'Enregistrer' : 'Bloquer'}
             occupe={saving}
-            onConfirmer={() => void enregistrer(portee === 'enregistrer' ? 'suivantes' : 'cette', true)}
+            onConfirmer={() => void enregistrer(porteeRetenue, true)}
             onAnnuler={() => { setConflits(null); setPortee(null); }}
           />
         ) : portee ? (

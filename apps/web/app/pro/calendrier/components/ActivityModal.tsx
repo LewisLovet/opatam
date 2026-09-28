@@ -163,6 +163,14 @@ export function ActivityModal({
   const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
   const [existingStart, setExistingStart] = useState<Date | null>(null);
   const [portee, setPortee] = useState<'enregistrer' | 'supprimer' | null>(null);
+  /**
+   * La portée RETENUE par le professionnel (« celle-ci » / « celle-ci et les
+   * suivantes »). Distincte de `portee`, qui ne dit que QUELLE question est
+   * posée et retombe à `null` dès qu'elle a été répondue : la déduire de
+   * `portee` au moment de confirmer un conflit ramenait silencieusement à
+   * « cette occurrence seulement ».
+   */
+  const [porteeRetenue, setPorteeRetenue] = useState<'cette' | 'suivantes'>('cette');
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -330,6 +338,7 @@ export function ActivityModal({
    * puis modifier cette occurrence / réécrire la suite de la série / créer.
    */
   const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
+    setPorteeRetenue(quoi);
     const s = saisie();
     if (!s) return;
     setSaving(true);
@@ -619,7 +628,7 @@ export function ActivityModal({
             bookings={conflits}
             verbe={isEditing ? 'Enregistrer' : 'Ajouter'}
             occupe={saving}
-            onConfirmer={() => void enregistrer(portee === 'enregistrer' ? 'suivantes' : 'cette', true)}
+            onConfirmer={() => void enregistrer(porteeRetenue, true)}
             onAnnuler={() => { setConflits(null); setPortee(null); }}
           />
         ) : portee ? (

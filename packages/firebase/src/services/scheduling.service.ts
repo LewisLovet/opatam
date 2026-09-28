@@ -559,35 +559,57 @@ export class SchedulingService {
   }
 
   /**
-   * Les rendez-vous d'un membre que ces périodes recouvriraient. À
-   * afficher AVANT d'enregistrer : on prévient, on n'annule rien. Même
-   * lecture des fenêtres que le moteur de créneaux (`isTimeBlockedBySlot`),
-   * dans le fuseau du lieu du membre.
+   * Les rendez-vous que ces périodes recouvriraient, pour PLUSIEURS membres
+   * à la fois. À afficher AVANT d'enregistrer : on prévient, on n'annule
+   * rien. Même lecture des fenêtres que le moteur de créneaux
+   * (`isTimeBlockedBySlot`), dans le fuseau du lieu de chaque membre.
+   *
+   * Les réservations de la plage sont lues UNE SEULE FOIS, pour toute
+   * l'équipe : appeler la version « un membre » en boucle relançait la même
+   * requête autant de fois qu'il y a de membres — et sur une série d'un an,
+   * cette requête n'est pas anodine. Même leçon que le moteur de
+   * disponibilités, qui lit sa plage en une fois.
    */
-  async rendezVousRecouverts(
+  async rendezVousRecouvertsParMembre(
     providerId: string,
-    memberId: string,
+    memberIds: string[],
     periodes: Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>,
-  ): Promise<WithId<Booking>[]> {
-    if (periodes.length === 0) return [];
+  ): Promise<Map<string, WithId<Booking>[]>> {
+    const resultat = new Map<string, WithId<Booking>[]>();
+    if (periodes.length === 0 || memberIds.length === 0) return resultat;
     const debut = new Date(Math.min(...periodes.map((p) => p.startDate.getTime())));
     const fin = new Date(Math.max(...periodes.map((p) => p.endDate.getTime())));
     // Une période à heures peut finir le lendemain minuit : une journée de marge de chaque côté.
-    const [fuseau, bookings] = await Promise.all([
-      this.fuseauDuLieuDuMembre(providerId, memberId),
+    const [bookings, fuseaux] = await Promise.all([
       bookingRepository.getUpcomingByProvider(
         providerId,
         new Date(debut.getTime() - 86_400_000),
         new Date(fin.getTime() + 86_400_000),
       ),
+      Promise.all(memberIds.map((id) => this.fuseauDuLieuDuMembre(providerId, id))),
     ]);
-    const duMembre = bookings.filter((b) => b.memberId === memberId);
-    const touches = duMembre.filter((b) =>
-      periodes.some((p) =>
-        this.isTimeBlockedBySlot(b.datetime, b.endDatetime, p as BlockedSlot, fuseau ?? FUSEAU_COMPAT),
-      ),
-    );
-    return touches.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+    memberIds.forEach((memberId, i) => {
+      const fuseau = fuseaux[i] ?? FUSEAU_COMPAT;
+      const touches = bookings
+        .filter(
+          (b) =>
+            b.memberId === memberId &&
+            periodes.some((p) => this.isTimeBlockedBySlot(b.datetime, b.endDatetime, p as BlockedSlot, fuseau)),
+        )
+        .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+      resultat.set(memberId, touches);
+    });
+    return resultat;
+  }
+
+  /** Les rendez-vous recouverts pour UN membre — voir la version par équipe. */
+  async rendezVousRecouverts(
+    providerId: string,
+    memberId: string,
+    periodes: Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>,
+  ): Promise<WithId<Booking>[]> {
+    const parMembre = await this.rendezVousRecouvertsParMembre(providerId, [memberId], periodes);
+    return parMembre.get(memberId) ?? [];
   }
 
   /** La règle de cohérence d'une période, commune au blocage simple et à la série. */

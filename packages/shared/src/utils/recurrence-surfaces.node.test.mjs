@@ -62,10 +62,16 @@ describe('1. le service écrit la série champ par champ, sans rien perdre', () 
     assert.match(maj, /this\.blockPeriodRecurrent\(providerId, input, seriesId\)/, 'la suite est régénérée sous le MÊME seriesId');
   });
   it('les rendez-vous recouverts sont jugés avec la lecture du moteur, dans le fuseau du lieu', () => {
-    const corps = service.slice(service.indexOf('async rendezVousRecouverts('), service.indexOf('private verifierPeriode('));
+    const corps = service.slice(service.indexOf('async rendezVousRecouvertsParMembre('), service.indexOf('private verifierPeriode('));
     assert.match(corps, /this\.isTimeBlockedBySlot\(b\.datetime, b\.endDatetime/);
-    assert.match(corps, /fuseauDuLieuDuMembre\(providerId, memberId\)/);
+    assert.match(corps, /fuseauDuLieuDuMembre\(providerId, id\)/);
     assert.match(corps, /b\.memberId === memberId/);
+  });
+  it('les réservations de la plage sont lues UNE fois pour toute l’équipe', () => {
+    const corps = service.slice(service.indexOf('async rendezVousRecouvertsParMembre('), service.indexOf('async rendezVousRecouverts('));
+    assert.equal((corps.match(/getUpcomingByProvider\(/g) ?? []).length, 1, 'une seule requête, quel que soit le nombre de membres');
+    const solo = service.slice(service.indexOf('async rendezVousRecouverts('), service.indexOf('private verifierPeriode('));
+    assert.match(solo, /this\.rendezVousRecouvertsParMembre\(providerId, \[memberId\], periodes\)/, 'la version « un membre » délègue');
   });
 });
 
@@ -91,7 +97,7 @@ describe('3. les cinq formulaires', () => {
     });
     it(`${nom} : répète par blockPeriodRecurrent et prévient des rendez-vous recouverts`, () => {
       assert.match(src, /blockPeriodRecurrent\(/);
-      assert.match(src, /rendezVousRecouverts\(/);
+      assert.match(src, /rendezVousRecouverts(ParMembre)?\(/);
     });
   }
   for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity']) {
@@ -109,6 +115,27 @@ describe('3. les cinq formulaires', () => {
       assert.match(src, /unblockSeries\(/);
     });
   }
+});
+
+describe('3 bis. la portée choisie survit à l’avertissement de conflits', () => {
+  // Défaut trouvé à l'audit : `portee` ne dit que QUELLE question est posée
+  // et retombe à `null` une fois répondue. La déduire au moment de confirmer
+  // un conflit ramenait « celle-ci et les suivantes » à « celle-ci », sans
+  // rien dire. La portée retenue est donc gardée à part.
+  for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal']) {
+    const src = lire(formulaires[nom]);
+    it(`${nom} : le conflit est confirmé avec la portée retenue, pas déduite`, () => {
+      assert.match(src, /const \[porteeRetenue, setPorteeRetenue\] = useState<'cette' \| 'suivantes'>\('cette'\)/);
+      assert.match(src, /setPorteeRetenue\(quoi\);/, 'retenue à l’entrée de `enregistrer`');
+      assert.match(src, /onConfirmer=\{\(\) => void enregistrer\(porteeRetenue, true\)\}/);
+      assert.doesNotMatch(src, /portee === 'enregistrer' \? 'suivantes' : 'cette'/, 'plus aucune déduction');
+    });
+  }
+  it('web · BlockPeriodModal lit les réservations de l’équipe en une fois', () => {
+    const src = lire(formulaires['web · BlockPeriodModal']);
+    assert.match(src, /rendezVousRecouvertsParMembre\(/);
+    assert.doesNotMatch(src, /targets\.map\(\(m\) => schedulingService\.rendezVousRecouverts\(/, 'plus une requête par membre');
+  });
 });
 
 describe('4. les listes et l’agenda mobile connaissent les séries', () => {
