@@ -121,6 +121,40 @@ interface PartiesLocales {
 }
 
 /**
+ * UN formateur par fuseau, construit une fois puis réutilisé.
+ *
+ * Construire un `Intl.DateTimeFormat` coûte cher — il charge les données de
+ * fuseau et de langue — alors que `formatToParts` sur un formateur existant
+ * est quasi gratuit. `partiesLocales` en construisait un NEUF à chaque appel,
+ * et le moteur de créneaux l'appelle plusieurs fois par créneau candidat et
+ * par blocage : sur un agenda ouvert 7 j/7 de 06:00 à 23:45, réservable à
+ * 180 jours et chargé de 169 blocages (Kamerleon Production), des millions
+ * de constructions — plus de deux minutes pour afficher un calendrier.
+ *
+ * Même formateur, mêmes options, même résultat : seule la construction est
+ * mise en commun. Un fuseau invalide lève toujours à la construction, et
+ * n'entre donc jamais dans le cache.
+ */
+const FORMATEURS = new Map<string, Intl.DateTimeFormat>();
+function formateurDe(fuseau: string): Intl.DateTimeFormat {
+  let f = FORMATEURS.get(fuseau);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: fuseau,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    FORMATEURS.set(fuseau, f);
+  }
+  return f;
+}
+
+/**
  * L'horloge murale d'un instant dans un fuseau.
  *
  * `formatToParts` et non `toLocaleString` : la seconde forme produit une
@@ -128,16 +162,7 @@ interface PartiesLocales {
  * du fuseau de la machine. On lit les champs, on ne devine rien.
  */
 function partiesLocales(instant: Date, fuseau: string): PartiesLocales {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: fuseau,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(instant);
+  const parts = formateurDe(fuseau).formatToParts(instant);
 
   const champs: Record<string, string> = {};
   for (const p of parts) if (p.type !== 'literal') champs[p.type] = p.value;

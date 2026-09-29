@@ -9,6 +9,7 @@ import {
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, Booking, TimeSlot } from '@booking-app/shared';
 import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences, reglePourPeriode, horlogeDuFuseau } from '@booking-app/shared';
+import type { BlockedWindow } from '@booking-app/shared';
 import {
   ajouterJours,
   bornesDeJourLocal,
@@ -865,6 +866,8 @@ export class SchedulingService {
     for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
 
     const relevantBlockedSlots = allBlocked.filter((bs) => bs.memberId === memberId);
+    // Fenêtres bloquées calculées une fois par jour (voir isTimeBlockedBySlots).
+    const memoFenetres = new Map<string, BlockedWindow[]>();
     const relevantBookings = allBookings.filter(
       (b) =>
         b.memberId === memberId &&
@@ -911,7 +914,8 @@ export class SchedulingService {
               genSlot.datetime,
               genSlot.endDatetime,
               relevantBlockedSlots,
-              fuseau
+              fuseau,
+              memoFenetres,
             );
 
             const isBooked = this.isTimeBookedByBookings(
@@ -1001,6 +1005,8 @@ export class SchedulingService {
     for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
 
     const relevantBlocked = allBlocked.filter((bs) => bs.memberId === memberId);
+    // Fenêtres bloquées calculées une fois par jour (voir isTimeBlockedBySlots).
+    const memoFenetres = new Map<string, BlockedWindow[]>();
     const relevantBookings = allBookings.filter(
       (b) =>
         b.memberId === memberId &&
@@ -1040,7 +1046,7 @@ export class SchedulingService {
         for (const window of availability.slots) {
           const generated = this.generateTimeSlots(jour, window.start, window.end, totalDuration, slotInterval, fuseau);
           for (const g of generated) {
-            const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked, fuseau);
+            const blocked = this.isTimeBlockedBySlots(g.datetime, g.endDatetime, relevantBlocked, fuseau, memoFenetres);
             const booked = this.isTimeBookedByBookings(g.datetime, g.endDatetime, relevantBookings);
             const tooSoon = g.datetime <= earliestBookable;
             if (!blocked && !booked && !tooSoon) daySlots.push(g);
@@ -1394,9 +1400,50 @@ export class SchedulingService {
     start: Date,
     end: Date,
     blockedSlots: WithId<BlockedSlot>[],
-    fuseau: string = FUSEAU_COMPAT
+    fuseau: string = FUSEAU_COMPAT,
+    /**
+     * Mémoire « jour → fenêtres bloquées » propre à UN calcul (un membre,
+     * une liste de blocages). La fenêtre qu'un blocage retire ne dépend que
+     * du JOUR du créneau (`blockedWindowForDay` ne lit l'instant que pour en
+     * tirer le jour) : la recalculer pour chacun des ~70 créneaux d'une
+     * journée, et pour chaque blocage de la plage, revenait à refaire le
+     * même travail des centaines de milliers de fois. Sans mémoire, rien
+     * ne change : même règle, calculée à chaque appel.
+     */
+    memo?: Map<string, BlockedWindow[]>,
   ): boolean {
-    return blockedSlots.some((bs) => this.isTimeBlockedBySlot(start, end, bs, fuseau));
+    if (blockedSlots.length === 0) return false;
+    if (!memo) return blockedSlots.some((bs) => this.isTimeBlockedBySlot(start, end, bs, fuseau));
+    // La clé est le jour LOCAL du créneau — exactement ce que lit
+    // `blockedWindowForDay` (via `jourRepere`, qui vaut `jourLocal` dès qu'il
+    // y a un fuseau, ce qui est toujours le cas ici).
+    const jour = jourLocal(start, fuseau);
+    let fenetres = memo.get(jour);
+    if (!fenetres) {
+      fenetres = [];
+      for (const bs of blockedSlots) {
+        const f = blockedWindowForDay(
+          {
+            allDay: bs.allDay,
+            startDate: bs.startDate,
+            endDate: bs.endDate,
+            startTime: bs.startTime,
+            endTime: bs.endTime,
+            spanMode: bs.spanMode,
+          },
+          start,
+          fuseau,
+        );
+        if (f) fenetres.push(f);
+      }
+      memo.set(jour, fenetres);
+    }
+    if (fenetres.length === 0) return false;
+    // Même comparaison, au caractère près, que `isTimeBlockedBySlot`.
+    const slotStartMin = minutesLocales(start, fuseau);
+    const finMin = minutesLocales(end, fuseau);
+    const slotEndMin = finMin === 0 ? 24 * 60 : finMin;
+    return fenetres.some((f) => slotStartMin < f.endMin && f.startMin < slotEndMin);
   }
 
   /**

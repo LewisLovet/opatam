@@ -88,8 +88,10 @@ export async function GET(request: NextRequest) {
         (m) => m.isActive !== false && (!autorises || autorises.has(m.id)),
       );
       const acc = new Map<string, Day>();
-      for (const m of members) {
-        const ds = await schedulingService.getAvailabilitySummary({
+      // Les membres en PARALLÈLE : chacun lit ses données et calcule seul,
+      // les enchaîner additionnait leurs temps. L'agrégation, elle, reste
+      // dans l'ordre des membres — même résultat qu'avant.
+      const parMembre = await Promise.all(members.map((m) => schedulingService.getAvailabilitySummary({
           providerId,
           serviceId,
           // Le panier restreint les jours quel que soit le membre : cette
@@ -105,7 +107,8 @@ export async function GET(request: NextRequest) {
           startDate,
           endDate,
           durationOverride: dur,
-        });
+        })));
+      for (const ds of parMembre) {
         for (const d of ds) {
           const cur = acc.get(d.date);
           if (!cur) {
