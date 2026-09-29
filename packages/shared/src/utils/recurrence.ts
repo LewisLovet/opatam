@@ -10,13 +10,13 @@
  * dates, une fois, à la création.
  *
  * Sémantique :
- *   - la période saisie est la PREMIÈRE occurrence, reprise VERBATIM ; sa
- *     durée (en jours calendaires) et ses heures valent pour les suivantes ;
+ *   - la période saisie fixe les HEURES, la DURÉE (en jours calendaires) et
+ *     le point de DÉPART de la série. Si son jour est coché, elle est la
+ *     première occurrence, reprise verbatim ; sinon la série commence au
+ *     premier jour coché qui suit ;
  *   - `weekdays` : les jours de la semaine où une occurrence COMMENCE
- *     (`Date.getDay()` : 0 = dimanche … 6 = samedi). Il doit contenir le jour
- *     de la période saisie, sinon celle-ci ne serait pas une occurrence
- *     d'elle-même — `reglePourPeriode` s'en charge, et c'est le SEUL endroit
- *     qui décide ;
+ *     (`Date.getDay()` : 0 = dimanche … 6 = samedi) — les jours COCHÉS, sans
+ *     rien imposer. `reglePourPeriode` est le SEUL endroit qui les normalise ;
  *   - `intervalWeeks` : 1 = chaque semaine, 2 = une semaine sur deux… Les
  *     semaines sont comptées à partir de celle de la période saisie
  *     (semaines du lundi au dimanche) ;
@@ -152,15 +152,21 @@ export function trierJoursSemaine(weekdays: number[]): number[] {
  * La règle EFFECTIVE pour cette période — l'unique endroit qui décide des
  * jours répétés.
  *
- * Deux invariants, que ni un écran ni un appelant n'ont à redire :
- *   - le jour de la période saisie fait toujours partie des jours répétés,
- *     puisque cette période EST la première occurrence ;
- *   - une période de plusieurs jours ne se répète que sur son jour de
- *     départ : « du samedi au dimanche, les mardis aussi » n'a pas de sens.
+ * LES JOURS COCHÉS DÉCIDENT. La période saisie fixe les heures, la durée et
+ * le point de DÉPART ; elle n'impose plus son propre jour. Une première
+ * version l'imposait (« la période saisie est la première occurrence ») :
+ * son jour restait coché et désactivé, et bloquer « tous les week-ends »
+ * depuis un lundi obligeait à changer d'abord la date. Désormais, si le
+ * jour saisi n'est pas coché, la série commence au premier jour coché à
+ * partir de cette date.
+ *
+ * Un seul invariant reste : une période de plusieurs jours ne part que
+ * d'UN jour de la semaine (« du samedi au dimanche, les mardis aussi »
+ * n'a pas de sens). On garde le jour saisi s'il est coché, sinon le
+ * premier coché.
  *
  * L'aperçu à l'écran et l'écriture passent par ici, sinon l'un annonce ce
- * que l'autre n'écrit pas — c'est exactement ce qui arrivait quand le
- * formulaire normalisait pour afficher mais enregistrait le brouillon.
+ * que l'autre n'écrit pas.
  */
 export function reglePourPeriode(
   rule: RecurrenceRule,
@@ -170,15 +176,16 @@ export function reglePourPeriode(
   const debut = jourDe(base.startDate, horloge);
   const jourBase = jourSemaineCal(debut);
   const multiJours = joursEntreJours(debut, jourDe(base.endDate, horloge)) > 0;
-  const weekdays = multiJours ? [jourBase] : trierJoursSemaine([...rule.weekdays, jourBase]);
-  return { ...rule, weekdays };
+  const jours = trierJoursSemaine(rule.weekdays);
+  if (!multiJours || jours.length <= 1) return { ...rule, weekdays: jours };
+  return { ...rule, weekdays: [jours.includes(jourBase) ? jourBase : jours[0]] };
 }
 
 /** Pourquoi une règle est irrecevable — un code, que chaque surface traduit. */
 export type RegleInvalide =
   | 'intervalle'
   | 'aucunJour'
-  | 'jourDeBaseAbsent'
+  | 'aucuneOccurrence'
   | 'plusieursJoursMultiJours'
   | 'finAvantDebut'
   | 'finAvantPremiere'
@@ -188,7 +195,7 @@ export type RegleInvalide =
 export const MESSAGES_REGLE_INVALIDE: Record<RegleInvalide, string> = {
   intervalle: `L'intervalle doit être entre 1 et ${INTERVALLE_MAX_SEMAINES} semaines`,
   aucunJour: 'Choisissez au moins un jour de la semaine',
-  jourDeBaseAbsent: 'Le jour de la période saisie doit faire partie des jours répétés',
+  aucuneOccurrence: 'Aucun des jours choisis ne tombe avant la fin de la répétition',
   plusieursJoursMultiJours: 'Une période de plusieurs jours ne se répète que sur un seul jour de la semaine',
   finAvantDebut: 'La date de fin doit être après ou égale à la date de début',
   finAvantPremiere: 'La date de fin de répétition doit être après la première occurrence',
@@ -214,13 +221,16 @@ export function raisonRegleInvalide(
     return 'aucunJour';
   }
   const debut = jourDe(base.startDate, horloge);
-  if (!jours.includes(jourSemaineCal(debut))) return 'jourDeBaseAbsent';
   const duree = joursEntreJours(debut, jourDe(base.endDate, horloge));
   if (duree < 0) return 'finAvantDebut';
   if (duree > 0 && jours.length > 1) return 'plusieursJoursMultiJours';
   const horizon = joursEntreJours(debut, rule.until);
   if (horizon < 0) return 'finAvantPremiere';
   if (horizon > HORIZON_MAX_JOURS) return 'horizon';
+  // Le jour saisi n'étant plus imposé, les jours cochés peuvent tous tomber
+  // APRÈS la fin (départ un lundi, samedis cochés, fin le mercredi) : une
+  // répétition qui ne produit rien est refusée plutôt qu'enregistrée vide.
+  if (deplier(base, { ...rule, weekdays: jours }, horloge).length === 0) return 'aucuneOccurrence';
   return null;
 }
 
@@ -249,7 +259,18 @@ export function genererOccurrences(
 ): Occurrence[] {
   const raison = messageRegleInvalide(base, rule, horloge);
   if (raison) throw new Error(raison);
+  return deplier(base, rule, horloge);
+}
 
+/**
+ * Le dépliage lui-même, SANS validation — pour que la validation puisse
+ * s'en servir (« produit-il au moins une occurrence ? ») sans tourner en rond.
+ */
+function deplier(
+  base: PeriodeDeBase,
+  rule: RecurrenceRule,
+  horloge?: HorlogeLocale,
+): Occurrence[] {
   const jourDebut = jourDe(base.startDate, horloge);
   const jourFin = jourDe(base.endDate, horloge);
   const duree = joursEntreJours(jourDebut, jourFin);
@@ -269,8 +290,9 @@ export function genererOccurrences(
       if (jour < jourDebut) continue;
       if (jour > jourLimite) { auDela = true; break; }
       if (jour === jourDebut) {
-        // La période saisie, VERBATIM : elle est la première occurrence, et
-        // la recomposer depuis ses composantes en perdrait les secondes.
+        // Le jour saisi est coché : la période saisie est alors la première
+        // occurrence, reprise VERBATIM — la recomposer depuis ses composantes
+        // en perdrait les secondes.
         occurrences.push({ startDate: base.startDate, endDate: base.endDate });
       } else if (horloge && minDebut !== null && minFin !== null) {
         occurrences.push({

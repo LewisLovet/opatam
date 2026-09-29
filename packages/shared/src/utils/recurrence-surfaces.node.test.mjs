@@ -153,7 +153,8 @@ describe('3 ter. les six points de l’audit externe', () => {
       'apps/mobile/components/business/RecurrenceFields/RecurrenceFields.tsx',
     ]) {
       const src = lire(chemin);
-      assert.match(src, /const weekdays = value \? regleAEnregistrer\(/, 'l’aperçu montre la règle normalisée');
+      assert.match(src, /const regle = value \? regleAEnregistrer\(/, 'l’aperçu montre la règle normalisée');
+      assert.match(src, /const weekdays = regle\?\.weekdays \?\? \[\]/, 'les jours affichés sont ceux de la règle normalisée');
       assert.doesNotMatch(src, /trierJoursSemaine\(\[\.\.\.value\.weekdays/, 'plus de normalisation locale, divergente');
     }
     assert.match(lire('packages/shared/src/schemas/availability.schema.ts'), /reglePourPeriode\(data\.recurrence, data\)/);
@@ -308,8 +309,38 @@ describe('4. les listes et l’agenda mobile connaissent les séries', () => {
       for (const k of ['toggle', 'until', 'describeWeekly', 'describeEveryN', 'scope', 'conflicts', 'saved_one', 'saved_other', 'listSummary']) {
         assert.ok(d.recurrence[k] !== undefined, `${loc}: recurrence.${k}`);
       }
-      for (const code of ['intervalle', 'aucunJour', 'jourDeBaseAbsent', 'plusieursJoursMultiJours', 'finAvantDebut', 'finAvantPremiere', 'horizon']) {
+      for (const code of ['intervalle', 'aucunJour', 'aucuneOccurrence', 'plusieursJoursMultiJours', 'finAvantDebut', 'finAvantPremiere', 'horizon']) {
         assert.ok(d.recurrence.errors[code], `${loc}: recurrence.errors.${code}`);
+      }
+    }
+  });
+});
+
+describe('5. le jour de départ se décoche à l’écran, web comme mobile', () => {
+  const composants = {
+    web: 'apps/web/app/pro/calendrier/components/RecurrenceFields.tsx',
+    mobile: 'apps/mobile/components/business/RecurrenceFields/RecurrenceFields.tsx',
+  };
+  for (const [nom, chemin] of Object.entries(composants)) {
+    it(`${nom} : aucun jour n’est figé — la date saisie n’est qu’un point de départ`, () => {
+      const src = lire(chemin);
+      assert.doesNotMatch(src, /jourDeBase/, 'plus de jour de base verrouillé');
+      assert.doesNotMatch(src, /\bfige\b/, 'plus de pastille désactivée');
+      const bascule = src.slice(src.indexOf('const basculerJour'), src.indexOf('const finDans'));
+      assert.match(bascule, /weekdays\.filter\(\(x\) => x !== j\)/, 'toucher un jour coché le décoche, quel qu’il soit');
+      assert.match(bascule, /if \(plusieursJours\) return changerJours\(\[j\]\)/, 'plusieurs jours : toucher un jour le choisit comme départ');
+    });
+  }
+  it('mobile : chaque libellé de la répétition existe dans les cinq langues', () => {
+    const src = lire(composants.mobile);
+    const cles = new Set([...src.matchAll(/t\('recurrence\.([A-Za-z_.]+)'/g)].map((m) => m[1]));
+    for (const m of src.matchAll(/cle: '([A-Za-z]+)'/g)) cles.add(m[1]);
+    assert.ok(cles.size >= 15, `clés relevées : ${[...cles].join(', ')}`);
+    for (const loc of ['fr', 'en', 'it', 'pt', 'de']) {
+      const d = JSON.parse(lire(`apps/mobile/locales/app/${loc}.json`)).recurrence;
+      for (const k of cles) {
+        const present = d[k] !== undefined || (d[`${k}_one`] !== undefined && d[`${k}_other`] !== undefined);
+        assert.ok(present, `${loc}: recurrence.${k}`);
       }
     }
   });

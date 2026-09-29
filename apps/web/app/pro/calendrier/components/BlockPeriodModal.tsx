@@ -49,9 +49,12 @@ import {
   type RecurrenceDraft,
 } from './RecurrenceFields';
 import { useFuseauxMembres } from './useFuseauxMembres';
-import { Loader2, Ban } from 'lucide-react';
+import { Loader2, Ban, Sun } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
+
+/** Les motifs les plus fréquents — les mêmes que sur l'application mobile. */
+const MOTIFS = ['Vacances', 'Formation', 'Maladie', 'Personnel', 'Férié', 'Réunion'];
 
 function formatDateInput(d: Date): string {
   const yyyy = d.getFullYear();
@@ -560,18 +563,34 @@ export function BlockPeriodModal({
               </div>
             )}
 
-            {/* All-day toggle */}
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allDay}
-                onChange={(e) => setAllDay(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Toute la journée
+            {/* Journée entière — même interrupteur que « Répéter », plus bas. */}
+            <div className="flex items-center gap-3 rounded-2xl border border-gray-200 px-4 py-3 dark:border-gray-700">
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  allDay ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'
+                }`}
+              >
+                <Sun className="h-[18px] w-[18px]" />
               </span>
-            </label>
+              <span className="flex-1">
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white">Toute la journée</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  {allDay ? 'Aucune réservation possible ces jours-là' : 'Seulement sur les heures choisies'}
+                </span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={allDay}
+                aria-label="Toute la journée"
+                onClick={() => setAllDay(!allDay)}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${
+                  allDay ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${allDay ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
 
             {/* Dates */}
             <div className="grid grid-cols-2 gap-3">
@@ -682,15 +701,37 @@ export function BlockPeriodModal({
               </p>
             )}
 
-            {/* Reason */}
-            <Textarea
-              label="Motif (optionnel)"
-              placeholder="ex : Vacances, Formation, Maladie…"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              maxLength={200}
-            />
+            {/* Motif — les plus courants en un clic, ou du texte libre. */}
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Motif (optionnel)</p>
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {MOTIFS.map((m) => {
+                  const actif = reason.trim() === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setReason(actif ? '' : m)}
+                      aria-pressed={actif}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        actif
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              <Textarea
+                placeholder="Ou précisez : congés d'été, salon professionnel…"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                maxLength={200}
+              />
+            </div>
           </>
         )}
       </ModalBody>

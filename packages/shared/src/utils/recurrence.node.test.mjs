@@ -118,9 +118,11 @@ describe('4. changements d’heure : l’heure murale est conservée', () => {
 
 describe('5. règles refusées : un code, et son message français', () => {
   const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) }; // samedi → dimanche
-  it('le jour de la période saisie doit être répété', () => {
-    assert.equal(raisonRegleInvalide(base, { intervalWeeks: 1, weekdays: [1], until: u(2026, 5, 1) }), 'jourDeBaseAbsent');
-    assert.match(messageRegleInvalide(base, { intervalWeeks: 1, weekdays: [1], until: u(2026, 5, 1) }), /jour de la période saisie/);
+  it('aucun jour coché ne tombe avant la fin : refusé plutôt qu’enregistré vide', () => {
+    // Départ un LUNDI 1er juin, samedis cochés, fin le mercredi 3 : rien.
+    const lundi = { startDate: d(2026, 6, 1, 9), endDate: d(2026, 6, 1, 10) };
+    assert.equal(raisonRegleInvalide(lundi, { intervalWeeks: 1, weekdays: [6], until: u(2026, 6, 3) }), 'aucuneOccurrence');
+    assert.match(messageRegleInvalide(lundi, { intervalWeeks: 1, weekdays: [6], until: u(2026, 6, 3) }), /Aucun des jours choisis/);
   });
   it('une période de plusieurs jours ne se répète que sur un seul jour', () => {
     assert.match(messageRegleInvalide(base, { intervalWeeks: 1, weekdays: [6, 3], until: u(2026, 5, 1) }), /plusieurs jours/);
@@ -140,7 +142,8 @@ describe('5. règles refusées : un code, et son message français', () => {
     assert.match(messageRegleInvalide(base, { intervalWeeks: 1, weekdays: [7], until: u(2026, 5, 1) }), /au moins un jour/);
   });
   it('`genererOccurrences` lève sur une règle invalide', () => {
-    assert.throws(() => genererOccurrences(base, { intervalWeeks: 1, weekdays: [1], until: u(2026, 5, 1) }));
+    assert.throws(() => genererOccurrences(base, { intervalWeeks: 0, weekdays: [6], until: u(2026, 5, 1) }));
+    assert.throws(() => genererOccurrences(base, { intervalWeeks: 1, weekdays: [], until: u(2026, 5, 1) }));
   });
   it('un an de jours ouvrés tient sous la garde', () => {
     const lundi = { startDate: d(2026, 1, 5, 9), endDate: d(2026, 1, 5, 10) };
@@ -223,17 +226,17 @@ describe('7. l’horloge du LIEU — les occurrences gardent l’heure du salon'
 });
 
 describe('8. reglePourPeriode — le seul juge des jours répétés', () => {
-  it('ajoute le jour de la période saisie, même si le brouillon l’a oublié', () => {
+  it('n’impose PAS le jour de la période saisie : les jours cochés décident', () => {
     const base = { startDate: d(2026, 6, 4, 14), endDate: d(2026, 6, 4, 16) }; // jeudi
     const r = reglePourPeriode({ intervalWeeks: 1, weekdays: [1], until: u(2026, 6, 30) }, base);
-    assert.deepEqual(r.weekdays, [1, 4], 'lundi gardé, jeudi ajouté');
+    assert.deepEqual(r.weekdays, [1], 'lundi seul — le jeudi saisi n’est pas ajouté');
     assert.equal(raisonRegleInvalide(base, r), null);
   });
-  it('une période de plusieurs jours se réduit à son jour de départ', () => {
+  it('plusieurs jours : un seul départ — le jour saisi s’il est coché, sinon le premier coché', () => {
     const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) }; // sam → dim
-    const r = reglePourPeriode({ intervalWeeks: 1, weekdays: [1, 3, 6], until: u(2026, 5, 3) }, base);
-    assert.deepEqual(r.weekdays, [6]);
-    assert.equal(raisonRegleInvalide(base, r), null, 'et devient valide');
+    assert.deepEqual(reglePourPeriode({ intervalWeeks: 1, weekdays: [1, 3, 6], until: u(2026, 5, 3) }, base).weekdays, [6]);
+    assert.deepEqual(reglePourPeriode({ intervalWeeks: 1, weekdays: [3, 1], until: u(2026, 5, 3) }, base).weekdays, [1], 'lundi, premier coché');
+    assert.equal(raisonRegleInvalide(base, reglePourPeriode({ intervalWeeks: 1, weekdays: [1, 3], until: u(2026, 5, 3) }, base)), null, 'et devient valide');
   });
   it('normaliser deux fois ne change rien', () => {
     const base = { startDate: d(2026, 6, 4, 14), endDate: d(2026, 6, 4, 16) };
@@ -291,5 +294,37 @@ describe('9. `until` relu sous ses trois formes — une seule normalisation', ()
     const regle = normaliserRecurrence({ intervalWeeks: 1, weekdays: [6], until: { toDate: () => new Date(2026, 4, 2) } });
     const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) };
     assert.equal(genererOccurrences(base, regle).length, 5);
+  });
+});
+
+
+describe('10. le jour de départ se DÉSÉLECTIONNE (signalé : « le lundi reste bloqué »)', () => {
+  // Aujourd'hui lundi 28 septembre 2026, on veut bloquer tous les week-ends.
+  const lundi = { startDate: d(2026, 9, 28, 0, 0), endDate: d(2026, 9, 28, 23, 59) };
+
+  it('lundi décoché, samedi + dimanche cochés : la série commence le SAMEDI qui suit', () => {
+    const regle = reglePourPeriode({ intervalWeeks: 1, weekdays: [6, 0], until: u(2026, 10, 18) }, lundi);
+    assert.deepEqual(regle.weekdays, [6, 0]);
+    const occ = genererOccurrences(lundi, regle);
+    assert.deepEqual(occ.map((o) => ymdhm(o.startDate).slice(0, 10)), [
+      '2026-10-03', '2026-10-04', '2026-10-10', '2026-10-11', '2026-10-17', '2026-10-18',
+    ]);
+    assert.ok(!occ.some((o) => ymdhm(o.startDate).startsWith('2026-09-28')), 'le lundi saisi n’est PAS bloqué');
+  });
+  it('les heures et la durée de la saisie valent pour chaque occurrence', () => {
+    const matin = { startDate: d(2026, 9, 28, 9, 0), endDate: d(2026, 9, 28, 12, 30) };
+    const occ = genererOccurrences(matin, { intervalWeeks: 1, weekdays: [3], until: u(2026, 10, 14) });
+    assert.deepEqual(occ.map((o) => `${ymdhm(o.startDate)} → ${ymdhm(o.endDate).slice(11)}`), [
+      '2026-09-30 09:00 → 12:30', '2026-10-07 09:00 → 12:30', '2026-10-14 09:00 → 12:30',
+    ]);
+  });
+  it('une semaine sur deux compte les semaines depuis celle de la date saisie', () => {
+    const occ = genererOccurrences(lundi, { intervalWeeks: 2, weekdays: [6], until: u(2026, 10, 31) });
+    assert.deepEqual(occ.map((o) => ymdhm(o.startDate).slice(0, 10)), ['2026-10-03', '2026-10-17', '2026-10-31']);
+  });
+  it('le lundi recoché redevient la première occurrence, verbatim', () => {
+    const occ = genererOccurrences(lundi, { intervalWeeks: 1, weekdays: [1, 6], until: u(2026, 10, 5) });
+    assert.equal(occ[0].startDate.getTime(), lundi.startDate.getTime());
+    assert.equal(occ.length, 3, 'lun 28, sam 3, lun 5');
   });
 });
