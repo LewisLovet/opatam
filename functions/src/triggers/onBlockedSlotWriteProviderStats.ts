@@ -44,6 +44,8 @@ import { dateKeyInTz } from '../lib/providerStatsAgg';
 interface BlockedSlotRaw {
   category?: string | null;
   amount?: number | null;
+  /** Le lieu décide du fuseau dans lequel l'activité se range. */
+  locationId?: string | null;
   startDate?: Timestamp | Date;
 }
 
@@ -77,14 +79,18 @@ export const onBlockedSlotWriteProviderStats = onDocumentWritten(
 
       // Identify affected days. `startDate` is what the aggregator
       // uses as the day key, so we only care about that field.
+      // Le fuseau du LIEU de l'activité ; celui du lieu principal n'est
+      // qu'un repli, et serait faux pour un second lieu à l'étranger.
+      const fuseauDe = (raw: BlockedSlotRaw) =>
+        (raw.locationId && ctx.timezonesByLocation[raw.locationId]) || ctx.timezone;
       const days = new Set<string>();
       if (beforePaid) {
         const d = toDate(before!.startDate);
-        if (d) days.add(dateKeyInTz(d, ctx.timezone));
+        if (d) days.add(dateKeyInTz(d, fuseauDe(before!)));
       }
       if (afterPaid) {
         const d = toDate(after!.startDate);
-        if (d) days.add(dateKeyInTz(d, ctx.timezone));
+        if (d) days.add(dateKeyInTz(d, fuseauDe(after!)));
       }
       if (days.size === 0) return;
 

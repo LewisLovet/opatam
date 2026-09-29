@@ -30,7 +30,7 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi } from '@booking-app/shared';
 import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
@@ -55,10 +55,18 @@ function formatTimeInput(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function combine(date: string, time: string): Date {
-  const [y, m, day] = date.split('-').map(Number);
+/**
+ * L'instant d'une heure SAISIE, dans le fuseau du LIEU.
+ *
+ * `new Date(a, m, j, h, min)` donnait l'instant de l'APPAREIL : un pro à
+ * Paris qui bloquait « 09:00 » pour son salon de Los Angeles produisait un
+ * blocage à minuit là-bas, alors que le moteur, lui, lit bien dans le
+ * fuseau du lieu. Sans fuseau connu, `instantSaisi` retombe exactement sur
+ * l'ancien comportement.
+ */
+function combine(date: string, time: string, fuseau?: string): Date {
   const [h, min] = time.split(':').map(Number);
-  return new Date(y, m - 1, day, h, min, 0, 0);
+  return instantSaisi(date, h * 60 + min, fuseau);
 }
 
 interface BlockPeriodModalProps {
@@ -293,8 +301,7 @@ export function BlockPeriodModal({
    * heures, le motif, et la règle de répétition si elle est cochée.
    */
   const saisie = (): { startDt: Date; endDt: Date; input: Omit<BlockedSlotInput, 'memberId' | 'locationId'> } | null => {
-    const startDt = allDay ? combine(startDate, '00:00') : combine(startDate, startTime);
-    const endDt = allDay ? combine(endDate, '23:59') : combine(endDate, endTime);
+    const { startDate: startDt, endDate: endDt } = periodeSaisie();
     // Ordre des JOURS d'abord — indépendant des heures, et seul cas où
     // comparer les dates a un sens.
     if (endDate < startDate) {
@@ -345,8 +352,8 @@ export function BlockPeriodModal({
 
   /** La période telle qu'elle est saisie à l'instant — aperçu ET écriture. */
   const periodeSaisie = () => ({
-    startDate: allDay ? combine(startDate, '00:00') : combine(startDate, startTime),
-    endDate: allDay ? combine(endDate, '23:59') : combine(endDate, endTime),
+    startDate: allDay ? combine(startDate, '00:00', fuseau) : combine(startDate, startTime, fuseau),
+    endDate: allDay ? combine(endDate, '23:59', fuseau) : combine(endDate, endTime, fuseau),
   });
 
   const handleSave = () => {
@@ -409,9 +416,10 @@ export function BlockPeriodModal({
           });
           toast.success('Cette occurrence et les suivantes ont été modifiées');
         } else if (!existingSeriesId && s.input.recurrence) {
-          // 2b. Une période isolée devient une série : la remplacer.
-          await schedulingService.unblockPeriod(providerId, editId);
-          await schedulingService.blockPeriodRecurrent(providerId, {
+          // 2b. Une période isolée devient une série. En UNE écriture :
+          //     supprimer d'abord, créer ensuite, c'était perdre l'original
+          //     si la création échouait — et rouvrir le créneau en silence.
+          await schedulingService.convertirEnSerie(providerId, editId, {
             ...s.input,
             memberId: member.id,
             locationId: member.locationId,

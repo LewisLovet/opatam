@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ConfirmDialog, useToast } from '@/components/ui';
@@ -372,6 +372,20 @@ export function DisponibilitesTab() {
     }
   };
 
+  /**
+   * Fuseau du lieu de chaque membre. Calculé ici : le composant a les
+   * membres et les lieux sous la main, une lecture de plus serait inutile.
+   */
+  const fuseauParMembre = useMemo(() => {
+    const parLieu = new Map(locations.map((l) => [l.id, l.timezone ?? undefined]));
+    const table: Record<string, string> = {};
+    for (const m of members) {
+      const tz = m.locationId ? parLieu.get(m.locationId) : undefined;
+      if (tz) table[m.id] = tz;
+    }
+    return table;
+  }, [members, locations]);
+
   /** Les rendez-vous que la saisie recouvrirait — la série dépliée, ou la période seule. */
   const verifierConflitsFermeture = async (data: BlockedSlotFormData) => {
     if (!provider) return [];
@@ -552,6 +566,7 @@ export function DisponibilitesTab() {
               onDelete={handleDeleteBlockedSlot}
               onDeleteSeries={handleDeleteSeries}
               verifierConflits={verifierConflitsFermeture}
+              fuseauParMembre={fuseauParMembre}
               hasTeams={hasMultipleMembers}
             />
           </div>

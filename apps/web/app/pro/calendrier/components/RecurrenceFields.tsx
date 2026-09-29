@@ -33,7 +33,7 @@ export interface RecurrenceDraft {
   intervalWeeks: number;
   /** `Date.getDay()` : 0 = dimanche … 6 = samedi. */
   weekdays: number[];
-  /** `YYYY-MM-DD`, dernier jour de départ inclus. */
+  /** `YYYY-MM-DD`, dernier jour de départ inclus. Comme en base. */
   until: string;
 }
 
@@ -60,11 +60,11 @@ export function brouillonParDefaut(baseStart: Date): RecurrenceDraft {
 
 /** Un brouillon depuis une règle enregistrée (édition d'une occurrence). */
 export function brouillonDepuisRegle(rule: RecurrenceRule): RecurrenceDraft {
-  return { intervalWeeks: rule.intervalWeeks, weekdays: [...rule.weekdays], until: isoDepuisDate(rule.until) };
+  return { intervalWeeks: rule.intervalWeeks, weekdays: [...rule.weekdays], until: rule.until };
 }
 
 function versRegle(draft: RecurrenceDraft): RecurrenceRule {
-  return { intervalWeeks: draft.intervalWeeks, weekdays: trierJoursSemaine(draft.weekdays), until: dateLocaleDepuisIso(draft.until) };
+  return { intervalWeeks: draft.intervalWeeks, weekdays: trierJoursSemaine(draft.weekdays), until: draft.until };
 }
 
 /**
@@ -87,7 +87,7 @@ export function decrireRecurrence(rule: Pick<RecurrenceRule, 'intervalWeeks' | '
     rule.intervalWeeks === 1 ? 'Chaque semaine' : `Toutes les ${rule.intervalWeeks} semaines`;
   const lesJours =
     jours.length === 1 ? `le ${jours[0]}` : `les ${jours.slice(0, -1).join(', ')} et ${jours[jours.length - 1]}`;
-  const fin = rule.until.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fin = dateLocaleDepuisIso(rule.until).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   return `${quand} ${lesJours}, jusqu'au ${fin}`;
 }
 

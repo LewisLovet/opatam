@@ -118,9 +118,11 @@ export const onBookingWriteProviderStats = onDocumentWritten(
         return;
       }
 
+      // Le fuseau FIGÉ sur la réservation d'abord ; celui du lieu principal
+      // n'est qu'un repli, et serait faux pour un second lieu à l'étranger.
       const days = new Set<string>();
-      if (beforeBooking) days.add(dateKeyInTz(beforeBooking.datetime, ctx.timezone));
-      if (afterBooking) days.add(dateKeyInTz(afterBooking.datetime, ctx.timezone));
+      if (beforeBooking) days.add(dateKeyInTz(beforeBooking.datetime, beforeBooking.timezone || ctx.timezone));
+      if (afterBooking) days.add(dateKeyInTz(afterBooking.datetime, afterBooking.timezone || ctx.timezone));
 
       const months = new Set<string>();
       for (const d of days) months.add(d.slice(0, 7));

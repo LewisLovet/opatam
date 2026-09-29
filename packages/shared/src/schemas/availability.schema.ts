@@ -158,7 +158,8 @@ export const blockedSlotSchema = z.object({
     .object({
       intervalWeeks: z.number().int().min(1).max(INTERVALLE_MAX_SEMAINES),
       weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-      until: z.coerce.date(),
+      // Une DATE calendaire, pas un instant : voir `BlockedSlotRecurrence`.
+      until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date de fin invalide (AAAA-MM-JJ)' }),
     })
     .nullable()
     .optional(),

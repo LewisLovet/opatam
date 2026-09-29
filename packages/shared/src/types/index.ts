@@ -1468,8 +1468,13 @@ export interface BlockedSlotRecurrence {
   intervalWeeks: number;
   /** Jours de départ des occurrences, `Date.getDay()` (0 = dimanche). */
   weekdays: number[];
-  /** Dernier jour de départ possible, inclus. Obligatoire : pas de série sans fin. */
-  until: Date;
+  /**
+   * Dernier jour de départ possible, INCLUS — une date calendaire
+   * « YYYY-MM-DD », jamais un instant. Un `Date` relu depuis un appareil
+   * dans un autre fuseau faisait reculer ou avancer le dernier jour de la
+   * série ; une journée n'est pas un moment.
+   */
+  until: string;
 }
 
 // Booking types

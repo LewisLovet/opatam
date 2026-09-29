@@ -556,6 +556,25 @@ export class SchedulingService {
   }
 
   /**
+   * Transforme un blocage ISOLÉ en série : l'ancien document et les
+   * occurrences neuves partent dans la MÊME écriture.
+   *
+   * Les formulaires supprimaient d'abord, créaient ensuite. Si la création
+   * échouait — réseau coupé, règle refusée —, l'absence ou l'activité
+   * d'origine avait disparu pour de bon, et le créneau se rouvrait sans que
+   * personne le sache.
+   */
+  async convertirEnSerie(
+    providerId: string,
+    ancienId: string,
+    input: BlockedSlotInput,
+  ): Promise<{ seriesId: string; ids: string[] }> {
+    const { seriesId, docs } = await this.preparerSerie(providerId, input);
+    const { ids } = await blockedSlotRepository.remplacerSerie(providerId, [ancienId], docs);
+    return { seriesId, ids };
+  }
+
+  /**
    * Supprime une série : toute, ou seulement « celle-ci et les suivantes »
    * (`from` = date de début de l'occurrence choisie ; les occurrences
    * antérieures, déjà vécues, restent).

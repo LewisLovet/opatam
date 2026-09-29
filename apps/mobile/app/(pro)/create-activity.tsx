@@ -44,7 +44,7 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
+import { genererOccurrences, horlogeDuFuseau, instantSaisi, jourDeLAppareil } from '@booking-app/shared';
 import type { Member, ActivityCategory, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -585,6 +585,14 @@ export default function CreateActivityScreen() {
     return () => { annule = true; };
   }, [providerId, selectedMemberId]);
 
+  /**
+   * L'heure saisie est celle qu'on LIT à l'écran ; celle qu'on ÉCRIT est la
+   * même heure murale, mais au SALON. Voir la note identique dans
+   * block-slot : sans fuseau connu, la date rendue est celle d'avant.
+   */
+  const auSalon = (d: Date): Date =>
+    instantSaisi(jourDeLAppareil(d), d.getHours() * 60 + d.getMinutes(), fuseau);
+
   const selectedMember = members.find((m) => m.id === selectedMemberId);
   const activeCategory = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
 
@@ -676,8 +684,8 @@ export default function CreateActivityScreen() {
       const base: BlockedSlotInput = {
         memberId: selectedMember.id,
         locationId: selectedMember.locationId,
-        startDate: startTime,
-        endDate: endTime,
+        startDate: auSalon(startTime),
+        endDate: auSalon(endTime),
         allDay: false,
         startTime: formatTime(startTime),
         endTime: formatTime(endTime),
@@ -688,7 +696,7 @@ export default function CreateActivityScreen() {
         amount: amountCents,
         // La règle NORMALISÉE — celle que l'écran annonce, pas le brouillon.
         recurrence: recurrence
-          ? regleAEnregistrer(recurrence, { startDate: startTime, endDate: endTime }, fuseau)
+          ? regleAEnregistrer(recurrence, { startDate: auSalon(startTime), endDate: auSalon(endTime) }, fuseau)
           : null,
       };
 
@@ -697,9 +705,10 @@ export default function CreateActivityScreen() {
       if (!ignorerConflits) {
         // « Cette occurrence seulement » n'écrit qu'une période.
         const serie = recurrence && !(editId && existingSeriesId && quoi === 'cette');
+        const periode = { startDate: base.startDate, endDate: base.endDate };
         const dates = serie
-          ? genererOccurrences({ startDate: startTime, endDate: endTime }, base.recurrence!, horlogeDuFuseau(fuseau))
-          : [{ startDate: startTime, endDate: endTime }];
+          ? genererOccurrences(periode, base.recurrence!, horlogeDuFuseau(fuseau))
+          : [periode];
         const periodes = dates.map((d) => ({ ...d, allDay: false, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode: 'continuous' as const }));
         const touches: WithId<Booking>[] = await schedulingService.rendezVousRecouverts(providerId, selectedMember.id, periodes);
         if (touches.length > 0) {
@@ -732,9 +741,13 @@ export default function CreateActivityScreen() {
           setConfirmation({ titre: t('recurrence.seriesUpdated'), sousTitre: title.trim() });
         } else if (!existingSeriesId && recurrence) {
           // 2b. Une activité isolée devient une série : la remplacer.
-          await schedulingService.unblockPeriod(providerId, editId);
-          // L'activite existait deja : elle garde SA devise en devenant serie.
-          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, { ...base, currency: existingCurrency ?? devisePro() });
+          // En UNE ecriture : supprimer d'abord, creer ensuite, c'etait
+          // perdre l'activite d'origine si la creation echouait. Elle garde
+          // SA devise en devenant serie.
+          const { ids } = await schedulingService.convertirEnSerie(providerId, editId, {
+            ...base,
+            currency: existingCurrency ?? devisePro(),
+          });
           setConfirmation({ titre: t('recurrence.saved', { count: ids.length }), sousTitre: title.trim() });
         } else {
           // 2c. Cette occurrence seulement : PATCH des champs du formulaire.
@@ -743,8 +756,8 @@ export default function CreateActivityScreen() {
           await blockedSlotRepository.update(providerId, editId, {
             memberId: selectedMember.id,
             locationId: selectedMember.locationId,
-            startDate: startTime,
-            endDate: endTime,
+            startDate: base.startDate,
+            endDate: base.endDate,
             allDay: false,
             startTime: formatTime(startTime),
             endTime: formatTime(endTime),
@@ -1071,8 +1084,8 @@ export default function CreateActivityScreen() {
           <RecurrenceFields
             value={recurrence}
             onChange={setRecurrence}
-            baseStart={startTime}
-            baseEnd={endTime}
+            baseStart={auSalon(startTime)}
+            baseEnd={auSalon(endTime)}
             fuseau={fuseau}
             enSerie={!!existingSeriesId}
             disabled={isSubmitting}

@@ -39,12 +39,15 @@ export interface ProviderContext {
   /** Devise du prestataire (EUR si absente) : le groupe du champ plat `revenue`. */
   currency: string;
   /**
-   * Fuseau du LIEU principal — celui qui décide de la journée à laquelle un
-   * rendez-vous ou une activité appartient. `Europe/Paris` en dernier
-   * recours seulement : un salon à La Réunion voyait ses matinées comptées
-   * la veille, et son mois se fermer avec un jour de décalage.
+   * Fuseau de REPLI — celui du lieu principal. Ne sert qu'aux documents qui
+   * n'en portent pas : une réservation a le sien, figé, et une activité
+   * prend celui de son lieu. `Europe/Paris` en dernier recours seulement :
+   * un salon à La Réunion voyait ses matinées comptées la veille, et son
+   * mois se fermer avec un jour de décalage.
    */
   timezone: string;
+  /** locationId → fuseau IANA. Un prestataire peut tenir deux lieux, deux fuseaux. */
+  timezonesByLocation: Record<string, string>;
 }
 
 /**
@@ -77,11 +80,17 @@ export async function loadProviderContext(
     (lieux.find((l) => l.isDefault && typeof l.timezone === 'string')?.timezone as string | undefined)
     ?? (lieux.find((l) => typeof l.timezone === 'string')?.timezone as string | undefined)
     ?? DEFAULT_TIMEZONE;
+  const timezonesByLocation: Record<string, string> = {};
+  for (const d of locationsSnap.docs) {
+    const tz = d.data().timezone;
+    if (typeof tz === 'string' && tz) timezonesByLocation[d.id] = tz;
+  }
   return {
     providerName: (providerData.businessName as string) ?? 'Provider',
     membersById,
     currency: ((providerData.currency as string | undefined) || 'EUR').toUpperCase(),
     timezone,
+    timezonesByLocation,
   };
 }
 
@@ -120,6 +129,8 @@ export function blockedSlotFromFirestore(
     category: (raw.category ?? null) as BlockedSlotLike['category'],
     amount: typeof raw.amount === 'number' ? raw.amount : null,
     currency: (raw.currency as string | null | undefined) ?? null,
+    // Le lieu décide du fuseau dans lequel l'activité se range.
+    locationId: (raw.locationId as string | null | undefined) ?? null,
     startDate,
   };
 }
@@ -168,12 +179,14 @@ export async function recomputeDailyDoc(
     providerName: ctx.providerName,
     membersById: ctx.membersById,
     timezone: ctx.timezone,
+    timezonesByLocation: ctx.timezonesByLocation,
     providerCurrency: ctx.currency,
   });
   if (activities.length > 0) {
     mergeActivitiesIntoDailies(activities, dailies, {
       providerId,
       timezone: ctx.timezone,
+      timezonesByLocation: ctx.timezonesByLocation,
       providerCurrency: ctx.currency,
     });
   }

@@ -65,6 +65,8 @@ export interface BookingLike {
   items?: { serviceId: string; serviceName: string; price: number }[];
   status: BookingStatus;
   datetime: Date;
+  /** Fuseau FIGÉ sur la réservation — la journée dont la cliente a convenu. */
+  timezone?: string | null;
   clientInfo: ClientInfoLike;
   createdAt: Date;
 }
@@ -118,6 +120,8 @@ export interface BlockedSlotLike {
   amount?: number | null;
   /** Devise du montant, figee a la creation. Absente = EUR. */
   currency?: string | null;
+  /** Le lieu décide du fuseau dans lequel cette activité se range. */
+  locationId?: string | null;
   startDate: Date;
 }
 
@@ -294,6 +298,9 @@ export function bookingFromFirestore(data: Record<string, unknown>): BookingLike
     items: data.items as BookingLike['items'],
     status: data.status as BookingStatus,
     datetime: ts(data.datetime),
+    // Fuseau FIGÉ sur la réservation : sans lui, un lieu à l'autre bout du
+    // monde voyait ses rendez-vous rangés dans la journée du siège.
+    timezone: (data.timezone as string | null | undefined) ?? null,
     clientInfo: (data.clientInfo as ClientInfoLike) ?? {
       name: '',
       email: '',
@@ -395,7 +402,15 @@ export interface AggregateOptions {
   providerId: string;
   providerName: string;
   membersById?: Record<string, { name: string }>;
+  /**
+   * Fuseau de REPLI seulement. Une réservation porte le sien, figé à sa
+   * création ; une activité prend celui de son lieu (`timezonesByLocation`).
+   * Un prestataire à cheval sur deux fuseaux voyait sinon les rendez-vous
+   * d'un de ses lieux rangés au mauvais jour, et au mauvais mois en fin de mois.
+   */
   timezone?: string;
+  /** locationId → fuseau IANA, pour les ACTIVITÉS (qui n'en portent pas). */
+  timezonesByLocation?: Record<string, string>;
   /** Devise du prestataire : le groupe que porte le champ plat `revenue`. */
   providerCurrency?: string | null;
 }
@@ -404,13 +419,16 @@ export function aggregateBookingsToDaily(
   bookings: BookingLike[],
   opts: AggregateOptions,
 ): Map<string, ProviderStatsDaily> {
-  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const tzDefaut = opts.timezone ?? DEFAULT_TIMEZONE;
   const reference = deviseReference(opts.providerCurrency);
   const dailies = new Map<string, ProviderStatsDaily>();
   const sorted = [...bookings].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
   const seenClients = new Set<string>();
 
   for (const b of sorted) {
+    // Le fuseau FIGÉ sur la réservation d'abord : c'est celui du lieu au
+    // moment où la cliente a réservé, donc la journée dont elle parle.
+    const tz = b.timezone || tzDefaut;
     const date = dateKeyInTz(b.datetime, tz);
     let daily = dailies.get(date);
     if (!daily) {
@@ -475,9 +493,15 @@ function upsertService(arr: ProviderStatsServiceBreakdown[], b: BookingLike, ref
 export function mergeActivitiesIntoDailies(
   activities: BlockedSlotLike[],
   dailies: Map<string, ProviderStatsDaily>,
-  opts: { providerId: string; timezone?: string; providerCurrency?: string | null },
+  opts: {
+    providerId: string;
+    timezone?: string;
+    /** locationId → fuseau IANA : une activité se range dans le jour de SON lieu. */
+    timezonesByLocation?: Record<string, string>;
+    providerCurrency?: string | null;
+  },
 ): Map<string, ProviderStatsDaily> {
-  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const tzDefaut = opts.timezone ?? DEFAULT_TIMEZONE;
   const reference = deviseReference(opts.providerCurrency);
   for (const slot of activities) {
     if (!slot.category) continue;
@@ -486,6 +510,7 @@ export function mergeActivitiesIntoDailies(
     // Devise FIGEE sur l'activite ; absente = EUR (activite d'avant).
     const devise = groupeDevise(slot);
 
+    const tz = (slot.locationId && opts.timezonesByLocation?.[slot.locationId]) || tzDefaut;
     const date = dateKeyInTz(slot.startDate, tz);
     let daily = dailies.get(date);
     if (!daily) {

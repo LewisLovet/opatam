@@ -55,10 +55,21 @@ function formatDateLongue(d: Date): string {
   return new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 }
 
+/** « 2026-05-03 » depuis un `Date`, par ses composantes de l'appareil. */
+function isoDepuisDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** « 2026-05-03 » → `Date` locale à minuit, pour le sélecteur de date. */
+function dateDepuisIso(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 /** Brouillon par défaut : chaque semaine, le jour de la période, pendant trois mois. */
 export function brouillonParDefaut(baseStart: Date): RecurrenceDraft {
   const until = new Date(baseStart.getFullYear(), baseStart.getMonth() + 3, baseStart.getDate());
-  return { intervalWeeks: 1, weekdays: [baseStart.getDay()], until };
+  return { intervalWeeks: 1, weekdays: [baseStart.getDay()], until: isoDepuisDate(until) };
 }
 
 /** « Chaque semaine le samedi, jusqu'au 3 mai 2026 » — dans la langue de l'app. */
@@ -70,7 +81,7 @@ export function decrireRecurrence(rule: RecurrenceRule): string {
       : i18n.t('recurrence.dayMany', {
           days: noms.slice(0, -1).join(', ') + i18n.t('recurrence.and') + noms[noms.length - 1],
         });
-  const until = formatDateLongue(rule.until);
+  const until = formatDateLongue(dateDepuisIso(rule.until));
   return rule.intervalWeeks === 1
     ? i18n.t('recurrence.describeWeekly', { days, until })
     : i18n.t('recurrence.describeEveryN', { n: rule.intervalWeeks, days, until });
@@ -111,7 +122,7 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, 
     const nombre = genererOccurrences(periode, rule, horloge).length;
     return { erreur: null, texte: decrireRecurrence(rule), nombre };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.intervalWeeks, value?.until?.getTime(), value?.weekdays?.join(','), baseStart.getTime(), baseEnd.getTime(), fuseau]);
+  }, [value?.intervalWeeks, value?.until, value?.weekdays?.join(','), baseStart.getTime(), baseEnd.getTime(), fuseau]);
 
   const toggleJour = (j: number) => {
     if (!value || j === jourDeBase || plusieursJours) return;
@@ -121,7 +132,9 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, 
 
   const choisirUntil = (date: Date | undefined) => {
     if (!value || !date) return;
-    onChange({ ...value, until: new Date(date.getFullYear(), date.getMonth(), date.getDate()) });
+    // Une DATE calendaire, pas un instant : « jusqu'au 3 mai » veut dire la
+    // même chose partout, et rouvrir la série ailleurs ne la déplace plus.
+    onChange({ ...value, until: isoDepuisDate(date) });
   };
 
   return (
@@ -212,7 +225,7 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, 
             ]}
           >
             <Text variant="body" style={{ flex: 1, fontWeight: '500' }}>{t('recurrence.until')}</Text>
-            <Text variant="body" color="primary" style={{ fontWeight: '500' }}>{formatDateLongue(value.until)}</Text>
+            <Text variant="body" color="primary" style={{ fontWeight: '500' }}>{formatDateLongue(dateDepuisIso(value.until))}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: spacing.xs }} />
           </Pressable>
 
@@ -230,7 +243,7 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, 
       {/* Sélecteur « jusqu'au » — natif Android, feuille iOS */}
       {value && pickerOuvert && Platform.OS === 'android' && (
         <DateTimePicker
-          value={value.until}
+          value={dateDepuisIso(value.until)}
           mode="date"
           minimumDate={baseStart}
           onChange={(_: unknown, date?: Date) => {
@@ -254,7 +267,7 @@ export function RecurrenceFields({ value, onChange, baseStart, baseEnd, fuseau, 
                 </Pressable>
               </View>
               <DateTimePicker
-                value={value.until}
+                value={dateDepuisIso(value.until)}
                 mode="date"
                 display="inline"
                 minimumDate={baseStart}

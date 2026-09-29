@@ -246,8 +246,16 @@ export interface AggregateOptions {
   providerName: string;
   /** Map of memberId → { name } so we denormalize current names if a member was renamed since the booking was created. */
   membersById?: Record<string, { name: string }>;
-  /** Defaults to Europe/Paris. */
+  /**
+   * Fuseau de REPLI seulement. Une réservation porte le sien, figé à sa
+   * création ; une activité prend celui de son lieu (`timezonesByLocation`).
+   * Un prestataire à cheval sur deux fuseaux voyait sinon les rendez-vous
+   * d'un de ses lieux rangés au mauvais jour — et au mauvais mois en fin de
+   * mois. Defaults to Europe/Paris.
+   */
   timezone?: string;
+  /** locationId → fuseau IANA, pour les ACTIVITÉS (qui n'en portent pas). */
+  timezonesByLocation?: Record<string, string>;
 }
 
 /**
@@ -262,7 +270,7 @@ export function aggregateBookingsToDaily(
   bookings: Booking[],
   opts: AggregateOptions,
 ): Map<string, ProviderStatsDaily> {
-  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const tzDefaut = opts.timezone ?? DEFAULT_TIMEZONE;
   const dailies = new Map<string, ProviderStatsDaily>();
   // Walk chronologically so "first booking ever" is correctly flagged.
   const sorted = [...bookings].sort(
@@ -271,7 +279,9 @@ export function aggregateBookingsToDaily(
   const seenClients = new Set<string>();
 
   for (const booking of sorted) {
-    const date = dateKeyInTz(booking.datetime, tz);
+    // Le fuseau FIGÉ sur la réservation d'abord : c'est celui du lieu au
+    // moment où la cliente a réservé, et donc la journée dont elle parle.
+    const date = dateKeyInTz(booking.datetime, booking.timezone || tzDefaut);
     let daily = dailies.get(date);
     if (!daily) {
       daily = emptyDaily(opts.providerId, date);
@@ -293,7 +303,7 @@ export function aggregateBookingsToDaily(
     }
 
     // Hour-of-day distribution (in provider tz).
-    const hour = hourInTz(booking.datetime, tz);
+    const hour = hourInTz(booking.datetime, booking.timezone || tzDefaut);
     daily.hourCounts[hour] = (daily.hourCounts[hour] ?? 0) + 1;
 
     // Client identity tracking.
@@ -345,9 +355,15 @@ export function aggregateBookingsToDaily(
 export function mergeActivitiesIntoDailies(
   activities: BlockedSlot[],
   dailies: Map<string, ProviderStatsDaily>,
-  opts: { providerId: string; timezone?: string; providerCurrency?: string | null },
+  opts: {
+    providerId: string;
+    timezone?: string;
+    /** locationId → fuseau IANA : une activité se range dans le jour de SON lieu. */
+    timezonesByLocation?: Record<string, string>;
+    providerCurrency?: string | null;
+  },
 ): Map<string, ProviderStatsDaily> {
-  const tz = opts.timezone ?? DEFAULT_TIMEZONE;
+  const tzDefaut = opts.timezone ?? DEFAULT_TIMEZONE;
   const reference = deviseReference(opts.providerCurrency);
 
   for (const slot of activities) {
@@ -357,6 +373,7 @@ export function mergeActivitiesIntoDailies(
     // Devise FIGÉE sur l'activité ; absente = EUR (activité d'avant).
     const devise = groupeDevise(slot);
 
+    const tz = (slot.locationId && opts.timezonesByLocation?.[slot.locationId]) || tzDefaut;
     const date = dateKeyInTz(slot.startDate, tz);
     let daily = dailies.get(date);
     if (!daily) {

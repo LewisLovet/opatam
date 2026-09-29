@@ -11,7 +11,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { Plus, Trash2, Calendar, Clock, Loader2, Repeat } from 'lucide-react';
-import { isBlockedPeriodValid } from '@booking-app/shared';
+import { isBlockedPeriodValid, instantSaisi } from '@booking-app/shared';
 import type { BlockedSlot, Booking, Location, Member, RecurrenceRule } from '@booking-app/shared';
 import {
   RecurrenceFields,
@@ -31,8 +31,8 @@ interface BlockedSlotsSectionProps {
   onDelete: (slotId: string) => Promise<void>;
   /** Supprime les occurrences À VENIR d'une série (celles déjà passées restent). */
   onDeleteSeries?: (seriesId: string) => Promise<void>;
-  /** Fuseau du lieu, pour que l'aperçu de répétition compte comme la base. */
-  fuseau?: string;
+  /** memberId → fuseau du lieu : l'heure saisie est celle DU SALON. */
+  fuseauParMembre?: Record<string, string>;
   /** Les rendez-vous que la saisie recouvrirait — on prévient avant d'écrire, on n'annule rien. */
   verifierConflits?: (data: BlockedSlotFormData) => Promise<WithId<Booking>[]>;
   hasTeams?: boolean;
@@ -93,7 +93,7 @@ export function BlockedSlotsSection({
   onAdd,
   onDelete,
   onDeleteSeries,
-  fuseau,
+  fuseauParMembre,
   verifierConflits,
   hasTeams = false,
 }: BlockedSlotsSectionProps) {
@@ -123,6 +123,9 @@ export function BlockedSlotsSection({
   /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
   const [deletingSeriesId, setDeletingSeriesId] = useState<string | null>(null);
+
+  /** Le fuseau du lieu du membre visé — sinon celui de l'appareil, comme avant. */
+  const fuseau = fuseauParMembre?.[formData.memberId];
 
   /**
    * Période invalide, recalculée à chaque frappe.
@@ -164,10 +167,29 @@ export function BlockedSlotsSection({
     resetForm();
   };
 
+  /**
+   * L'heure saisie est celle du SALON, pas celle de l'appareil : c'est dans
+   * le fuseau du lieu que le moteur relit la période. Sans fuseau connu,
+   * `instantSaisi` rend exactement la date d'avant.
+   */
+  const auSalon = (jour: Date, hhmm: string | null): Date => {
+    const [h, min] = (hhmm ?? '00:00').split(':').map(Number);
+    return instantSaisi(toDayKey(jour), h * 60 + min, fuseau);
+  };
+
   const donneesAEnvoyer = (): BlockedSlotFormData => ({
     ...formData,
+    startDate: auSalon(formData.startDate, formData.allDay ? '00:00' : formData.startTime),
+    endDate: auSalon(formData.endDate, formData.allDay ? '23:59' : formData.endTime),
     recurrence: recurrenceDraft
-      ? regleAEnregistrer(recurrenceDraft, { startDate: formData.startDate, endDate: formData.endDate }, fuseau)
+      ? regleAEnregistrer(
+          recurrenceDraft,
+          {
+            startDate: auSalon(formData.startDate, formData.allDay ? '00:00' : formData.startTime),
+            endDate: auSalon(formData.endDate, formData.allDay ? '23:59' : formData.endTime),
+          },
+          fuseau,
+        )
       : null,
   });
 

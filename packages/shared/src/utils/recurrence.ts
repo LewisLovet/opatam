@@ -21,8 +21,9 @@
  *     semaines sont comptées à partir de celle de la période saisie
  *     (semaines du lundi au dimanche) ;
  *   - `until` : dernier jour où une occurrence peut COMMENCER, inclus. C'est
- *     une DATE, saisie dans un champ date : elle est toujours lue par ses
- *     composantes locales, jamais réinterprétée dans un autre fuseau.
+ *     une DATE CALENDAIRE (« YYYY-MM-DD »), pas un instant : « jusqu'au
+ *     3 mai » veut dire la même chose à Paris et à Nouméa, et rouvrir la
+ *     série depuis un autre fuseau ne déplace plus son dernier jour.
  *
  * LE FUSEAU. Sans horloge, l'arithmétique est celle de l'appareil : c'est
  * ce que font déjà les formulaires, et cela suffit tant que le pro et son
@@ -62,8 +63,8 @@ export interface RecurrenceRule {
   intervalWeeks: number;
   /** Jours de départ des occurrences, `Date.getDay()` (0 = dimanche). */
   weekdays: number[];
-  /** Dernier jour de départ possible, inclus (l'heure est ignorée). */
-  until: Date;
+  /** Dernier jour de départ possible, INCLUS — « YYYY-MM-DD », pas un instant. */
+  until: JourCalendaire;
 }
 
 export interface PeriodeDeBase {
@@ -217,8 +218,7 @@ export function raisonRegleInvalide(
   const duree = joursEntreJours(debut, jourDe(base.endDate, horloge));
   if (duree < 0) return 'finAvantDebut';
   if (duree > 0 && jours.length > 1) return 'plusieursJoursMultiJours';
-  // `until` vient d'un champ date : toujours lu par ses composantes locales.
-  const horizon = joursEntreJours(debut, jourLocalDe(rule.until));
+  const horizon = joursEntreJours(debut, rule.until);
   if (horizon < 0) return 'finAvantPremiere';
   if (horizon > HORIZON_MAX_JOURS) return 'horizon';
   return null;
@@ -254,7 +254,7 @@ export function genererOccurrences(
   const jourFin = jourDe(base.endDate, horloge);
   const duree = joursEntreJours(jourDebut, jourFin);
   const jours = trierJoursSemaine(rule.weekdays);
-  const jourLimite = jourLocalDe(rule.until);
+  const jourLimite = rule.until;
   // Lundi de la semaine de la période de base.
   const lundi = ajouterJoursCal(jourDebut, -depuisLundi(jourSemaineCal(jourDebut)));
   // Les heures murales à reproduire — du salon si on a son horloge.

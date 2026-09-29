@@ -414,3 +414,41 @@ export function horlogeDuFuseau(fuseau: string | null | undefined): HorlogeLocal
     },
   };
 }
+
+/**
+ * L'instant d'une heure SAISIE dans un formulaire, pour un lieu donné.
+ *
+ * C'est le point où tout se joue. Les formulaires construisaient leur date
+ * avec `new Date(a, m, j, h, min)` ou `setHours(...)` : l'instant obtenu
+ * est celui de l'APPAREIL. Un pro à Paris qui bloque « 09:00 » pour son
+ * salon de Los Angeles produisait un blocage à minuit là-bas — et le
+ * moteur, lui, lit bien dans le fuseau du lieu. Les deux bouts ne parlaient
+ * pas de la même heure.
+ *
+ * Avec `fuseau`, l'heure murale est celle du SALON. Sans (fuseau inconnu),
+ * on retombe exactement sur l'ancien comportement : même appareil, même
+ * résultat.
+ *
+ * `minutes` peut valoir 1440 (« minuit au bout de la journée »), comme
+ * partout dans le moteur ; c'est alors le début du jour suivant.
+ */
+export function instantSaisi(
+  jour: JourCalendaire,
+  minutes: number,
+  fuseau?: string | null,
+): Date {
+  const d = decouperJour(jour);
+  if (!d) throw new Error(`Date calendaire invalide : « ${jour} » (attendu YYYY-MM-DD)`);
+  if (!fuseau) {
+    return new Date(d.a, d.m - 1, d.j, Math.floor(minutes / 60), minutes % 60, 0, 0);
+  }
+  const horloge = horlogeDuFuseau(fuseau);
+  return horloge!.instant(jour, minutes);
+}
+
+/** « 2026-05-03 » depuis un `Date`, par ses composantes de l'APPAREIL. */
+export function jourDeLAppareil(d: Date): JourCalendaire {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const j = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${j}`;
+}

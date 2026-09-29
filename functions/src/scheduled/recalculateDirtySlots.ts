@@ -49,7 +49,13 @@ export const recalculateDirtySlots = onSchedule(
           updatedAt: FieldValue.serverTimestamp(),
         });
       } catch (err) {
-        console.error(`[recalculateDirtySlots] ${doc.id} échec`, err);
+        // Le marqueur est tombé AVANT le calcul : si celui-ci échoue, plus
+        // rien ne demanderait la reprise, et la disponibilité annoncée
+        // resterait fausse indéfiniment. On le repose.
+        console.error(`[recalculateDirtySlots] ${doc.id} échec — remarqué pour la prochaine passe`, err);
+        await ref
+          .update({ nextSlotDirty: true, nextSlotDirtyAt: FieldValue.serverTimestamp() })
+          .catch((e) => console.error(`[recalculateDirtySlots] ${doc.id} remarquage impossible`, e));
       }
     };
 

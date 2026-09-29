@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi } from '@booking-app/shared';
 import type { Booking, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
@@ -83,10 +83,13 @@ function formatTimeInput(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function combine(date: string, time: string): Date {
-  const [y, m, day] = date.split('-').map(Number);
+/**
+ * L'instant d'une heure SAISIE, dans le fuseau du LIEU. Voir la note
+ * identique dans BlockPeriodModal : sans fuseau, comportement d'avant.
+ */
+function combine(date: string, time: string, fuseau?: string): Date {
   const [h, min] = time.split(':').map(Number);
-  return new Date(y, m - 1, day, h, min, 0, 0);
+  return instantSaisi(date, h * 60 + min, fuseau);
 }
 
 interface ActivityModalProps {
@@ -285,8 +288,8 @@ export function ActivityModal({
       toast.error('Sélectionnez un membre');
       return null;
     }
-    const startDt = combine(date, startTime);
-    const endDt = combine(date, endTime);
+    const startDt = combine(date, startTime, fuseau);
+    const endDt = combine(date, endTime, fuseau);
     // Une activité tient sur UN jour : la règle partagée s'applique donc
     // toujours en `sameDay`. `endDt <= startDt` gérait bien les bornes
     // égales, mais refusait « 22:00 → 00:00 » — une fin à minuit produit
@@ -393,10 +396,13 @@ export function ActivityModal({
           });
           toast.success('Cette activité et les suivantes ont été modifiées');
         } else if (!existingSeriesId && s.input.recurrence) {
-          // Une activité isolée devient une série : la remplacer.
-          await schedulingService.unblockPeriod(providerId, editId);
-          // L'activité existait déjà : elle garde SA devise en devenant série.
-          await schedulingService.blockPeriodRecurrent(providerId, { ...s.input, currency: existingCurrency ?? deviseProv });
+          // Une activité isolée devient une série. En UNE écriture :
+          // supprimer d'abord, créer ensuite, c'était perdre l'activité
+          // d'origine si la création échouait. Elle garde SA devise.
+          await schedulingService.convertirEnSerie(providerId, editId, {
+            ...s.input,
+            currency: existingCurrency ?? deviseProv,
+          });
           toast.success('Activité répétée');
         } else {
           await blockedSlotRepository.update(providerId, editId, {
@@ -596,8 +602,8 @@ export function ActivityModal({
             <RecurrenceFields
               value={recurrence}
               onChange={setRecurrence}
-              baseStart={combine(date, startTime)}
-              baseEnd={combine(date, endTime)}
+              baseStart={combine(date, startTime, fuseau)}
+              baseEnd={combine(date, endTime, fuseau)}
               fuseau={fuseau}
               enSerie={!!existingSeriesId}
               disabled={saving || deleting}

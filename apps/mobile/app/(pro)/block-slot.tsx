@@ -25,7 +25,7 @@ import { useTheme } from '../../theme';
 import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
+import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi, jourDeLAppareil } from '@booking-app/shared';
 import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
@@ -538,17 +538,32 @@ export default function BlockSlotScreen() {
 
   const invalidPeriod = periodError();
 
+  /**
+   * L'heure saisie est celle qu'on LIT à l'écran ; celle qu'on ÉCRIT est la
+   * même heure murale, mais au SALON.
+   *
+   * Les sélecteurs manipulent des dates de l'appareil (`setHours`), et le
+   * moteur, lui, lit dans le fuseau du lieu : un pro à Paris qui bloquait
+   * « 09:00 » pour son salon de Los Angeles posait un blocage à minuit
+   * là-bas. On reconstruit donc l'instant au moment d'écrire. Sans fuseau
+   * connu, `instantSaisi` rend exactement la date d'avant.
+   */
+  const auSalon = (d: Date): Date =>
+    instantSaisi(jourDeLAppareil(d), d.getHours() * 60 + d.getMinutes(), fuseau);
+
   /** La période et ses heures, prêtes pour le service. */
   const saisie = (): Omit<BlockedSlotInput, 'memberId' | 'locationId'> => ({
-    startDate,
-    endDate,
+    startDate: auSalon(startDate),
+    endDate: auSalon(endDate),
     allDay,
     startTime: allDay ? null : formatTime(startDate),
     endTime: allDay ? null : formatTime(endDate),
     spanMode,
     reason: reason.trim() || null,
     // La règle NORMALISÉE — celle que l'écran annonce, pas le brouillon.
-    recurrence: recurrence ? regleAEnregistrer(recurrence, { startDate, endDate }, fuseau) : null,
+    recurrence: recurrence
+      ? regleAEnregistrer(recurrence, { startDate: auSalon(startDate), endDate: auSalon(endDate) }, fuseau)
+      : null,
   });
 
   const handleSubmit = () => {
@@ -589,9 +604,10 @@ export default function BlockSlotScreen() {
         // « Cette occurrence seulement » n'écrit qu'une période : inutile de
         // déplier la série pour y chercher des conflits qu'on ne créera pas.
         const serie = recurrence && !(editId && existingSeriesId && quoi === 'cette');
+        const periode = { startDate: base.startDate, endDate: base.endDate };
         const dates = serie
-          ? genererOccurrences({ startDate, endDate }, base.recurrence!, horlogeDuFuseau(fuseau))
-          : [{ startDate, endDate }];
+          ? genererOccurrences(periode, base.recurrence!, horlogeDuFuseau(fuseau))
+          : [periode];
         const periodes = dates.map((d) => ({ ...d, allDay, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode }));
         const parMembre = await Promise.all(
           selectedMembers.map((m) => schedulingService.rendezVousRecouverts(providerId, m.id, periodes)),
@@ -632,8 +648,10 @@ export default function BlockSlotScreen() {
         }
         if (!existingSeriesId && recurrence && member) {
           // 2b. Une période isolée devient une série : la remplacer.
-          await schedulingService.unblockPeriod(providerId, editId);
-          const { ids } = await schedulingService.blockPeriodRecurrent(providerId, {
+          // En UNE écriture : supprimer d'abord, créer ensuite, c'était
+          // perdre le blocage d'origine si la création échouait — et rouvrir
+          // le créneau en silence.
+          const { ids } = await schedulingService.convertirEnSerie(providerId, editId, {
             ...base,
             memberId: member.id,
             locationId: member.locationId,
@@ -646,8 +664,8 @@ export default function BlockSlotScreen() {
         // 2c. Cette occurrence seulement — la règle copiée sur le document
         //     ne bouge pas, l'occurrence reste dans sa série.
         await blockedSlotRepository.update(providerId, editId, {
-          startDate,
-          endDate,
+          startDate: base.startDate,
+          endDate: base.endDate,
           allDay,
           startTime: allDay ? null : formatTime(startDate),
           endTime: allDay ? null : formatTime(endDate),
@@ -901,8 +919,8 @@ export default function BlockSlotScreen() {
           <RecurrenceFields
             value={recurrence}
             onChange={setRecurrence}
-            baseStart={startDate}
-            baseEnd={endDate}
+            baseStart={auSalon(startDate)}
+            baseEnd={auSalon(endDate)}
             fuseau={fuseau}
             enSerie={!!existingSeriesId}
             disabled={isSubmitting}

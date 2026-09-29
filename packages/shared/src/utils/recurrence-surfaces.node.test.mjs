@@ -213,9 +213,18 @@ describe('3 ter. les six points de l’audit externe', () => {
     assert.match(ctx, /locations`\)\.get\(\)/, 'lu sur les LIEUX, pas sur provider.settings');
     assert.match(ctx, /timezone: ctx\.timezone/);
     assert.match(ctx, /await db\.runTransaction\(async \(tx\) => \{\s*await tx\.get\(ref\);/, 'le doc mensuel est lu dans la transaction : c’est le point de contention');
-    for (const t of ['onBlockedSlotWriteProviderStats', 'onBookingWriteProviderStats']) {
-      const src = lire(`functions/src/triggers/${t}.ts`);
-      assert.match(src, /dateKeyInTz\([^,]+, ctx\.timezone\)/, `${t} : clé de jour dans le fuseau du lieu`);
+    // Le fuseau vient du DOCUMENT : figé sur la réservation, celui du lieu
+    // pour l'activité. Celui du lieu principal n'est qu'un repli — un
+    // prestataire peut tenir deux lieux dans deux fuseaux.
+    const resa = lire('functions/src/triggers/onBookingWriteProviderStats.ts');
+    assert.match(resa, /dateKeyInTz\(beforeBooking\.datetime, beforeBooking\.timezone \|\| ctx\.timezone\)/);
+    assert.match(resa, /dateKeyInTz\(afterBooking\.datetime, afterBooking\.timezone \|\| ctx\.timezone\)/);
+    const act = lire('functions/src/triggers/onBlockedSlotWriteProviderStats.ts');
+    assert.match(act, /ctx\.timezonesByLocation\[raw\.locationId\]/);
+    for (const mir of ['packages/shared/src/utils/providerStats.ts', 'functions/src/lib/providerStatsAgg.ts']) {
+      const src = lire(mir);
+      assert.match(src, /timezonesByLocation\?: Record<string, string>;/, `${mir} : table des fuseaux par lieu`);
+      assert.match(src, /timezone \|\| tzDefaut/, `${mir} : le fuseau figé de la réservation d'abord`);
     }
   });
 
