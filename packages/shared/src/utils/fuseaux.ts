@@ -452,3 +452,106 @@ export function jourDeLAppareil(d: Date): JourCalendaire {
   const j = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${m}-${j}`;
 }
+
+/**
+ * Ce qu'un formulaire SAISIT : des jours et des heures murales, sans fuseau.
+ *
+ * C'est la seule forme qui ait un sens avant de savoir POUR QUI on écrit.
+ * « Fermé samedi de 09:00 à 12:00 » pour un membre à Paris et un autre à
+ * New York, ce sont deux instants différents : 09:00 dans chacun des deux
+ * lieux. Construire l'instant une fois, dans le fuseau du premier membre,
+ * puis l'envoyer à toute l'équipe, décalait tous les autres.
+ */
+export interface SaisieMurale {
+  jourDebut: JourCalendaire;
+  jourFin: JourCalendaire;
+  /** « HH:mm ». Sans objet quand `allDay`. */
+  heureDebut: string;
+  heureFin: string;
+  allDay: boolean;
+}
+
+function minutesDe(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
+ * La période d'UN membre : la saisie, résolue dans le fuseau de SON lieu.
+ * Journée entière = 00:00 → 23:59, comme les formulaires l'ont toujours
+ * écrit (le moteur ne lit alors que les jours). Sans fuseau : l'appareil,
+ * comme avant.
+ */
+export function periodeDepuisSaisie(
+  s: SaisieMurale,
+  fuseau?: string | null,
+): { startDate: Date; endDate: Date } {
+  const debut = s.allDay ? 0 : minutesDe(s.heureDebut);
+  const fin = s.allDay ? 23 * 60 + 59 : minutesDe(s.heureFin);
+  return {
+    startDate: instantSaisi(s.jourDebut, debut, fuseau),
+    endDate: instantSaisi(s.jourFin, fin, fuseau),
+  };
+}
+
+/**
+ * L'inverse : ce qu'il faut AFFICHER dans le formulaire pour une période
+ * enregistrée, lue dans le fuseau de son lieu.
+ *
+ * Les formulaires relisaient l'instant avec les getters de l'APPAREIL : une
+ * activité à 09:00 à Los Angeles s'ouvrait à 18:00 depuis Paris — et un
+ * simple « Enregistrer » sans rien toucher la réécrivait à 18:00 là-bas.
+ *
+ * Les heures FIGÉES (`startTime`/`endTime`) priment : ce sont elles que le
+ * moteur lit, donc elles disent vrai même pour une période créée avant que
+ * la saisie ne suive le fuseau du lieu. Le JOUR, lui, vient toujours de
+ * l'instant, lu dans le fuseau du lieu — c'est aussi ce que fait le moteur.
+ */
+export function saisieDepuisPeriode(
+  p: {
+    startDate: Date;
+    endDate: Date;
+    allDay: boolean;
+    startTime?: string | null;
+    endTime?: string | null;
+  },
+  fuseau?: string | null,
+): SaisieMurale {
+  const jour = (d: Date) => (fuseau ? jourLocal(d, fuseau) : jourDeLAppareil(d));
+  const heure = (d: Date) =>
+    fuseau
+      ? heureLocale(d, fuseau)
+      : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return {
+    jourDebut: jour(p.startDate),
+    jourFin: jour(p.endDate),
+    heureDebut: p.startTime || heure(p.startDate),
+    heureFin: p.endTime || heure(p.endDate),
+    allDay: p.allDay,
+  };
+}
+
+/**
+ * Les fuseaux d'une sélection de membres sont-ils TOUS connus ?
+ *
+ * Une table `memberId → fuseau | null` se remplit de façon asynchrone.
+ * « Absent de la table » = lecture EN COURS ; `null` = lecture faite, lieu
+ * sans fuseau (vieux lieux — on retombe alors sur l'appareil, et c'est
+ * voulu : on ne bloque pas un compte pour une donnée qu'il n'a pas).
+ * Confondre les deux, c'était laisser partir un enregistrement avant la
+ * réponse, donc dans le fuseau de l'appareil.
+ */
+export function fuseauxPrets(
+  memberIds: string[],
+  table: Record<string, string | null>,
+): boolean {
+  return memberIds.every((id) => Object.prototype.hasOwnProperty.call(table, id));
+}
+
+/** Les fuseaux distincts d'une sélection — plusieurs = l'heure varie selon le lieu. */
+export function fuseauxDistincts(
+  memberIds: string[],
+  table: Record<string, string | null>,
+): string[] {
+  return Array.from(new Set(memberIds.map((id) => table[id]).filter((tz): tz is string => !!tz)));
+}

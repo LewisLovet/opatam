@@ -14,8 +14,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi } from '@booking-app/shared';
-import type { Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  isBlockedPeriodValid,
+  genererOccurrences,
+  horlogeDuFuseau,
+  periodeDepuisSaisie,
+  saisieDepuisPeriode,
+} from '@booking-app/shared';
+import type { Booking, BlockedSlot, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
   ChoixPortee,
@@ -24,6 +30,7 @@ import {
   regleAEnregistrer,
   type RecurrenceDraft,
 } from './RecurrenceFields';
+import { useFuseauxMembres } from './useFuseauxMembres';
 import { useDevise } from '@/contexts/DeviseContext';
 import {
   Modal,
@@ -84,12 +91,14 @@ function formatTimeInput(d: Date): string {
 }
 
 /**
- * L'instant d'une heure SAISIE, dans le fuseau du LIEU. Voir la note
- * identique dans BlockPeriodModal : sans fuseau, comportement d'avant.
+ * L'instant d'une heure SAISIE pour une activité (un seul jour), dans le
+ * fuseau du LIEU de son membre. Sans fuseau : l'appareil, comme avant.
  */
-function combine(date: string, time: string, fuseau?: string): Date {
-  const [h, min] = time.split(':').map(Number);
-  return instantSaisi(date, h * 60 + min, fuseau);
+function combine(date: string, time: string, fuseau?: string | null): Date {
+  return periodeDepuisSaisie(
+    { jourDebut: date, jourFin: date, heureDebut: time, heureFin: time, allDay: false },
+    fuseau,
+  ).startDate;
 }
 
 interface ActivityModalProps {
@@ -175,8 +184,13 @@ export function ActivityModal({
    */
   const [porteeRetenue, setPorteeRetenue] = useState<'cette' | 'suivantes'>('cette');
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
-  /** Fuseau du LIEU du membre : l'aperçu compte comme le service écrira. */
-  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  /**
+   * En édition : l'activité lue, en attente du fuseau de SON lieu pour
+   * remplir le formulaire. Les getters de l'appareil affichaient 18:00 une
+   * activité à 09:00 à Los Angeles vue depuis Paris — et « Enregistrer »
+   * sans rien toucher la déplaçait à 18:00 là-bas.
+   */
+  const [aHydrater, setAHydrater] = useState<BlockedSlot | null>(null);
   /**
    * Devise FIGÉE de l'activité en cours d'édition. Réécrire une série avec
    * la devise du prestataire AUJOURD'HUI transformait en francs des
@@ -214,20 +228,11 @@ export function ActivityModal({
             onClose();
             return;
           }
-          const startDt =
-            existing.startDate instanceof Date
-              ? existing.startDate
-              : (existing.startDate as any).toDate();
-          const endDt =
-            existing.endDate instanceof Date
-              ? existing.endDate
-              : (existing.endDate as any).toDate();
           setMemberId(existing.memberId);
           if (existing.category) setCategory(existing.category);
           setTitle(existing.title || '');
-          setDate(formatDateInput(startDt));
-          setStartTime(formatTimeInput(startDt));
-          setEndTime(formatTimeInput(endDt));
+          // Jour et heures attendent le fuseau du lieu (voir `aHydrater`).
+          setAHydrater(existing);
           setAddress(existing.address || '');
           setNotes(existing.reason || '');
           // Amount stored in cents → display in euros. Falsy
@@ -238,7 +243,8 @@ export function ActivityModal({
               : '',
           );
           setExistingSeriesId(existing.seriesId ?? null);
-          setExistingStart(startDt);
+          // L'instant ENREGISTRÉ, tel quel : la borne de « celle-ci et les suivantes ».
+          setExistingStart(new Date(existing.startDate.getTime()));
           setExistingCurrency(existing.currency ?? null);
           setRecurrence(existing.recurrence ? brouillonDepuisRegle(existing.recurrence) : null);
         } else {
@@ -262,6 +268,7 @@ export function ActivityModal({
           setExistingSeriesId(null);
           setExistingStart(null);
           setExistingCurrency(null);
+          setAHydrater(null);
         }
         setPortee(null);
         setConflits(null);
@@ -338,18 +345,26 @@ export function ActivityModal({
     return { startDt, endDt, member, amountCents, input };
   };
 
-  // Le fuseau du lieu du membre visé, pour que l'aperçu dise vrai.
+  /**
+   * Le fuseau du lieu du membre. Tant qu'il n'est pas lu, rien ne part :
+   * « lecture en cours » et « lieu sans fuseau » ne se confondent plus.
+   */
+  const { pret: fuseauPret, fuseaux } = useFuseauxMembres(providerId, memberId ? [memberId] : [], isOpen);
+  const fuseau = memberId ? fuseaux[memberId] ?? undefined : undefined;
+
+  // Édition : remplir jour et heures une fois le fuseau du membre CONNU.
   useEffect(() => {
-    if (!isOpen || !memberId) { setFuseau(undefined); return; }
-    let annule = false;
-    schedulingService
-      .fuseauDuMembre(providerId, memberId)
-      .then((tz) => { if (!annule) setFuseau(tz); })
-      .catch(() => { if (!annule) setFuseau(undefined); });
-    return () => { annule = true; };
-  }, [isOpen, providerId, memberId]);
+    if (!aHydrater || !fuseauPret) return;
+    const lu = saisieDepuisPeriode(aHydrater, fuseaux[aHydrater.memberId]);
+    setDate(lu.jourDebut);
+    setStartTime(lu.heureDebut);
+    setEndTime(lu.heureFin);
+    setAHydrater(null);
+  }, [aHydrater, fuseauPret, fuseaux]);
 
   const handleSave = () => {
+    // Garde de dernier recours : le bouton est déjà éteint pendant la lecture.
+    if (!fuseauPret) return;
     if (!saisie()) return;
     if (isEditing && existingSeriesId) {
       setPortee('enregistrer');
@@ -364,6 +379,7 @@ export function ActivityModal({
    */
   const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
     setPorteeRetenue(quoi);
+    if (!fuseauPret) return;
     const s = saisie();
     if (!s) return;
     setSaving(true);
@@ -484,7 +500,7 @@ export function ActivityModal({
       />
 
       <ModalBody className="space-y-5">
-        {loading ? (
+        {loading || aHydrater ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
           </div>
@@ -695,7 +711,7 @@ export function ActivityModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || deleting || loading}
+              disabled={saving || deleting || loading || !!aHydrater || !fuseauPret}
               style={{ backgroundColor: activeCategory.color, borderColor: activeCategory.color }}
             >
               {saving ? (

@@ -24,9 +24,20 @@ import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
+import { useFuseauxMembres } from '../../hooks/useFuseauxMembres';
 import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi, jourDeLAppareil } from '@booking-app/shared';
-import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  isBlockedPeriodValid,
+  genererOccurrences,
+  horlogeDuFuseau,
+  instantSaisi,
+  jourDeLAppareil,
+  fuseauxDistincts,
+  periodeDepuisSaisie,
+  saisieDepuisPeriode,
+  type SaisieMurale,
+} from '@booking-app/shared';
+import type { Member, Booking, BlockedSlot, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 // Date localisée via Intl sur la langue de l'app (plus de tableaux FR en dur).
@@ -399,8 +410,13 @@ export default function BlockSlotScreen() {
   /** En édition : la série dont la période fait partie, et son début — pour « celle-ci et les suivantes ». */
   const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
   const [existingStart, setExistingStart] = useState<Date | null>(null);
-  /** Fuseau du LIEU du membre visé : l'aperçu compte comme le service écrira. */
-  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  /**
+   * En édition : le blocage lu, en attente du fuseau de SON lieu pour remplir
+   * l'écran. Les getters du téléphone affichaient 18:00 une période à 09:00 à
+   * Los Angeles vue depuis Paris — et « Enregistrer » sans rien toucher la
+   * déplaçait à 18:00 là-bas.
+   */
+  const [aHydrater, setAHydrater] = useState<BlockedSlot | null>(null);
   const [reason, setReason] = useState('');
   const [isCustomReason, setIsCustomReason] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -429,23 +445,18 @@ export default function BlockSlotScreen() {
         // celui-ci). Le pro qui veut réaffecter supprime et recrée.
         const existing = await blockedSlotRepository.getById(providerId, editId);
         if (cancelled || !existing) return;
-        const sd = existing.startDate instanceof Date ? existing.startDate : (existing.startDate as any).toDate();
-        const ed = existing.endDate instanceof Date ? existing.endDate : (existing.endDate as any).toDate();
-        if (!existing.allDay && existing.startTime) {
-          const [sh, sm] = existing.startTime.split(':').map(Number);
-          sd.setHours(sh, sm, 0, 0);
-        }
-        if (!existing.allDay && existing.endTime) {
-          const [eh, em] = existing.endTime.split(':').map(Number);
-          ed.setHours(eh, em, 0, 0);
-        }
         setSelectedMemberIds([existing.memberId]);
-        setStartDate(sd);
-        setEndDate(ed);
         setAllDay(existing.allDay);
         setSpanMode(existing.spanMode === 'daily' ? 'daily' : 'continuous');
         setExistingSeriesId(existing.seriesId ?? null);
-        setExistingStart(new Date(sd));
+        // L'instant ENREGISTRÉ, copié avant toute manipulation : c'est la
+        // borne de « celle-ci et les suivantes », comparée aux instants
+        // stockés de la série. L'ancien code la prenait APRÈS un `setHours`
+        // qui mutait la date lue — la borne pouvait alors exclure
+        // l'occurrence même qu'on modifiait, et la dupliquer.
+        setExistingStart(new Date(existing.startDate.getTime()));
+        // Jours et heures attendent le fuseau du lieu (voir `aHydrater`).
+        setAHydrater(existing);
         setRecurrence(existing.recurrence ?? null);
         setReason(existing.reason ?? '');
         // Un motif absent des propositions est forcément une saisie libre.
@@ -462,17 +473,37 @@ export default function BlockSlotScreen() {
     };
   }, [providerId, editId]);
 
-  // Le fuseau suit le PREMIER membre visé — celui que l'aperçu décrit.
+  /**
+   * Le fuseau de CHAQUE membre visé. Tant qu'un seul manque, rien ne part :
+   * « lecture en cours » et « lieu sans fuseau » ne se confondent plus.
+   */
+  const { pret: fuseauxPrets, fuseaux } = useFuseauxMembres(providerId, selectedMemberIds);
+
+  /**
+   * Les sélecteurs manipulent des dates du TÉLÉPHONE : elles ne servent qu'à
+   * PORTER un jour et une heure murale, lus par `getDate`/`getHours`. Ce
+   * porteur est construit dans le fuseau du téléphone, sans conversion.
+   */
+  const porteur = (jour: string, hhmm: string): Date => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return instantSaisi(jour, h * 60 + m, undefined);
+  };
+
+  // Édition : remplir l'écran une fois le fuseau du membre CONNU, en jours et
+  // heures murales DE SON LIEU.
   useEffect(() => {
-    const cible = selectedMemberIds[0];
-    if (!providerId || !cible) { setFuseau(undefined); return; }
-    let annule = false;
-    schedulingService
-      .fuseauDuMembre(providerId, cible)
-      .then((tz) => { if (!annule) setFuseau(tz); })
-      .catch(() => { if (!annule) setFuseau(undefined); });
-    return () => { annule = true; };
-  }, [providerId, selectedMemberIds[0]]);
+    if (!aHydrater || !fuseauxPrets) return;
+    const lu = saisieDepuisPeriode(aHydrater, fuseaux[aHydrater.memberId]);
+    setStartDate(porteur(lu.jourDebut, aHydrater.allDay ? '09:00' : lu.heureDebut));
+    setEndDate(porteur(lu.jourFin, aHydrater.allDay ? '10:00' : lu.heureFin));
+    setAHydrater(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aHydrater, fuseauxPrets, fuseaux]);
+
+  /** Premier membre visé : celui que décrit l'aperçu de répétition. */
+  const premier = selectedMemberIds[0];
+  /** Plusieurs fuseaux : l'heure saisie vaut dans CHAQUE lieu — on le dit. */
+  const plusieursFuseaux = fuseauxDistincts(selectedMemberIds, fuseaux).length > 1;
 
   const allSelected = members.length > 0 && selectedMemberIds.length === members.length;
 
@@ -538,35 +569,45 @@ export default function BlockSlotScreen() {
 
   const invalidPeriod = periodError();
 
-  /**
-   * L'heure saisie est celle qu'on LIT à l'écran ; celle qu'on ÉCRIT est la
-   * même heure murale, mais au SALON.
-   *
-   * Les sélecteurs manipulent des dates de l'appareil (`setHours`), et le
-   * moteur, lui, lit dans le fuseau du lieu : un pro à Paris qui bloquait
-   * « 09:00 » pour son salon de Los Angeles posait un blocage à minuit
-   * là-bas. On reconstruit donc l'instant au moment d'écrire. Sans fuseau
-   * connu, `instantSaisi` rend exactement la date d'avant.
-   */
-  const auSalon = (d: Date): Date =>
-    instantSaisi(jourDeLAppareil(d), d.getHours() * 60 + d.getMinutes(), fuseau);
-
-  /** La période et ses heures, prêtes pour le service. */
-  const saisie = (): Omit<BlockedSlotInput, 'memberId' | 'locationId'> => ({
-    startDate: auSalon(startDate),
-    endDate: auSalon(endDate),
+  /** Ce que l'écran SAISIT : des jours et des heures murales, sans fuseau. */
+  const saisieMurale = (): SaisieMurale => ({
+    jourDebut: jourDeLAppareil(startDate),
+    jourFin: jourDeLAppareil(endDate),
+    heureDebut: formatTime(startDate),
+    heureFin: formatTime(endDate),
     allDay,
-    startTime: allDay ? null : formatTime(startDate),
-    endTime: allDay ? null : formatTime(endDate),
-    spanMode,
-    reason: reason.trim() || null,
-    // La règle NORMALISÉE — celle que l'écran annonce, pas le brouillon.
-    recurrence: recurrence
-      ? regleAEnregistrer(recurrence, { startDate: auSalon(startDate), endDate: auSalon(endDate) }, fuseau)
-      : null,
   });
 
+  /**
+   * La période d'UN membre : la saisie résolue dans le fuseau de SON lieu.
+   * « 09:00 » vaut 09:00 à Paris pour l'un, 09:00 à New York pour l'autre —
+   * construire l'instant une fois et l'envoyer à toute l'équipe décalait
+   * tous les membres d'un autre fuseau que le premier.
+   */
+  const periodePour = (memberId: string) =>
+    periodeDepuisSaisie(saisieMurale(), fuseaux[memberId]);
+
+  /** L'entrée du service pour UN membre : sa période, sa règle, dans son fuseau. */
+  const inputPour = (member: WithId<Member>): BlockedSlotInput => {
+    const p = periodePour(member.id);
+    return {
+      memberId: member.id,
+      locationId: member.locationId,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      allDay,
+      startTime: allDay ? null : formatTime(startDate),
+      endTime: allDay ? null : formatTime(endDate),
+      spanMode,
+      reason: reason.trim() || null,
+      // La règle NORMALISÉE, dans le fuseau de CE membre.
+      recurrence: recurrence ? regleAEnregistrer(recurrence, p, fuseaux[member.id] ?? undefined) : null,
+    };
+  };
+
   const handleSubmit = () => {
+    // Garde de dernier recours : le bouton est déjà éteint pendant la lecture.
+    if (!fuseauxPrets) return;
     if (!providerId || selectedMemberIds.length === 0) {
       Alert.alert(t('proBlockSlot.errorTitle'), t('proBlockSlot.selectAtLeastOne'));
       return;
@@ -592,27 +633,34 @@ export default function BlockSlotScreen() {
    * puis modifier cette occurrence / réécrire la suite de la série / créer.
    */
   const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
-    if (!providerId) return;
+    if (!providerId || !fuseauxPrets) return;
     const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id));
     try {
       setIsSubmitting(true);
-      const base = saisie();
 
       // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
-        // « Cette occurrence seulement » n'écrit qu'une période : inutile de
-        // déplier la série pour y chercher des conflits qu'on ne créera pas.
+        // Chaque membre confronté à SES périodes, dans SON fuseau. « Cette
+        // occurrence seulement » n'écrit qu'une période : inutile de déplier
+        // la série pour y chercher des conflits qu'on ne créera pas.
         const serie = recurrence && !(editId && existingSeriesId && quoi === 'cette');
-        const periode = { startDate: base.startDate, endDate: base.endDate };
-        const dates = serie
-          ? genererOccurrences(periode, base.recurrence!, horlogeDuFuseau(fuseau))
-          : [periode];
-        const periodes = dates.map((d) => ({ ...d, allDay, startTime: base.startTime ?? null, endTime: base.endTime ?? null, spanMode }));
-        const parMembre = await Promise.all(
-          selectedMembers.map((m) => schedulingService.rendezVousRecouverts(providerId, m.id, periodes)),
+        const periodesParMembre = Object.fromEntries(
+          selectedMembers.map((m) => {
+            const input = inputPour(m);
+            const periode = { startDate: input.startDate, endDate: input.endDate };
+            const dates = serie
+              ? genererOccurrences(periode, input.recurrence!, horlogeDuFuseau(fuseaux[m.id]))
+              : [periode];
+            return [
+              m.id,
+              dates.map((d) => ({ ...d, allDay, startTime: input.startTime ?? null, endTime: input.endTime ?? null, spanMode })),
+            ];
+          }),
         );
-        const touches: WithId<Booking>[] = parMembre.flat();
+        // Une seule lecture des réservations pour toute l'équipe.
+        const parMembre = await schedulingService.rendezVousRecouvertsParMembre(providerId, periodesParMembre);
+        const touches: WithId<Booking>[] = [...parMembre.values()].flat();
         if (touches.length > 0) {
           const lignes = touches
             .slice(0, 6)
@@ -636,11 +684,7 @@ export default function BlockSlotScreen() {
         if (quoi === 'suivantes' && existingSeriesId && existingStart && member) {
           // 2a. Réécrire la suite de la série depuis cette occurrence ; sans
           //     règle, c'est « arrêter la répétition ici ».
-          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
-            ...base,
-            memberId: member.id,
-            locationId: member.locationId,
-          });
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, inputPour(member));
           Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.seriesUpdated'), [
             { text: t('proBlockSlot.ok'), onPress: () => router.back() },
           ]);
@@ -651,11 +695,7 @@ export default function BlockSlotScreen() {
           // En UNE écriture : supprimer d'abord, créer ensuite, c'était
           // perdre le blocage d'origine si la création échouait — et rouvrir
           // le créneau en silence.
-          const { ids } = await schedulingService.convertirEnSerie(providerId, editId, {
-            ...base,
-            memberId: member.id,
-            locationId: member.locationId,
-          });
+          const { ids } = await schedulingService.convertirEnSerie(providerId, editId, inputPour(member));
           Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.saved', { count: ids.length }), [
             { text: t('proBlockSlot.ok'), onPress: () => router.back() },
           ]);
@@ -663,9 +703,10 @@ export default function BlockSlotScreen() {
         }
         // 2c. Cette occurrence seulement — la règle copiée sur le document
         //     ne bouge pas, l'occurrence reste dans sa série.
+        const cette = inputPour(member ?? selectedMembers[0]);
         await blockedSlotRepository.update(providerId, editId, {
-          startDate: base.startDate,
-          endDate: base.endDate,
+          startDate: cette.startDate,
+          endDate: cette.endDate,
           allDay,
           startTime: allDay ? null : formatTime(startDate),
           endTime: allDay ? null : formatTime(endDate),
@@ -681,13 +722,7 @@ export default function BlockSlotScreen() {
       // 3. Création : une période — ou une série — par membre.
       if (recurrence) {
         const series = await Promise.all(
-          selectedMembers.map((member) =>
-            schedulingService.blockPeriodRecurrent(providerId, {
-              ...base,
-              memberId: member.id,
-              locationId: member.locationId,
-            }),
-          ),
+          selectedMembers.map((member) => schedulingService.blockPeriodRecurrent(providerId, inputPour(member))),
         );
         const occurrences = series[0]?.ids.length ?? 0;
         Alert.alert(t('proBlockSlot.successTitle'), t('recurrence.saved', { count: occurrences }), [
@@ -696,13 +731,7 @@ export default function BlockSlotScreen() {
         return;
       }
       await Promise.all(
-        selectedMembers.map((member) =>
-          schedulingService.blockPeriod(providerId, {
-            ...base,
-            memberId: member.id,
-            locationId: member.locationId,
-          }),
-        ),
+        selectedMembers.map((member) => schedulingService.blockPeriod(providerId, inputPour(member))),
       );
 
       const label = t('proBlockSlot.success', { count: selectedMembers.length });
@@ -717,7 +746,7 @@ export default function BlockSlotScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || aHydrater) {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
         <View style={s.center}>
@@ -916,15 +945,22 @@ export default function BlockSlotScreen() {
 
         {/* Répétition */}
         <View style={{ marginBottom: spacing.xl }}>
-          <RecurrenceFields
-            value={recurrence}
-            onChange={setRecurrence}
-            baseStart={auSalon(startDate)}
-            baseEnd={auSalon(endDate)}
-            fuseau={fuseau}
-            enSerie={!!existingSeriesId}
-            disabled={isSubmitting}
-          />
+          {fuseauxPrets && premier ? (
+            <RecurrenceFields
+              value={recurrence}
+              onChange={setRecurrence}
+              baseStart={periodePour(premier).startDate}
+              baseEnd={periodePour(premier).endDate}
+              fuseau={fuseaux[premier] ?? undefined}
+              enSerie={!!existingSeriesId}
+              disabled={isSubmitting}
+            />
+          ) : null}
+          {plusieursFuseaux ? (
+            <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.sm }}>
+              {t('recurrence.plusieursFuseaux')}
+            </Text>
+          ) : null}
         </View>
 
         {/* Reason section */}
@@ -1017,7 +1053,7 @@ export default function BlockSlotScreen() {
           title={isSubmitting ? t('proBlockSlot.submitting') : t('proBlockSlot.submit')}
           variant="primary"
           onPress={handleSubmit}
-          disabled={isSubmitting || selectedMemberIds.length === 0 || invalidPeriod !== null}
+          disabled={isSubmitting || !fuseauxPrets || selectedMemberIds.length === 0 || invalidPeriod !== null}
         />
       </ScrollView>
 

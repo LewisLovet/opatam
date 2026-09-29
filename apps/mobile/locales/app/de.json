@@ -3500,6 +3500,7 @@
     "seriesDeleted_one": "{{count}} Termin gelöscht",
     "seriesDeleted_other": "{{count}} Termine gelöscht",
     "listSummary": "{{rule}} · {{count}} bevorstehend",
-    "deleteSeriesMessage": "Alle bevorstehenden Termine dieser Wiederholung löschen?"
+    "deleteSeriesMessage": "Alle bevorstehenden Termine dieser Wiederholung löschen?",
+    "plusieursFuseaux": "Die ausgewählten Mitglieder arbeiten in verschiedenen Zeitzonen: Die eingegebenen Zeiten gelten jeweils in der Ortszeit jedes Standorts."
   }
 }

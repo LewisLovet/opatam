@@ -390,7 +390,9 @@ export function DisponibilitesTab() {
   const verifierConflitsFermeture = async (data: BlockedSlotFormData) => {
     if (!provider) return [];
     const base = { startDate: data.startDate, endDate: data.endDate };
-    const fuseau = await schedulingService.fuseauDuMembre(provider.id, data.memberId);
+    // La MÊME table que celle qui a construit la saisie : une seule source,
+    // chargée avec l'onglet (qui ne s'affiche qu'une fois lieux et membres lus).
+    const fuseau = fuseauParMembre[data.memberId] ?? undefined;
     const dates = data.recurrence ? genererOccurrences(base, data.recurrence, horlogeDuFuseau(fuseau)) : [base];
     const periodes = dates.map((d) => ({
       ...d,

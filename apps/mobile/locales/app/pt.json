@@ -3500,6 +3500,7 @@
     "seriesDeleted_one": "{{count}} ocorrência eliminada",
     "seriesDeleted_other": "{{count}} ocorrências eliminadas",
     "listSummary": "{{rule}} · {{count}} por vir",
-    "deleteSeriesMessage": "Eliminar todas as ocorrências futuras desta repetição?"
+    "deleteSeriesMessage": "Eliminar todas as ocorrências futuras desta repetição?",
+    "plusieursFuseaux": "Os membros escolhidos trabalham em fusos horários diferentes: as horas introduzidas aplicam-se à hora local de cada local."
   }
 }

@@ -39,13 +39,21 @@ import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
+import { useFuseauxMembres } from '../../hooks/useFuseauxMembres';
 import {
   schedulingService,
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { genererOccurrences, horlogeDuFuseau, instantSaisi, jourDeLAppareil } from '@booking-app/shared';
-import type { Member, ActivityCategory, Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  genererOccurrences,
+  horlogeDuFuseau,
+  instantSaisi,
+  jourDeLAppareil,
+  periodeDepuisSaisie,
+  saisieDepuisPeriode,
+} from '@booking-app/shared';
+import type { Member, ActivityCategory, Booking, BlockedSlot, BlockedSlotInput } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 
 function formatDateShort(date: Date): string {
@@ -483,8 +491,13 @@ export default function CreateActivityScreen() {
   /** En édition : la série dont l'activité fait partie, et son début. */
   const [existingSeriesId, setExistingSeriesId] = useState<string | null>(null);
   const [existingStart, setExistingStart] = useState<Date | null>(null);
-  /** Fuseau du LIEU du membre : l'aperçu compte comme le service écrira. */
-  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  /**
+   * En édition : l'activité lue, en attente du fuseau de SON lieu pour remplir
+   * l'écran. Les getters du téléphone affichaient 18:00 une activité à 09:00
+   * à Los Angeles vue depuis Paris — et « Enregistrer » sans rien toucher la
+   * déplaçait à 18:00 là-bas.
+   */
+  const [aHydrater, setAHydrater] = useState<BlockedSlot | null>(null);
   /**
    * Devise FIGÉE de l'activité éditée. Réécrire une série avec la devise du
    * prestataire AUJOURD'HUI transformait en francs des occurrences
@@ -521,20 +534,11 @@ export default function CreateActivityScreen() {
             );
             return;
           }
-          const startDt =
-            existing.startDate instanceof Date
-              ? existing.startDate
-              : (existing.startDate as any).toDate();
-          const endDt =
-            existing.endDate instanceof Date
-              ? existing.endDate
-              : (existing.endDate as any).toDate();
           setSelectedMemberId(existing.memberId);
           if (existing.category) setCategory(existing.category);
           setTitle(existing.title || '');
-          setActivityDate(startDt);
-          setStartTime(startDt);
-          setEndTime(endDt);
+          // Jour et heures attendent le fuseau du lieu (voir `aHydrater`).
+          setAHydrater(existing);
           setAddress(existing.address || '');
           setNotes(existing.reason || '');
           // Hydrate amount from cents → euros string. Display 2
@@ -549,7 +553,8 @@ export default function CreateActivityScreen() {
             setAmount('');
           }
           setExistingSeriesId(existing.seriesId ?? null);
-          setExistingStart(new Date(startDt));
+          // L'instant ENREGISTRÉ, tel quel : la borne de « celle-ci et les suivantes ».
+          setExistingStart(new Date(existing.startDate.getTime()));
           setExistingCurrency(existing.currency ?? null);
           setRecurrence(existing.recurrence ?? null);
           return;
@@ -574,24 +579,50 @@ export default function CreateActivityScreen() {
     };
   }, [providerId, memberIdParam, editId, router]);
 
-  // Le fuseau du lieu du membre choisi, pour que l'aperçu dise vrai.
+  /**
+   * Le fuseau du lieu du membre. Tant qu'il n'est pas lu, rien ne part :
+   * « lecture en cours » et « lieu sans fuseau » ne se confondent plus.
+   */
+  const { pret: fuseauPret, fuseaux } = useFuseauxMembres(providerId, selectedMemberId ? [selectedMemberId] : []);
+  const fuseau = selectedMemberId ? fuseaux[selectedMemberId] ?? undefined : undefined;
+
+  /**
+   * Les sélecteurs manipulent des dates du TÉLÉPHONE, qui ne font que PORTER
+   * un jour et une heure murale. Porteur construit sans conversion.
+   */
+  const porteur = (jour: string, hhmm: string): Date => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return instantSaisi(jour, h * 60 + m, undefined);
+  };
+
+  // Édition : remplir jour et heures une fois le fuseau du membre CONNU, en
+  // heures murales DE SON LIEU.
   useEffect(() => {
-    if (!providerId || !selectedMemberId) { setFuseau(undefined); return; }
-    let annule = false;
-    schedulingService
-      .fuseauDuMembre(providerId, selectedMemberId)
-      .then((tz) => { if (!annule) setFuseau(tz); })
-      .catch(() => { if (!annule) setFuseau(undefined); });
-    return () => { annule = true; };
-  }, [providerId, selectedMemberId]);
+    if (!aHydrater || !fuseauPret) return;
+    const lu = saisieDepuisPeriode(aHydrater, fuseaux[aHydrater.memberId]);
+    setActivityDate(porteur(lu.jourDebut, lu.heureDebut));
+    setStartTime(porteur(lu.jourDebut, lu.heureDebut));
+    setEndTime(porteur(lu.jourFin, lu.heureFin));
+    setAHydrater(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aHydrater, fuseauPret, fuseaux]);
 
   /**
    * L'heure saisie est celle qu'on LIT à l'écran ; celle qu'on ÉCRIT est la
-   * même heure murale, mais au SALON. Voir la note identique dans
-   * block-slot : sans fuseau connu, la date rendue est celle d'avant.
+   * même heure murale, mais au SALON — résolue dans le fuseau du lieu du
+   * membre. Sans fuseau connu, la date rendue est celle d'avant.
    */
   const auSalon = (d: Date): Date =>
-    instantSaisi(jourDeLAppareil(d), d.getHours() * 60 + d.getMinutes(), fuseau);
+    periodeDepuisSaisie(
+      {
+        jourDebut: jourDeLAppareil(d),
+        jourFin: jourDeLAppareil(d),
+        heureDebut: formatTime(d),
+        heureFin: formatTime(d),
+        allDay: false,
+      },
+      fuseau,
+    ).startDate;
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
   const activeCategory = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
@@ -634,7 +665,8 @@ export default function CreateActivityScreen() {
   // ─── Submit ─────────────────────────────────────────────────────────
 
   const handleSubmit = () => {
-    if (!providerId) return;
+    // Garde de dernier recours : le bouton est déjà éteint pendant la lecture.
+    if (!providerId || !fuseauPret) return;
     if (editId && existingSeriesId) {
       // En série, la question de la portée vient AVANT tout le reste.
       Alert.alert(t('recurrence.scope.title'), t('recurrence.scope.saveMessage'), [
@@ -652,7 +684,7 @@ export default function CreateActivityScreen() {
    * puis modifier cette occurrence / réécrire la suite de la série / créer.
    */
   const soumettre = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
-    if (!providerId) return;
+    if (!providerId || !fuseauPret) return;
     if (!selectedMember) {
       Alert.alert(t('proActivity.errorTitle'), t('proActivity.selectMember'));
       return;
@@ -849,7 +881,7 @@ export default function CreateActivityScreen() {
   // l'ordre des hooks d'un rendu à l'autre, et React s'arrête net.
   const fermerApresConfirmation = useCallback(() => router.back(), [router]);
 
-  if (isLoading) {
+  if (isLoading || aHydrater) {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
         <View style={s.center}><Loader /></View>
@@ -1148,8 +1180,8 @@ export default function CreateActivityScreen() {
       <View style={[s.pied, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           onPress={handleSubmit}
-          disabled={isSubmitting}
-          style={({ pressed }) => [s.piedBouton, { backgroundColor: teinte, opacity: isSubmitting ? 0.7 : pressed ? 0.9 : 1 }]}
+          disabled={isSubmitting || !fuseauPret}
+          style={({ pressed }) => [s.piedBouton, { backgroundColor: teinte, opacity: isSubmitting || !fuseauPret ? 0.7 : pressed ? 0.9 : 1 }]}
         >
           <Ionicons name={isEditing ? 'checkmark' : 'add'} size={22} color="#fff" />
           <View style={{ flex: 1 }}>

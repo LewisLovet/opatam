@@ -3500,6 +3500,7 @@
     "seriesDeleted_one": "{{count}} occurrence supprimée",
     "seriesDeleted_other": "{{count}} occurrences supprimées",
     "listSummary": "{{rule}} · {{count}} à venir",
-    "deleteSeriesMessage": "Supprimer toutes les occurrences à venir de cette répétition ?"
+    "deleteSeriesMessage": "Supprimer toutes les occurrences à venir de cette répétition ?",
+    "plusieursFuseaux": "Les membres choisis travaillent dans des fuseaux différents : les heures saisies s’appliquent à l’heure locale de chaque lieu."
   }
 }

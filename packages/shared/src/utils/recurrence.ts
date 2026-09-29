@@ -297,3 +297,53 @@ export function genererOccurrences(
 function jourDe(d: Date, horloge?: HorlogeLocale): JourCalendaire {
   return horloge ? horloge.jour(d) : jourLocalDe(d);
 }
+
+/**
+ * `until` tel qu'on le LIT, quelle que soit la forme sous laquelle il a été
+ * écrit. Le modèle exige « AAAA-MM-JJ », mais les premières versions de la
+ * récurrence écrivaient un `Date` — relu en `Timestamp` Firestore, ou en
+ * `Date` après `convertTimestamps`. Un lecteur qui supposerait la chaîne
+ * planterait sur ces documents-là.
+ *
+ * Un ancien `until` était TOUJOURS le minuit local de l'appareil de son
+ * auteur (`new Date(a, m, j)`). On retrouve SA journée en prenant le minuit
+ * UTC le plus proche : juste pour tout auteur entre UTC−11 et UTC+11,
+ * indépendamment du fuseau de celui qui relit — ce que ne garantissaient
+ * pas les composantes locales du lecteur.
+ *
+ * `null` si la valeur est inexploitable : l'appelant traite alors la série
+ * comme sans règle lisible, plutôt que d'inventer une date.
+ */
+export function jourCalendaireDepuis(v: unknown): JourCalendaire | null {
+  if (typeof v === 'string') return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  let d: Date | null = null;
+  if (v instanceof Date) d = v;
+  else if (v && typeof v === 'object') {
+    const o = v as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    if (typeof o.toDate === 'function') d = o.toDate();
+    else if (typeof o.seconds === 'number') d = new Date(o.seconds * 1000);
+    else if (typeof o._seconds === 'number') d = new Date(o._seconds * 1000);
+  }
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const midi = new Date(d.getTime() + 12 * 3_600_000);
+  const m = String(midi.getUTCMonth() + 1).padStart(2, '0');
+  const j = String(midi.getUTCDate()).padStart(2, '0');
+  return `${midi.getUTCFullYear()}-${m}-${j}`;
+}
+
+/**
+ * La règle de récurrence telle qu'on la LIT : `until` ramené à
+ * « AAAA-MM-JJ », jours et intervalle vérifiés. `null` si absente ou
+ * illisible. Appelée UNE fois, dans le dépôt — aucun écran n'a à connaître
+ * les anciens formats.
+ */
+export function normaliserRecurrence(v: unknown): RecurrenceRule | null {
+  if (!v || typeof v !== 'object') return null;
+  const r = v as { intervalWeeks?: unknown; weekdays?: unknown; until?: unknown };
+  const until = jourCalendaireDepuis(r.until);
+  if (!until) return null;
+  const intervalWeeks = typeof r.intervalWeeks === 'number' ? r.intervalWeeks : NaN;
+  const weekdays = Array.isArray(r.weekdays) ? r.weekdays.filter((x): x is number => typeof x === 'number') : [];
+  if (!Number.isInteger(intervalWeeks) || weekdays.length === 0) return null;
+  return { intervalWeeks, weekdays, until };
+}

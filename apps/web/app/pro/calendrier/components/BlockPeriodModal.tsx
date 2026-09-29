@@ -30,8 +30,16 @@ import {
   memberService,
   blockedSlotRepository,
 } from '@booking-app/firebase';
-import { isBlockedPeriodValid, genererOccurrences, horlogeDuFuseau, instantSaisi } from '@booking-app/shared';
-import type { Member, Booking, BlockedSlotInput } from '@booking-app/shared';
+import {
+  isBlockedPeriodValid,
+  genererOccurrences,
+  horlogeDuFuseau,
+  fuseauxDistincts,
+  periodeDepuisSaisie,
+  saisieDepuisPeriode,
+  type SaisieMurale,
+} from '@booking-app/shared';
+import type { Member, Booking, BlockedSlot, BlockedSlotInput } from '@booking-app/shared';
 import {
   RecurrenceFields,
   ChoixPortee,
@@ -40,6 +48,7 @@ import {
   regleAEnregistrer,
   type RecurrenceDraft,
 } from './RecurrenceFields';
+import { useFuseauxMembres } from './useFuseauxMembres';
 import { Loader2, Ban } from 'lucide-react';
 
 type WithId<T> = { id: string } & T;
@@ -51,23 +60,7 @@ function formatDateInput(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function formatTimeInput(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
-/**
- * L'instant d'une heure SAISIE, dans le fuseau du LIEU.
- *
- * `new Date(a, m, j, h, min)` donnait l'instant de l'APPAREIL : un pro à
- * Paris qui bloquait « 09:00 » pour son salon de Los Angeles produisait un
- * blocage à minuit là-bas, alors que le moteur, lui, lit bien dans le
- * fuseau du lieu. Sans fuseau connu, `instantSaisi` retombe exactement sur
- * l'ancien comportement.
- */
-function combine(date: string, time: string, fuseau?: string): Date {
-  const [h, min] = time.split(':').map(Number);
-  return instantSaisi(date, h * 60 + min, fuseau);
-}
 
 interface BlockPeriodModalProps {
   isOpen: boolean;
@@ -147,11 +140,12 @@ export function BlockPeriodModal({
   /** Rendez-vous recouverts, montrés avant d'écrire ; `null` = pas encore regardé. */
   const [conflits, setConflits] = useState<WithId<Booking>[] | null>(null);
   /**
-   * Fuseau du LIEU du membre visé. L'aperçu de la répétition compte alors
-   * les occurrences comme le service les écrira — sinon l'écran annonce
-   * « 14 fois » là où la base en produit 13, un jour de bascule.
+   * En édition : le document lu, en attente de SON fuseau pour remplir le
+   * formulaire. Le lire avec les getters de l'appareil affichait 18:00 pour
+   * une période à 09:00 à Los Angeles vue depuis Paris — et « Enregistrer »
+   * sans rien toucher la déplaçait à 18:00 là-bas.
    */
-  const [fuseau, setFuseau] = useState<string | undefined>(undefined);
+  const [aHydrater, setAHydrater] = useState<BlockedSlot | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,24 +204,16 @@ export function BlockPeriodModal({
             onClose();
             return;
           }
-          const startDt =
-            existing.startDate instanceof Date
-              ? existing.startDate
-              : (existing.startDate as any).toDate();
-          const endDt =
-            existing.endDate instanceof Date
-              ? existing.endDate
-              : (existing.endDate as any).toDate();
           setSelectedMemberIds([existing.memberId]);
-          setStartDate(formatDateInput(startDt));
-          setEndDate(formatDateInput(endDt));
           setAllDay(existing.allDay);
           setSpanMode(existing.spanMode === 'daily' ? 'daily' : 'continuous');
-          setStartTime(existing.startTime ?? '09:00');
-          setEndTime(existing.endTime ?? '18:00');
           setReason(existing.reason ?? '');
           setExistingSeriesId(existing.seriesId ?? null);
-          setExistingStart(startDt);
+          // L'instant ENREGISTRÉ, tel quel : c'est la borne de « celle-ci et
+          // les suivantes », comparée aux instants stockés de la série.
+          setExistingStart(new Date(existing.startDate.getTime()));
+          // Jours et heures attendent le fuseau du lieu (voir `aHydrater`).
+          setAHydrater(existing);
           setRecurrence(existing.recurrence ? brouillonDepuisRegle(existing.recurrence) : null);
           setPortee(null);
           setConflits(null);
@@ -251,6 +237,7 @@ export function BlockPeriodModal({
         // en quotidien — un défaut que rien n'annonce, puisque le choix ne
         // s'affiche qu'une fois la période étalée sur plusieurs jours.
         setSpanMode('continuous');
+        setAHydrater(null);
         setStartTime(initialStartTime ?? '09:00');
         setEndTime(initialEndTime ?? '18:00');
         setReason('');
@@ -270,18 +257,31 @@ export function BlockPeriodModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, providerId, editId]);
 
-  // Le fuseau suit le PREMIER membre visé : c'est lui que l'aperçu décrit.
-  // Le service, lui, utilise le fuseau de chaque membre pour ce qu'il écrit.
+  /**
+   * Le fuseau de CHAQUE membre visé. Tant qu'un seul manque, rien ne part :
+   * « lecture en cours » et « lieu sans fuseau » ne se confondent plus.
+   */
+  const { pret: fuseauxPrets, fuseaux } = useFuseauxMembres(providerId, selectedMemberIds, isOpen);
+
+  // Édition : remplir le formulaire une fois le fuseau du membre CONNU, en
+  // jours et heures murales DE SON LIEU.
   useEffect(() => {
-    const cible = selectedMemberIds[0];
-    if (!isOpen || !cible) { setFuseau(undefined); return; }
-    let annule = false;
-    schedulingService
-      .fuseauDuMembre(providerId, cible)
-      .then((tz) => { if (!annule) setFuseau(tz); })
-      .catch(() => { if (!annule) setFuseau(undefined); });
-    return () => { annule = true; };
-  }, [isOpen, providerId, selectedMemberIds[0]]);
+    if (!aHydrater || !fuseauxPrets) return;
+    const lu = saisieDepuisPeriode(aHydrater, fuseaux[aHydrater.memberId]);
+    setStartDate(lu.jourDebut);
+    setEndDate(lu.jourFin);
+    // Journée entière : les heures sont sans objet, on garde les valeurs
+    // proposées par défaut si l'on décoche.
+    setStartTime(aHydrater.allDay ? '09:00' : lu.heureDebut);
+    setEndTime(aHydrater.allDay ? '18:00' : lu.heureFin);
+    setAHydrater(null);
+  }, [aHydrater, fuseauxPrets, fuseaux]);
+
+  /** Premier membre visé : celui que décrit l'aperçu de répétition. */
+  const premier = selectedMemberIds[0];
+  const fuseauApercu = premier ? fuseaux[premier] ?? undefined : undefined;
+  /** Plusieurs fuseaux : l'heure saisie vaut dans CHAQUE lieu — on le dit. */
+  const plusieursFuseaux = fuseauxDistincts(selectedMemberIds, fuseaux).length > 1;
 
   const allSelected =
     members.length > 0 && selectedMemberIds.length === members.length;
@@ -296,50 +296,68 @@ export function BlockPeriodModal({
     setSelectedMemberIds(allSelected ? [] : members.map((m) => m.id));
   };
 
+  /** Ce que le formulaire SAISIT : des jours et des heures murales, sans fuseau. */
+  const saisieMurale = (): SaisieMurale => ({
+    jourDebut: startDate,
+    jourFin: endDate,
+    heureDebut: startTime,
+    heureFin: endTime,
+    allDay,
+  });
+
   /**
-   * Ce que le formulaire décrit, prêt pour le service — la période, les
-   * heures, le motif, et la règle de répétition si elle est cochée.
+   * La période d'UN membre : la saisie résolue dans le fuseau de SON lieu.
+   * « 09:00 » vaut 09:00 à Paris pour l'un, 09:00 à New York pour l'autre.
    */
-  const saisie = (): { startDt: Date; endDt: Date; input: Omit<BlockedSlotInput, 'memberId' | 'locationId'> } | null => {
-    const { startDate: startDt, endDate: endDt } = periodeSaisie();
+  const periodePour = (memberId: string) =>
+    periodeDepuisSaisie(saisieMurale(), fuseaux[memberId]);
+
+  /** Contrôles communs à tous les membres ; `false` + toast si la saisie est irrecevable. */
+  const saisieValide = (): boolean => {
     // Ordre des JOURS d'abord — indépendant des heures, et seul cas où
     // comparer les dates a un sens.
     if (endDate < startDate) {
       toast.error('La date de fin doit être après le début');
-      return null;
+      return false;
     }
     // Puis la règle horaire PARTAGÉE, la même que le service et que
     // l'écran mobile. Garde de dernier recours : le bouton est déjà éteint.
     if (periodError) {
       toast.error(periodError);
-      return null;
+      return false;
     }
+    return true;
+  };
+
+  /** L'entrée du service pour UN membre : sa période, sa règle, dans son fuseau. */
+  const inputPour = (member: WithId<Member>): BlockedSlotInput => {
+    const p = periodePour(member.id);
+    const fuseau = fuseaux[member.id] ?? undefined;
     return {
-      startDt,
-      endDt,
-      input: {
-        startDate: startDt,
-        endDate: endDt,
-        allDay,
-        startTime: allDay ? null : startTime,
-        endTime: allDay ? null : endTime,
-        spanMode,
-        reason: reason.trim() || null,
-        recurrence: recurrence ? regleAEnregistrer(recurrence, { startDate: startDt, endDate: endDt }, fuseau) : null,
-      },
+      memberId: member.id,
+      locationId: member.locationId,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      allDay,
+      startTime: allDay ? null : startTime,
+      endTime: allDay ? null : endTime,
+      spanMode,
+      reason: reason.trim() || null,
+      recurrence: recurrence ? regleAEnregistrer(recurrence, p, fuseau) : null,
     };
   };
 
   /**
-   * Les périodes réellement écrites. « Cette occurrence seulement » n'en
-   * écrit qu'UNE : déplier toute la série pour chercher des conflits
-   * signalait des rendez-vous qu'on n'allait même pas toucher.
+   * Les périodes réellement écrites pour CE membre. « Cette occurrence
+   * seulement » n'en écrit qu'UNE : déplier toute la série pour chercher des
+   * conflits signalait des rendez-vous qu'on n'allait même pas toucher.
    */
-  const periodesAEcrire = (startDt: Date, endDt: Date, quoi: 'cette' | 'suivantes') => {
-    const base = { startDate: startDt, endDate: endDt };
-    const serie = recurrence && !(isEditing && existingSeriesId && quoi === 'cette');
+  const periodesAEcrire = (member: WithId<Member>, quoi: 'cette' | 'suivantes') => {
+    const input = inputPour(member);
+    const base = { startDate: input.startDate, endDate: input.endDate };
+    const serie = input.recurrence && !(isEditing && existingSeriesId && quoi === 'cette');
     const dates = serie
-      ? genererOccurrences(base, regleAEnregistrer(recurrence!, base, fuseau), horlogeDuFuseau(fuseau))
+      ? genererOccurrences(base, input.recurrence!, horlogeDuFuseau(fuseaux[member.id]))
       : [base];
     return dates.map((d) => ({
       ...d,
@@ -350,18 +368,14 @@ export function BlockPeriodModal({
     }));
   };
 
-  /** La période telle qu'elle est saisie à l'instant — aperçu ET écriture. */
-  const periodeSaisie = () => ({
-    startDate: allDay ? combine(startDate, '00:00', fuseau) : combine(startDate, startTime, fuseau),
-    endDate: allDay ? combine(endDate, '23:59', fuseau) : combine(endDate, endTime, fuseau),
-  });
-
   const handleSave = () => {
     if (selectedMemberIds.length === 0) {
       toast.error('Sélectionnez au moins un membre');
       return;
     }
-    if (!saisie()) return;
+    // Garde de dernier recours : le bouton est déjà éteint pendant la lecture.
+    if (!fuseauxPrets) return;
+    if (!saisieValide()) return;
     // En série, la question de la portée vient AVANT tout le reste.
     if (isEditing && existingSeriesId) {
       setPortee('enregistrer');
@@ -376,8 +390,7 @@ export function BlockPeriodModal({
    */
   const enregistrer = async (quoi: 'cette' | 'suivantes', ignorerConflits: boolean) => {
     setPorteeRetenue(quoi);
-    const s = saisie();
-    if (!s) return;
+    if (!fuseauxPrets || !saisieValide()) return;
     const targets = isEditing
       ? members.filter((m) => m.id === selectedMemberIds[0])
       : members.filter((m) => selectedMemberIds.includes(m.id));
@@ -390,11 +403,13 @@ export function BlockPeriodModal({
       // 1. Les rendez-vous que ces périodes recouvriraient. On prévient,
       //    on n'annule rien — et on ne pose la question qu'une fois.
       if (!ignorerConflits) {
-        const periodes = periodesAEcrire(s.startDt, s.endDt, quoi);
+        // Chaque membre confronté à SES périodes — pas à celles du premier.
+        const periodesParMembre = Object.fromEntries(
+          targets.map((m) => [m.id, periodesAEcrire(m, quoi)]),
+        );
         const parMembre = await schedulingService.rendezVousRecouvertsParMembre(
           providerId,
-          targets.map((m) => m.id),
-          periodes,
+          periodesParMembre,
         );
         const touches = [...parMembre.values()].flat();
         if (touches.length > 0) {
@@ -406,24 +421,17 @@ export function BlockPeriodModal({
 
       if (isEditing && editId) {
         const member = targets[0];
+        const input = inputPour(member);
         if (quoi === 'suivantes' && existingSeriesId && existingStart) {
           // 2a. Réécrire la suite de la série depuis cette occurrence ; sans
           //     règle, c'est « arrêter la répétition ici ».
-          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, {
-            ...s.input,
-            memberId: member.id,
-            locationId: member.locationId,
-          });
+          await schedulingService.updateSeriesFrom(providerId, existingSeriesId, existingStart, input);
           toast.success('Cette occurrence et les suivantes ont été modifiées');
-        } else if (!existingSeriesId && s.input.recurrence) {
+        } else if (!existingSeriesId && input.recurrence) {
           // 2b. Une période isolée devient une série. En UNE écriture :
           //     supprimer d'abord, créer ensuite, c'était perdre l'original
           //     si la création échouait — et rouvrir le créneau en silence.
-          await schedulingService.convertirEnSerie(providerId, editId, {
-            ...s.input,
-            memberId: member.id,
-            locationId: member.locationId,
-          });
+          await schedulingService.convertirEnSerie(providerId, editId, input);
           toast.success('Période répétée');
         } else {
           // 2c. Cette occurrence seulement — la règle copiée sur le document
@@ -431,8 +439,8 @@ export function BlockPeriodModal({
           await blockedSlotRepository.update(providerId, editId, {
             memberId: member.id,
             locationId: member.locationId,
-            startDate: s.startDt,
-            endDate: s.endDt,
+            startDate: input.startDate,
+            endDate: input.endDate,
             allDay,
             startTime: allDay ? null : startTime,
             endTime: allDay ? null : endTime,
@@ -442,17 +450,18 @@ export function BlockPeriodModal({
           toast.success('Période modifiée');
         }
       } else {
-        // 3. Création : une période — ou une série — par membre.
+        // 3. Création : une période — ou une série — par membre, chacune
+        //    construite dans le fuseau de SON lieu.
         await Promise.all(
           targets.map((member) => {
-            const input = { ...s.input, memberId: member.id, locationId: member.locationId };
-            return s.input.recurrence
+            const input = inputPour(member);
+            return input.recurrence
               ? schedulingService.blockPeriodRecurrent(providerId, input)
               : schedulingService.blockPeriod(providerId, input);
           }),
         );
         const combien = targets.length > 1 ? ` pour ${targets.length} membres` : '';
-        toast.success(s.input.recurrence ? `Période répétée${combien}` : `Période bloquée${combien}`);
+        toast.success(recurrence ? `Période répétée${combien}` : `Période bloquée${combien}`);
       }
       onSaved?.();
       onClose();
@@ -504,7 +513,7 @@ export function BlockPeriodModal({
         onClose={onClose}
       />
       <ModalBody className="space-y-5">
-        {loading ? (
+        {loading || aHydrater ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
           </div>
@@ -647,15 +656,23 @@ export function BlockPeriodModal({
               </div>
             )}
 
-            <RecurrenceFields
-              value={recurrence}
-              onChange={setRecurrence}
-              baseStart={periodeSaisie().startDate}
-              baseEnd={periodeSaisie().endDate}
-              fuseau={fuseau}
-              enSerie={!!existingSeriesId}
-              disabled={saving || deleting}
-            />
+            {fuseauxPrets && premier && (
+              <RecurrenceFields
+                value={recurrence}
+                onChange={setRecurrence}
+                baseStart={periodePour(premier).startDate}
+                baseEnd={periodePour(premier).endDate}
+                fuseau={fuseauApercu}
+                enSerie={!!existingSeriesId}
+                disabled={saving || deleting}
+              />
+            )}
+            {plusieursFuseaux && (
+              <p className="rounded-lg bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-xs text-blue-800 dark:text-blue-200">
+                Les membres choisis travaillent dans des fuseaux différents : les heures
+                saisies s’appliquent à l’heure locale de chaque lieu.
+              </p>
+            )}
             {periodError && (
               <p
                 role="alert"
@@ -714,7 +731,7 @@ export function BlockPeriodModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || deleting || loading || periodError !== null}
+              disabled={saving || deleting || loading || !!aHydrater || !fuseauxPrets || periodError !== null}
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />

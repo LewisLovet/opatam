@@ -110,3 +110,149 @@ describe('3. le parcours complet : saisir à Paris, répéter pour Los Angeles',
     assert.equal(heureDans(occ[0].startDate, FUSEAU), '07/03/2026 00:00');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Troisième audit : plusieurs membres, édition depuis ailleurs, chargement.
+// ─────────────────────────────────────────────────────────────────────────
+import {
+  periodeDepuisSaisie,
+  saisieDepuisPeriode,
+  fuseauxPrets,
+  fuseauxDistincts,
+} from './fuseaux.ts';
+
+/** Ce que fait un écran MOBILE : un porteur de date du téléphone, relu par ses getters. */
+const porteur = (jour, hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return instantSaisi(jour, h * 60 + m, undefined);
+};
+const hhmm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+describe('4. plusieurs membres, plusieurs fuseaux : 09:00 dans CHAQUE lieu', () => {
+  const saisie = { jourDebut: '2026-05-09', jourFin: '2026-05-09', heureDebut: '09:00', heureFin: '12:00', allDay: false };
+
+  it('« 09:00 » saisi une fois vaut 09:00 à Paris ET 09:00 à New York', () => {
+    const paris = periodeDepuisSaisie(saisie, 'Europe/Paris');
+    const ny = periodeDepuisSaisie(saisie, 'America/New_York');
+    assert.equal(heureDans(paris.startDate, 'Europe/Paris'), '09/05/2026 09:00');
+    assert.equal(heureDans(ny.startDate, 'America/New_York'), '09/05/2026 09:00');
+    assert.equal(heureDans(ny.endDate, 'America/New_York'), '09/05/2026 12:00');
+    // Deux instants DIFFÉRENTS — six heures d'écart en mai.
+    assert.equal(ny.startDate - paris.startDate, 6 * 3_600_000);
+  });
+
+  it('le défaut corrigé : un instant unique envoyé à toute l’équipe mettait New York à 03:00', () => {
+    const unSeul = periodeDepuisSaisie(saisie, 'Europe/Paris');
+    assert.equal(heureDans(unSeul.startDate, 'America/New_York'), '09/05/2026 03:00');
+  });
+
+  it('la répétition de chacun garde 09:00 chez lui, à travers les deux bascules décalées', () => {
+    // Samedis du 7 mars au 4 avril : les États-Unis passent à l'heure d'été
+    // le 8 mars, l'Europe le 29. Entre les deux, l'écart n'est plus que de
+    // cinq heures — et chacun doit rester à 09:00 chez lui.
+    const base = { jourDebut: '2026-03-07', jourFin: '2026-03-07', heureDebut: '09:00', heureFin: '12:00', allDay: false };
+    const regle = { intervalWeeks: 1, weekdays: [6], until: '2026-04-04' };
+    for (const fuseau of ['Europe/Paris', 'America/New_York']) {
+      const occ = genererOccurrences(periodeDepuisSaisie(base, fuseau), regle, horlogeDuFuseau(fuseau));
+      assert.equal(occ.length, 5, fuseau);
+      assert.deepEqual(new Set(occ.map((o) => heureDans(o.startDate, fuseau).slice(11))), new Set(['09:00']), fuseau);
+    }
+  });
+
+  it('l’écran sait quand les membres ne partagent pas le même fuseau', () => {
+    const table = { a: 'Europe/Paris', b: 'America/New_York', c: 'Europe/Paris', d: null };
+    assert.deepEqual(fuseauxDistincts(['a', 'c'], table), ['Europe/Paris']);
+    assert.deepEqual(fuseauxDistincts(['a', 'b', 'd'], table).sort(), ['America/New_York', 'Europe/Paris']);
+  });
+});
+
+describe('5. éditer depuis un autre fuseau ne déplace RIEN', () => {
+  const LA = 'America/Los_Angeles';
+  // Créée à Paris pour un salon de Los Angeles : 09:00 → 10:00 là-bas.
+  const saisie = { jourDebut: '2026-05-09', jourFin: '2026-05-09', heureDebut: '09:00', heureFin: '10:00', allDay: false };
+  const creee = periodeDepuisSaisie(saisie, LA);
+  const stockee = { ...creee, allDay: false, startTime: '09:00', endTime: '10:00' };
+
+  it('web : ouvrir, ne rien toucher, enregistrer → instants identiques', () => {
+    const lu = saisieDepuisPeriode(stockee, LA);
+    assert.deepEqual(lu, saisie, 'le formulaire affiche 09:00, le 9 mai');
+    const reecrite = periodeDepuisSaisie(lu, LA);
+    assert.equal(reecrite.startDate.getTime(), creee.startDate.getTime());
+    assert.equal(reecrite.endDate.getTime(), creee.endDate.getTime());
+  });
+
+  it('mobile : même aller-retour, en passant par les dates-porteuses du téléphone', () => {
+    const lu = saisieDepuisPeriode(stockee, LA);
+    const debut = porteur(lu.jourDebut, lu.heureDebut);   // ce que tient l'écran
+    const fin = porteur(lu.jourFin, lu.heureFin);
+    assert.equal(hhmm(debut), '09:00', 'l’écran affiche 09:00, pas 18:00');
+    const resaisie = { jourDebut: jourDeLAppareil(debut), jourFin: jourDeLAppareil(fin), heureDebut: hhmm(debut), heureFin: hhmm(fin), allDay: false };
+    const reecrite = periodeDepuisSaisie(resaisie, LA);
+    assert.equal(reecrite.startDate.getTime(), creee.startDate.getTime());
+    assert.equal(reecrite.endDate.getTime(), creee.endDate.getTime());
+  });
+
+  it('le défaut corrigé : les getters de l’appareil lisaient 18:00, et la sauvegarde déplaçait l’activité', () => {
+    assert.equal(hhmm(creee.startDate), '18:00', 'ce que voyait l’ancien formulaire, à Paris');
+    const deplacee = instantSaisi(jourDeLAppareil(creee.startDate), 18 * 60, LA);
+    assert.equal(heureDans(deplacee, LA), '09/05/2026 18:00', 'enregistrée sans rien toucher : 18:00 à LA');
+  });
+
+  it('une période ANCIENNE sans heures figées se relit dans le fuseau du lieu', () => {
+    const lu = saisieDepuisPeriode({ ...creee, allDay: false, startTime: null, endTime: null }, LA);
+    assert.equal(lu.heureDebut, '09:00');
+    assert.equal(lu.heureFin, '10:00');
+  });
+
+  it('les heures FIGÉES priment : c’est elles que le moteur lit', () => {
+    // Une période écrite avant la correction : instant au fuseau de l'appareil,
+    // mais « 09:00 » figé. Le moteur lit 09:00 ; le formulaire aussi.
+    const ancienne = { startDate: new Date(2026, 4, 9, 9, 0), endDate: new Date(2026, 4, 9, 10, 0), allDay: false, startTime: '09:00', endTime: '10:00' };
+    const lu = saisieDepuisPeriode(ancienne, LA);
+    assert.equal(lu.heureDebut, '09:00');
+    assert.equal(lu.jourDebut, '2026-05-09', 'le jour, lu au salon (00:00 à LA le 9 mai)');
+  });
+
+  it('une activité finissant à MINUIT fait l’aller-retour sans glisser au lendemain', () => {
+    const soir = { jourDebut: '2026-05-09', jourFin: '2026-05-09', heureDebut: '22:00', heureFin: '00:00', allDay: false };
+    const p = periodeDepuisSaisie(soir, LA);
+    const lu = saisieDepuisPeriode({ ...p, allDay: false, startTime: '22:00', endTime: '00:00' }, LA);
+    assert.deepEqual(lu, soir);
+    const reecrite = periodeDepuisSaisie(lu, LA);
+    assert.equal(reecrite.endDate.getTime(), p.endDate.getTime());
+  });
+
+  it('une période sur plusieurs jours, à cheval sur la bascule, revient intacte', () => {
+    // Vendredi 27 mars 18:00 → lundi 30 mars 09:00 à Paris : l'Europe passe
+    // à l'heure d'été le dimanche 29.
+    const conges = { jourDebut: '2026-03-27', jourFin: '2026-03-30', heureDebut: '18:00', heureFin: '09:00', allDay: false };
+    const p = periodeDepuisSaisie(conges, 'Europe/Paris');
+    assert.equal(heureDans(p.endDate, 'Europe/Paris'), '30/03/2026 09:00');
+    const lu = saisieDepuisPeriode({ ...p, allDay: false, startTime: '18:00', endTime: '09:00' }, 'Europe/Paris');
+    assert.deepEqual(lu, conges);
+  });
+
+  it('journée entière : 00:00 → 23:59 dans le fuseau du lieu', () => {
+    const p = periodeDepuisSaisie({ jourDebut: '2026-05-09', jourFin: '2026-05-10', heureDebut: '09:00', heureFin: '18:00', allDay: true }, LA);
+    assert.equal(heureDans(p.startDate, LA), '09/05/2026 00:00');
+    assert.equal(heureDans(p.endDate, LA), '10/05/2026 23:59');
+  });
+});
+
+describe('6. rien ne part tant que les fuseaux sont en cours de lecture', () => {
+  it('absent de la table = lecture EN COURS ; null = lu, lieu sans fuseau', () => {
+    assert.equal(fuseauxPrets(['a'], {}), false, 'rien de lu');
+    assert.equal(fuseauxPrets(['a', 'b'], { a: 'Europe/Paris' }), false, 'un membre encore en cours');
+    assert.equal(fuseauxPrets(['a', 'b'], { a: 'Europe/Paris', b: null }), true, 'lieu sans fuseau : pas bloquant');
+    assert.equal(fuseauxPrets([], {}), true, 'aucun membre visé : rien à attendre');
+  });
+  it('changer de membre remet l’attente, sans relire ceux déjà connus', () => {
+    const table = { a: 'Europe/Paris' };
+    assert.equal(fuseauxPrets(['a'], table), true);
+    assert.equal(fuseauxPrets(['a', 'nouveau'], table), false);
+  });
+  it('un vieux lieu SANS fuseau retombe sur l’appareil — comportement d’avant, pas de blocage', () => {
+    const s = { jourDebut: '2026-05-09', jourFin: '2026-05-09', heureDebut: '09:00', heureFin: '10:00', allDay: false };
+    assert.equal(periodeDepuisSaisie(s, null).startDate.getTime(), new Date(2026, 4, 9, 9, 0).getTime());
+  });
+});

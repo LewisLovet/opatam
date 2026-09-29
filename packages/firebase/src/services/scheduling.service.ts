@@ -250,6 +250,20 @@ export class SchedulingService {
    * alors son repli de compatibilité. On ne DEVINE jamais.
    */
   /**
+   * Les fuseaux de plusieurs membres : `memberId → fuseau | null`. `null` =
+   * lieu sans fuseau déclaré (on retombe alors sur l'appareil). Ne rejette
+   * jamais : une lecture impossible vaut « sans fuseau », pour qu'un
+   * formulaire ne reste pas bloqué en attente.
+   */
+  async fuseauxDesMembres(providerId: string, memberIds: string[]): Promise<Record<string, string | null>> {
+    const uniques = Array.from(new Set(memberIds));
+    const fuseaux = await Promise.all(
+      uniques.map((id) => this.fuseauDuLieuDuMembre(providerId, id).catch(() => undefined)),
+    );
+    return Object.fromEntries(uniques.map((id, i) => [id, fuseaux[i] ?? null]));
+  }
+
+  /**
    * Le fuseau du lieu d'un membre — celui dans lequel ses heures sont
    * saisies et lues. Exposé pour que les formulaires annoncent, dans leur
    * aperçu de récurrence, exactement ce que le service va écrire.
@@ -632,13 +646,21 @@ export class SchedulingService {
    */
   async rendezVousRecouvertsParMembre(
     providerId: string,
-    memberIds: string[],
-    periodes: Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>,
+    /**
+     * Les périodes RÉELLEMENT écrites pour CHAQUE membre. Pas une liste
+     * commune : deux membres dans deux fuseaux reçoivent deux jeux
+     * d'instants différents pour la même saisie (09:00 à Paris, 09:00 à New
+     * York), et chacun doit être confronté à ses propres rendez-vous avec
+     * ses propres périodes.
+     */
+    periodesParMembre: Record<string, Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>>,
   ): Promise<Map<string, WithId<Booking>[]>> {
     const resultat = new Map<string, WithId<Booking>[]>();
-    if (periodes.length === 0 || memberIds.length === 0) return resultat;
-    const debut = new Date(Math.min(...periodes.map((p) => p.startDate.getTime())));
-    const fin = new Date(Math.max(...periodes.map((p) => p.endDate.getTime())));
+    const memberIds = Object.keys(periodesParMembre).filter((id) => periodesParMembre[id].length > 0);
+    if (memberIds.length === 0) return resultat;
+    const toutes = memberIds.flatMap((id) => periodesParMembre[id]);
+    const debut = new Date(Math.min(...toutes.map((p) => p.startDate.getTime())));
+    const fin = new Date(Math.max(...toutes.map((p) => p.endDate.getTime())));
     // Une période à heures peut finir le lendemain minuit : une journée de marge de chaque côté.
     const [bookings, fuseaux] = await Promise.all([
       bookingRepository.getUpcomingByProvider(
@@ -650,6 +672,7 @@ export class SchedulingService {
     ]);
     memberIds.forEach((memberId, i) => {
       const fuseau = fuseaux[i] ?? FUSEAU_COMPAT;
+      const periodes = periodesParMembre[memberId];
       const touches = bookings
         .filter(
           (b) =>
@@ -668,7 +691,7 @@ export class SchedulingService {
     memberId: string,
     periodes: Array<Pick<BlockedSlot, 'startDate' | 'endDate' | 'allDay' | 'startTime' | 'endTime' | 'spanMode'>>,
   ): Promise<WithId<Booking>[]> {
-    const parMembre = await this.rendezVousRecouvertsParMembre(providerId, [memberId], periodes);
+    const parMembre = await this.rendezVousRecouvertsParMembre(providerId, { [memberId]: periodes });
     return parMembre.get(memberId) ?? [];
   }
 

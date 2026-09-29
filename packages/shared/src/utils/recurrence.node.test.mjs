@@ -18,6 +18,8 @@ import {
   raisonRegleInvalide,
   messageRegleInvalide,
   reglePourPeriode,
+  jourCalendaireDepuis,
+  normaliserRecurrence,
   joursEntre,
   trierJoursSemaine,
   HORIZON_MAX_JOURS,
@@ -238,5 +240,56 @@ describe('8. reglePourPeriode — le seul juge des jours répétés', () => {
     const rule = { intervalWeeks: 2, weekdays: [1], until: u(2026, 8, 1) };
     const une = reglePourPeriode(rule, base);
     assert.deepEqual(reglePourPeriode(une, base).weekdays, une.weekdays);
+  });
+});
+
+describe('9. `until` relu sous ses trois formes — une seule normalisation', () => {
+  it('la chaîne « AAAA-MM-JJ » passe telle quelle, le reste est refusé', () => {
+    assert.equal(jourCalendaireDepuis('2026-05-03'), '2026-05-03');
+    assert.equal(jourCalendaireDepuis('03/05/2026'), null);
+    assert.equal(jourCalendaireDepuis(''), null);
+    assert.equal(jourCalendaireDepuis(undefined), null);
+  });
+  it('un ancien `Date` (minuit local de l’auteur) redonne SA journée', () => {
+    // Écrit à Paris : minuit du 3 mai à Paris = 2 mai 22:00 UTC.
+    assert.equal(jourCalendaireDepuis(new Date(Date.UTC(2026, 4, 2, 22, 0))), '2026-05-03');
+    // Écrit à New York : minuit du 3 mai = 3 mai 04:00 UTC.
+    assert.equal(jourCalendaireDepuis(new Date(Date.UTC(2026, 4, 3, 4, 0))), '2026-05-03');
+    // Écrit à La Réunion : minuit du 3 mai = 2 mai 20:00 UTC.
+    assert.equal(jourCalendaireDepuis(new Date(Date.UTC(2026, 4, 2, 20, 0))), '2026-05-03');
+  });
+  it('… quel que soit le fuseau de celui qui RELIT (le lecteur est ici à Paris)', () => {
+    // Les composantes locales du lecteur auraient donné le 2 mai pour
+    // un auteur new-yorkais relu à… Los Angeles ; le minuit UTC le plus
+    // proche, lui, ne dépend pas du lecteur.
+    const auteurNY = new Date(Date.UTC(2026, 4, 3, 4, 0));
+    assert.equal(jourCalendaireDepuis(auteurNY), '2026-05-03');
+  });
+  it('un Timestamp Firestore — objet `toDate()`, ou forme brute `{ seconds }`', () => {
+    const d = new Date(Date.UTC(2026, 4, 2, 22, 0));
+    assert.equal(jourCalendaireDepuis({ toDate: () => d }), '2026-05-03');
+    assert.equal(jourCalendaireDepuis({ seconds: d.getTime() / 1000, nanoseconds: 0 }), '2026-05-03');
+    assert.equal(jourCalendaireDepuis({ _seconds: d.getTime() / 1000, _nanoseconds: 0 }), '2026-05-03');
+  });
+  it('une date invalide ne s’invente pas', () => {
+    assert.equal(jourCalendaireDepuis(new Date('pas une date')), null);
+    assert.equal(jourCalendaireDepuis({ toDate: () => new Date(NaN) }), null);
+  });
+  it('normaliserRecurrence : la règle entière, prête pour le modèle', () => {
+    const ancienne = { intervalWeeks: 2, weekdays: [6], until: new Date(Date.UTC(2026, 4, 2, 22, 0)) };
+    assert.deepEqual(normaliserRecurrence(ancienne), { intervalWeeks: 2, weekdays: [6], until: '2026-05-03' });
+    const neuve = { intervalWeeks: 1, weekdays: [1, 4], until: '2026-06-30' };
+    assert.deepEqual(normaliserRecurrence(neuve), neuve);
+  });
+  it('règle illisible → null, jamais une règle inventée', () => {
+    assert.equal(normaliserRecurrence(null), null);
+    assert.equal(normaliserRecurrence({ intervalWeeks: 1, weekdays: [6] }), null, 'sans until');
+    assert.equal(normaliserRecurrence({ intervalWeeks: 1.5, weekdays: [6], until: '2026-05-03' }), null);
+    assert.equal(normaliserRecurrence({ intervalWeeks: 1, weekdays: [], until: '2026-05-03' }), null);
+  });
+  it('la règle normalisée relance bien le générateur', () => {
+    const regle = normaliserRecurrence({ intervalWeeks: 1, weekdays: [6], until: { toDate: () => new Date(2026, 4, 2) } });
+    const base = { startDate: d(2026, 4, 4, 9), endDate: d(2026, 4, 5, 18) };
+    assert.equal(genererOccurrences(base, regle).length, 5);
   });
 });

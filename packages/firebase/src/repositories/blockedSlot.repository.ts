@@ -18,12 +18,31 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { BlockedSlot } from '@booking-app/shared';
+import { normaliserRecurrence } from '@booking-app/shared';
 import { getFirebaseApp } from '../lib/config';
 import { convertTimestamps, removeUndefined, type WithId } from './base.repository';
 
 /**
  * Repository for blockedSlots subcollection (providers/{providerId}/blockedSlots)
  */
+/**
+ * Un document Firestore → le modèle applicatif. LE point de passage de
+ * toutes les lectures de ce dépôt.
+ *
+ * `recurrence.until` y est ramené à « AAAA-MM-JJ » : les premières
+ * versions l'écrivaient en `Date` (relu en `Timestamp`, puis en `Date`), et
+ * aucun écran n'a à connaître cet historique. Une règle illisible devient
+ * `null` — la série garde ses occurrences, elle perd seulement la
+ * possibilité d'être régénérée.
+ */
+function versModele(data: Record<string, unknown>): BlockedSlot {
+  const modele = convertTimestamps<BlockedSlot>(data);
+  if (modele.recurrence != null) {
+    modele.recurrence = normaliserRecurrence(modele.recurrence);
+  }
+  return modele;
+}
+
 export class BlockedSlotRepository {
   private db: Firestore;
 
@@ -113,7 +132,7 @@ export class BlockedSlotRepository {
     const q = query(this.getCollectionRef(providerId), where('seriesId', '==', seriesId));
     const snap = await getDocs(q);
     return snap.docs
-      .map((d) => ({ id: d.id, ...convertTimestamps<BlockedSlot>(d.data()) }))
+      .map((d) => ({ id: d.id, ...versModele(d.data()) }))
       .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   }
 
@@ -172,7 +191,7 @@ export class BlockedSlotRepository {
 
     return {
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     };
   }
 
@@ -188,7 +207,7 @@ export class BlockedSlotRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     }));
   }
 
@@ -205,7 +224,7 @@ export class BlockedSlotRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     }));
   }
 
@@ -222,7 +241,7 @@ export class BlockedSlotRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     }));
   }
 
@@ -244,7 +263,7 @@ export class BlockedSlotRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     }));
   }
 
@@ -276,7 +295,7 @@ export class BlockedSlotRepository {
       (snap) => {
         const slots = snap.docs.map((docSnap) => ({
           id: docSnap.id,
-          ...convertTimestamps<BlockedSlot>(docSnap.data()),
+          ...versModele(docSnap.data()),
         }));
         onChange(slots);
       },
@@ -308,7 +327,7 @@ export class BlockedSlotRepository {
     return querySnapshot.docs
       .map((docSnap) => ({
         id: docSnap.id,
-        ...convertTimestamps<BlockedSlot>(docSnap.data()),
+        ...versModele(docSnap.data()),
       }))
       .filter((slot) => slot.endDate >= startDate);
   }
@@ -328,7 +347,7 @@ export class BlockedSlotRepository {
 
     return querySnapshot.docs.map((docSnap) => ({
       id: docSnap.id,
-      ...convertTimestamps<BlockedSlot>(docSnap.data()),
+      ...versModele(docSnap.data()),
     }));
   }
 

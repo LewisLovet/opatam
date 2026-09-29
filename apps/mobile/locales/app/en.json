@@ -3500,6 +3500,7 @@
     "seriesDeleted_one": "{{count}} occurrence deleted",
     "seriesDeleted_other": "{{count}} occurrences deleted",
     "listSummary": "{{rule}} · {{count}} upcoming",
-    "deleteSeriesMessage": "Delete all upcoming occurrences of this repetition?"
+    "deleteSeriesMessage": "Delete all upcoming occurrences of this repetition?",
+    "plusieursFuseaux": "The selected members work in different time zones: the times entered apply to each location’s local time."
   }
 }

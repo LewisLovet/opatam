@@ -71,7 +71,7 @@ describe('1. le service écrit la série champ par champ, sans rien perdre', () 
     const corps = service.slice(service.indexOf('async rendezVousRecouvertsParMembre('), service.indexOf('async rendezVousRecouverts('));
     assert.equal((corps.match(/getUpcomingByProvider\(/g) ?? []).length, 1, 'une seule requête, quel que soit le nombre de membres');
     const solo = service.slice(service.indexOf('async rendezVousRecouverts('), service.indexOf('private verifierPeriode('));
-    assert.match(solo, /this\.rendezVousRecouvertsParMembre\(providerId, \[memberId\], periodes\)/, 'la version « un membre » délègue');
+    assert.match(solo, /this\.rendezVousRecouvertsParMembre\(providerId, \{ \[memberId\]: periodes \}\)/, 'la version « un membre » délègue');
   });
 });
 
@@ -178,7 +178,7 @@ describe('3 ter. les six points de l’audit externe', () => {
     assert.match(hor, /return r\.premiere;/, 'heure doublée : la première, comme le moteur');
     assert.doesNotMatch(lire('packages/shared/src/utils/recurrence.ts'), /^import /m, 'le générateur reste sans dépendance');
     for (const nom of ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity']) {
-      assert.match(lire(formulaires[nom]), /fuseauDuMembre\(/, `${nom} aligne son aperçu sur le fuseau du lieu`);
+      assert.match(lire(formulaires[nom]), /useFuseauxMembres\(/, `${nom} lit le fuseau du lieu de son membre`);
     }
   });
 
@@ -233,6 +233,55 @@ describe('3 ter. les six points de l’audit externe', () => {
       const src = lire(formulaires[nom]);
       assert.match(src, /existingSeriesId && quoi === 'cette'/, `${nom} limite le contrôle à la période écrite`);
     }
+  });
+});
+
+describe('3 quater. le troisième audit : équipe multi-fuseaux, édition, chargement, anciens formats', () => {
+  const multi = ['web · BlockPeriodModal', 'mobile · block-slot'];
+  const tous = ['web · BlockPeriodModal', 'web · ActivityModal', 'mobile · block-slot', 'mobile · create-activity'];
+
+  for (const nom of multi) {
+    const src = lire(formulaires[nom]);
+    it(`${nom} : la période se construit PAR membre, dans le fuseau de SON lieu`, () => {
+      assert.match(src, /periodeDepuisSaisie\(saisieMurale\(\), fuseaux\[memberId\]\)/);
+      assert.match(src, /const inputPour = \(member: WithId<Member>\): BlockedSlotInput =>/);
+      assert.doesNotMatch(src, /const \[fuseau, setFuseau\]/, 'plus de fuseau unique pour toute l’équipe');
+      assert.doesNotMatch(src, /\.\.\.base,\s*memberId: member\.id/, 'plus un même instant recopié à chaque membre');
+    });
+    it(`${nom} : chaque membre est confronté à SES périodes`, () => {
+      assert.match(src, /rendezVousRecouvertsParMembre\(\s*providerId,\s*periodesParMembre/);
+    });
+  }
+
+  for (const nom of tous) {
+    const src = lire(formulaires[nom]);
+    it(`${nom} : l’édition se remplit dans le fuseau du lieu, une fois celui-ci connu`, () => {
+      assert.match(src, /saisieDepuisPeriode\(aHydrater, fuseaux\[aHydrater\.memberId\]\)/);
+      assert.match(src, /if \(!aHydrater \|\| !fuseaux?Prets?\) return;/);
+      assert.doesNotMatch(src, /setStartTime\(formatTimeInput\(startDt\)\)|setStartTime\(startDt\)|sd\.setHours\(sh, sm/, 'plus de getters de l’appareil à l’hydratation');
+      assert.match(src, /setExistingStart\(new Date\(existing\.startDate\.getTime\(\)\)\)/, 'la borne « suivantes » est l’instant ENREGISTRÉ');
+    });
+    it(`${nom} : l’enregistrement ne peut pas partir pendant la lecture du fuseau`, () => {
+      assert.match(src, /disabled=\{[^}]*!fuseaux?Prets?/, 'bouton éteint tant que la lecture n’est pas finie');
+      assert.match(src, /if \((?:!providerId \|\| )?!fuseaux?Prets?\) return;/, 'garde de dernier recours dans le gestionnaire');
+    });
+  }
+
+  it('les deux hooks distinguent « en cours » de « lu, sans fuseau »', () => {
+    for (const chemin of ['apps/web/app/pro/calendrier/components/useFuseauxMembres.ts', 'apps/mobile/hooks/useFuseauxMembres.ts']) {
+      const src = lire(chemin);
+      assert.match(src, /fuseauxPrets\(memberIds, fuseaux\)/, `${chemin} : prêt = tous les membres LUS`);
+      assert.match(src, /\.catch\(\(\) => Object\.fromEntries\(manquants\.map\(\(id\) => \[id, null\]\)\)\)/, `${chemin} : une erreur ne bloque pas à vie`);
+    }
+  });
+
+  it('le dépôt normalise `recurrence` à la lecture, en UN seul endroit', () => {
+    const depot = lire('packages/firebase/src/repositories/blockedSlot.repository.ts');
+    assert.match(depot, /function versModele\(/);
+    assert.match(depot, /normaliserRecurrence\(modele\.recurrence\)/);
+    // Une seule occurrence : celle de versModele lui-même.
+    assert.equal((depot.match(/convertTimestamps<BlockedSlot>\(/g) ?? []).length, 1, 'toutes les lectures passent par versModele');
+    assert.ok((depot.match(/versModele\(/g) ?? []).length >= 9, 'les neuf lectures du dépôt');
   });
 });
 

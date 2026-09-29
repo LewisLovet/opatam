@@ -3500,6 +3500,7 @@
     "seriesDeleted_one": "{{count}} occorrenza eliminata",
     "seriesDeleted_other": "{{count}} occorrenze eliminate",
     "listSummary": "{{rule}} · {{count}} in arrivo",
-    "deleteSeriesMessage": "Eliminare tutte le occorrenze future di questa ripetizione?"
+    "deleteSeriesMessage": "Eliminare tutte le occorrenze future di questa ripetizione?",
+    "plusieursFuseaux": "I membri scelti lavorano in fusi orari diversi: gli orari inseriti valgono per l’ora locale di ogni sede."
   }
 }
