@@ -1,4 +1,4 @@
-import { memberRepository, bookingRepository, availabilityRepository } from '../repositories';
+import { memberRepository, memberAccessCodeRepository, bookingRepository, availabilityRepository } from '../repositories';
 import type { Member } from '@booking-app/shared';
 import {
   parseOrThrow,
@@ -45,9 +45,6 @@ export class MemberService {
       }
     }
 
-    // Generate unique access code
-    const accessCode = await this.generateUniqueAccessCode(validated.name);
-
     // Get current member count for sortOrder
     const existingMembers = await memberRepository.getByProvider(providerId);
     const sortOrder = existingMembers.length;
@@ -59,12 +56,15 @@ export class MemberService {
       phone: validated.phone || null,
       photoURL: null,
       color: validated.color || MEMBER_COLORS[sortOrder % MEMBER_COLORS.length],
-      accessCode,
       locationId: validated.locationId,
       isDefault: false, // Les membres créés manuellement ne sont pas par défaut
       isActive: true,
       sortOrder,
     });
+
+    // Le code d'accès au planning, APRÈS la fiche : la règle vérifie que le
+    // membre existe. Rangé à part, jamais dans la fiche publique.
+    await this.attribuerCodeSansBloquer(providerId, memberId, validated.name);
 
     // Horaires par défaut ENREGISTRÉS dès la création : l'éditeur affichait
     // déjà « lun–ven 9 h–18 h » pour un membre sans horaires, mais rien
@@ -95,9 +95,6 @@ export class MemberService {
     email: string,
     locationId: string
   ): Promise<WithId<Member>> {
-    // Generate unique access code
-    const accessCode = await this.generateUniqueAccessCode(name);
-
     // Create default member
     const memberId = await memberRepository.create(providerId, {
       name,
@@ -105,12 +102,13 @@ export class MemberService {
       phone: null,
       photoURL: null,
       color: MEMBER_COLORS[0],
-      accessCode,
       locationId,
       isDefault: true, // Membre par défaut
       isActive: true,
       sortOrder: 0,
     });
+
+    await this.attribuerCodeSansBloquer(providerId, memberId, name);
 
     const member = await memberRepository.getById(providerId, memberId);
     if (!member) {
@@ -250,6 +248,9 @@ export class MemberService {
     // Delete member's availability
     await availabilityRepository.deleteByMember(providerId, memberId);
 
+    // Son code ne doit plus ouvrir aucun planning.
+    await this.retirerCodesAcces(providerId, memberId);
+
     // Delete member
     await memberRepository.delete(providerId, memberId);
   }
@@ -263,17 +264,39 @@ export class MemberService {
       throw new Error('Membre non trouvé');
     }
 
-    const newAccessCode = await this.generateUniqueAccessCode(member.name);
-    await memberRepository.update(providerId, memberId, { accessCode: newAccessCode });
+    const newAccessCode = await this.attribuerCodeAcces(providerId, memberId, member.name);
+    // L'ancien code cesse aussitôt d'ouvrir le planning.
+    await this.retirerCodesAcces(providerId, memberId, newAccessCode);
+    // Fiche d'avant la migration : son code y était encore écrit, et la
+    // connexion au planning l'accepte tant qu'il y est.
+    if (member.accessCode) await memberRepository.update(providerId, memberId, { accessCode: null });
 
     return newAccessCode;
   }
 
   /**
-   * Get member by access code (for planning page)
+   * Les membres du salon AVEC leur code d'accès — pour les écrans du gérant,
+   * seul à pouvoir lire les codes. La recherche d'un membre PAR son code
+   * (connexion au planning) se fait côté serveur, jamais ici.
    */
-  async getMemberByAccessCode(code: string): Promise<(WithId<Member> & { providerId: string }) | null> {
-    return memberRepository.getByAccessCode(code);
+  async getByProviderAvecCodes(providerId: string): Promise<WithId<Member>[]> {
+    const [members, codes] = await Promise.all([
+      memberRepository.getByProvider(providerId),
+      // Sans les codes, l'écran de l'équipe doit quand même s'afficher.
+      memberAccessCodeRepository.listByProvider(providerId).catch((err) => {
+        console.warn('[memberService] codes d’accès illisibles', err);
+        return [];
+      }),
+    ]);
+    // Le plus récent gagne si un membre en avait plusieurs (régénération
+    // interrompue) ; la fiche d'avant la migration sert de repli.
+    const parMembre = new Map<string, { code: string; t: number }>();
+    for (const c of codes) {
+      const t = c.createdAt?.getTime() ?? 0;
+      const actuel = parMembre.get(c.memberId);
+      if (!actuel || t > actuel.t) parMembre.set(c.memberId, { code: c.code, t });
+    }
+    return members.map((m) => ({ ...m, accessCode: parMembre.get(m.id)?.code ?? m.accessCode ?? null }));
   }
 
   /**
@@ -322,36 +345,49 @@ export class MemberService {
   }
 
   /**
-   * Generate unique access code in format: PRENOM-XXXX
+   * Attribue un code d'accès au membre, format PRENOM-XXXX, et le range dans
+   * `memberAccessCodes`. L'unicité est celle de la base : un code déjà pris
+   * est refusé à l'écriture, on en tire un autre.
    */
-  private async generateUniqueAccessCode(name: string): Promise<string> {
+  private async attribuerCodeAcces(providerId: string, memberId: string, name: string): Promise<string> {
     const firstName = name
       .split(' ')[0]
       .toUpperCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Remove accents
       .replace(/[^A-Z]/g, '') // Keep only letters
-      .substring(0, 6);
+      .substring(0, 6) || 'MEMBRE'; // prénom sans lettre latine
 
-    let code: string;
-    let attempts = 0;
-    const maxAttempts = 100;
+    for (let essai = 0; essai < 12; essai++) {
+      // Partie aléatoire allongée après quelques collisions.
+      const code = `${firstName}-${this.generateRandomCode(essai < 8 ? 4 : 6)}`;
+      if (await memberAccessCodeRepository.reserver(code, providerId, memberId)) return code;
+    }
+    throw new Error("Impossible d'attribuer un code d'accès à ce membre. Réessayez.");
+  }
 
-    do {
-      const randomPart = this.generateRandomCode(4);
-      code = `${firstName}-${randomPart}`;
-      attempts++;
+  /**
+   * À la création, la fiche existe déjà : faire échouer l'appel pour un
+   * code manquant ferait croire que le membre n'a pas été créé (on le
+   * recréerait en double) — et, à l'inscription, bloquerait le compte.
+   * Sans code, l'écran du gérant affiche « — » et propose de le régénérer.
+   */
+  private async attribuerCodeSansBloquer(providerId: string, memberId: string, name: string): Promise<void> {
+    try {
+      await this.attribuerCodeAcces(providerId, memberId, name);
+    } catch (err) {
+      console.warn('[memberService] code d’accès non attribué', memberId, err);
+    }
+  }
 
-      // Check if code exists
-      const existing = await memberRepository.getByAccessCode(code);
-      if (!existing) {
-        return code;
-      }
-    } while (attempts < maxAttempts);
-
-    // Fallback with longer random part
-    const longRandomPart = this.generateRandomCode(6);
-    return `${firstName}-${longRandomPart}`;
+  /** Retire les codes du membre — tous, ou tous sauf `garder`. */
+  private async retirerCodesAcces(providerId: string, memberId: string, garder?: string): Promise<void> {
+    const codes = await memberAccessCodeRepository.listByProvider(providerId);
+    await Promise.all(
+      codes
+        .filter((c) => c.memberId === memberId && c.code !== garder)
+        .map((c) => memberAccessCodeRepository.delete(c.code)),
+    );
   }
 
   /**
@@ -359,9 +395,15 @@ export class MemberService {
    */
   private generateRandomCode(length: number): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar characters (0, O, 1, I)
+    // Tirage cryptographique quand la plateforme l'offre (navigateur, Node) ;
+    // Math.random en repli (Hermes sans polyfill).
+    const alea = new Uint32Array(length);
+    const crypto = (globalThis as { crypto?: { getRandomValues?: (a: Uint32Array) => Uint32Array } }).crypto;
+    if (crypto?.getRandomValues) crypto.getRandomValues(alea);
+    else for (let i = 0; i < length; i++) alea[i] = Math.floor(Math.random() * 2 ** 32);
     let result = '';
     for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += chars.charAt(alea[i] % chars.length);
     }
     return result;
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { codeDuMembre } from '@/lib/member-access-code';
 import { Timestamp } from 'firebase-admin/firestore';
 import {
   resend,
@@ -125,7 +126,8 @@ export async function POST(request: Request) {
 
     // Send member email
     const planningUrl = `${appConfig.url}/planning`;
-    const accessCode = member.accessCode || '—';
+    // Le code ne vit plus dans la fiche (publique) : lu à part, côté serveur.
+    const accessCode = (await codeDuMembre(providerId, memberId)) || '—';
 
     console.log(`[send-agenda-summary] Sending to ${member.name} (${member.email}), ${bookings.length} bookings`);
 

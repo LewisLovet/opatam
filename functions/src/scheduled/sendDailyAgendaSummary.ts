@@ -24,6 +24,7 @@ import { instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
 import { envoyerEmail } from '../lib/emailJournal';
+import { codesDuSalon } from '../lib/codesAcces';
 
 const resendApiKey = defineString('RESEND_API_KEY');
 
@@ -195,6 +196,11 @@ export const sendDailyAgendaSummary = onSchedule(
               .where('isActive', '==', true)
               .get();
             serverTracker.trackRead('providers/*/members', membersSnapshot.size);
+            // Les codes d'accès ne sont plus dans les fiches (publiques) : lus à
+            // part, la fiche d'avant la migration servant de repli.
+            const codes = membersSnapshot.size > 1
+              ? await codesDuSalon(db, providerId, new Map(membersSnapshot.docs.map((d) => [d.id, d.get('accessCode')])))
+              : new Map<string, string>();
 
             // 7. Send to each member their own bookings (only if more than 1 member)
             if (membersSnapshot.size <= 1) {
@@ -226,8 +232,8 @@ export const sendDailyAgendaSummary = onSchedule(
                 to: member.email,
                 replyTo: emailConfig.replyTo,
                 subject: `Votre agenda de demain - ${memberBookings.length} rendez-vous - ${formattedTomorrow}`,
-                html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
-                text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
+                html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, codes.get(memberId) ?? '—'),
+                text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, codes.get(memberId) ?? '—'),
               }, { type: 'daily_agenda_member', providerId, resume: { demain, fuseau: fuseauDuSalon, membre: member.name, rendezVous: memberBookings.length } });
 
               if (error) {

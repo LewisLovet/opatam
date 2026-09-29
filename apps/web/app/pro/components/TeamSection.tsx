@@ -168,9 +168,10 @@ export function TeamSection({ members, locations, todayBookings, providerId }: T
 
                   {/* Copy access code */}
                   <button
-                    onClick={() => handleCopyCode(member.id, member.accessCode)}
+                    onClick={() => member.accessCode && handleCopyCode(member.id, member.accessCode)}
+                    disabled={!member.accessCode}
                     className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                    title={`Copier le code d'accès : ${member.accessCode}`}
+                    title={member.accessCode ? `Copier le code d'accès : ${member.accessCode}` : 'Pas encore de code d’accès'}
                   >
                     {copiedId === member.id ? (
                       <Check className="w-3.5 h-3.5 text-success-600" />

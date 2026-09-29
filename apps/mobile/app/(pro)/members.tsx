@@ -136,7 +136,8 @@ export default function MembersScreen() {
     if (!providerId) return;
     try {
       const [mbrs, locs, svcs, dispos] = await Promise.all([
-        memberService.getByProvider(providerId),
+        // Avec les codes d'accès : le gérant est seul à pouvoir les lire.
+        memberService.getByProviderAvecCodes(providerId),
         locationRepository.getActiveByProvider(providerId),
         catalogService.getByProvider(providerId),
         availabilityRepository.getByProvider(providerId),
@@ -889,7 +890,7 @@ export default function MembersScreen() {
                 {t('proMembers.code.label')}{' '}
               </Text>
               <Text variant="bodySmall" style={{ fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
-                {showCodeFor === member.id ? member.accessCode : '••••••••'}
+                {showCodeFor === member.id ? (member.accessCode ?? '—') : '••••••••'}
               </Text>
               <Pressable
                 onPress={() => setShowCodeFor(showCodeFor === member.id ? null : member.id)}
@@ -899,7 +900,8 @@ export default function MembersScreen() {
                 <Ionicons name={showCodeFor === member.id ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
               </Pressable>
               <Pressable
-                onPress={() => handleCopyCode(member.accessCode)}
+                onPress={() => member.accessCode && handleCopyCode(member.accessCode)}
+                disabled={!member.accessCode}
                 hitSlop={8}
                 style={{ padding: 4 }}
               >
@@ -1882,7 +1884,7 @@ export default function MembersScreen() {
                 {/* Large code display */}
                 <View style={[styles.codeDisplay, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg }]}>
                   <Text variant="h2" style={{ fontFamily: 'monospace', letterSpacing: 3, textAlign: 'center' }}>
-                    {codeModalMember.accessCode}
+                    {codeModalMember.accessCode ?? '—'}
                   </Text>
                 </View>
 
@@ -1893,7 +1895,7 @@ export default function MembersScreen() {
                 {/* Action buttons */}
                 <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
                   <Pressable
-                    onPress={() => { handleCopyCode(codeModalMember.accessCode); }}
+                    onPress={() => { if (codeModalMember.accessCode) handleCopyCode(codeModalMember.accessCode); }}
                     style={({ pressed }) => [styles.codeActionBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <Ionicons name="copy-outline" size={20} color={colors.primary} />

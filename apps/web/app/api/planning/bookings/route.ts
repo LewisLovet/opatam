@@ -3,10 +3,10 @@ process.env.TZ = 'Europe/Paris';
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  memberService,
   bookingRepository,
   providerRepository,
 } from '@booking-app/firebase';
+import { membreParCode } from '@/lib/member-access-code';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate access code
-    const member = await memberService.getMemberByAccessCode(code.toUpperCase());
+    // Côté serveur : les codes ne sont plus lisibles publiquement.
+    const member = await membreParCode(code);
     if (!member || !member.isActive) {
       return NextResponse.json(
         { error: 'Code d\'accès invalide' },

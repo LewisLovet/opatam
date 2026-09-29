@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
 import { Button, ConfirmDialog, useToast } from '@/components/ui';
 import {
   memberService,
@@ -108,7 +109,8 @@ export function EquipeTab() {
     setLoading(true);
     try {
       const [membersData, locationsData, servicesData, availabilitiesData] = await Promise.all([
-        memberService.getByProvider(provider.id),
+        // Avec les codes d'accès : le gérant est seul à pouvoir les lire.
+        memberService.getByProviderAvecCodes(provider.id),
         locationService.getByProvider(provider.id),
         catalogService.getByProvider(provider.id),
         availabilityRepository.getByProvider(provider.id),
@@ -961,17 +963,14 @@ export function EquipeTab() {
     if (!member) return;
 
     try {
+      // Le serveur relit lui-même le destinataire, le nom et le code : on ne
+      // lui envoie que QUI écrire, et la preuve qu'on est le gérant.
+      const token = await getAuth().currentUser?.getIdToken();
+      if (!token) throw new Error('Session expirée, reconnectez-vous');
       const response = await fetch('/api/send-member-code', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          providerId: provider.id,
-          memberId: member.id,
-          memberName: member.name,
-          memberEmail: member.email,
-          accessCode: member.accessCode,
-          businessName: provider.businessName,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ providerId: provider.id, memberId: member.id }),
       });
       if (!response.ok) {
         const error = await response.json();

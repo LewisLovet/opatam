@@ -179,6 +179,34 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // === CODES D'ACCÈS DES MEMBRES AU PLANNING ===
+    //
+    // Le code vivait dans la fiche du membre, lisible par tous (la page du
+    // salon affiche l'équipe) : n'importe qui ouvrait le planning de chaque
+    // membre — noms, téléphones et e-mails de ses clientes. Il vit ici,
+    // l'identifiant du document EST le code.
+    //
+    // - lecture : le gérant du salon, et lui seul. Lire un code qui n'existe
+    //   pas est refusé aussi (`resource` nul) : pas d'oracle « ce code
+    //   existe » pour qui essaierait de les deviner ;
+    // - création : le gérant, pour un membre de SON salon qui existe ;
+    // - jamais de mise à jour : écrire sur un code déjà pris est refusé, c'est
+    //   ce qui garantit l'unicité sans lire les codes des autres salons ;
+    // - suppression : le gérant (régénération, départ d'un membre).
+    //
+    // La connexion au planning passe par le serveur (Admin SDK).
+    match /memberAccessCodes/{code} {
+      allow read, delete: if isAuthenticated()
+        && resource.data.providerId == request.auth.uid;
+      allow create: if isAuthenticated()
+        && request.resource.data.providerId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['providerId', 'memberId', 'createdAt'])
+        && request.resource.data.memberId is string
+        && exists(/databases/$(database)/documents/providers/$(request.auth.uid)/members/$(request.resource.data.memberId))
+        && code.matches('^[A-Z0-9][A-Z0-9-]{1,23}$');
+      allow update: if false;
+    }
+
     // === STORIES ===
     //
     // Un événement par story effectivement partagée. Sert deux choses : le

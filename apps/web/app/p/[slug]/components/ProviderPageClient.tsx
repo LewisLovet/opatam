@@ -102,19 +102,13 @@ interface SerializedLocation {
   updatedAt: string;
 }
 
+/** Ce que la page publique reçoit d'un membre — rien de plus. */
 interface SerializedMember {
   id: string;
   name: string;
-  email: string;
-  phone: string | null;
   photoURL: string | null;
-  accessCode: string;
   locationId: string;
   isDefault: boolean;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface SerializedReview {

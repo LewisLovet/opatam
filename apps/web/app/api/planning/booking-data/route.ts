@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hasDepositAccess } from '@booking-app/shared';
+import { membreParCode } from '@/lib/member-access-code';
 import {
-  memberService,
   serviceRepository,
   serviceCategoryRepository,
   availabilityRepository,
@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate access code
-    const member = await memberService.getMemberByAccessCode(code.toUpperCase());
+    // Validate access code (côté serveur : les codes ne sont plus publics)
+    const member = await membreParCode(code);
     if (!member || !member.isActive) {
       return NextResponse.json(
         { error: "Code d'accès invalide" },

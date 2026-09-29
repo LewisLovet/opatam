@@ -1,3 +1,13 @@
+/**
+ * Envoie au membre son code d'accès au planning.
+ *
+ * AVANT : la route prenait dans le corps de la requête le destinataire, le
+ * nom, le salon ET le code, sans vérifier qui appelait — un relais d'e-mails
+ * ouvert, au nom d'Opatam, vers n'importe quelle adresse et avec n'importe
+ * quel contenu. MAINTENANT : jeton Firebase obligatoire, l'appelant doit
+ * être le gérant du salon, et tout ce que contient l'e-mail est relu en
+ * base (Admin SDK). Le corps ne désigne plus que le membre.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import {
   resend,
@@ -5,43 +15,74 @@ import {
   appConfig,
   isValidEmail,
 } from '@/lib/resend';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
+import { codeDuMembre } from '@/lib/member-access-code';
 
 interface SendCodeRequest {
   providerId: string;
   memberId: string;
-  memberName: string;
-  memberEmail: string;
-  accessCode: string;
-  businessName: string;
+}
+
+/** Les valeurs relues en base sont réinjectées dans le HTML : échappées. */
+function echapper(v: unknown, max = 120): string {
+  return String(v ?? '')
+    .slice(0, max)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: SendCodeRequest = await request.json();
-
-    const { memberName, memberEmail, accessCode, businessName } = body;
-
-    // Validate required fields
-    if (!memberName || !memberEmail || !accessCode || !businessName) {
-      return NextResponse.json(
-        { message: 'Données manquantes' },
-        { status: 400 }
-      );
+    const header = request.headers.get('authorization') ?? '';
+    if (!header.startsWith('Bearer ')) {
+      return NextResponse.json({ message: 'Authentification requise' }, { status: 401 });
+    }
+    let uid: string;
+    try {
+      uid = (await getAdminAuth().verifyIdToken(header.slice('Bearer '.length))).uid;
+    } catch {
+      return NextResponse.json({ message: 'Session expirée, reconnectez-vous' }, { status: 401 });
     }
 
-    // Validate email format
+    const body: Partial<SendCodeRequest> = await request.json();
+    const { providerId, memberId } = body;
+    if (!providerId || !memberId || typeof providerId !== 'string' || typeof memberId !== 'string') {
+      return NextResponse.json({ message: 'Données manquantes' }, { status: 400 });
+    }
+    // Un gérant n'écrit qu'aux membres de SON salon.
+    if (uid !== providerId) {
+      return NextResponse.json({ message: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const db = getAdminFirestore();
+    const [providerSnap, memberSnap, accessCode] = await Promise.all([
+      db.collection('providers').doc(providerId).get(),
+      db.collection('providers').doc(providerId).collection('members').doc(memberId).get(),
+      codeDuMembre(providerId, memberId),
+    ]);
+    if (!memberSnap.exists) {
+      return NextResponse.json({ message: 'Membre introuvable' }, { status: 404 });
+    }
+    if (!accessCode) {
+      return NextResponse.json({ message: "Ce membre n'a pas encore de code : régénérez-le d'abord" }, { status: 409 });
+    }
+    const memberEmail = String(memberSnap.get('email') ?? '');
     if (!isValidEmail(memberEmail)) {
-      return NextResponse.json(
-        { message: 'Email invalide' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Email invalide' }, { status: 400 });
     }
+    const memberName = echapper(memberSnap.get('name'));
+    const businessName = echapper(providerSnap.get('businessName') || 'Votre salon');
+    const nomTexte = String(memberSnap.get('name') ?? '').slice(0, 120);
+    const salonTexte = String(providerSnap.get('businessName') || 'Votre salon').slice(0, 120);
 
     // Send email via Resend
     const { error } = await resend.emails.send({
       from: emailConfig.from,
       to: memberEmail,
-      subject: `Votre code d'accès planning - ${businessName}`,
+      subject: `Votre code d'accès planning - ${salonTexte}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -120,7 +161,7 @@ export async function POST(request: NextRequest) {
         </html>
       `,
       text: `
-Bonjour ${memberName},
+Bonjour ${nomTexte},
 
 Vous pouvez consulter votre planning sur ${appConfig.name}.
 
@@ -129,7 +170,7 @@ Votre code d'accès : ${accessCode}
 Rendez-vous sur : ${appConfig.url}/planning
 
 À bientôt,
-${businessName}
+${salonTexte}
       `.trim(),
     });
 

@@ -137,7 +137,7 @@ export function MemberModal({
           locationId: member.locationId, // NOUVEAU MODÈLE: 1 membre = 1 lieu
           serviceIds: memberServiceIds,
         });
-        setCurrentCode(member.accessCode);
+        setCurrentCode(member.accessCode ?? '');
         setPhotoURL(member.photoURL || null);
         setActiveTab('info');
       } else {

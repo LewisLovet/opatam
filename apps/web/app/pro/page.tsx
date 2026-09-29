@@ -214,7 +214,8 @@ export default function DashboardPage() {
           status: ['cancelled'],
           limit: 5,
         }),
-        isTeamPlan ? memberService.getByProvider(provider.id) : Promise.resolve([]),
+        // Avec les codes : la section équipe les copie (gérant seul).
+        isTeamPlan ? memberService.getByProviderAvecCodes(provider.id) : Promise.resolve([]),
         locationService.getByProvider(provider.id),
         catalogService.getByProvider(provider.id),
       ]);

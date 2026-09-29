@@ -10,6 +10,13 @@ export { ProviderRepository, providerRepository, type ProviderSearchFilters } fr
 // Member repository (subcollection)
 export { MemberRepository, memberRepository } from './member.repository';
 
+// Codes d'accès des membres au planning (top-level, privé : gérant seulement)
+export {
+  MemberAccessCodeRepository,
+  memberAccessCodeRepository,
+  type MemberAccessCodeDoc,
+} from './memberAccessCode.repository';
+
 // Location repository (subcollection)
 export { LocationRepository, locationRepository } from './location.repository';
 

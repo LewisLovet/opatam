@@ -11,7 +11,6 @@ import {
   where,
   orderBy,
   limit,
-  collectionGroup,
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore';
@@ -110,35 +109,9 @@ export class MemberRepository {
     }));
   }
 
-  /**
-   * Get member by access code (across all providers)
-   */
-  async getByAccessCode(accessCode: string): Promise<(WithId<Member> & { providerId: string }) | null> {
-    const q = query(
-      collectionGroup(this.db, 'members'),
-      where('accessCode', '==', accessCode),
-      limit(1)
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return null;
-    }
-
-    const docSnap = querySnapshot.docs[0];
-    // Extract providerId from path: providers/{providerId}/members/{memberId}
-    const providerId = docSnap.ref.parent.parent?.id;
-
-    if (!providerId) {
-      return null;
-    }
-
-    return {
-      id: docSnap.id,
-      providerId,
-      ...convertTimestamps<Member>(docSnap.data()),
-    };
-  }
+  // Pas de recherche par code d'accès ici : les codes ne sont plus dans les
+  // fiches (voir memberAccessCode.repository.ts) et la connexion au
+  // planning les vérifie côté serveur (apps/web/lib/member-access-code.ts).
 
   /**
    * Get members by location (1 membre = 1 lieu)

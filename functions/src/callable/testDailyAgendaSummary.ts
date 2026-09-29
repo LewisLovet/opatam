@@ -21,6 +21,7 @@ import { serverTracker } from '../utils/serverTracker';
 import { Resend } from 'resend';
 import { defineString } from 'firebase-functions/params';
 import { envoyerEmail } from '../lib/emailJournal';
+import { codesDuSalon } from '../lib/codesAcces';
 
 const resendApiKey = defineString('RESEND_API_KEY');
 
@@ -202,6 +203,11 @@ export const testDailyAgendaSummary = onCall(
             .where('isActive', '==', true)
             .get();
           serverTracker.trackRead('providers/*/members', membersSnapshot.size);
+          // Les codes d'accès ne sont plus dans les fiches (publiques) : lus à
+          // part, la fiche d'avant la migration servant de repli.
+          const codes = membersSnapshot.size > 1
+            ? await codesDuSalon(db, providerId, new Map(membersSnapshot.docs.map((d) => [d.id, d.get('accessCode')])))
+            : new Map<string, string>();
 
           for (const memberDoc of membersSnapshot.docs) {
             // Only send member emails if there are multiple members
@@ -224,8 +230,8 @@ export const testDailyAgendaSummary = onCall(
               to: member.email,
               replyTo: emailConfig.replyTo,
               subject: `Votre agenda de demain - ${memberBookings.length} rendez-vous - ${formattedTomorrow}`,
-              html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
-              text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, member.accessCode),
+              html: generateMemberSummaryHtml(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, codes.get(memberId) ?? '—'),
+              text: generateMemberSummaryText(member.name, businessName, memberBookings, formattedTomorrow, planningUrl, codes.get(memberId) ?? '—'),
             }, { type: 'test_daily_agenda_member', providerId });
 
             if (error) {

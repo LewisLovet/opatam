@@ -85,6 +85,10 @@ export function MemberCard({
 
   const handleCopyCode = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!member.accessCode) {
+      toast.error('Pas encore de code : régénérez-le depuis la fiche');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(member.accessCode);
       toast.success('Code copié dans le presse-papier');
@@ -218,7 +222,7 @@ export function MemberCard({
       >
         {showCode && (
           <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono text-gray-700 dark:text-gray-300">
-            {member.accessCode}
+            {member.accessCode ?? '—'}
           </span>
         )}
         <button

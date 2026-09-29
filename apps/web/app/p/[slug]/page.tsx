@@ -440,10 +440,16 @@ export default async function ProviderPage({ params }: PageProps) {
     updatedAt: l.updatedAt.toISOString(),
   }));
 
+  // Liste FERMÉE des champs envoyés au navigateur, comme /reserver et
+  // /embed. Le `...m` d'avant recopiait la fiche entière dans la page de
+  // chaque salon : code d'accès au planning, e-mail et téléphone de chaque
+  // membre, lisibles dans le code source par n'importe quel visiteur.
   const serializedMembers = members.map((m) => ({
-    ...m,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
+    id: m.id,
+    name: m.name,
+    photoURL: m.photoURL,
+    locationId: m.locationId,
+    isDefault: m.isDefault,
   }));
 
   const serializedReviews = reviews.map((r) => ({

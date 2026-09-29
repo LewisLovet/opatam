@@ -102,6 +102,10 @@ export {
   // Member (subcollection)
   MemberRepository,
   memberRepository,
+  // Codes d'accès des membres (privés : gérant seulement)
+  MemberAccessCodeRepository,
+  memberAccessCodeRepository,
+  type MemberAccessCodeDoc,
   // Location (subcollection)
   LocationRepository,
   locationRepository,

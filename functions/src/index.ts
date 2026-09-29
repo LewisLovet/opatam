@@ -32,6 +32,7 @@ export { onUserWrite, onProviderWrite, onBookingWriteStats, onReviewWrite } from
 export { onBookingWriteProviderStats } from './triggers/onBookingWriteProviderStats';
 export { onBlockedSlotWriteProviderStats } from './triggers/onBlockedSlotWriteProviderStats';
 export { onBlockedSlotWriteNextSlot } from './triggers/onBlockedSlotWriteNextSlot';
+export { onMemberWriteAccessCode } from './triggers/onMemberWriteAccessCode';
 export { onReviewCreate } from './triggers/onReviewCreate';
 export { onAppNotificationPublish } from './triggers/onAppNotificationPublish';
 export { onSupportMessageCreate } from './triggers/onSupportMessageCreate';

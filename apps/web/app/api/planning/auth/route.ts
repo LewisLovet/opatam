@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { memberService } from '@booking-app/firebase';
+import { membreParCode, normaliserCode } from '@/lib/member-access-code';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,16 +12,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedCode = code.trim().toUpperCase();
+    const normalizedCode = normaliserCode(code);
 
-    if (normalizedCode.length < 3) {
+    if (!normalizedCode) {
       return NextResponse.json(
         { error: 'Code d\'accès invalide' },
         { status: 400 }
       );
     }
 
-    const member = await memberService.getMemberByAccessCode(normalizedCode);
+    // Côté serveur (Admin SDK) : les codes ne sont plus lisibles publiquement.
+    const member = await membreParCode(normalizedCode);
 
     if (!member) {
       return NextResponse.json(

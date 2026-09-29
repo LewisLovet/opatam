@@ -848,7 +848,13 @@ export interface Member {
   phone: string | null;
   photoURL: string | null;
   color: string | null;      // Hex color (#3B82F6), null = use default palette
-  accessCode: string;
+  /**
+   * Code d'accès au planning. JAMAIS dans la fiche en base : la fiche est
+   * publique (page du salon), le code y était donc lisible par tous. Il vit
+   * dans `memberAccessCodes/{code}`, que seul le gérant lit ; ce champ n'est
+   * rempli que par `memberService.getByProviderAvecCodes`, pour ses écrans.
+   */
+  accessCode?: string | null;
   locationId: string;        // UN seul lieu par membre
   isDefault: boolean;        // true = membre principal (créé auto à l'inscription)
   isActive: boolean;
