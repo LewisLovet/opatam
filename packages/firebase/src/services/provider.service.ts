@@ -6,6 +6,7 @@ import {
   availabilityRepository,
   memberRepository,
   blockedSlotRepository,
+  datedAvailabilityRepository,
 } from '../repositories';
 import type { Provider, ProviderPlan, ProviderNotificationPreferences } from '@booking-app/shared';
 import {
@@ -19,6 +20,7 @@ import {
   type UpdateProviderInput,
   DEFAULT_CURRENCY,
   peutChangerDevise,
+  jourLocalDe,
 } from '@booking-app/shared';
 import type { WithId } from '../repositories/base.repository';
 
@@ -333,9 +335,17 @@ export class ProviderService {
     // Check availability for each active location
     let hasAvailability = false;
     if (hasLocation) {
+      // Horaires DATÉS à venir (membres en horaires variables) : un lieu qui
+      // n'ouvre qu'à la date a bien des disponibilités. Lecture non bloquante.
+      const aujourdhui = jourLocalDe(new Date());
+      const datesAVenir = await datedAvailabilityRepository
+        .getInRange(providerId, aujourdhui, '9999-12-31')
+        .catch(() => []);
       for (const location of locations) {
         const availabilities = await availabilityRepository.getByLocation(providerId, location.id);
-        const hasOpenDay = availabilities.some((a) => a.isOpen && a.slots.length > 0);
+        const hasOpenDay =
+          availabilities.some((a) => a.isOpen && a.slots.length > 0) ||
+          datesAVenir.some((d) => d.locationId === location.id && d.mode === 'slots' && d.slots.length > 0);
         if (hasOpenDay) {
           hasAvailability = true;
         } else {
