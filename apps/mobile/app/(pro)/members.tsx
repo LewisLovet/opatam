@@ -142,6 +142,11 @@ export default function MembersScreen() {
   // liste de noms sans dire lesquels étaient réservables.
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [horaires, setHoraires] = useState<WithId<Availability>[]>([]);
+  // Journées OUVERTES à venir (60 j), date par date : horaires datés et
+  // horaires variables compris. `null` = pas lues → repli sur la semaine type.
+  const [joursOuverts, setJoursOuverts] = useState<
+    { memberId: string; dayOfWeek: number; isOpen: boolean; slots: { start: string; end: string }[] }[] | null
+  >(null);
 
   // Deux façons de regarder la même chose, comme sur l'ordinateur.
   const [vue, setVue] = useState<'lieux' | 'matrice'>('lieux');
@@ -165,6 +170,7 @@ export default function MembersScreen() {
       setLocations(locs);
       setServices(svcs);
       setHoraires(dispos);
+      setJoursOuverts(await schedulingService.getJoursOuvertsAVenir(providerId).catch(() => null));
     } catch (err) {
       showToast({ variant: 'error', message: t('proMembers.loadError') });
     } finally {
@@ -183,9 +189,9 @@ export default function MembersScreen() {
 
   const etats = React.useMemo(
     () => new Map<string, EtatMembre>(
-      members.map((m) => [m.id, diagnostiquerMembre(m, services, horairesActuels)]),
+      members.map((m) => [m.id, diagnostiquerMembre(m, services, joursOuverts ?? horairesActuels)]),
     ),
-    [members, services, horairesActuels],
+    [members, services, horairesActuels, joursOuverts],
   );
 
   // Créneaux réservables sur 7 jours. C'est LE chiffre qui parle : « 0 »
@@ -904,8 +910,9 @@ export default function MembersScreen() {
                 </Text>
                 {member.isActive && (
                   <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
-                    {resumerHoraires(horairesActuels, member.id)
-                      ?? t('proMembers.readiness.scheduleTodo')}
+                    {member.variableHours
+                      ? t('planningHoraires.variables.titre')
+                      : resumerHoraires(horairesActuels, member.id) ?? t('proMembers.readiness.scheduleTodo')}
                   </Text>
                 )}
                 {/* LE chiffre : combien de rendez-vous cette personne

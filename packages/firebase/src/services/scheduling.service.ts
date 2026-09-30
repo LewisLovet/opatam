@@ -577,6 +577,31 @@ export class SchedulingService {
   }
 
   /**
+   * Les journées OUVERTES de toute l'équipe sur les `nbJours` à venir, au
+   * format des horaires (`memberId`, `dayOfWeek`, `isOpen`, `slots`) — pour
+   * dire qui est réservable (`diagnostiquerMembre`). Un membre en horaires
+   * variables, ou dont la semaine type est vide mais qui a des jours ouverts
+   * à la date, n'est pas « sans horaires ».
+   */
+  async getJoursOuvertsAVenir(
+    providerId: string,
+    nbJours = 60,
+    timeZone?: string,
+  ): Promise<Array<{ memberId: string; jour: string; dayOfWeek: number; isOpen: true; slots: TimeSlot[] }>> {
+    const du = jourLocal(new Date(), fuseauDuMoteur(timeZone));
+    const au = ajouterJours(du, nbJours - 1);
+    const { horairesDe, memberIds } = await this.getLecteurHorairesEquipe(providerId, du, au, timeZone);
+    const ouverts: Array<{ memberId: string; jour: string; dayOfWeek: number; isOpen: true; slots: TimeSlot[] }> = [];
+    for (const memberId of memberIds) {
+      for (let jour = du; jour <= au; jour = ajouterJours(jour, 1)) {
+        const h = horairesDe(memberId, jour);
+        if (h.ouvert) ouverts.push({ memberId, jour, dayOfWeek: jourSemaineCalendaire(jour), isOpen: true, slots: h.plages });
+      }
+    }
+    return ouverts;
+  }
+
+  /**
    * Le planning d'un membre sur [du, au] (dates du lieu) : pour chaque jour,
    * les horaires qui s'appliquent, d'où ils viennent et le réglage daté qui
    * les fixe ; plus les réglages datés en cours. C'est ce que l'écran montre

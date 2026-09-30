@@ -67,6 +67,11 @@ export function EquipeTab() {
   // Horaires de TOUTE l'équipe, en une lecture : avec les prestations, ils
   // décident si un membre peut réellement recevoir des réservations.
   const [availabilities, setAvailabilities] = useState<WithId<Availability>[]>([]);
+  // Journées OUVERTES à venir (60 j), date par date : horaires datés et
+  // horaires variables compris. `null` = pas lues → repli sur la semaine type.
+  const [joursOuverts, setJoursOuverts] = useState<
+    { memberId: string; dayOfWeek: number; isOpen: boolean; slots: { start: string; end: string }[] }[] | null
+  >(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<WithId<Member> | null>(null);
   const [selectedMemberServiceIds, setSelectedMemberServiceIds] = useState<string[]>([]);
@@ -125,6 +130,7 @@ export function EquipeTab() {
       setLocations(locationsData);
       setServices(servicesData);
       setAvailabilities(availabilitiesData);
+      setJoursOuverts(await schedulingService.getJoursOuvertsAVenir(provider.id).catch(() => null));
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Erreur lors du chargement des membres');
@@ -178,10 +184,10 @@ export function EquipeTab() {
       new Map(
         members.map((m) => [
           m.id,
-          diagnostiquerMembre(m, services, horairesActuels, lieuxActifs),
+          diagnostiquerMembre(m, services, joursOuverts ?? horairesActuels, lieuxActifs),
         ]),
       ),
-    [members, services, horairesActuels, lieuxActifs],
+    [members, services, horairesActuels, joursOuverts, lieuxActifs],
   );
 
   // Créneaux réservables sur 7 jours, par membre. C'est LE chiffre qui parle
@@ -215,10 +221,12 @@ export function EquipeTab() {
           .map((id) => `${id}@${duree.get(id) ?? '?'}`)
           .join(',');
         const horaires = [...(semaine.get(m.id) ?? [])].sort().join(';');
-        return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${prestations}:${horaires}`;
+        // Les journées ouvertes à la date bougent aussi le chiffre.
+        const dates = (joursOuverts ?? []).filter((j) => j.memberId === m.id).length;
+        return `${m.id}:${m.isActive ? 1 : 0}:${e?.reservable ? 1 : 0}:${prestations}:${horaires}:${dates}`;
       })
       .join('|');
-  }, [members, services, etats, horairesActuels]);
+  }, [members, services, etats, horairesActuels, joursOuverts]);
 
   useEffect(() => {
     if (!provider || members.length === 0) return;
@@ -1251,7 +1259,7 @@ export function EquipeTab() {
                         services={services}
                         etat={etats.get(member.id)}
                         creneaux={creneaux[member.id] ?? null}
-                        resumeHoraires={resumerHoraires(horairesActuels, member.id)}
+                        resumeHoraires={member.variableHours ? 'Horaires variables' : resumerHoraires(horairesActuels, member.id)}
                         masquerLieu
                         memberServiceIds={getMemberServiceIds(member.id)}
                         selectionne={member.id === selectionId}
@@ -1293,7 +1301,9 @@ export function EquipeTab() {
                   services={services}
                   etat={etats.get(membreSelectionne.id)}
                   creneaux={creneaux[membreSelectionne.id] ?? null}
-                  resumeHoraires={resumerHoraires(horairesActuels, membreSelectionne.id)}
+                  resumeHoraires={
+                    membreSelectionne.variableHours ? 'Horaires variables' : resumerHoraires(horairesActuels, membreSelectionne.id)
+                  }
                   sources={sourcesHoraires(membreSelectionne.id)}
                   cibles={ciblesHoraires(membreSelectionne.id)}
                   enCours={ecritures}
