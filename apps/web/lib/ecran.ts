@@ -15,6 +15,7 @@ import { randomBytes } from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { isPubliclyVisible, type SalonScreen } from '@booking-app/shared';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { lireHorairesEquipe } from '@/lib/horaires-serveur';
 
 export const COLLECTION_ECRANS = 'salonScreens';
 export const UPCOMING_MIN = 4;
@@ -184,10 +185,9 @@ export async function chargerEcran(id: string, secret: string, maintenant = new 
   const fuseau = settings.timezone || FUSEAU_DEFAUT;
   const { debut, fin, jour, dow } = bornesDuJour(maintenant, fuseau);
 
-  const [lieuDoc, membresSnap, dispoSnap, resaSnap, indispoSnap] = await Promise.all([
+  const [lieuDoc, membresSnap, resaSnap, indispoSnap] = await Promise.all([
     refProvider.collection('locations').doc(ecran.locationId).get(),
     refProvider.collection('members').where('isActive', '==', true).get(),
-    refProvider.collection('availability').where('dayOfWeek', '==', dow).get(),
     db.collection('bookings')
       .where('providerId', '==', ecran.providerId)
       .where('status', 'in', ['confirmed', 'pending'])
@@ -209,11 +209,20 @@ export async function chargerEcran(id: string, secret: string, maintenant = new 
     .sort((a: Doc, b: Doc) => Number((a.data() as Record<string, unknown>).sortOrder ?? 0) - Number((b.data() as Record<string, unknown>).sortOrder ?? 0));
   const idsMembres = new Set(membresDocs.map((d: Doc) => d.id));
 
+  // Les horaires de CE jour-là : semaine type en vigueur, horaires datés,
+  // horaires variables (la même règle que la réservation).
+  const horairesDe = await lireHorairesEquipe({
+    refProvider,
+    du: jour,
+    au: jour,
+    membres: membresDocs.map((d: Doc) => ({ id: d.id, variableHours: (d.data() as Record<string, unknown>).variableHours })),
+    jourDEffet: (d) => jourLocal(d, fuseau),
+    jourSemaine: dow,
+  });
   const horairesParMembre = new Map<string, { start: string; end: string }[]>();
-  for (const d of dispoSnap.docs) {
-    const a = d.data() as { memberId?: string; isOpen?: boolean; slots?: { start: string; end: string }[] };
-    if (!a.memberId || !idsMembres.has(a.memberId) || !a.isOpen) continue;
-    horairesParMembre.set(a.memberId, (a.slots ?? []).filter((s) => s.start && s.end));
+  for (const id of idsMembres) {
+    const h = horairesDe(id, jour);
+    if (h.ouvert) horairesParMembre.set(id, h.plages);
   }
 
   const membres: EcranMembre[] = membresDocs.map((d: Doc) => {

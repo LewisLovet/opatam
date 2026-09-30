@@ -15,6 +15,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { isPubliclyVisible } from '@booking-app/shared';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { bornesDeJour, heureLocale, instantLocal, jourLocal } from '@/lib/ecran';
+import { lireHorairesEquipe } from '@/lib/horaires-serveur';
 import type { CaseOccupation, CategorieOccupation, JourOccupation, OccupationPayload } from '@/lib/occupation-types';
 
 const FUSEAU_DEFAUT = 'Europe/Paris';
@@ -79,9 +80,8 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
   const limitePreavis = new Date(maintenant.getTime() + preavisMs);
 
   const refProvider = db.collection('providers').doc(providerId);
-  const [membresSnap, dispoSnap, resaSnap, indispoSnap] = await Promise.all([
+  const [membresSnap, resaSnap, indispoSnap] = await Promise.all([
     refProvider.collection('members').where('isActive', '==', true).get(),
-    refProvider.collection('availability').get(),
     db.collection('bookings')
       .where('providerId', '==', providerId)
       .where('status', 'in', ['confirmed', 'pending', 'pending_payment'])
@@ -95,19 +95,33 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
   ]);
 
   let membres = membresSnap.docs
-    .map((d) => ({ id: d.id, name: String((d.data() as { name?: string }).name ?? ''), sortOrder: Number((d.data() as { sortOrder?: number }).sortOrder ?? 0) }))
+    .map((d) => ({
+      id: d.id,
+      name: String((d.data() as { name?: string }).name ?? ''),
+      sortOrder: Number((d.data() as { sortOrder?: number }).sortOrder ?? 0),
+      variableHours: (d.data() as { variableHours?: unknown }).variableHours,
+    }))
     .sort((a, b) => a.sortOrder - b.sortOrder);
   if (opts.memberId) membres = membres.filter((m) => m.id === opts.memberId);
   if (!membres.length) return null;
   const idsMembres = new Set(membres.map((m) => m.id));
   const vueDetaillee = membres.length === 1;
 
-  // Horaires par membre et jour de semaine.
-  const horaires = new Map<string, Intervalle[]>(); // clé `${memberId}:${dow}`
-  for (const d of dispoSnap.docs) {
-    const a = d.data() as { memberId?: string; dayOfWeek?: number; isOpen?: boolean; slots?: { start: string; end: string }[] };
-    if (!a.memberId || !idsMembres.has(a.memberId) || !a.isOpen || typeof a.dayOfWeek !== 'number') continue;
-    horaires.set(`${a.memberId}:${a.dayOfWeek}`, (a.slots ?? []).filter((s) => s.start && s.end).map((s) => [minutes(s.start), minutes(s.end)] as Intervalle));
+  // Horaires par membre et par DATE : semaine type en vigueur ce jour-là,
+  // horaires datés, horaires variables (la même règle que la réservation).
+  const horairesDe = await lireHorairesEquipe({
+    refProvider,
+    du: dates[0],
+    au: dates[dates.length - 1],
+    membres,
+    jourDEffet: (d) => jourLocal(d, fuseau),
+  });
+  const horaires = new Map<string, Intervalle[]>(); // clé `${memberId}:${date}`
+  for (const membre of membres) {
+    for (const date of dates) {
+      const h = horairesDe(membre.id, date);
+      if (h.ouvert) horaires.set(`${membre.id}:${date}`, h.plages.map((s) => [minutes(s.start), minutes(s.end)] as Intervalle));
+    }
   }
 
   // Réservations par membre et jour, en minutes locales.
@@ -168,7 +182,6 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
 
   const categories = new Map<string, CategorieOccupation>();
   const jours: JourOccupation[] = dates.map((date) => {
-    const { dow } = bornesDeJour(date, fuseau);
     const cases: CaseOccupation[] = creneaux.map((m) => {
       const slot: Intervalle = [m, m + pas];
       // Instant réel du créneau — pas « minuit + m minutes », qui se décale
@@ -177,7 +190,7 @@ export async function chargerOccupation(opts: OccupationOptions, maintenant = ne
       const instant = instantLocal(date, m, fuseau);
       let total = 0, libres = 0; let cat: string | null = null;
       for (const membre of membres) {
-        const ouverts = horaires.get(`${membre.id}:${dow}`) ?? [];
+        const ouverts = horaires.get(`${membre.id}:${date}`) ?? [];
         const ouvert = ouverts.some(([a, b]) => slot[0] >= a && slot[1] <= b);
         if (!ouvert) continue;
         const bloque = (indispos.get(`${membre.id}:${date}`) ?? []).some((iv) => chevauche(iv, slot));
