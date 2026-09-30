@@ -18,6 +18,7 @@ export { CatalogService, catalogService } from './catalog.service';
 
 // Scheduling Service (Availability + Slot Calculation)
 export { SchedulingService, schedulingService } from './scheduling.service';
+export type { HorairesDatesInput, JourDuPlanning, PlanningHoraires } from './scheduling.service';
 
 // Booking Service
 export { BookingService, bookingService } from './booking.service';

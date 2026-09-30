@@ -178,11 +178,12 @@ describe('les lecteurs d’horaires passent tous par la règle « en vigueur »'
   it('moteur de créneaux : les trois calculs et la vérification finale', () => {
     const src = lire('packages/firebase/src/services/scheduling.service.ts');
     assert.doesNotMatch(src, /availabilityByDow/, 'plus de table « dernier document lu »');
-    // Une seule porte d'entrée : `lecteurHoraires` (semaine type + horaires
-    // datés + option « horaires variables »), appelée par les trois calculs
-    // et par la vérification finale.
-    assert.equal((src.match(/horairesDuJour\(/g) ?? []).length, 1);
+    // Une seule porte d'entrée pour les créneaux : `lecteurHoraires` (semaine
+    // type + horaires datés + option « horaires variables »), appelée par les
+    // trois calculs et par la vérification finale. Le planning et les
+    // aperçus de conflits passent par la même règle, jamais à côté.
     assert.equal((src.match(/this\.lecteurHoraires\(/g) ?? []).length, 4);
+    assert.doesNotMatch(src, /horaireEnVigueurLe\(/, 'la semaine type seule ne décide plus d’un jour');
     assert.doesNotMatch(src, /await availabilityRepository\.get\(\s*providerId,\s*memberId,\s*dayOfWeek/);
   });
   it('prochaine disponibilité (functions) : le miroir', () => {

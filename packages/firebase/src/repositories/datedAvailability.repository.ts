@@ -58,8 +58,11 @@ export class DatedAvailabilityRepository {
     return ref.id;
   }
 
-  /** Plusieurs réglages d'un coup (copie de semaine) : un seul lot. */
-  async createMany(providerId: string, reglages: Reglage[]): Promise<string[]> {
+  /**
+   * Plusieurs réglages d'un coup (copie de semaine), et la suppression de
+   * ceux qu'ils recouvrent entièrement : un seul lot, tout ou rien.
+   */
+  async createMany(providerId: string, reglages: Reglage[], remplaces: readonly string[] = []): Promise<string[]> {
     const lot = writeBatch(this.db);
     const ids: string[] = [];
     for (const r of reglages) {
@@ -67,6 +70,8 @@ export class DatedAvailabilityRepository {
       ids.push(ref.id);
       lot.set(ref, removeUndefined({ ...r, createdAt: serverTimestamp() } as Record<string, unknown>));
     }
+    // Un lot plafonne à 500 écritures : le ménage peut attendre le suivant.
+    for (const id of remplaces.slice(0, 400)) lot.delete(doc(this.col(providerId), id));
     await lot.commit();
     return ids;
   }

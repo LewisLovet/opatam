@@ -8,8 +8,17 @@ import {
   serviceRepository,
   providerRepository,
 } from '../repositories';
-import type { Availability, AvailabilityConflict, BlockedSlot, Booking, TimeSlot } from '@booking-app/shared';
+import type { Availability, AvailabilityConflict, BlockedSlot, Booking, DatedAvailability, DatedAvailabilityMode, TimeSlot } from '@booking-app/shared';
 import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences, reglePourPeriode, horlogeDuFuseau, horairesDuJour } from '@booking-app/shared';
+import {
+  copierSemaine,
+  reglageDateDuJour,
+  reglagesRecouverts,
+  raisonHorairesDatesInvalides,
+  MESSAGES_HORAIRES_DATES,
+  type HoraireDateLu,
+  type HorairesDuJour,
+} from '@booking-app/shared';
 import type { BlockedWindow } from '@booking-app/shared';
 import {
   ajouterJours,
@@ -105,6 +114,33 @@ interface TimeSlotWithDate {
   end: string;
   datetime: Date;
   endDatetime: Date;
+}
+
+/** Des horaires datés à poser (voir `datedAvailability`). */
+export interface HorairesDatesInput {
+  memberId: string;
+  locationId: string;
+  /** « YYYY-MM-DD », dates du lieu, bornes incluses. */
+  from: string;
+  to: string;
+  /** `getDay` (0 = dimanche) ; vide = tous les jours de la période. */
+  weekdays: number[];
+  mode: DatedAvailabilityMode;
+  slots: TimeSlot[];
+}
+
+/** Un jour du planning d'un membre, tel qu'il s'applique. */
+export interface JourDuPlanning extends HorairesDuJour {
+  jour: string;
+  jourSemaine: number;
+  /** Le réglage daté qui fixe ce jour, s'il y en a un. */
+  reglageId: string | null;
+}
+
+export interface PlanningHoraires {
+  jours: JourDuPlanning[];
+  reglages: WithId<DatedAvailability>[];
+  horairesVariables: boolean;
 }
 
 /** Per-day availability for the booking calendar (computed in one batched pass). */
@@ -506,6 +542,219 @@ export class SchedulingService {
     return availabilityRepository.getWeeklySchedule(providerId, memberId);
   }
 
+  // ── Horaires datés (« au compte-goutte ») ────────────────────────────────
+
+  /**
+   * Le planning d'un membre sur [du, au] (dates du lieu) : pour chaque jour,
+   * les horaires qui s'appliquent, d'où ils viennent et le réglage daté qui
+   * les fixe ; plus les réglages datés en cours. C'est ce que l'écran montre
+   * — la même règle que le moteur de créneaux.
+   */
+  async getPlanningHoraires(
+    providerId: string,
+    memberId: string,
+    du: string,
+    au: string,
+    timeZone?: string,
+  ): Promise<PlanningHoraires> {
+    const fuseau = fuseauDuMoteur(timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)));
+    const [semaine, reglages, membre] = await Promise.all([
+      availabilityRepository.getByMember(providerId, memberId),
+      datedAvailabilityRepository.getForMemberInRange(providerId, memberId, du, au),
+      memberRepository.getById(providerId, memberId),
+    ]);
+    const horairesVariables = membre?.variableHours === true;
+    const jourDEffet = (d: Date) => jourLocal(d, fuseau);
+    const jours: JourDuPlanning[] = [];
+    for (let jour = du; jour <= au; jour = ajouterJours(jour, 1)) {
+      const jourSemaine = jourSemaineCalendaire(jour);
+      const h = horairesDuJour({ jour, jourSemaine, semaine, dates: reglages, horairesVariables, jourDEffet });
+      const reglage = reglageDateDuJour(reglages, jour, jourSemaine);
+      jours.push({ jour, jourSemaine, ...h, reglageId: reglage?.id ?? null });
+      if (jours.length > 400) break;
+    }
+    const tries = [...reglages].sort((a, b) => (a.from === b.from ? +b.createdAt - +a.createdAt : a.from < b.from ? -1 : 1));
+    return { jours, reglages: tries, horairesVariables };
+  }
+
+  /**
+   * Les rendez-vous À VENIR qu'un changement d'horaires laisserait hors
+   * horaires — sans rien écrire. Seuls comptent ceux qui étaient DANS les
+   * horaires avant : un rendez-vous déjà posé hors horaires par le gérant
+   * n'est pas un effet du changement. Rien n'est annulé : on prévient.
+   */
+  private async conflitsApresChangement(
+    providerId: string,
+    memberId: string,
+    du: string,
+    au: string,
+    fuseau: string,
+    changer: (avant: { dates: HoraireDateLu[]; horairesVariables: boolean }) => {
+      dates: HoraireDateLu[];
+      horairesVariables: boolean;
+    },
+  ): Promise<AvailabilityConflict[]> {
+    const maintenant = new Date();
+    const debut = instantDepuisHeureLocale(du, 0, fuseau);
+    const fin = instantDepuisHeureLocale(ajouterJours(au, 1), 0, fuseau);
+    if (!debut || !fin || fin <= maintenant) return [];
+    const [semaine, dates, membre, rdvs] = await Promise.all([
+      availabilityRepository.getByMember(providerId, memberId),
+      datedAvailabilityRepository.getForMemberInRange(providerId, memberId, du, au),
+      memberRepository.getById(providerId, memberId),
+      bookingRepository.getUpcomingByProvider(providerId, debut > maintenant ? debut : maintenant, fin),
+    ]);
+    const avant = { dates: dates as HoraireDateLu[], horairesVariables: membre?.variableHours === true };
+    const apres = changer(avant);
+    const jourDEffet = (d: Date) => jourLocal(d, fuseau);
+    const contient = (etat: typeof avant, b: WithId<Booking>) => {
+      const jour = jourLocal(b.datetime, fuseau);
+      const h = horairesDuJour({ jour, jourSemaine: jourSemaineCalendaire(jour), semaine, ...etat, dates: etat.dates, jourDEffet });
+      if (!h.ouvert) return 'day_closed' as const;
+      const debutRdv = this.hhmmToMinutes(heureLocale(b.datetime, fuseau));
+      const finRdv = this.endMin(heureLocale(b.endDatetime, fuseau));
+      return h.plages.some((pl) => this.hhmmToMinutes(pl.start) <= debutRdv && this.endMin(pl.end) >= finRdv)
+        ? null
+        : ('reduced_hours' as const);
+    };
+    const conflicts: AvailabilityConflict[] = [];
+    for (const b of rdvs) {
+      if (b.memberId !== memberId) continue;
+      if (contient(avant, b) !== null) continue;
+      const type = contient(apres, b);
+      if (type) {
+        conflicts.push({
+          bookingId: b.id,
+          bookingDate: b.datetime,
+          clientName: b.clientInfo?.name ?? '',
+          serviceName: b.serviceName,
+          conflictType: type,
+        });
+      }
+    }
+    return conflicts;
+  }
+
+  private validerHorairesDates(input: HorairesDatesInput): void {
+    if (!input.memberId || !input.locationId) throw new Error('Membre ou lieu manquant');
+    const raison = raisonHorairesDatesInvalides(input);
+    if (raison) throw Object.assign(new Error(MESSAGES_HORAIRES_DATES[raison]), { code: raison });
+  }
+
+  private reglageDe(input: HorairesDatesInput): Omit<DatedAvailability, 'createdAt'> {
+    return {
+      memberId: input.memberId,
+      locationId: input.locationId,
+      from: input.from,
+      to: input.to,
+      weekdays: [...new Set(input.weekdays ?? [])].sort((a, b) => a - b),
+      mode: input.mode,
+      slots: input.mode === 'slots' ? input.slots.map((pl) => ({ start: pl.start, end: pl.end })) : [],
+    };
+  }
+
+  /** Ce que poser ces horaires datés laisserait hors horaires (aperçu, n'écrit rien). */
+  async conflitsHorairesDates(providerId: string, input: HorairesDatesInput, timeZone?: string): Promise<AvailabilityConflict[]> {
+    this.validerHorairesDates(input);
+    const fuseau = fuseauDuMoteur(timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, input.memberId)));
+    const nouveau = { ...this.reglageDe(input), createdAt: Number.MAX_SAFE_INTEGER };
+    return this.conflitsApresChangement(providerId, input.memberId, input.from, input.to, fuseau, (avant) => ({
+      ...avant,
+      dates: [...avant.dates, nouveau],
+    }));
+  }
+
+  /**
+   * Pose des horaires sur une période (plages, fermé, ou retour aux horaires
+   * habituels). Le réglage le plus récent l'emporte : ceux qu'il recouvre
+   * entièrement sont supprimés dans le même lot. Les rendez-vous touchés
+   * sont rendus, jamais annulés.
+   */
+  async setHorairesDates(
+    providerId: string,
+    input: HorairesDatesInput,
+    timeZone?: string,
+  ): Promise<{ id: string; conflicts: AvailabilityConflict[] }> {
+    const conflicts = await this.conflitsHorairesDates(providerId, input, timeZone);
+    const reglage = this.reglageDe(input);
+    const existants = await datedAvailabilityRepository.getForMemberInRange(providerId, input.memberId, input.from, input.to);
+    const [id] = await datedAvailabilityRepository.createMany(providerId, [reglage], reglagesRecouverts(existants, [reglage]));
+    return { id, conflicts };
+  }
+
+  /**
+   * « Copier cette semaine sur les N suivantes » : la semaine du lundi
+   * `lundiSource`, telle qu'elle s'applique, reproduite à partir du lundi
+   * suivant. Au plus 7 réglages, quelle que soit la durée.
+   */
+  async copierSemaineHoraires(
+    providerId: string,
+    p: { memberId: string; locationId: string; lundiSource: string; nombreDeSemaines: number },
+    options: { timeZone?: string; ecrire?: boolean } = {},
+  ): Promise<{ ids: string[]; conflicts: AvailabilityConflict[]; du: string; au: string }> {
+    if (!p.memberId || !p.locationId) throw new Error('Membre ou lieu manquant');
+    if (!Number.isInteger(p.nombreDeSemaines) || p.nombreDeSemaines < 1 || p.nombreDeSemaines > 52) {
+      throw new Error('Entre 1 et 52 semaines');
+    }
+    if (jourSemaineCalendaire(p.lundiSource) !== 1) throw new Error('La semaine copiée commence un lundi');
+    const fuseau = fuseauDuMoteur(options.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, p.memberId)));
+    const source = await this.getPlanningHoraires(providerId, p.memberId, p.lundiSource, ajouterJours(p.lundiSource, 6), fuseau);
+    const lundiCible = ajouterJours(p.lundiSource, 7);
+    const semaine: HorairesDuJour[] = source.jours.map((j) => ({ ouvert: j.ouvert, plages: j.plages, source: j.source }));
+    const nouveaux = copierSemaine(semaine, lundiCible, p.nombreDeSemaines, ajouterJours).map((r) => ({
+      ...r,
+      memberId: p.memberId,
+      locationId: p.locationId,
+    }));
+    const au = ajouterJours(lundiCible, p.nombreDeSemaines * 7 - 1);
+    const conflicts = await this.conflitsApresChangement(providerId, p.memberId, lundiCible, au, fuseau, (avant) => ({
+      ...avant,
+      dates: [...avant.dates, ...nouveaux.map((r) => ({ ...r, createdAt: Number.MAX_SAFE_INTEGER }))],
+    }));
+    if (options.ecrire === false) return { ids: [], conflicts, du: lundiCible, au };
+    const existants = await datedAvailabilityRepository.getForMemberInRange(providerId, p.memberId, lundiCible, au);
+    const ids = await datedAvailabilityRepository.createMany(providerId, nouveaux, reglagesRecouverts(existants, nouveaux));
+    return { ids, conflicts, du: lundiCible, au };
+  }
+
+  /** Ce que supprimer ce réglage daté laisserait hors horaires (aperçu). */
+  async conflitsSuppressionHorairesDates(
+    providerId: string,
+    reglage: WithId<DatedAvailability>,
+    timeZone?: string,
+  ): Promise<AvailabilityConflict[]> {
+    const fuseau = fuseauDuMoteur(timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, reglage.memberId)));
+    return this.conflitsApresChangement(providerId, reglage.memberId, reglage.from, reglage.to, fuseau, (avant) => ({
+      ...avant,
+      dates: avant.dates.filter((d) => (d as { id?: string }).id !== reglage.id),
+    }));
+  }
+
+  async supprimerHorairesDates(providerId: string, id: string): Promise<void> {
+    await datedAvailabilityRepository.delete(providerId, id);
+  }
+
+  /**
+   * Option « horaires variables » : la semaine type ne s'applique plus, un
+   * jour sans horaire daté est fermé. `ecrire: false` → l'aperçu seul (les
+   * rendez-vous de l'année à venir que cela laisserait hors horaires).
+   */
+  async setHorairesVariables(
+    providerId: string,
+    memberId: string,
+    actif: boolean,
+    options: { timeZone?: string; ecrire?: boolean } = {},
+  ): Promise<{ conflicts: AvailabilityConflict[] }> {
+    const fuseau = fuseauDuMoteur(options.timeZone ?? (await this.fuseauDuLieuDuMembre(providerId, memberId)));
+    const du = jourLocal(new Date(), fuseau);
+    const conflicts = await this.conflitsApresChangement(providerId, memberId, du, ajouterJours(du, 366), fuseau, (avant) => ({
+      ...avant,
+      horairesVariables: actif,
+    }));
+    if (options.ecrire !== false) await memberRepository.update(providerId, memberId, { variableHours: actif });
+    return { conflicts };
+  }
+
   /**
    * Block a period (vacation, absence, etc.)
    * memberId est maintenant obligatoire
@@ -813,10 +1062,6 @@ export class SchedulingService {
   }
 
   /**
-   * Calculate available time slots for booking
-   * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
-   */
-  /**
    * Les horaires d'un membre, JOUR PAR JOUR, sur [du, au] (dates du lieu) —
    * la règle `horairesDuJour` : horaires datés, option « horaires
    * variables », semaine type avec ses changements programmés. Trois
@@ -856,6 +1101,10 @@ export class SchedulingService {
     };
   }
 
+  /**
+   * Calculate available time slots for booking
+   * SIMPLIFIÉ: memberId est obligatoire, plus de fallback
+   */
   async getAvailableSlots(params: AvailableSlotsParams): Promise<TimeSlotWithDate[]> {
     const { providerId, serviceId, memberId, startDate, endDate, durationOverride, excludeBookingId } = params;
     const fuseau = fuseauDuMoteur(

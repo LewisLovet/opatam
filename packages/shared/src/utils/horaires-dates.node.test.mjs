@@ -189,3 +189,42 @@ describe('miroir des functions (prochaine disponibilité)', () => {
     }
   });
 });
+
+describe('ménage : réglages entièrement repeints', async () => {
+  const { reglagesRecouverts, lundiDe } = await import('./horaires-dates.ts');
+  const ajouter = (j, n) => { const d = new Date(`${j}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  it('retoucher le même jour : l’ancien réglage de ce jour part', () => {
+    const anciens = [{ id: 'a', from: '2026-10-06', to: '2026-10-06', weekdays: [] }];
+    assert.deepEqual(reglagesRecouverts(anciens, [{ from: '2026-10-06', to: '2026-10-06', weekdays: [] }]), ['a']);
+  });
+  it('un réglage qui déborde de la nouvelle période reste', () => {
+    const anciens = [{ id: 'a', from: '2026-10-01', to: '2026-10-10', weekdays: [] }];
+    assert.deepEqual(reglagesRecouverts(anciens, [{ from: '2026-10-02', to: '2026-10-10', weekdays: [] }]), []);
+  });
+  it('jours de la semaine : recouvert seulement si CHACUN de ses jours l’est', () => {
+    const anciens = [
+      { id: 'lun-mar', from: '2026-10-05', to: '2026-10-25', weekdays: [1, 2] },
+      { id: 'lun', from: '2026-10-05', to: '2026-10-25', weekdays: [1] },
+    ];
+    assert.deepEqual(reglagesRecouverts(anciens, [{ from: '2026-10-05', to: '2026-10-25', weekdays: [1, 3] }]), ['lun']);
+    // Copie de semaine : l'union des groupes recouvre tout.
+    assert.deepEqual(
+      reglagesRecouverts(anciens, [
+        { from: '2026-10-05', to: '2026-10-25', weekdays: [1, 3] },
+        { from: '2026-10-05', to: '2026-10-25', weekdays: [2] },
+      ]),
+      ['lun-mar', 'lun'],
+    );
+  });
+  it('une courte période sans jours choisis : seuls ses jours réels comptent', () => {
+    // 2026-10-06 = mardi, 2026-10-07 = mercredi
+    const anciens = [{ id: 'a', from: '2026-10-06', to: '2026-10-07', weekdays: [] }];
+    assert.deepEqual(reglagesRecouverts(anciens, [{ from: '2026-10-05', to: '2026-10-11', weekdays: [2, 3] }]), ['a']);
+    assert.deepEqual(reglagesRecouverts(anciens, [{ from: '2026-10-05', to: '2026-10-11', weekdays: [2] }]), []);
+  });
+  it('lundi de la semaine', () => {
+    assert.equal(lundiDe('2026-10-08', ajouter), '2026-10-05');
+    assert.equal(lundiDe('2026-10-05', ajouter), '2026-10-05');
+    assert.equal(lundiDe('2026-10-11', ajouter), '2026-10-05');
+  });
+});

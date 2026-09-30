@@ -193,3 +193,44 @@ export function copierSemaine(
     slots: h.ouvert ? h.plages.map((p) => ({ start: p.start, end: p.end })) : [],
   }));
 }
+
+// ── Ménage : les réglages entièrement repeints ─────────────────────────────
+
+const jourSemaineDe = (jour: string) => new Date(Date.UTC(+jour.slice(0, 4), +jour.slice(5, 7) - 1, +jour.slice(8, 10))).getUTCDay();
+
+/** Les jours de la semaine qu'un réglage touche RÉELLEMENT (une période de 3 jours n'en touche que 3). */
+function joursTouches(r: { from: string; to: string; weekdays?: number[] | null }): number[] {
+  const span = joursEntre(r.from, r.to) + 1;
+  const presents = new Set<number>();
+  const premier = jourSemaineDe(r.from);
+  for (let i = 0; i < Math.min(span, 7); i++) presents.add((premier + i) % 7);
+  const choisis = r.weekdays && r.weekdays.length > 0 ? r.weekdays : [0, 1, 2, 3, 4, 5, 6];
+  return choisis.filter((j) => presents.has(j));
+}
+
+/**
+ * Les réglages existants que les NOUVEAUX recouvrent entièrement — chacun
+ * de leurs jours est repeint par un réglage plus récent : ils ne comptent
+ * plus pour rien. Les supprimer dans le même lot garde la collection lisible
+ * (retoucher dix fois le même jour ne laisse qu'un réglage) sans changer
+ * aucun horaire.
+ */
+export function reglagesRecouverts<T extends { id: string; from: string; to: string; weekdays?: number[] | null }>(
+  existants: readonly T[],
+  nouveaux: readonly { from: string; to: string; weekdays?: number[] | null }[],
+): string[] {
+  return existants
+    .filter((e) =>
+      joursTouches(e).every((j) =>
+        nouveaux.some(
+          (n) => n.from <= e.from && n.to >= e.to && (!n.weekdays || n.weekdays.length === 0 || n.weekdays.includes(j)),
+        ),
+      ),
+    )
+    .map((e) => e.id);
+}
+
+/** Le lundi de la semaine d'un jour (« 2026-10-08 » → « 2026-10-05 »). */
+export function lundiDe(jour: string, ajouterJours: (jour: string, n: number) => string): string {
+  return ajouterJours(jour, -((jourSemaineDe(jour) + 6) % 7));
+}
