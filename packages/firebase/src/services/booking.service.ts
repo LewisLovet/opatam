@@ -4,6 +4,7 @@ import {
   serviceRepository,
   locationRepository,
   memberRepository,
+  memberAccountRepository,
   userRepository,
 } from '../repositories';
 import { schedulingService } from './scheduling.service';
@@ -510,7 +511,7 @@ export class BookingService {
     }
 
     // Verify admin has access to this provider
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     if (booking.status !== 'pending') {
       throw new Error(`Impossible de confirmer une réservation ${this.getStatusLabel(booking.status)}`);
@@ -535,7 +536,7 @@ export class BookingService {
 
     // Verify access
     if (cancelledBy === 'provider') {
-      await this.verifyProviderAccess(booking.providerId, userId);
+      await this.verifyProviderAccess(booking.providerId, userId, booking.memberId);
     } else if (cancelledBy === 'client' && booking.clientId) {
       if (booking.clientId !== userId) {
         throw new Error('Vous n\'êtes pas autorisé à annuler cette réservation');
@@ -590,7 +591,7 @@ export class BookingService {
       throw new Error('Réservation non trouvée');
     }
 
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     if (booking.status !== 'confirmed') {
       throw new Error(`Impossible de marquer comme absent une réservation ${this.getStatusLabel(booking.status)}`);
@@ -709,19 +710,31 @@ export class BookingService {
   /**
    * Verify user has access to provider
    */
-  private async verifyProviderAccess(providerId: string, userId: string): Promise<void> {
+  /**
+   * Le gérant du salon — ou, espace membre, le membre à qui CE rendez-vous
+   * est attribué, avec un accès actif (`memberAccounts/{uid}`, écrit par le
+   * serveur seul). Un membre n'agit jamais sur le rendez-vous d'un collègue.
+   */
+  private async verifyProviderAccess(
+    providerId: string,
+    userId: string,
+    memberIdDuRdv?: string | null,
+  ): Promise<void> {
     const provider = await providerRepository.getById(providerId);
     if (!provider) {
       throw new Error('Prestataire non trouvé');
     }
+    if (provider.userId === userId) return;
 
-    if (provider.userId !== userId) {
-      // Check if user is a team member with access code
-      const user = await userRepository.getById(userId);
-      if (!user || user.providerId !== providerId) {
-        throw new Error('Vous n\'êtes pas autorisé à effectuer cette action');
-      }
+    const user = await userRepository.getById(userId);
+    if (user?.providerId === providerId) return;
+
+    if (memberIdDuRdv) {
+      // Lisible par son seul titulaire : un autre uid lirait « refusé ».
+      const compte = await memberAccountRepository.getMine(userId).catch(() => null);
+      if (compte?.active === true && compte.providerId === providerId && compte.memberId === memberIdDuRdv) return;
     }
+    throw new Error('Vous n\'êtes pas autorisé à effectuer cette action');
   }
 
   /**
@@ -759,7 +772,7 @@ export class BookingService {
       throw new Error('Réservation non trouvée');
     }
 
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     // Verify booking is past and confirmed
     if (booking.datetime > new Date()) {
@@ -795,7 +808,7 @@ export class BookingService {
     }
 
     // Verify admin has access to this provider
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     // Cannot reschedule cancelled or noshow bookings
     if (booking.status === 'cancelled') {
@@ -907,7 +920,7 @@ export class BookingService {
       throw new Error('Réservation non trouvée');
     }
 
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     if (booking.status === 'cancelled' || booking.status === 'noshow') {
       throw new Error('Impossible de modifier la durée de ce rendez-vous');
@@ -975,7 +988,7 @@ export class BookingService {
     if (!booking) {
       throw new Error('Réservation non trouvée');
     }
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     const mutableStatuses: BookingStatus[] = ['pending_payment', 'pending', 'confirmed'];
     if (!mutableStatuses.includes(booking.status)) {
@@ -1130,7 +1143,7 @@ export class BookingService {
     if (!booking) {
       throw new Error('Réservation non trouvée');
     }
-    await this.verifyProviderAccess(booking.providerId, adminUserId);
+    await this.verifyProviderAccess(booking.providerId, adminUserId, booking.memberId);
 
     const mutableStatuses: BookingStatus[] = ['pending_payment', 'pending', 'confirmed'];
     if (!mutableStatuses.includes(booking.status)) {

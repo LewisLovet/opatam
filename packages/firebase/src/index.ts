@@ -102,6 +102,9 @@ export {
   // Member (subcollection)
   MemberRepository,
   memberRepository,
+  // Espace membre : comptes reliés et invitations
+  MemberAccountRepository,
+  memberAccountRepository,
   // Codes d'accès des membres (privés : gérant seulement)
   MemberAccessCodeRepository,
   memberAccessCodeRepository,

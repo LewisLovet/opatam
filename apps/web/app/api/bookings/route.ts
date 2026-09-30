@@ -19,6 +19,7 @@ import type Stripe from 'stripe';
 import { ZodError } from 'zod';
 import { getStripeDev } from '@/lib/stripe';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
+import { estMembreDuSalon } from '@/lib/espace-membre';
 import { loyaltyRedemptionKey, resolveLoyaltyCard } from '@/lib/loyalty-identity';
 import { sendDepositPaymentRequestEmail } from '@/lib/emails/depositPaymentRequest';
 import { resolvePlace } from '@/lib/google-places';
@@ -220,7 +221,12 @@ export async function POST(request: NextRequest) {
     // journalisant — mais ce qui est NOUVEAU (rattacher le compte du
     // client pour la fidélité) exige la preuve. À resserrer quand les
     // clients à jour auront remplacé les anciens.
-    const isProVerified = isProSource && verifiedUid === validated.providerId;
+    // Le gérant (uid === providerId) — ou, espace membre, le membre qui
+    // prend un rendez-vous dans SON propre agenda : jamais celui d'un collègue.
+    const isProVerified =
+      isProSource &&
+      (verifiedUid === validated.providerId ||
+        (await estMembreDuSalon(getAdminFirestore(), verifiedUid, validated.providerId, validated.memberId)));
     if (isProSource && !isProVerified) {
       console.warn(
         `[bookings] source=pro NON authentifiée (provider ${validated.providerId}) — ` +

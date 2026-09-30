@@ -272,3 +272,24 @@ export async function retirerAcces(
   if (aDetacher.length || aRetirer.length) await lot.commit();
   return { comptes: aDetacher.length, invitations: aRetirer.length };
 }
+
+/**
+ * Le compte `uid` est-il le membre `memberId` du salon `providerId`, accès
+ * actif ? Pour les routes qui accordent au membre les privilèges « pro »
+ * (créer un rendez-vous dans SON agenda sans acompte, par exemple).
+ */
+export async function estMembreDuSalon(
+  db: Firestore,
+  uid: string | null | undefined,
+  providerId: string,
+  memberId: string | null | undefined,
+): Promise<boolean> {
+  if (!uid || !memberId) return false;
+  const compte = await db.collection('memberAccounts').doc(uid).get();
+  return (
+    compte.exists &&
+    compte.get('active') === true &&
+    compte.get('providerId') === providerId &&
+    compte.get('memberId') === memberId
+  );
+}

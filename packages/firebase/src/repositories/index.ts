@@ -10,6 +10,9 @@ export { ProviderRepository, providerRepository, type ProviderSearchFilters } fr
 // Member repository (subcollection)
 export { MemberRepository, memberRepository } from './member.repository';
 
+// Espace membre : comptes reliés et invitations (lecture ; écriture serveur)
+export { MemberAccountRepository, memberAccountRepository } from './memberAccount.repository';
+
 // Codes d'accès des membres au planning (top-level, privé : gérant seulement)
 export {
   MemberAccessCodeRepository,

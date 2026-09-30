@@ -40,7 +40,7 @@ if (!getApps().length) initializeApp({ projectId: process.env.GCLOUD_PROJECT || 
 const { getFirestore, Timestamp } = req('firebase-admin/firestore');
 const db = getFirestore();
 
-const { preparerInvitation, lireInvitation, accepterInvitation, retirerAcces } = await import(
+const { preparerInvitation, lireInvitation, accepterInvitation, retirerAcces, estMembreDuSalon } = await import(
   pathToFileURL(resolve(ici, 'espace-membre.ts')).href
 );
 const { signMemberInvite, verifyMemberInvite } = await import(pathToFileURL(resolve(ici, 'member-invite.ts')).href);
@@ -182,5 +182,19 @@ describe('retirer l’accès', () => {
   it('ne touche jamais un autre salon', async () => {
     await retirerAcces(db, 'em-studio', 'z');
     assert.equal((await db.doc('memberAccounts/u-ailleurs').get()).exists, true);
+  });
+});
+
+describe('le privilège « pro » d’un membre (créer un rendez-vous sans acompte)', () => {
+  it('seulement dans SON agenda, avec un accès actif', async () => {
+    await db.doc('memberAccounts/u-priv').set({ providerId: 'em-studio', memberId: 'm2', active: true });
+    await db.doc('memberAccounts/u-off').set({ providerId: 'em-studio', memberId: 'm2', active: false });
+    assert.equal(await estMembreDuSalon(db, 'u-priv', 'em-studio', 'm2'), true);
+    assert.equal(await estMembreDuSalon(db, 'u-priv', 'em-studio', 'm1'), false, 'agenda d’un collègue');
+    assert.equal(await estMembreDuSalon(db, 'u-priv', 'em-solo', 'm2'), false, 'autre salon');
+    assert.equal(await estMembreDuSalon(db, 'u-off', 'em-studio', 'm2'), false, 'accès désactivé');
+    assert.equal(await estMembreDuSalon(db, 'u-inconnu', 'em-studio', 'm2'), false);
+    assert.equal(await estMembreDuSalon(db, null, 'em-studio', 'm2'), false);
+    assert.equal(await estMembreDuSalon(db, 'u-priv', 'em-studio', null), false);
   });
 });
