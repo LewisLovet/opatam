@@ -18,6 +18,7 @@ export const ECRANS_MEMBRE: ReadonlySet<string> = new Set([
   'blocked-slots',
   'create-activity',
   'availability',
+  'planning-horaires',
   'membre-profil',
   'mes-clientes',
   'mon-activite',

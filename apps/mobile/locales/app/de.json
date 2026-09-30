@@ -3630,5 +3630,89 @@
       "nouveauRdv": "Neuer Termin",
       "bloquer": "Zeitfenster blockieren"
     }
+  },
+  "planningHoraires": {
+    "titre": "Dienstplan",
+    "raccourci": "Mein Dienstplan",
+    "erreurChargement": "Dienstplan konnte nicht geladen werden",
+    "erreurEnregistrement": "Speichern fehlgeschlagen, bitte erneut versuchen",
+    "enregistre": "Zeiten gespeichert",
+    "ferme": "Geschlossen",
+    "habituels": "Übliche Zeiten",
+    "aide": "Tippe auf einen Tag, um ihn zu ändern. Das Symbol am Ende einer Woche kopiert sie auf die folgenden.",
+    "semaineType": "Standardwoche bearbeiten",
+    "source": {
+      "semaine": "Standardwoche",
+      "date": "für diesen Tag festgelegt",
+      "variables": "variable Zeiten"
+    },
+    "legende": {
+      "regle": "Nach Datum festgelegt",
+      "semaine": "Standardwoche",
+      "ouvert": "Geöffnet"
+    },
+    "conflits": {
+      "titre_one": "{{count}} Termin außerhalb der Zeiten",
+      "titre_other": "{{count}} Termine außerhalb der Zeiten",
+      "message": "Diese Termine lägen außerhalb der neuen Zeiten. Sie werden nicht storniert: Verschiebe sie oder informiere die betroffenen Personen.",
+      "etAutres_one": "… und {{count}} weiterer",
+      "etAutres_other": "… und {{count}} weitere",
+      "continuer": "Trotzdem speichern"
+    },
+    "variables": {
+      "titre": "Variable Zeiten",
+      "description": "Ändert sich dein Plan von Woche zu Woche? Aktiviere diese Option: Die Standardwoche gilt dann nicht mehr, nur die hier geöffneten Tage sind buchbar.",
+      "descriptionActive": "Aktiv: Nur die hier geöffneten Tage sind buchbar, alle anderen sind geschlossen.",
+      "activerTitre": "Zu variablen Zeiten wechseln?",
+      "activerMessage": "Die Standardwoche gilt nicht mehr: Jeder Tag ohne hier festgelegte Zeiten ist für Buchungen geschlossen.",
+      "desactiverTitre": "Zur Standardwoche zurückkehren?",
+      "desactiverMessage": "Tage ohne Festlegung übernehmen wieder die Zeiten der Standardwoche.",
+      "active": "Variable Zeiten aktiviert",
+      "desactive": "Standardwoche wiederhergestellt"
+    },
+    "reglages": {
+      "titre": "Aktuelle Festlegungen",
+      "periode": "{{du}} bis {{au}}",
+      "supprimer": "Löschen",
+      "supprimerTitre": "Diese Festlegung löschen?",
+      "supprimerMessage": "Die betroffenen Tage kehren zu ihren üblichen Zeiten zurück (geschlossen bei variablen Zeiten).",
+      "supprime": "Festlegung gelöscht"
+    },
+    "editeur": {
+      "ouvert": "Geöffnet",
+      "actuellement": "Derzeit: {{horaires}} ({{origine}})",
+      "ajouterPlage": "Zeitspanne hinzufügen",
+      "habituelsAide": "Dieser Tag übernimmt wieder die Zeiten der Standardwoche.",
+      "repeter": "Für einen Zeitraum anwenden",
+      "jusquau": "Bis",
+      "lesJours": "Tage",
+      "repeterResume": "Vom {{du}} bis {{au}}, an den gewählten Tagen."
+    },
+    "copier": {
+      "bouton": "Woche kopieren",
+      "titre": "Diese Woche kopieren",
+      "source": "Woche vom {{du}} bis {{au}}",
+      "semaines_one": "folgende Woche",
+      "semaines_other": "folgende Wochen",
+      "resume": "Die Zeiten werden vom {{du}} bis {{au}} übernommen und ersetzen, was für diese Tage festgelegt war.",
+      "confirmer": "Kopieren",
+      "fait_one": "Woche auf {{count}} Woche kopiert",
+      "fait_other": "Woche auf {{count}} Wochen kopiert"
+    },
+    "erreurs": {
+      "dates": "Ungültige Daten",
+      "ordre": "Das Ende des Zeitraums muss nach dem Beginn liegen",
+      "duree": "Ein Zeitraum darf nicht länger als ein Jahr sein",
+      "jours": "Wähle mindestens einen Wochentag",
+      "mode": "Ungültige Festlegung",
+      "aucunePlage": "Füge mindestens eine Zeitspanne hinzu oder wähle „Geschlossen“",
+      "plage": "Eine Zeitspanne muss vor ihrem Ende beginnen",
+      "chevauchement": "Zeitspannen dürfen sich nicht überschneiden"
+    },
+    "entree": {
+      "titre": "Dienstplan Tag für Tag",
+      "description": "Einen Tag schließen, ein Datum öffnen, eine Woche kopieren…"
+    },
+    "banniereVariables": "Variable Zeiten sind aktiv: Diese Standardwoche gilt nicht. Lege deine Tage im Dienstplan fest."
   }
 }

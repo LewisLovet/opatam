@@ -3630,5 +3630,89 @@
       "nouveauRdv": "Nuovo appuntamento",
       "bloquer": "Blocca una fascia oraria"
     }
+  },
+  "planningHoraires": {
+    "titre": "Planning",
+    "raccourci": "Il mio planning",
+    "erreurChargement": "Impossibile caricare il planning",
+    "erreurEnregistrement": "Salvataggio non riuscito, riprova",
+    "enregistre": "Orari salvati",
+    "ferme": "Chiuso",
+    "habituels": "Orari abituali",
+    "aide": "Tocca un giorno per modificarlo. L'icona in fondo a una settimana la copia sulle successive.",
+    "semaineType": "Modifica la settimana tipo",
+    "source": {
+      "semaine": "settimana tipo",
+      "date": "impostato per questo giorno",
+      "variables": "orari variabili"
+    },
+    "legende": {
+      "regle": "Impostato per data",
+      "semaine": "Settimana tipo",
+      "ouvert": "Aperto"
+    },
+    "conflits": {
+      "titre_one": "{{count}} appuntamento fuori orario",
+      "titre_other": "{{count}} appuntamenti fuori orario",
+      "message": "Questi appuntamenti si troverebbero fuori dai nuovi orari. Non vengono annullati: ricordati di spostarli o di avvisare le persone interessate.",
+      "etAutres_one": "… e {{count}} altro",
+      "etAutres_other": "… e altri {{count}}",
+      "continuer": "Salva comunque"
+    },
+    "variables": {
+      "titre": "Orari variabili",
+      "description": "Il tuo planning cambia da una settimana all'altra? Attiva questa opzione: la settimana tipo non si applicherà più, saranno prenotabili solo i giorni aperti qui.",
+      "descriptionActive": "Attivo: sono prenotabili solo i giorni aperti qui, tutti gli altri sono chiusi.",
+      "activerTitre": "Passare agli orari variabili?",
+      "activerMessage": "La settimana tipo non si applicherà più: ogni giorno senza orari impostati qui sarà chiuso alle prenotazioni.",
+      "desactiverTitre": "Tornare alla settimana tipo?",
+      "desactiverMessage": "I giorni senza impostazione riprenderanno gli orari della settimana tipo.",
+      "active": "Orari variabili attivati",
+      "desactive": "Settimana tipo ripristinata"
+    },
+    "reglages": {
+      "titre": "Impostazioni in corso",
+      "periode": "dal {{du}} al {{au}}",
+      "supprimer": "Elimina",
+      "supprimerTitre": "Eliminare questa impostazione?",
+      "supprimerMessage": "I giorni interessati torneranno ai loro orari abituali (chiusi, con gli orari variabili).",
+      "supprime": "Impostazione eliminata"
+    },
+    "editeur": {
+      "ouvert": "Aperto",
+      "actuellement": "Attualmente: {{horaires}} ({{origine}})",
+      "ajouterPlage": "Aggiungi una fascia",
+      "habituelsAide": "Questo giorno riprende gli orari della settimana tipo.",
+      "repeter": "Applica a un periodo",
+      "jusquau": "Fino al",
+      "lesJours": "I giorni",
+      "repeterResume": "Dal {{du}} al {{au}}, nei giorni scelti."
+    },
+    "copier": {
+      "bouton": "Copia la settimana",
+      "titre": "Copia questa settimana",
+      "source": "Settimana dal {{du}} al {{au}}",
+      "semaines_one": "settimana successiva",
+      "semaines_other": "settimane successive",
+      "resume": "Gli orari saranno riprodotti dal {{du}} al {{au}}, sopra quanto era impostato in quelle date.",
+      "confirmer": "Copia",
+      "fait_one": "Settimana copiata su {{count}} settimana",
+      "fait_other": "Settimana copiata su {{count}} settimane"
+    },
+    "erreurs": {
+      "dates": "Date non valide",
+      "ordre": "La fine del periodo deve essere dopo l'inizio",
+      "duree": "Un periodo non può superare un anno",
+      "jours": "Scegli almeno un giorno della settimana",
+      "mode": "Impostazione non valida",
+      "aucunePlage": "Aggiungi almeno una fascia oraria, oppure scegli «Chiuso»",
+      "plage": "Una fascia deve iniziare prima di finire",
+      "chevauchement": "Le fasce non possono sovrapporsi"
+    },
+    "entree": {
+      "titre": "Planning giorno per giorno",
+      "description": "Chiudere un giorno, aprire una data, copiare una settimana…"
+    },
+    "banniereVariables": "Orari variabili attivi: questa settimana tipo non si applica. Imposta i tuoi giorni nel planning."
   }
 }

@@ -201,3 +201,4 @@ export {
   storyTrackingService,
 } from './services';
 export type { StoryContent, StoryChannel } from './services';
+export type { HorairesDatesInput, JourDuPlanning, PlanningHoraires } from './services';

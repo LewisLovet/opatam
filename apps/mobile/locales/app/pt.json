@@ -3630,5 +3630,89 @@
       "nouveauRdv": "Nova marcação",
       "bloquer": "Bloquear um horário"
     }
+  },
+  "planningHoraires": {
+    "titre": "Agenda de horários",
+    "raccourci": "Os meus horários",
+    "erreurChargement": "Não foi possível carregar os horários",
+    "erreurEnregistrement": "Falha ao guardar, tente novamente",
+    "enregistre": "Horários guardados",
+    "ferme": "Fechado",
+    "habituels": "Horário habitual",
+    "aide": "Toque num dia para o alterar. O ícone no fim de uma semana copia-a para as seguintes.",
+    "semaineType": "Editar a semana tipo",
+    "source": {
+      "semaine": "semana tipo",
+      "date": "definido para este dia",
+      "variables": "horários variáveis"
+    },
+    "legende": {
+      "regle": "Definido por data",
+      "semaine": "Semana tipo",
+      "ouvert": "Aberto"
+    },
+    "conflits": {
+      "titre_one": "{{count}} marcação fora do horário",
+      "titre_other": "{{count}} marcações fora do horário",
+      "message": "Estas marcações ficariam fora do novo horário. Não são canceladas: lembre-se de as mudar ou de avisar as pessoas em causa.",
+      "etAutres_one": "… e mais {{count}}",
+      "etAutres_other": "… e mais {{count}}",
+      "continuer": "Guardar mesmo assim"
+    },
+    "variables": {
+      "titre": "Horários variáveis",
+      "description": "O seu horário muda de semana para semana? Ative esta opção: a semana tipo deixa de se aplicar, só os dias abertos aqui podem ser reservados.",
+      "descriptionActive": "Ativo: só os dias abertos aqui podem ser reservados, todos os outros estão fechados.",
+      "activerTitre": "Passar a horários variáveis?",
+      "activerMessage": "A semana tipo deixa de se aplicar: cada dia sem horário definido aqui ficará fechado a reservas.",
+      "desactiverTitre": "Voltar à semana tipo?",
+      "desactiverMessage": "Os dias sem definição voltam ao horário da semana tipo.",
+      "active": "Horários variáveis ativados",
+      "desactive": "Semana tipo reposta"
+    },
+    "reglages": {
+      "titre": "Definições em curso",
+      "periode": "de {{du}} a {{au}}",
+      "supprimer": "Eliminar",
+      "supprimerTitre": "Eliminar esta definição?",
+      "supprimerMessage": "Os dias em causa voltam ao horário habitual (fechados, com horários variáveis).",
+      "supprime": "Definição eliminada"
+    },
+    "editeur": {
+      "ouvert": "Aberto",
+      "actuellement": "Atualmente: {{horaires}} ({{origine}})",
+      "ajouterPlage": "Adicionar um intervalo",
+      "habituelsAide": "Este dia volta ao horário da semana tipo.",
+      "repeter": "Aplicar a um período",
+      "jusquau": "Até",
+      "lesJours": "Os dias",
+      "repeterResume": "De {{du}} a {{au}}, nos dias escolhidos."
+    },
+    "copier": {
+      "bouton": "Copiar a semana",
+      "titre": "Copiar esta semana",
+      "source": "Semana de {{du}} a {{au}}",
+      "semaines_one": "semana seguinte",
+      "semaines_other": "semanas seguintes",
+      "resume": "O horário será reproduzido de {{du}} a {{au}}, por cima do que estava definido nessas datas.",
+      "confirmer": "Copiar",
+      "fait_one": "Semana copiada para {{count}} semana",
+      "fait_other": "Semana copiada para {{count}} semanas"
+    },
+    "erreurs": {
+      "dates": "Datas inválidas",
+      "ordre": "O fim do período deve ser depois do início",
+      "duree": "Um período não pode ultrapassar um ano",
+      "jours": "Escolha pelo menos um dia da semana",
+      "mode": "Definição inválida",
+      "aucunePlage": "Adicione pelo menos um intervalo, ou escolha «Fechado»",
+      "plage": "Um intervalo deve começar antes de terminar",
+      "chevauchement": "Os intervalos não se podem sobrepor"
+    },
+    "entree": {
+      "titre": "Horário dia a dia",
+      "description": "Fechar um dia, abrir uma data, copiar uma semana…"
+    },
+    "banniereVariables": "Horários variáveis ativos: esta semana tipo não se aplica. Defina os seus dias na agenda de horários."
   }
 }

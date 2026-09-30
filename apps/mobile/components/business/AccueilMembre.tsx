@@ -90,6 +90,7 @@ export function AccueilMembre() {
   const raccourcis: Array<{ icone: keyof typeof Ionicons.glyphMap; libelle: string; route: string }> = [
     { icone: 'add-circle-outline', libelle: t('espaceMembre.accueil.nouveauRdv'), route: '/(pro)/create-booking' },
     { icone: 'remove-circle-outline', libelle: t('espaceMembre.accueil.bloquer'), route: '/(pro)/block-slot' },
+    { icone: 'calendar-number-outline', libelle: t('planningHoraires.raccourci'), route: '/(pro)/planning-horaires' },
     { icone: 'time-outline', libelle: t('espaceMembre.menu.mesHoraires'), route: '/(pro)/availability' },
     { icone: 'people-outline', libelle: t('espaceMembre.menu.mesClientes'), route: '/(pro)/mes-clientes' },
     ...(voitSonCA ? [{ icone: 'stats-chart-outline' as const, libelle: t('espaceMembre.menu.monActivite'), route: '/(pro)/mon-activite' }] : []),

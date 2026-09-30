@@ -18,7 +18,7 @@ describe('les écrans ouverts à un membre', () => {
       ['(pro)', '(tabs)'], ['(pro)', '(tabs)', 'index'],
       ['(pro)', '(tabs)', 'calendar'], ['(pro)', '(tabs)', 'bookings'], ['(pro)', '(tabs)', 'more'],
       ['(pro)', 'booking-detail', '[id]'], ['(pro)', 'create-booking'], ['(pro)', 'block-slot'],
-      ['(pro)', 'availability'], ['(pro)', 'membre-profil'], ['(pro)', 'mes-clientes'],
+      ['(pro)', 'availability'], ['(pro)', 'planning-horaires'], ['(pro)', 'membre-profil'], ['(pro)', 'mes-clientes'],
     ]) assert.equal(estOuvertAuMembre(ok), true, ok.join('/'));
   });
   it('JAMAIS : tableau de bord, abonnement, paiements, prestations, équipe, lieux, réglages, stats, messagerie', () => {
@@ -56,6 +56,7 @@ describe('les écrans pro réutilisés sont figés sur le membre', () => {
     assert.match(lire('apps/mobile/app/(pro)/block-slot.tsx'), /m\.isActive && \(!monMemberId \|\| m\.id === monMemberId\)/);
     assert.match(lire('apps/mobile/app/(pro)/create-activity.tsx'), /m\.isActive && \(!monMemberId \|\| m\.id === monMemberId\)/);
     assert.match(lire('apps/mobile/app/(pro)/availability.tsx'), /const visibles = monMemberId \? list\.filter\(\(m\) => m\.id === monMemberId\) : list;/);
+    assert.match(lire('apps/mobile/app/(pro)/planning-horaires.tsx'), /const visibles = monMemberId \? liste\.filter\(\(m\) => m\.id === monMemberId\) : liste;/);
     assert.match(lire('apps/mobile/app/(pro)/blocked-slots.tsx'), /monMemberId \? tousLesBlocages\.filter\(\(s\) => s\.memberId === monMemberId\)/);
   });
   it('jamais d’identification RevenueCat avec le salon pour un membre', () => {

@@ -602,6 +602,34 @@ export default function AvailabilityScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
             }
           >
+            {/* Horaires jour par jour : périodes, jours fermés, copie de semaine. */}
+            {selectedMember?.variableHours && (
+              <View style={[styles.infoBox, { backgroundColor: colors.warningLight, borderRadius: radius.md, marginBottom: spacing.md }]}>
+                <Ionicons name="shuffle-outline" size={18} color={colors.warningDark} />
+                <Text variant="caption" style={{ color: colors.warningDark, flex: 1 }}>
+                  {t('planningHoraires.banniereVariables')}
+                </Text>
+              </View>
+            )}
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/(pro)/planning-horaires', params: selectedMemberId ? { memberId: selectedMemberId } : {} } as never)
+              }
+              style={({ pressed }) => [
+                styles.planningCard,
+                { backgroundColor: pressed ? colors.primaryLight : colors.surface, borderColor: colors.border, borderRadius: radius.md, marginBottom: spacing.lg },
+              ]}
+            >
+              <View style={[styles.templateIcon, { backgroundColor: colors.primaryLight, borderRadius: radius.sm }]}>
+                <Ionicons name="calendar-number-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="body" style={{ fontWeight: '600' }}>{t('planningHoraires.entree.titre')}</Text>
+                <Text variant="caption" color="textSecondary">{t('planningHoraires.entree.description')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+
             {/* Templates */}
             <Text variant="label" color="textSecondary" style={{ marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {t('proAvailability.templatesTitle')}
@@ -1013,6 +1041,7 @@ export default function AvailabilityScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  planningCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1 },
   container: { flex: 1 },
   headerRow: {
     flexDirection: 'row',

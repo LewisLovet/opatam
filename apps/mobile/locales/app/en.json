@@ -3630,5 +3630,89 @@
       "nouveauRdv": "New appointment",
       "bloquer": "Block a time slot"
     }
+  },
+  "planningHoraires": {
+    "titre": "Schedule",
+    "raccourci": "My schedule",
+    "erreurChargement": "Couldn't load the schedule",
+    "erreurEnregistrement": "Saving failed, please try again",
+    "enregistre": "Hours saved",
+    "ferme": "Closed",
+    "habituels": "Usual hours",
+    "aide": "Tap a day to change it. The icon at the end of a week copies it to the following weeks.",
+    "semaineType": "Edit the standard week",
+    "source": {
+      "semaine": "standard week",
+      "date": "set for this day",
+      "variables": "variable hours"
+    },
+    "legende": {
+      "regle": "Set for the date",
+      "semaine": "Standard week",
+      "ouvert": "Open"
+    },
+    "conflits": {
+      "titre_one": "{{count}} appointment outside hours",
+      "titre_other": "{{count}} appointments outside hours",
+      "message": "These appointments would fall outside the new hours. They are not cancelled: remember to move them or let the people concerned know.",
+      "etAutres_one": "… and {{count}} more",
+      "etAutres_other": "… and {{count}} more",
+      "continuer": "Save anyway"
+    },
+    "variables": {
+      "titre": "Variable hours",
+      "description": "Does your schedule change from week to week? Turn this on: the standard week will no longer apply, only the days you open here can be booked.",
+      "descriptionActive": "On: only the days opened here can be booked, all other days are closed.",
+      "activerTitre": "Switch to variable hours?",
+      "activerMessage": "The standard week will no longer apply: every day without hours set here will be closed to bookings.",
+      "desactiverTitre": "Go back to the standard week?",
+      "desactiverMessage": "Days without a setting will use the standard week's hours again.",
+      "active": "Variable hours turned on",
+      "desactive": "Standard week restored"
+    },
+    "reglages": {
+      "titre": "Current settings",
+      "periode": "{{du}} to {{au}}",
+      "supprimer": "Delete",
+      "supprimerTitre": "Delete this setting?",
+      "supprimerMessage": "The days concerned will go back to their usual hours (closed, with variable hours).",
+      "supprime": "Setting deleted"
+    },
+    "editeur": {
+      "ouvert": "Open",
+      "actuellement": "Currently: {{horaires}} ({{origine}})",
+      "ajouterPlage": "Add a time range",
+      "habituelsAide": "This day goes back to the standard week's hours.",
+      "repeter": "Apply over a period",
+      "jusquau": "Until",
+      "lesJours": "Days",
+      "repeterResume": "From {{du}} to {{au}}, on the selected days."
+    },
+    "copier": {
+      "bouton": "Copy the week",
+      "titre": "Copy this week",
+      "source": "Week of {{du}} to {{au}}",
+      "semaines_one": "following week",
+      "semaines_other": "following weeks",
+      "resume": "The hours will be repeated from {{du}} to {{au}}, over whatever was set on those dates.",
+      "confirmer": "Copy",
+      "fait_one": "Week copied to {{count}} week",
+      "fait_other": "Week copied to {{count}} weeks"
+    },
+    "erreurs": {
+      "dates": "Invalid dates",
+      "ordre": "The end of the period must be after its start",
+      "duree": "A period can't be longer than a year",
+      "jours": "Choose at least one day of the week",
+      "mode": "Invalid setting",
+      "aucunePlage": "Add at least one time range, or choose “Closed”",
+      "plage": "A time range must start before it ends",
+      "chevauchement": "Time ranges can't overlap"
+    },
+    "entree": {
+      "titre": "Day-by-day schedule",
+      "description": "Close a day, open a date, copy a week…"
+    },
+    "banniereVariables": "Variable hours are on: this standard week doesn't apply. Set your days in the schedule."
   }
 }

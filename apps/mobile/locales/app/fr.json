@@ -3630,5 +3630,89 @@
       "nouveauRdv": "Nouveau rendez-vous",
       "bloquer": "Bloquer un créneau"
     }
+  },
+  "planningHoraires": {
+    "titre": "Planning",
+    "raccourci": "Mon planning",
+    "erreurChargement": "Impossible de charger le planning",
+    "erreurEnregistrement": "L'enregistrement a échoué, réessayez",
+    "enregistre": "Horaires enregistrés",
+    "ferme": "Fermé",
+    "habituels": "Horaires habituels",
+    "aide": "Touchez un jour pour le modifier. L'icône au bout d'une semaine la copie sur les suivantes.",
+    "semaineType": "Modifier la semaine type",
+    "source": {
+      "semaine": "semaine type",
+      "date": "réglé pour ce jour",
+      "variables": "horaires variables"
+    },
+    "legende": {
+      "regle": "Réglé à la date",
+      "semaine": "Semaine type",
+      "ouvert": "Ouvert"
+    },
+    "conflits": {
+      "titre_one": "{{count}} rendez-vous hors horaires",
+      "titre_other": "{{count}} rendez-vous hors horaires",
+      "message": "Ces rendez-vous se retrouveraient hors des nouveaux horaires. Ils ne sont pas annulés : pensez à les déplacer ou à prévenir les personnes concernées.",
+      "etAutres_one": "… et {{count}} autre",
+      "etAutres_other": "… et {{count}} autres",
+      "continuer": "Enregistrer quand même"
+    },
+    "variables": {
+      "titre": "Horaires variables",
+      "description": "Votre planning change d'une semaine à l'autre ? Activez cette option : la semaine type ne s'appliquera plus, seuls les jours ouverts ici seront réservables.",
+      "descriptionActive": "Activé : seuls les jours ouverts ici sont réservables, tous les autres sont fermés.",
+      "activerTitre": "Passer en horaires variables ?",
+      "activerMessage": "La semaine type ne s'appliquera plus : chaque jour sans horaires réglés ici sera fermé à la réservation.",
+      "desactiverTitre": "Revenir à la semaine type ?",
+      "desactiverMessage": "Les jours sans réglage reprendront les horaires de la semaine type.",
+      "active": "Horaires variables activés",
+      "desactive": "Semaine type rétablie"
+    },
+    "reglages": {
+      "titre": "Réglages en cours",
+      "periode": "du {{du}} au {{au}}",
+      "supprimer": "Supprimer",
+      "supprimerTitre": "Supprimer ce réglage ?",
+      "supprimerMessage": "Les jours concernés reviendront à leurs horaires habituels (fermés, en horaires variables).",
+      "supprime": "Réglage supprimé"
+    },
+    "editeur": {
+      "ouvert": "Ouvert",
+      "actuellement": "Actuellement : {{horaires}} ({{origine}})",
+      "ajouterPlage": "Ajouter une plage",
+      "habituelsAide": "Ce jour reprend les horaires de la semaine type.",
+      "repeter": "Appliquer sur une période",
+      "jusquau": "Jusqu'au",
+      "lesJours": "Les jours",
+      "repeterResume": "Du {{du}} au {{au}}, les jours choisis."
+    },
+    "copier": {
+      "bouton": "Copier la semaine",
+      "titre": "Copier cette semaine",
+      "source": "Semaine du {{du}} au {{au}}",
+      "semaines_one": "semaine suivante",
+      "semaines_other": "semaines suivantes",
+      "resume": "Les horaires seront reproduits du {{du}} au {{au}}, par-dessus ce qui était réglé sur ces dates.",
+      "confirmer": "Copier",
+      "fait_one": "Semaine copiée sur {{count}} semaine",
+      "fait_other": "Semaine copiée sur {{count}} semaines"
+    },
+    "erreurs": {
+      "dates": "Dates invalides",
+      "ordre": "La fin de la période doit être après son début",
+      "duree": "Une période ne peut pas dépasser un an",
+      "jours": "Choisissez au moins un jour de la semaine",
+      "mode": "Réglage invalide",
+      "aucunePlage": "Ajoutez au moins une plage horaire, ou choisissez « Fermé »",
+      "plage": "Une plage doit commencer avant de finir",
+      "chevauchement": "Les plages ne peuvent pas se chevaucher"
+    },
+    "entree": {
+      "titre": "Planning jour par jour",
+      "description": "Fermer un jour, ouvrir une date, copier une semaine…"
+    },
+    "banniereVariables": "Horaires variables activés : cette semaine type ne s'applique pas. Réglez vos jours dans le planning."
   }
 }
