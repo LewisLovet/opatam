@@ -7,4 +7,4 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
   npx firebase emulators:exec --only firestore --project opatam-rules-test \
-  "node --test firestore/rules-admin.test.mjs firestore/rules-codes-acces.test.mjs"
+  "node --test --test-concurrency=1 firestore/rules-admin.test.mjs firestore/rules-codes-acces.test.mjs firestore/rules-membres.test.mjs"

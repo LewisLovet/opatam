@@ -62,6 +62,18 @@ service firebase.storage {
       allow write: if (isOwner(providerId) || isAdminUser()) && isImageType() && isUnder5MB();
     }
 
+    // Photo d'un membre : le membre connecté change LA SIENNE. Le lien
+    // compte ↔ membre se lit sur `memberAccounts/{uid}`, écrit par le
+    // serveur seul (même preuve que les règles Firestore).
+    match /providers/{providerId}/members/{memberId}/{allPaths=**} {
+      allow write: if isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/memberAccounts/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/memberAccounts/$(request.auth.uid)).data.providerId == providerId
+        && firestore.get(/databases/(default)/documents/memberAccounts/$(request.auth.uid)).data.memberId == memberId
+        && firestore.get(/databases/(default)/documents/memberAccounts/$(request.auth.uid)).data.active == true
+        && isImageType() && isUnder5MB();
+    }
+
     // Vertical-landing gallery photos (one folder per vertical:
     // nail-artist, coiffeur, …). Uploaded via /admin/galleries.
     // Reads are public — the landing pages are public-facing.

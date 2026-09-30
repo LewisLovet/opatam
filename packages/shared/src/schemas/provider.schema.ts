@@ -87,6 +87,9 @@ export const providerSettingsSchema = z.object({
     })
     .nullable()
     .optional(),
+  // Les membres voient leur chiffre d'affaires dans l'app (choix du gérant).
+  // Déclaré pour survivre aux écritures complètes de `settings`.
+  memberRevenueVisible: z.boolean().optional(),
 
   // Client/booking notification toggles. Must be in the schema so that a
   // full-`settings` update via updateProvider (e.g. the reservation settings

@@ -26,6 +26,25 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == providerId;
     }
 
+    // Le compte connecté est-il le membre `memberId` du salon `providerId`,
+    // accès actif ? Lu sur `memberAccounts/{uid}`, que SEUL le serveur écrit
+    // (acceptation d'une invitation). Supprimer ce document coupe l'accès à
+    // la seconde. Les get() d'un même document sont mis en cache par
+    // Firestore : une lecture facturée par évaluation.
+    function estLeMembre(providerId, memberId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/memberAccounts/$(request.auth.uid))
+        && get(/databases/$(database)/documents/memberAccounts/$(request.auth.uid)).data.providerId == providerId
+        && get(/databases/$(database)/documents/memberAccounts/$(request.auth.uid)).data.memberId == memberId
+        && get(/databases/$(database)/documents/memberAccounts/$(request.auth.uid)).data.active == true;
+    }
+
+    // Le lieu d'un membre — un membre n'écrit ses horaires et ses blocages
+    // que pour SON lieu, pas pour un autre salon du même gérant.
+    function lieuDuMembre(providerId, memberId) {
+      return get(/databases/$(database)/documents/providers/$(providerId)/members/$(memberId)).data.locationId;
+    }
+
     function isBookingParticipant(booking) {
       return booking.clientId == request.auth.uid ||
         isProviderAdmin(booking.providerId);
@@ -195,6 +214,27 @@ service cloud.firestore {
     // - suppression : le gérant (régénération, départ d'un membre).
     //
     // La connexion au planning passe par le serveur (Admin SDK).
+    // === COMPTES MEMBRES (espace membre de l'app) ===
+    //
+    // `memberAccounts/{uid}` relie un compte Firebase à UN membre d'UN salon.
+    // Écrit par le serveur seul, à l'acceptation d'une invitation : c'est la
+    // preuve sur laquelle s'appuient toutes les règles « membre » ci-dessous.
+    // Le membre lit le sien (l'app sait ainsi qu'il est membre) ; le gérant
+    // lit ceux de son salon et peut en supprimer un (retirer l'accès).
+    match /memberAccounts/{uid} {
+      allow read: if isOwner(uid)
+        || (isAuthenticated() && resource.data.providerId == request.auth.uid);
+      allow delete: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow create, update: if false;
+    }
+
+    // Invitations : écrites par le serveur, lues par le gérant (statut sur la
+    // fiche du membre). Le jeton envoyé par e-mail n'y figure pas.
+    match /memberInvitations/{invitationId} {
+      allow read: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow write: if false;
+    }
+
     match /memberAccessCodes/{code} {
       allow read, delete: if isAuthenticated()
         && resource.data.providerId == request.auth.uid;
@@ -363,6 +403,12 @@ service cloud.firestore {
         // Lecture publique (affichage équipe + collectionGroup query par accessCode)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
+        // Le membre connecté tient SA fiche : nom affiché, téléphone, photo.
+        // Jamais son lieu, son statut, son ordre ni son rôle de membre
+        // principal — c'est le gérant qui organise l'équipe.
+        allow update: if estLeMembre(providerId, memberId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['name', 'phone', 'photoURL', 'updatedAt']);
       }
 
       // --- LOCATIONS ---
@@ -391,6 +437,14 @@ service cloud.firestore {
         // Lecture publique (calcul créneaux disponibles côté client)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
+        // Le membre connecté règle SES horaires, pour SON lieu. Un document
+        // ne change jamais de membre.
+        allow create: if estLeMembre(providerId, request.resource.data.memberId)
+          && request.resource.data.locationId == lieuDuMembre(providerId, request.resource.data.memberId);
+        allow update: if estLeMembre(providerId, resource.data.memberId)
+          && request.resource.data.memberId == resource.data.memberId
+          && request.resource.data.locationId == lieuDuMembre(providerId, resource.data.memberId);
+        allow delete: if estLeMembre(providerId, resource.data.memberId);
       }
 
       // --- BLOCKED SLOTS ---
@@ -399,6 +453,14 @@ service cloud.firestore {
         // (schedulingService.getAvailableSlots lit les blockedSlots côté client)
         allow read: if true;
         allow write: if isProviderAdmin(providerId);
+        // Le membre connecté pose et retire SES indisponibilités et activités,
+        // pour SON lieu. Un blocage ne change jamais de membre.
+        allow create: if estLeMembre(providerId, request.resource.data.memberId)
+          && request.resource.data.locationId == lieuDuMembre(providerId, request.resource.data.memberId);
+        allow update: if estLeMembre(providerId, resource.data.memberId)
+          && request.resource.data.memberId == resource.data.memberId
+          && request.resource.data.locationId == lieuDuMembre(providerId, resource.data.memberId);
+        allow delete: if estLeMembre(providerId, resource.data.memberId);
       }
     }
 

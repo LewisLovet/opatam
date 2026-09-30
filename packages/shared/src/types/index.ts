@@ -762,6 +762,9 @@ export interface ProviderSettings {
   loyalty?: LoyaltySettings | null;
   /** Objectif de partage propre à ce prestataire — prime sur `config/storyGoals`. */
   storyGoal?: Partial<StoryGoalConfig> | null;
+  /** Les membres connectés à l'app voient LEUR chiffre d'affaires. Choix du
+   *  gérant ; absent = non. Jamais celui du salon. */
+  memberRevenueVisible?: boolean;
 }
 
 /**
@@ -861,6 +864,41 @@ export interface Member {
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Compte d'un membre dans l'app — `memberAccounts/{uid}`, uid Firebase du
+ * membre. Écrit UNIQUEMENT par le serveur, à l'acceptation d'une invitation.
+ * Les règles Firestore s'y fient pour laisser le membre écrire SES horaires,
+ * SES blocages et SA fiche : supprimer le document coupe l'accès aussitôt.
+ * Privé (le membre et son gérant le lisent), contrairement à la fiche
+ * membre, publique.
+ */
+export interface MemberAccount {
+  providerId: string;
+  memberId: string;
+  email: string;
+  active: boolean;
+  linkedAt: Date;
+}
+
+export type MemberInvitationStatus = 'pending' | 'accepted' | 'replaced' | 'revoked';
+
+/**
+ * Invitation d'un membre à rejoindre l'app — `memberInvitations/{id}`.
+ * Écrite par le serveur, lue par le gérant (statut affiché sur la fiche).
+ * Le lien envoyé porte un jeton signé qui désigne ce document ; le document
+ * dit si l'invitation vaut encore (une seule en cours par membre).
+ */
+export interface MemberInvitation {
+  providerId: string;
+  memberId: string;
+  email: string;
+  status: MemberInvitationStatus;
+  createdAt: Date;
+  expiresAt: Date;
+  acceptedAt?: Date | null;
+  acceptedBy?: string | null;
 }
 
 /** Snapshot public du déplacement d'une réservation à domicile. */
