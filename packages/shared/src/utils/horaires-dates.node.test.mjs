@@ -228,3 +228,23 @@ describe('ménage : réglages entièrement repeints', async () => {
     assert.equal(lundiDe('2026-10-11', ajouter), '2026-10-05');
   });
 });
+
+describe('toute une équipe', async () => {
+  const { lecteurHorairesEquipe } = await import('./horaires-dates.ts');
+  it('chacun ses horaires : semaine type, horaires datés, horaires variables', () => {
+    const lire = lecteurHorairesEquipe({
+      semaine: [
+        { memberId: 'a', dayOfWeek: 2, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] },
+        { memberId: 'b', dayOfWeek: 2, isOpen: true, slots: [{ start: '10:00', end: '16:00' }] },
+      ],
+      dates: [{ memberId: 'a', from: '2026-10-06', to: '2026-10-06', weekdays: [], mode: 'closed', slots: [], createdAt: 1 }],
+      membresVariables: ['b'],
+      jourDEffet: (d) => d.toISOString().slice(0, 10),
+    });
+    // 2026-10-06 et 2026-10-13 sont des mardis.
+    assert.equal(lire('a', '2026-10-06').ouvert, false);
+    assert.equal(lire('a', '2026-10-13').ouvert, true);
+    assert.equal(lire('b', '2026-10-13').ouvert, false, 'horaires variables : la semaine type ne compte pas');
+    assert.equal(lire('inconnu', '2026-10-13').ouvert, false);
+  });
+});

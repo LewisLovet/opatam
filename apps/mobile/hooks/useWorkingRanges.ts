@@ -6,11 +6,11 @@
  * par jour de la semaine, les créneaux d'ouverture en MINUTES depuis
  * minuit — la seule unité que la grille manipule.
  *
- * Deux règles reprises de la disponibilité serveur :
- *  - un jour `isOpen: false` n'a aucune plage, même s'il porte des slots ;
- *  - une modification PROGRAMMÉE (`effectiveFrom` dans le futur) n'est pas
- *    encore la réalité : on garde la version applicable aujourd'hui, comme
- *    le fait le calcul de créneaux.
+ * Les plages sont celles de la SEMAINE AFFICHÉE (`lundi` → dimanche), date
+ * par date, par la même règle que le calcul de créneaux (`horairesDuJour`) :
+ * horaires datés, option « horaires variables », changement programmé en
+ * vigueur CE jour-là. Elles restent indexées par jour de la semaine (0 =
+ * dimanche) : dans une semaine donnée, il désigne une seule date.
  *
  * `union` sert à la vue « tous les membres » : les plages y sont fusionnées,
  * sinon deux membres aux horaires décalés dessineraient deux bandes qui se
@@ -22,8 +22,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { availabilityRepository } from '@booking-app/firebase';
-import type { Availability, TimeSlot } from '@booking-app/shared';
+import { schedulingService } from '@booking-app/firebase';
+import { ajouterJours, jourLocalDe, jourSemaineCalendaire } from '@booking-app/shared';
+import type { TimeSlot } from '@booking-app/shared';
 import { mergeRanges, type RangesByDay, type WorkingRange } from '../lib/workingRanges';
 
 export type { RangesByDay, WorkingRange };
@@ -57,41 +58,41 @@ function toRanges(slots: TimeSlot[]): WorkingRange[] {
   return mergeRanges(out);
 }
 
-export function useWorkingRanges(providerId: string | undefined): UseWorkingRangesResult {
+export function useWorkingRanges(providerId: string | undefined, lundi: Date | undefined): UseWorkingRangesResult {
+  const premierJour = lundi ? jourLocalDe(lundi) : null;
   const [byMember, setByMember] = useState<Record<string, RangesByDay>>({});
   const [union, setUnion] = useState<RangesByDay>(EMPTY_BY_DAY);
   const [loaded, setLoaded] = useState(false);
 
   const fetch = useCallback(async () => {
-    if (!providerId) {
+    if (!providerId || !premierJour) {
       setByMember({});
       setUnion(EMPTY_BY_DAY);
       setLoaded(false);
       return;
     }
     try {
-      const availabilities = await availabilityRepository.getByProvider(providerId);
-      const now = new Date();
-      const applicable = availabilities.filter(
-        (a: Availability) => !a.effectiveFrom || a.effectiveFrom <= now,
+      const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(premierJour, i));
+      const { horairesDe, memberIds } = await schedulingService.getLecteurHorairesEquipe(
+        providerId,
+        jours[0],
+        jours[6],
       );
 
       const nextByMember: Record<string, RangesByDay> = {};
       const allByDay: Record<number, WorkingRange[]> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
 
-      for (const a of applicable) {
-        if (!a.memberId) continue;
-        if (!nextByMember[a.memberId]) {
-          nextByMember[a.memberId] = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      for (const memberId of memberIds) {
+        nextByMember[memberId] = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+        for (const jour of jours) {
+          const h = horairesDe(memberId, jour);
+          if (!h.ouvert) continue;
+          const ranges = toRanges(h.plages);
+          if (!ranges.length) continue;
+          const dow = jourSemaineCalendaire(jour);
+          nextByMember[memberId][dow] = ranges;
+          allByDay[dow] = [...allByDay[dow], ...ranges];
         }
-        if (a.isOpen === false) continue;
-        const ranges = toRanges(a.slots ?? []);
-        if (!ranges.length) continue;
-        nextByMember[a.memberId][a.dayOfWeek] = mergeRanges([
-          ...nextByMember[a.memberId][a.dayOfWeek],
-          ...ranges,
-        ]);
-        allByDay[a.dayOfWeek] = [...allByDay[a.dayOfWeek], ...ranges];
       }
 
       for (const day of Object.keys(allByDay)) {
@@ -108,7 +109,7 @@ export function useWorkingRanges(providerId: string | undefined): UseWorkingRang
       console.error('Error fetching working ranges:', err);
       setLoaded(false);
     }
-  }, [providerId]);
+  }, [providerId, premierJour]);
 
   useEffect(() => {
     void fetch();

@@ -68,6 +68,7 @@ import {
   DEFAULT_CURRENCY,
 } from '@booking-app/shared';
 import type { Service, Member, Location, ProviderClient, ServiceSelections } from '@booking-app/shared';
+import { ajouterJours, jourLocalDe } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { ServiceChoicesPreview } from '../../components/business/ServiceChoicesPreview';
 import { useProviderClients } from '../../hooks/useProviderClients';
@@ -661,7 +662,9 @@ export default function CreateBookingScreen() {
   // -- Member availability info (for member step + calendar) ------------------
   const [nextAvailByMember, setNextAvailByMember] = useState<Record<string, Date | null>>({});
   const [loadingNextAvail, setLoadingNextAvail] = useState(false);
-  const [memberClosedDays, setMemberClosedDays] = useState<number[]>([]);
+  // Journées FERMÉES du membre, date par date (horaires datés, horaires
+  // variables, changements programmés) — pas seulement des jours de semaine.
+  const [memberClosedDates, setMemberClosedDates] = useState<Date[]>([]);
 
   // Expanded sections state for collapsible time period groups (collapsed by default)
   const [expandedSections, setExpandedSections] = useState<Record<Period, boolean>>({
@@ -804,23 +807,23 @@ export default function CreateBookingScreen() {
   // -- Fetch closed days for selected member (for CalendarStrip) --------------
   useEffect(() => {
     if (!selectedMemberId || !providerId) {
-      setMemberClosedDays([]);
+      setMemberClosedDates([]);
       return;
     }
 
     let cancelled = false;
     const fetchClosedDays = async () => {
       try {
-        const schedule = await schedulingService.getWeeklySchedule(providerId, selectedMemberId);
-        // Days where isOpen is false or no entry = closed
-        const openDays = new Set(schedule.filter((a) => a.isOpen).map((a) => a.dayOfWeek));
-        const closed: number[] = [];
-        for (let d = 0; d < 7; d++) {
-          if (!openDays.has(d)) closed.push(d);
-        }
-        if (!cancelled) setMemberClosedDays(closed);
+        // Les 61 jours du bandeau (aujourd'hui → +60), tels qu'ils s'appliquent.
+        const du = jourLocalDe(new Date());
+        const { jours } = await schedulingService.getPlanningHoraires(providerId, selectedMemberId, du, ajouterJours(du, 60));
+        const fermes = jours.filter((j) => !j.ouvert).map((j) => {
+          const [a, m, d] = j.jour.split('-').map(Number);
+          return new Date(a, m - 1, d);
+        });
+        if (!cancelled) setMemberClosedDates(fermes);
       } catch {
-        if (!cancelled) setMemberClosedDays([]);
+        if (!cancelled) setMemberClosedDates([]);
       }
     };
 
@@ -1513,7 +1516,7 @@ export default function CreateBookingScreen() {
               <CalendarStrip
                 selectedDate={selectedDate}
                 onSelectDate={handleDateChange}
-                closedDays={memberClosedDays}
+                disabledDates={memberClosedDates}
               />
             </View>
 

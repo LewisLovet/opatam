@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingService, schedulingService, memberService, locationService, serviceRepository } from '@booking-app/firebase';
 import type { Booking, Member, Location, Availability, BlockedSlot, Service } from '@booking-app/shared';
-import { endTimeToMinutes, isTeamTier } from '@booking-app/shared';
+import { ajouterJours, endTimeToMinutes, isTeamTier, jourLocalDe, lundiDe, type HorairesDuJour } from '@booking-app/shared';
 import { CalendarHeader } from './components/CalendarHeader';
 import { DayView } from './components/DayView';
 import { WeekView } from './components/WeekView';
@@ -41,7 +41,12 @@ export default function CalendarPage() {
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
   const [services, setServices] = useState<WithId<Service>[]>([]);
-  const [availabilities, setAvailabilities] = useState<WithId<Availability>[]>([]);
+  // Horaires de la SEMAINE AFFICHÉE, date par date (semaine type, horaires
+  // datés, horaires variables) — la même règle que le calcul de créneaux.
+  const [horairesSemaine, setHorairesSemaine] = useState<{
+    lundi: string;
+    horairesDe: (memberId: string, jour: string) => HorairesDuJour;
+  } | null>(null);
   const [blockedSlots, setBlockedSlots] = useState<WithId<BlockedSlot>[]>([]);
 
   // Loading states
@@ -128,23 +133,11 @@ export default function CalendarPage() {
         setServices(servicesData);
 
         // NOUVEAU MODÈLE: Availability est centré sur le membre (1 membre = 1 lieu = 1 agenda)
+        // Les horaires se chargent à part, pour la semaine affichée.
         const activeLocations = locationsData.filter((l) => l.isActive);
-        const activeMembersData = membersData.filter((m) => m.isActive);
-
-        // Load availability for each active member
-        const availabilityPromises: Promise<WithId<Availability>[]>[] = [];
-        for (const member of activeMembersData) {
-          availabilityPromises.push(
-            schedulingService.getWeeklySchedule(provider.id, member.id)
-          );
-        }
-
-        const availabilityResults = await Promise.all(availabilityPromises);
-        const availabilitiesData = availabilityResults.flat();
 
         setMembers(membersData.filter((m) => m.isActive));
         setLocations(activeLocations);
-        setAvailabilities(availabilitiesData);
 
         // Set default location if only one
         if (activeLocations.length === 1) {
@@ -398,32 +391,56 @@ export default function CalendarPage() {
     return members.filter((m) => m.locationId === selectedLocationId);
   }, [members, selectedLocationId]);
 
+  // Semaine affichée (lundi → dimanche) : ses horaires, chargés en une fois.
+  const lundiAffiche = useMemo(() => lundiDe(jourLocalDe(selectedDate), ajouterJours), [selectedDate]);
+  useEffect(() => {
+    if (!provider) return;
+    let annule = false;
+    schedulingService
+      .getLecteurHorairesEquipe(provider.id, lundiAffiche, ajouterJours(lundiAffiche, 6))
+      .then(({ horairesDe }) => {
+        if (!annule) setHorairesSemaine({ lundi: lundiAffiche, horairesDe });
+      })
+      .catch((error) => console.error('[Calendar] Error loading hours:', error));
+    return () => {
+      annule = true;
+    };
+  }, [provider, lundiAffiche]);
+
   // Get availabilities for the displayed period
   const getAvailabilityForDay = useCallback(
-    (date: Date, memberId: string | null, locationId: string) => {
+    (date: Date, memberId: string | null, locationId: string): WithId<Availability> | undefined => {
+      if (!horairesSemaine) return undefined;
       const dayOfWeek = date.getDay();
+      const jour = jourLocalDe(date);
+      const synthese = (m: WithId<Member>, ouvert: boolean, slots: Availability['slots']): WithId<Availability> => ({
+        id: `${m.id}_${jour}`,
+        memberId: m.id,
+        locationId: m.locationId,
+        dayOfWeek,
+        isOpen: ouvert,
+        slots,
+        effectiveFrom: null,
+        updatedAt: new Date(0),
+      });
+      const auLieu = (m: WithId<Member>) => locationId === 'all' || m.locationId === locationId;
 
-      // When a specific member is selected, find their availability
+      // When a specific member is selected, their hours that very day
       if (memberId) {
-        const found = availabilities.find(
-          (a) =>
-            a.dayOfWeek === dayOfWeek &&
-            (a.locationId === locationId || locationId === 'all') &&
-            a.memberId === memberId
-        );
-        return found;
+        const membre = members.find((m) => m.id === memberId);
+        if (!membre || !auLieu(membre)) return undefined;
+        const h = horairesSemaine.horairesDe(memberId, jour);
+        return synthese(membre, h.ouvert, h.plages);
       }
 
       // "All members" mode — merge availabilities from all members.
       // The day is open if at least one member is open, and we use the
       // widest time range across all members so the calendar isn't grayed out.
-      const dayAvailabilities = availabilities.filter(
-        (a) =>
-          a.dayOfWeek === dayOfWeek &&
-          (a.locationId === locationId || locationId === 'all') &&
-          a.isOpen &&
-          a.slots.length > 0
-      );
+      const dayAvailabilities = members
+        .filter(auLieu)
+        .map((m) => ({ m, h: horairesSemaine.horairesDe(m.id, jour) }))
+        .filter(({ h }) => h.ouvert && h.plages.length > 0)
+        .map(({ m, h }) => synthese(m, true, h.plages));
 
       if (dayAvailabilities.length === 0) return undefined;
 
@@ -447,7 +464,7 @@ export default function CalendarPage() {
         slots: [{ start: earliestStart, end: latestEnd }],
       };
     },
-    [availabilities]
+    [horairesSemaine, members]
   );
 
   // Get blocked slots for a specific date

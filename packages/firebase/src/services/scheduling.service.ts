@@ -16,6 +16,7 @@ import {
   reglagesRecouverts,
   raisonHorairesDatesInvalides,
   MESSAGES_HORAIRES_DATES,
+  lecteurHorairesEquipe,
   type HoraireDateLu,
   type HorairesDuJour,
 } from '@booking-app/shared';
@@ -543,6 +544,37 @@ export class SchedulingService {
   }
 
   // ── Horaires datés (« au compte-goutte ») ────────────────────────────────
+
+  /**
+   * Les horaires de toute l'équipe sur [du, au], jour par jour — pour les
+   * écrans à plusieurs membres ou plusieurs jours (voile de l'agenda, jours
+   * fermés, préparation). Trois lectures ; la lecture datée ne bloque
+   * jamais : illisible, on retombe sur la semaine type.
+   */
+  async getLecteurHorairesEquipe(
+    providerId: string,
+    du: string,
+    au: string,
+    timeZone?: string,
+  ): Promise<{ horairesDe: (memberId: string, jour: string) => HorairesDuJour; memberIds: string[] }> {
+    const fuseau = fuseauDuMoteur(timeZone);
+    const [semaine, dates, membres] = await Promise.all([
+      availabilityRepository.getByProvider(providerId),
+      datedAvailabilityRepository.getInRange(providerId, du, au).catch((err) => {
+        console.warn('[scheduling] horaires datés illisibles, horaires habituels appliqués', providerId, err);
+        return [];
+      }),
+      memberRepository.getByProvider(providerId).catch(() => []),
+    ]);
+    const horairesDe = lecteurHorairesEquipe({
+      semaine,
+      dates,
+      membresVariables: membres.filter((m) => m.variableHours === true).map((m) => m.id),
+      jourDEffet: (d) => jourLocal(d, fuseau),
+    });
+    const memberIds = [...new Set([...membres.map((m) => m.id), ...semaine.map((a) => a.memberId).filter(Boolean)])];
+    return { horairesDe, memberIds };
+  }
 
   /**
    * Le planning d'un membre sur [du, au] (dates du lieu) : pour chaque jour,

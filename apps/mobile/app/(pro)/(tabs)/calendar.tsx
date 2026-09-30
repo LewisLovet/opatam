@@ -1636,22 +1636,6 @@ export default function CalendarScreen() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(monMemberId ?? memberIdParam ?? null);
   const [syncOpen, setSyncOpen] = useState(false);
 
-  // Horaires de travail — pour voiler les heures fermées dans la grille.
-  const {
-    byMember: rangesByMember,
-    union: rangesUnion,
-    loaded: rangesLoaded,
-    refresh: refreshWorkingRanges,
-  } = useWorkingRanges(providerId ?? undefined);
-
-  /** Plages du membre affiché, ou amplitude d'ouverture de l'équipe quand
-   *  aucun membre n'est sélectionné. `null` tant que rien n'est chargé :
-   *  la grille reste alors telle quelle. */
-  const workingRanges: RangesByDay | null = useMemo(() => {
-    if (!rangesLoaded) return null;
-    if (selectedMemberId) return rangesByMember[selectedMemberId] ?? null;
-    return rangesUnion;
-  }, [rangesLoaded, selectedMemberId, rangesByMember, rangesUnion]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [disambiguationBookings, setDisambiguationBookings] = useState<WeekBooking[] | null>(null);
   // Same idea for stacked activities — a tap on an overlapping
@@ -1672,6 +1656,24 @@ export default function CalendarScreen() {
   const weekDays = useMemo(() => getWeekDays(weekMonday), [weekMonday]);
   const weekStart = useMemo(() => startOfDay(weekDays[0]), [weekDays]);
   const weekEnd = useMemo(() => endOfDay(weekDays[6]), [weekDays]);
+
+  // Horaires de travail DE LA SEMAINE AFFICHÉE — pour voiler les heures
+  // fermées dans la grille (horaires datés et variables compris).
+  const {
+    byMember: rangesByMember,
+    union: rangesUnion,
+    loaded: rangesLoaded,
+    refresh: refreshWorkingRanges,
+  } = useWorkingRanges(providerId ?? undefined, weekMonday);
+
+  /** Plages du membre affiché, ou amplitude d'ouverture de l'équipe quand
+   *  aucun membre n'est sélectionné. `null` tant que rien n'est chargé :
+   *  la grille reste alors telle quelle. */
+  const workingRanges: RangesByDay | null = useMemo(() => {
+    if (!rangesLoaded) return null;
+    if (selectedMemberId) return rangesByMember[selectedMemberId] ?? null;
+    return rangesUnion;
+  }, [rangesLoaded, selectedMemberId, rangesByMember, rangesUnion]);
 
   /** Plages de travail réindexées sur les colonnes de la vue semaine
    *  (0 = lundi), alors que la disponibilité est stockée par

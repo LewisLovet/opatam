@@ -234,3 +234,35 @@ export function reglagesRecouverts<T extends { id: string; from: string; to: str
 export function lundiDe(jour: string, ajouterJours: (jour: string, n: number) => string): string {
   return ajouterJours(jour, -((jourSemaineDe(jour) + 6) % 7));
 }
+
+// ── Toute une équipe, sur une plage de jours ───────────────────────────────
+
+/**
+ * Les horaires de TOUTE une équipe, jour par jour : les documents lus une
+ * fois (semaine type, horaires datés, option « horaires variables » par
+ * membre), la fonction rendue répond pour (membre, jour). Pour les écrans
+ * qui montrent plusieurs membres ou plusieurs jours : agenda, écran du
+ * salon, widget, page publique.
+ */
+export function lecteurHorairesEquipe(p: {
+  semaine: readonly (HoraireSemaineLu & { memberId: string })[];
+  dates: readonly (HoraireDateLu & { memberId: string })[];
+  /** Les membres dont la semaine type ne s'applique pas. */
+  membresVariables: Iterable<string>;
+  jourDEffet: (d: Date) => string;
+}): (memberId: string, jour: string) => HorairesDuJour {
+  const semaineDe = new Map<string, HoraireSemaineLu[]>();
+  for (const d of p.semaine) semaineDe.set(d.memberId, [...(semaineDe.get(d.memberId) ?? []), d]);
+  const datesDe = new Map<string, HoraireDateLu[]>();
+  for (const d of p.dates) datesDe.set(d.memberId, [...(datesDe.get(d.memberId) ?? []), d]);
+  const variables = new Set(p.membresVariables);
+  return (memberId, jour) =>
+    horairesDuJour({
+      jour,
+      jourSemaine: jourSemaineDe(jour),
+      semaine: semaineDe.get(memberId) ?? [],
+      dates: datesDe.get(memberId) ?? [],
+      horairesVariables: variables.has(memberId),
+      jourDEffet: p.jourDEffet,
+    });
+}
