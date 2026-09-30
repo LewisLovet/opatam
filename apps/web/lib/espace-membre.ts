@@ -29,6 +29,8 @@ export function salonOuvertAuxMembres(provider: FirebaseFirestore.DocumentData |
 export type RefusInvitation =
   /** Interrupteur `config/espaceMembre` fermé pour ce salon. */
   | 'pas-ouvert'
+  /** L'adresse du membre est déjà prise (voir `emailDisponiblePourMembre`). */
+  | RaisonEmailIndisponible
   | 'salon-introuvable'
   | 'plan'
   | 'membre-introuvable'
@@ -54,6 +56,7 @@ export async function preparerInvitation(
   providerId: string,
   memberId: string,
   maintenant = new Date(),
+  trouverCompte: (email: string) => Promise<string | null> = async () => null,
 ): Promise<{ ok: true; invitation: InvitationPreparee } | { ok: false; raison: RefusInvitation }> {
   const [config, provider, membre, enCours] = await Promise.all([
     db.collection('config').doc('espaceMembre').get(),
@@ -70,6 +73,8 @@ export async function preparerInvitation(
   if (membre.get('isActive') !== true) return { ok: false, raison: 'membre-inactif' };
   const email = normaliserEmail(membre.get('email'));
   if (!EMAIL.test(email)) return { ok: false, raison: 'sans-email' };
+  const dispo = await emailDisponiblePourMembre(db, trouverCompte, { providerId, email, memberId }, maintenant);
+  if (!dispo.ok) return { ok: false, raison: dispo.raison };
 
   const expiresAt = new Date(maintenant.getTime() + MEMBER_INVITE_TTL_DAYS * 86_400_000);
   const ref = db.collection('memberInvitations').doc();
@@ -297,3 +302,77 @@ export async function estMembreDuSalon(
     compte.get('memberId') === memberId
   );
 }
+
+/**
+ * Une invitation de membre attend-elle cette adresse (en attente, lien
+ * valable) ? Pour prévenir avant la création d'un compte professionnel.
+ */
+export async function invitationEnAttentePour(db: Firestore, email: string, maintenant = new Date()): Promise<boolean> {
+  // Égalité seule, filtre en mémoire : aucun index composite.
+  const snap = await db.collection('memberInvitations').where('email', '==', normaliserEmail(email)).get();
+  return snap.docs.some(
+    (d) => d.get('status') === 'pending' && ((d.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0) > maintenant.getTime(),
+  );
+}
+
+export type RaisonEmailIndisponible =
+  /** Déjà l'adresse d'un compte Opatam (gérant, cliente…) qui n'est pas ce membre. */
+  | 'compte-existant'
+  /** Un autre membre du même salon a déjà cette adresse. */
+  | 'autre-membre'
+  /** Une invitation en cours, d'un autre salon ou pour un autre membre. */
+  | 'invite-ailleurs';
+
+/**
+ * Cette adresse peut-elle devenir celle d'un membre (et donc son identifiant
+ * de connexion) ? Une adresse déjà prise mènerait le membre, à la
+ * connexion, dans le compte de quelqu'un d'autre — ou changerait le mot de
+ * passe de ce compte via « mot de passe oublié ».
+ *
+ * `trouverCompte(email)` : l'uid du compte Firebase de cette adresse, ou
+ * `null` (injecté : l'Admin Auth en production, un double dans les tests).
+ * Un compte SANS fiche utilisateur ni lien membre est un compte ouvert
+ * depuis la page d'invitation, pas encore relié : il ne bloque pas.
+ */
+export async function emailDisponiblePourMembre(
+  db: Firestore,
+  trouverCompte: (email: string) => Promise<string | null>,
+  entree: { providerId: string; email: string; memberId?: string | null },
+  maintenant = new Date(),
+): Promise<{ ok: true } | { ok: false; raison: RaisonEmailIndisponible }> {
+  const email = normaliserEmail(entree.email);
+  const [uid, membres, invitations] = await Promise.all([
+    trouverCompte(email),
+    db.collection('providers').doc(entree.providerId).collection('members').get(),
+    db.collection('memberInvitations').where('email', '==', email).get(),
+  ]);
+
+  if (uid) {
+    const [utilisateur, compte] = await Promise.all([
+      db.collection('users').doc(uid).get(),
+      db.collection('memberAccounts').doc(uid).get(),
+    ]);
+    const cestLuiMeme =
+      compte.exists && compte.get('providerId') === entree.providerId && compte.get('memberId') === entree.memberId;
+    if (!cestLuiMeme && (utilisateur.exists || compte.exists)) return { ok: false, raison: 'compte-existant' };
+  }
+  if (membres.docs.some((m) => m.id !== entree.memberId && normaliserEmail(m.get('email')) === email)) {
+    return { ok: false, raison: 'autre-membre' };
+  }
+  const ailleurs = invitations.docs.some(
+    (d) =>
+      d.get('status') === 'pending' &&
+      ((d.get('expiresAt') as Timestamp | undefined)?.toMillis() ?? 0) > maintenant.getTime() &&
+      (d.get('providerId') !== entree.providerId || d.get('memberId') !== entree.memberId),
+  );
+  if (ailleurs) return { ok: false, raison: 'invite-ailleurs' };
+  return { ok: true };
+}
+
+/** Ce que voit le gérant quand l'adresse est refusée. */
+export const MESSAGES_EMAIL_INDISPONIBLE: Record<RaisonEmailIndisponible, string> = {
+  'compte-existant':
+    "Cette adresse est déjà celle d'un compte Opatam. Pour que ce membre ait son propre accès, utilisez son adresse personnelle.",
+  'autre-membre': 'Un autre membre de votre équipe utilise déjà cette adresse.',
+  'invite-ailleurs': 'Cette adresse a déjà reçu une invitation d’un autre salon ou pour un autre membre.',
+};

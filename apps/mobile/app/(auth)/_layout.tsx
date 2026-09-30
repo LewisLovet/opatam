@@ -11,11 +11,14 @@ import { consumePendingRoute } from '../../lib/pendingRoute';
 
 export default function AuthLayout() {
   const { colors } = useTheme();
-  const { isAuthenticated, isLoading, userData } = useAuth();
+  const { isAuthenticated, isLoading, userData, compteMembre } = useAuth();
 
   // If authenticated and userData loaded → redirect out of auth flow
   // This handles the post-login redirect reactively (no race condition)
-  if (!isLoading && isAuthenticated && userData) {
+  //
+  // …et le compte membre lu (`undefined` = pas encore) : sans cette
+  // attente, un membre qui venait de se connecter partait côté client.
+  if (!isLoading && isAuthenticated && userData && compteMembre !== undefined) {
     // Une destination mise de côté par la garde de l'espace client est
     // rejouée ici, pour atterrir sur l'écran demandé plutôt que sur
     // l'accueil.
@@ -25,8 +28,12 @@ export default function AuthLayout() {
     // écran d'avis) et survit à une déconnexion : sans ce filtre, un pro
     // qui se connectait après une session client atterrissait dans
     // l'espace client.
-    const pending = consumePendingRoute();
     const isProvider = userData.role === 'provider';
+    // Espace membre (Studio) : son agenda, avant toute destination client.
+    if (!isProvider && compteMembre) {
+      return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
+    }
+    const pending = consumePendingRoute();
     if (pending && !isProvider && pending.startsWith('/(client)')) {
       return <Redirect href={pending as never} />;
     }

@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { getResend, emailConfig, appConfig } from '@/lib/resend';
-import { preparerInvitation, retirerAcces, type RefusInvitation } from '@/lib/espace-membre';
+import { MESSAGES_EMAIL_INDISPONIBLE, preparerInvitation, retirerAcces, type RefusInvitation } from '@/lib/espace-membre';
+import { trouverCompteParEmail } from '@/lib/compte-par-email';
 import { signMemberInvite } from '@/lib/member-invite';
 import { generateMemberInvitationEmail } from '@/lib/emails/memberInvitation';
 
@@ -42,6 +43,9 @@ const REFUS: Record<RefusInvitation, { status: number; message: string }> = {
   'membre-principal': { status: 400, message: 'Vous êtes le membre principal : vous avez déjà votre accès' },
   'membre-inactif': { status: 400, message: "Réactivez d'abord ce membre pour l'inviter" },
   'sans-email': { status: 400, message: "Ajoutez une adresse e-mail à ce membre pour l'inviter" },
+  'compte-existant': { status: 409, message: MESSAGES_EMAIL_INDISPONIBLE['compte-existant'] },
+  'autre-membre': { status: 409, message: MESSAGES_EMAIL_INDISPONIBLE['autre-membre'] },
+  'invite-ailleurs': { status: 409, message: MESSAGES_EMAIL_INDISPONIBLE['invite-ailleurs'] },
 };
 
 export async function POST(req: NextRequest) {
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
   const memberId = await memberIdDe(req);
   if (!memberId) return NextResponse.json({ error: 'Membre manquant' }, { status: 400 });
 
-  const r = await preparerInvitation(getAdminFirestore(), uid, memberId);
+  const r = await preparerInvitation(getAdminFirestore(), uid, memberId, new Date(), trouverCompteParEmail);
   if (!r.ok) return NextResponse.json({ error: REFUS[r.raison].message, raison: r.raison }, { status: REFUS[r.raison].status });
 
   const { invitation } = r;

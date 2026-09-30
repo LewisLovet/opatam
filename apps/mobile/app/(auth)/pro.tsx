@@ -963,12 +963,44 @@ export default function ProRegisterScreen() {
   // Submit
   // ---------------------------------------------------------------------------
 
+  /**
+   * Espace membre : un membre invité qui se trompe de bouton ferait de son
+   * adresse celle d'un salon — et ne pourrait plus rejoindre son équipe.
+   * Si une invitation l'attend, on le dit avant de créer quoi que ce soit.
+   * Jamais bloquant : un doute réseau laisse passer.
+   */
+  const confirmerSansInvitation = async (email: string): Promise<boolean> => {
+    try {
+      const r = await fetch(`${API_URL}/api/membres/invitation-en-attente`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const { enAttente } = await r.json();
+      if (!enAttente) return true;
+    } catch {
+      return true;
+    }
+    return new Promise((resolve) =>
+      Alert.alert(
+        t('espaceMembre.inscription.titre'),
+        t('espaceMembre.inscription.texte'),
+        [
+          { text: t('espaceMembre.inscription.utiliserLien'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('espaceMembre.inscription.creerSalon'), onPress: () => resolve(true) },
+        ],
+        { cancelable: false },
+      ),
+    );
+  };
+
   const handleSubmit = async () => {
     const error = validateStep();
     if (error) {
       showToast({ variant: 'error', message: error });
       return;
     }
+    if (!(await confirmerSansInvitation(data.email.trim()))) return;
 
     // Seconde barrière, juste avant d'écrire. L'étape peut avoir été
     // franchie puis la durée modifiée en revenant en arrière — et cet

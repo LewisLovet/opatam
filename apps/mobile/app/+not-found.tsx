@@ -13,21 +13,25 @@ import { useAuth } from '../contexts';
 
 export default function NotFoundScreen() {
   const router = useRouter();
-  const { isAuthenticated, userData, isLoading } = useAuth();
+  const { isAuthenticated, userData, isLoading, compteMembre } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
+    if (isAuthenticated && compteMembre === undefined) return; // compte membre en cours de lecture
 
     if (isAuthenticated && userData) {
       if (userData.role === 'provider') {
         router.replace('/(pro)' as never);
+      } else if (compteMembre) {
+        // Espace membre : son agenda.
+        router.replace('/(pro)/(tabs)/calendar' as never);
       } else {
         router.replace('/(client)/(tabs)');
       }
     } else {
       router.replace('/(auth)');
     }
-  }, [isLoading, isAuthenticated, userData, router]);
+  }, [isLoading, isAuthenticated, userData, compteMembre, router]);
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>

@@ -64,6 +64,13 @@ export function generateMemberInvitationEmail(args: MemberInvitationEmailArgs): 
             Lien valable jusqu'au ${jusquau}.
           </p>
         </div>
+        <div style="padding:0 36px 26px;">
+          <p style="margin:0;padding:14px 16px;background:#f6f7f9;border-radius:10px;font-size:13.5px;line-height:1.6;color:#3f3f46;">
+            <strong>Ensuite</strong> : ouvrez l'application Opatam et touchez
+            <strong>« Se connecter »</strong> — pas « Créer un compte » — avec cette adresse
+            et le mot de passe que vous aurez choisi.
+          </p>
+        </div>
       </div>
       <p style="margin:16px 8px 0;text-align:center;font-size:11.5px;line-height:1.5;color:#a7a29e;">
         Vous recevez ce message parce que ${echapper(salon)} vous a ajouté à son équipe sur Opatam.
@@ -80,6 +87,9 @@ export function generateMemberInvitationEmail(args: MemberInvitationEmailArgs): 
     '',
     `Créer mon accès : ${args.url}`,
     `(lien valable jusqu'au ${jusquau})`,
+    '',
+    'Ensuite : ouvrez l’application Opatam et touchez « Se connecter » (pas « Créer un compte »),',
+    'avec cette adresse et le mot de passe que vous aurez choisi.',
   ].join('\n');
 
   return { subject, html, text };

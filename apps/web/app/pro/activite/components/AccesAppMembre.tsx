@@ -22,6 +22,33 @@ import { Button, ConfirmDialog, useToast } from '@/components/ui';
 const dateCourte = (d: Date | null | undefined) =>
   d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
 
+/**
+ * L'adresse peut-elle devenir celle d'un membre (son identifiant de
+ * connexion) ? Ni un autre compte Opatam, ni un autre membre, ni une
+ * adresse déjà invitée ailleurs. Le serveur refait ce contrôle à l'envoi.
+ */
+export async function verifierEmailMembre(
+  email: string,
+  memberId?: string | null,
+): Promise<{ disponible: boolean; message?: string }> {
+  const token = await getAuth().currentUser?.getIdToken();
+  if (!token) throw new Error('Session expirée, reconnectez-vous');
+  const r = await fetch('/api/pro/membres/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email, memberId: memberId ?? null }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Vérification de l’adresse impossible');
+  return data;
+}
+
+/** Envoie (ou renvoie) l'invitation d'un membre. Renvoie l'adresse visée. */
+export async function inviterMembre(memberId: string): Promise<string> {
+  const r = await appeler('POST', memberId);
+  return r.email ?? '';
+}
+
 async function appeler(methode: 'POST' | 'DELETE', memberId: string): Promise<{ ok: boolean; error?: string; email?: string }> {
   const token = await getAuth().currentUser?.getIdToken();
   if (!token) throw new Error('Session expirée, reconnectez-vous');

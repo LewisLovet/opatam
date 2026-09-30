@@ -707,6 +707,31 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!validateStep(6)) return;
 
+    // Espace membre : un membre invité qui se trompe de bouton ferait de son
+    // adresse celle d'un salon — et ne pourrait plus rejoindre son équipe.
+    // Jamais bloquant : un doute réseau laisse passer.
+    try {
+      const r = await fetch('/api/membres/invitation-en-attente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email }),
+      });
+      const { enAttente } = await r.json();
+      if (
+        enAttente &&
+        !window.confirm(
+          'Cette adresse a reçu une invitation à rejoindre une équipe sur Opatam. ' +
+            'Pour la rejoindre, ouvrez plutôt le lien reçu par e-mail.\n\n' +
+            'Créer quand même votre propre salon avec cette adresse ? ' +
+            '(Elle ne pourra plus rejoindre l’équipe qui vous a invité.)',
+        )
+      ) {
+        return;
+      }
+    } catch {
+      // on laisse passer
+    }
+
     setLoading(true);
     setError('');
 

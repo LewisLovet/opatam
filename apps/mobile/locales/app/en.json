@@ -3592,6 +3592,24 @@
       "carteTexte": "Each member can have their own access: tap “App” on their card.",
       "voirCA": "Members see their revenue",
       "voirCAAide": "Only their own, never the salon's."
+    },
+    "form": {
+      "confirmerEmail": "Confirm email",
+      "confirmerEmailPlaceholder": "Type it a second time",
+      "emailsDifferents": "The two email addresses don't match",
+      "accesEnvoye": "{{debut}} — app access sent to {{email}}",
+      "accesPasParti": "{{debut}}, but the app access wasn't sent: {{erreur}}"
+    },
+    "connexion": {
+      "lien": "Did your salon send you an invitation?",
+      "titre": "Join your team",
+      "texte": "Sign in with the address where you received the invitation, and the password you chose from its link. No password yet? Open the link in the email first."
+    },
+    "inscription": {
+      "titre": "Pending invitation",
+      "texte": "This address has received an invitation to join a team on Opatam. To join it, open the link in the email instead of creating a salon — otherwise this address will no longer be able to join the team.",
+      "utiliserLien": "I'll use the link",
+      "creerSalon": "Create my salon"
     }
   }
 }

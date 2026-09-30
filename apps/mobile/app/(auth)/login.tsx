@@ -148,7 +148,9 @@ export default function LoginScreen() {
   const { showToast } = useToast();
   const { signIn } = useAuth();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; invitation?: string }>();
+  // Arrivé par « Vous avez reçu une invitation de votre salon ? ».
+  const viaInvitation = params.invitation === '1';
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>(
@@ -299,6 +301,23 @@ export default function LoginScreen() {
             >
               {t('auth.login.subtitle')}
             </Text>
+            {viaInvitation && (
+              <View
+                style={{
+                  marginTop: spacing.md,
+                  padding: spacing.md,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                }}
+              >
+                <Text variant="body" style={{ fontWeight: '700', color: '#1D4ED8' }}>
+                  {t('espaceMembre.connexion.titre')}
+                </Text>
+                <Text variant="bodySmall" color="textSecondary" style={{ marginTop: 4 }}>
+                  {t('espaceMembre.connexion.texte')}
+                </Text>
+              </View>
+            )}
           </Animated.View>
 
           {/* Pro/Client Tab Toggle */}

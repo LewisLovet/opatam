@@ -30,6 +30,8 @@ import {
   useAccesMembres,
   useJetonGerant,
   ouvrirAccesMembre,
+  inviterMembre,
+  verifierEmailMembre,
   apparenceAcces,
   ReglageCAMembres,
 } from '../../components/business/AccesAppMembres';
@@ -112,6 +114,10 @@ export default function MembersScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<MemberFormData>(DEFAULT_FORM);
+  // L'adresse saisie deux fois : l'accès à l'app y est envoyé, une faute de
+  // frappe l'enverrait à un inconnu. Demandée à la création et quand elle change.
+  const [emailConfirmation, setEmailConfirmation] = useState('');
+  const [emailInitial, setEmailInitial] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
@@ -343,6 +349,8 @@ export default function MembersScreen() {
       return;
     }
     setEditingId(null);
+    setEmailConfirmation('');
+    setEmailInitial('');
     const usedColors = new Set(members.map((m) => m.color).filter(Boolean));
     const firstAvailable = MEMBER_COLORS.find((c) => !usedColors.has(c)) || MEMBER_COLORS[0];
     // « Ajouter un prestataire à ce lieu » doit ouvrir sur CE lieu, pas
@@ -518,6 +526,8 @@ export default function MembersScreen() {
 
   const openEdit = (member: WithId<Member>) => {
     setEditingId(member.id);
+    setEmailConfirmation('');
+    setEmailInitial(member.email ?? '');
     setForm({
       name: member.name,
       email: member.email,
@@ -589,15 +599,42 @@ export default function MembersScreen() {
     }
   };
 
+  const emailAConfirmer = !editingId || form.email.trim().toLowerCase() !== emailInitial.trim().toLowerCase();
+
+  /** Envoie l'accès à l'app ; un échec ne défait jamais l'enregistrement. */
+  const envoyerAcces = async (memberId: string, debut: string) => {
+    try {
+      const email = await inviterMembre(jetonGerant, memberId);
+      showToast({ variant: 'success', message: t('espaceMembre.form.accesEnvoye', { debut, email }) });
+    } catch (err: any) {
+      showToast({ variant: 'error', message: t('espaceMembre.form.accesPasParti', { debut, erreur: err?.message ?? '' }) });
+    }
+  };
+
   // Save
   const handleSave = async () => {
     if (!providerId) return;
     if (!form.name.trim()) { showToast({ variant: 'error', message: t('proMembers.form.nameRequired') }); return; }
     if (!form.email.trim()) { showToast({ variant: 'error', message: t('proMembers.form.emailRequired') }); return; }
+    if (emailAConfirmer && emailConfirmation.trim().toLowerCase() !== form.email.trim().toLowerCase()) {
+      showToast({ variant: 'error', message: t('espaceMembre.form.emailsDifferents') });
+      return;
+    }
     if (!form.locationId) { showToast({ variant: 'error', message: t('proMembers.form.locationRequired') }); return; }
 
     setIsSaving(true);
     try {
+      // Espace membre ouvert : l'adresse devient l'identifiant de connexion
+      // du membre. Déjà prise, elle l'emmènerait dans le compte de quelqu'un
+      // d'autre — refusée AVANT toute écriture.
+      const estPrincipal = !!editingId && members.find((m) => m.id === editingId)?.isDefault === true;
+      if (espaceMembreOuvert && emailAConfirmer && !estPrincipal) {
+        const v = await verifierEmailMembre(jetonGerant, form.email.trim(), editingId);
+        if (!v.disponible) {
+          showToast({ variant: 'error', message: v.message ?? t('common.error') });
+          return;
+        }
+      }
       if (editingId) {
         const existing = members.find((m) => m.id === editingId);
         await memberService.updateMember(providerId, editingId, {
@@ -610,7 +647,12 @@ export default function MembersScreen() {
           await memberService.changeLocation(providerId, editingId, form.locationId);
         }
         await appliquerAttributions(editingId, form.serviceIds);
-        showToast({ variant: 'success', message: t('proMembers.form.updated') });
+        // Adresse changée : l'invitation en cours visait l'ancienne.
+        if (espaceMembreOuvert && existing && !existing.isDefault && emailAConfirmer) {
+          await envoyerAcces(editingId, t('proMembers.form.updated'));
+        } else {
+          showToast({ variant: 'success', message: t('proMembers.form.updated') });
+        }
       } else {
         const newMember = await memberService.createMember(providerId, {
           name: form.name.trim(),
@@ -635,8 +677,14 @@ export default function MembersScreen() {
             // Non-blocking: member created but photo failed
           }
         }
-        showToast({ variant: 'success', message: t('proMembers.form.added') });
+        // Espace membre : l'accès part tout de suite, sans seconde manipulation.
+        if (espaceMembreOuvert) {
+          await envoyerAcces(newMember.id, t('proMembers.form.added'));
+        } else {
+          showToast({ variant: 'success', message: t('proMembers.form.added') });
+        }
       }
+      void rechargerAcces();
       setShowModal(false);
       loadData();
     } catch (err: any) {
@@ -1696,6 +1744,18 @@ export default function MembersScreen() {
 
                 <Input label={t('proMembers.form.nameLabel')} placeholder={t('proMembers.form.namePlaceholder')} value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} autoCapitalize="words" />
                 <Input label={t('proMembers.form.emailLabel')} placeholder={t('proMembers.form.emailPlaceholder')} value={form.email} onChangeText={(v) => setForm((p) => ({ ...p, email: v }))} keyboardType="email-address" autoCapitalize="none" />
+                {emailAConfirmer && (
+                  <Input
+                    label={t('espaceMembre.form.confirmerEmail')}
+                    placeholder={t('espaceMembre.form.confirmerEmailPlaceholder')}
+                    value={emailConfirmation}
+                    onChangeText={setEmailConfirmation}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    contextMenuHidden
+                  />
+                )}
                 <Input label={t('proMembers.form.phoneLabel')} placeholder={t('proMembers.form.phonePlaceholder')} value={form.phone} onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))} keyboardType="phone-pad" />
 
                 {/* Color picker */}

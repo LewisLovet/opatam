@@ -81,6 +81,10 @@ export function MemberModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // L'adresse saisie deux fois : elle sert à envoyer l'accès à l'app, une
+  // faute de frappe l'enverrait à un inconnu. Demandée à la création, et
+  // quand l'adresse change.
+  const [emailConfirmation, setEmailConfirmation] = useState('');
   const [currentCode, setCurrentCode] = useState<string>('');
 
   // Photo upload
@@ -144,6 +148,7 @@ export function MemberModal({
         setCurrentCode(member.accessCode ?? '');
         setPhotoURL(member.photoURL || null);
         setActiveTab('info');
+        setEmailConfirmation('');
       } else {
         // Le lieu d'où vient le clic gagne : « Ajouter un prestataire à ce
         // lieu » doit ouvrir sur CE lieu, pas sur le premier de la liste.
@@ -163,6 +168,7 @@ export function MemberModal({
         });
         setCurrentCode('');
         setPhotoURL(null);
+        setEmailConfirmation('');
         setPendingPhotoFile(null);
         setCreationStep(1);
       }
@@ -269,6 +275,9 @@ export function MemberModal({
     });
   };
 
+  // Création, ou adresse modifiée : on la fait confirmer.
+  const emailAConfirmer = !member || formData.email.trim().toLowerCase() !== (member.email ?? '').trim().toLowerCase();
+
   const validateStep1 = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -282,6 +291,8 @@ export function MemberModal({
       newErrors.email = "L'email est requis";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "L'email n'est pas valide";
+    } else if (emailAConfirmer && emailConfirmation.trim().toLowerCase() !== formData.email.trim().toLowerCase()) {
+      newErrors.emailConfirmation = 'Les deux adresses ne correspondent pas';
     }
 
     if (formData.phone && !/^(\+33|0)[1-9](\d{2}){4}$/.test(formData.phone.replace(/\s/g, ''))) {
@@ -496,6 +507,20 @@ export function MemberModal({
         error={errors.email}
         required
       />
+      {emailAConfirmer && (
+        <Input
+          label="Confirmez l’email"
+          name="emailConfirmation"
+          type="email"
+          value={emailConfirmation}
+          onChange={(e) => setEmailConfirmation(e.target.value)}
+          onPaste={(e) => e.preventDefault()}
+          placeholder="Saisissez-le une seconde fois"
+          error={errors.emailConfirmation}
+          hint="L’accès à l’application lui sera envoyé à cette adresse."
+          required
+        />
+      )}
 
       {/* Phone */}
       <Input

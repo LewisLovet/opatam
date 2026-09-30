@@ -222,6 +222,18 @@ export default function WelcomeScreen() {
             <Ionicons name="person-add-outline" size={20} color="#3B82F6" style={{ marginRight: 10 }} />
             <Text variant="body" style={styles.secondaryBtnText}>{t('auth.welcome.createAccount')}</Text>
           </Pressable>
+
+          {/* Espace membre : un membre invité se CONNECTE (son mot de passe est
+              choisi depuis le lien reçu), il ne crée pas de compte. */}
+          <Pressable
+            onPress={() => router.push('/(auth)/login?invitation=1' as never)}
+            hitSlop={8}
+            style={({ pressed }) => ({ alignSelf: 'center', paddingVertical: 4, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text variant="bodySmall" style={{ color: '#2563EB', fontWeight: '600' }}>
+              {t('espaceMembre.connexion.lien')}
+            </Text>
+          </Pressable>
         </Animated.View>
       </View>
     </LinearGradient>

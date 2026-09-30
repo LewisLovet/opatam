@@ -59,6 +59,13 @@ describe('les écrans pro réutilisés sont figés sur le membre', () => {
   it('jamais d’identification RevenueCat avec le salon pour un membre', () => {
     assert.match(lire('apps/mobile/contexts/RevenueCatContext.tsx'), /const providerId = estMembre \? null : idDuSalon;/);
   });
+  it('après la connexion aussi : la garde de l’écran de connexion et la page introuvable', () => {
+    const auth = lire('apps/mobile/app/(auth)/_layout.tsx');
+    assert.match(auth, /compteMembre !== undefined/);
+    assert.match(auth, /if \(!isProvider && compteMembre\) \{\s*return <Redirect href=\{'\/\(pro\)\/\(tabs\)\/calendar' as never\} \/>;/);
+    const introuvable = lire('apps/mobile/app/+not-found.tsx');
+    assert.match(introuvable, /\} else if \(compteMembre\) \{/);
+  });
   it('l’aiguillage attend le compte membre avant de choisir un côté', () => {
     const src = lire('apps/mobile/app/index.tsx');
     assert.match(src, /compteMembre === undefined/);
@@ -72,6 +79,7 @@ describe('les textes du mode membre existent dans les cinq langues', () => {
       'apps/mobile/app/(pro)/(tabs)/more.tsx', 'apps/mobile/app/(pro)/membre-profil.tsx', 'apps/mobile/app/(pro)/mes-clientes.tsx',
       'apps/mobile/app/(pro)/mon-activite.tsx', 'apps/mobile/app/(pro)/members.tsx',
       'apps/mobile/components/business/GardeEspaceMembre.tsx', 'apps/mobile/components/business/AccesAppMembres.tsx',
+      'apps/mobile/app/(auth)/index.tsx', 'apps/mobile/app/(auth)/login.tsx', 'apps/mobile/app/(auth)/pro.tsx',
     ];
     const cles = new Set();
     for (const f of fichiers) for (const m of lire(f).matchAll(/espaceMembre\.([A-Za-z]+\.[A-Za-z]+)(?=['`])/g)) cles.add(m[1]);

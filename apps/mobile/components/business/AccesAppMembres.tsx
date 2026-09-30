@@ -74,6 +74,39 @@ async function appeler(token: string, methode: 'POST' | 'DELETE', memberId: stri
 }
 
 /**
+ * L'adresse peut-elle devenir celle d'un membre (son identifiant de
+ * connexion) ? Ni un autre compte Opatam, ni un autre membre, ni une
+ * adresse déjà invitée ailleurs. Le serveur refait ce contrôle à l'envoi.
+ */
+export async function verifierEmailMembre(
+  getToken: () => Promise<string | undefined>,
+  email: string,
+  memberId?: string | null,
+): Promise<{ disponible: boolean; message?: string }> {
+  const token = await getToken();
+  if (!token) throw new Error(i18n.t('common.error'));
+  const r = await fetch(`${API_URL}/api/pro/membres/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ email, memberId: memberId ?? null }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || i18n.t('common.error'));
+  return data;
+}
+
+/**
+ * Envoie (ou renvoie) l'invitation d'un membre, sans dialogue — à la
+ * création d'un membre, ou quand son adresse change. Renvoie l'adresse visée.
+ */
+export async function inviterMembre(getToken: () => Promise<string | undefined>, memberId: string): Promise<string> {
+  const token = await getToken();
+  if (!token) throw new Error(i18n.t('common.error'));
+  const r = await appeler(token, 'POST', memberId);
+  return r.email ?? '';
+}
+
+/**
  * Le dialogue d'accès d'un membre. `getToken` : le jeton du gérant ;
  * `apres` : recharger l'écran (et afficher un message) une fois fait.
  */

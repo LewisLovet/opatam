@@ -40,7 +40,7 @@ if (!getApps().length) initializeApp({ projectId: process.env.GCLOUD_PROJECT || 
 const { getFirestore, Timestamp } = req('firebase-admin/firestore');
 const db = getFirestore();
 
-const { preparerInvitation, lireInvitation, accepterInvitation, retirerAcces, estMembreDuSalon } = await import(
+const { preparerInvitation, lireInvitation, accepterInvitation, retirerAcces, estMembreDuSalon, invitationEnAttentePour, emailDisponiblePourMembre } = await import(
   pathToFileURL(resolve(ici, 'espace-membre.ts')).href
 );
 const { signMemberInvite, verifyMemberInvite } = await import(pathToFileURL(resolve(ici, 'member-invite.ts')).href);
@@ -203,5 +203,65 @@ describe('le privilège « pro » d’un membre (créer un rendez-vous sans acom
     assert.equal(await estMembreDuSalon(db, 'u-inconnu', 'em-studio', 'm2'), false);
     assert.equal(await estMembreDuSalon(db, null, 'em-studio', 'm2'), false);
     assert.equal(await estMembreDuSalon(db, 'u-priv', 'em-studio', null), false);
+  });
+});
+
+describe('avant de créer un compte pro : une invitation attend-elle cette adresse ?', () => {
+  it('oui tant qu’elle est en attente et valable ; non sinon — casse et espaces ignorés', async () => {
+    await db.doc('providers/em-studio/members/m9').set(fiche({ name: 'Zoé', email: 'Zoe@Exemple.test' }));
+    const r = await preparerInvitation(db, 'em-studio', 'm9');
+    assert.equal(await invitationEnAttentePour(db, '  ZOE@exemple.test '), true);
+    assert.equal(await invitationEnAttentePour(db, 'personne@exemple.test'), false);
+    assert.equal(await invitationEnAttentePour(db, 'zoe@exemple.test', new Date(Date.now() + 8 * 86_400_000)), false, 'expirée');
+    await accepterInvitation(db, { invitationId: r.invitation.invitationId, uid: 'u-zoe', emailDuCompte: 'zoe@exemple.test' });
+    assert.equal(await invitationEnAttentePour(db, 'zoe@exemple.test'), false, 'déjà acceptée');
+  });
+});
+
+describe('une adresse déjà prise ne devient jamais celle d’un membre', () => {
+  // Double de l'Admin Auth : adresse → uid du compte existant.
+  const comptes = {
+    'pro@exemple.test': 'u-pro',
+    'cliente@exemple.test': 'u-cliente',
+    'orphelin@exemple.test': 'u-orphelin',
+    'jean.lie@exemple.test': 'u-jean-lie',
+  };
+  const trouver = async (e) => comptes[e] ?? null;
+  before(async () => {
+    await db.doc('users/u-cliente').set({ role: 'client', email: 'cliente@exemple.test' });
+    await db.doc('memberAccounts/u-jean-lie').set({ providerId: 'em-studio', memberId: 'm-lie', active: true });
+    await db.doc('providers/em-studio/members/m-lie').set(fiche({ name: 'Jean lié', email: 'jean.lie@exemple.test' }));
+    await db.doc('providers/em-solo/members/s-invite').set(fiche({ name: 'Invité', email: 'deja.invite@exemple.test' }));
+    await db.doc('memberInvitations/inv-ailleurs').set({
+      providerId: 'em-solo', memberId: 's-invite', email: 'deja.invite@exemple.test', status: 'pending',
+      expiresAt: Timestamp.fromMillis(Date.now() + 86_400_000),
+    });
+  });
+  const verifier = (email, memberId = null) => emailDisponiblePourMembre(db, trouver, { providerId: 'em-studio', email, memberId });
+
+  it('l’adresse d’un compte de salon ou de cliente : refusée', async () => {
+    assert.equal((await verifier('pro@exemple.test')).raison, 'compte-existant');
+    assert.equal((await verifier('  CLIENTE@exemple.test ')).raison, 'compte-existant');
+  });
+  it('le propre compte du membre : acceptée pour LUI, refusée pour un autre', async () => {
+    assert.equal((await verifier('jean.lie@exemple.test', 'm-lie')).ok, true);
+    assert.equal((await verifier('jean.lie@exemple.test', 'autre')).raison, 'compte-existant');
+  });
+  it('un compte ouvert depuis la page d’invitation mais pas encore relié : ne bloque pas', async () => {
+    assert.equal((await verifier('orphelin@exemple.test')).ok, true);
+  });
+  it('l’adresse d’un autre membre du salon : refusée', async () => {
+    assert.equal((await verifier('lina@exemple.test')).raison, 'autre-membre');
+    assert.equal((await verifier('lina@exemple.test', 'm2')).ok, true, 'sa propre adresse');
+  });
+  it('déjà invitée par un autre salon : refusée', async () => {
+    assert.equal((await verifier('deja.invite@exemple.test')).raison, 'invite-ailleurs');
+  });
+  it('une adresse libre : acceptée', async () => {
+    assert.equal((await verifier('nouvelle@exemple.test')).ok, true);
+  });
+  it('l’envoi de l’invitation refait le contrôle (dernier mot au serveur)', async () => {
+    await db.doc('providers/em-studio/members/m-pro').set(fiche({ name: 'Pro', email: 'pro@exemple.test' }));
+    assert.equal((await preparerInvitation(db, 'em-studio', 'm-pro', new Date(), trouver)).raison, 'compte-existant');
   });
 });

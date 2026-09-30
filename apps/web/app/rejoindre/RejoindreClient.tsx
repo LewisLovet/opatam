@@ -16,9 +16,9 @@ import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import {
   auth,
+  callRequestPasswordReset,
   createUserWithEmail,
   onAuthChange,
-  resetPassword,
   signInWithEmail,
   signOutUser,
 } from '@booking-app/firebase';
@@ -142,7 +142,9 @@ export default function RejoindreClient() {
     if (!invitation) return;
     setErreur(null);
     try {
-      await resetPassword(invitation.email);
+      // L'e-mail Opatam (fonction `requestPasswordReset`), comme partout
+      // ailleurs — jamais le modèle brut de Firebase.
+      await callRequestPasswordReset(invitation.email);
       setInfo(`Un lien pour choisir un nouveau mot de passe a été envoyé à ${invitation.email}.`);
     } catch (err) {
       setErreur(messageAuth((err as { code?: string }).code));
@@ -268,9 +270,20 @@ export default function RejoindreClient() {
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
             <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Votre accès est prêt</h1>
             <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              Téléchargez l’application Opatam et connectez-vous avec <strong>{invitation.email}</strong> et votre mot
-              de passe : votre espace {invitation.businessName} vous attend.
+              Votre espace {invitation.businessName} vous attend dans l’application Opatam.
             </p>
+            <ol className="mx-auto mt-5 max-w-sm space-y-2 text-left text-sm text-gray-700 dark:text-gray-200">
+              <li>
+                <strong>1.</strong> Téléchargez l’application (liens ci-dessous) ou ouvrez-la.
+              </li>
+              <li>
+                <strong>2.</strong> Touchez <strong>« Se connecter »</strong> — pas « Créer un compte ».
+              </li>
+              <li>
+                <strong>3.</strong> Entrez <strong>{invitation.email}</strong> et le mot de passe que vous venez de
+                choisir.
+              </li>
+            </ol>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <a
                 href={APP_STORE_URL}

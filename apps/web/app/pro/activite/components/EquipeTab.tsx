@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 import { ReglagesEspaceMembre } from './ReglagesEspaceMembre';
+import { inviterMembre, verifierEmailMembre } from './AccesAppMembre';
 import { useEspaceMembreOuvert } from '@/hooks/useEspaceMembreOuvert';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import { LieuSection } from './organisation/LieuSection';
@@ -812,8 +813,29 @@ export function EquipeTab() {
     await appliquer({ memberIds: nouveaux }, null);
   };
 
+  /** Envoie l'accès à l'app ; un échec ne défait jamais la création. */
+  const envoyerAcces = async (memberId: string, debut: string) => {
+    try {
+      const email = await inviterMembre(memberId);
+      toast.success(`${debut} — accès à l’app envoyé à ${email}`);
+    } catch (err) {
+      toast.error(`${debut}, mais l’accès à l’app n’est pas parti : ${(err as Error).message}`);
+    }
+  };
+
   const handleSave = async (data: MemberFormData) => {
     if (!provider) return;
+
+    // Espace membre ouvert : l'adresse devient l'identifiant de connexion du
+    // membre. Une adresse déjà prise l'emmènerait dans le compte de quelqu'un
+    // d'autre — refusée AVANT toute écriture.
+    const adresse = data.email.trim();
+    const nouvelleAdresse =
+      !selectedMember || adresse.toLowerCase() !== (selectedMember.email ?? '').trim().toLowerCase();
+    if (espaceMembreOuvert && nouvelleAdresse && !selectedMember?.isDefault && adresse) {
+      const v = await verifierEmailMembre(adresse, selectedMember?.id);
+      if (!v.disponible) throw new Error(v.message ?? 'Cette adresse ne peut pas être utilisée');
+    }
 
     try {
       let memberId: string;
@@ -842,7 +864,14 @@ export function EquipeTab() {
         }
 
         await appliquerAttributions(plan);
-        toast.success('Membre mis à jour');
+        // Adresse changée : l'invitation en cours visait l'ancienne.
+        const adresseChangee =
+          data.email.trim().toLowerCase() !== (selectedMember.email ?? '').trim().toLowerCase();
+        if (espaceMembreOuvert && adresseChangee && !selectedMember.isDefault && data.email.trim()) {
+          await envoyerAcces(memberId, 'Membre mis à jour');
+        } else {
+          toast.success('Membre mis à jour');
+        }
       } else {
         const newMember = await memberService.createMember(provider.id, {
           name: data.name,
@@ -866,7 +895,13 @@ export function EquipeTab() {
         }
 
         await appliquerAttributions(planifierAttributions(memberId, data.serviceIds));
-        toast.success('Membre créé');
+        // Espace membre : l'accès à l'app part tout de suite, sans seconde
+        // manipulation — le membre n'a plus qu'à choisir son mot de passe.
+        if (espaceMembreOuvert) {
+          await envoyerAcces(memberId, 'Membre créé');
+        } else {
+          toast.success('Membre créé');
+        }
       }
       await fetchData();
     } catch (error) {

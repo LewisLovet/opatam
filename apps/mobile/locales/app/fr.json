@@ -3592,6 +3592,24 @@
       "carteTexte": "Chaque membre peut avoir son propre accès : touchez « App » sur sa fiche.",
       "voirCA": "Les membres voient leur chiffre d'affaires",
       "voirCAAide": "Seulement le leur, jamais celui du salon."
+    },
+    "form": {
+      "confirmerEmail": "Confirmez l'e-mail",
+      "confirmerEmailPlaceholder": "Saisissez-le une seconde fois",
+      "emailsDifferents": "Les deux adresses e-mail ne correspondent pas",
+      "accesEnvoye": "{{debut}} — accès à l'app envoyé à {{email}}",
+      "accesPasParti": "{{debut}}, mais l'accès à l'app n'est pas parti : {{erreur}}"
+    },
+    "connexion": {
+      "lien": "Vous avez reçu une invitation de votre salon ?",
+      "titre": "Rejoindre votre équipe",
+      "texte": "Connectez-vous avec l'adresse où vous avez reçu l'invitation, et le mot de passe choisi en suivant son lien. Pas encore de mot de passe ? Ouvrez d'abord le lien reçu par e-mail."
+    },
+    "inscription": {
+      "titre": "Invitation en attente",
+      "texte": "Cette adresse a reçu une invitation à rejoindre une équipe sur Opatam. Pour la rejoindre, ouvrez le lien reçu par e-mail plutôt que de créer un salon : sinon, cette adresse ne pourra plus rejoindre l'équipe.",
+      "utiliserLien": "J'utilise le lien",
+      "creerSalon": "Créer mon salon"
     }
   }
 }

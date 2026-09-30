@@ -3592,6 +3592,24 @@
       "carteTexte": "Jedes Mitglied kann einen eigenen Zugang haben: Tippe auf „App“ in seiner Karte.",
       "voirCA": "Mitglieder sehen ihren Umsatz",
       "voirCAAide": "Nur den eigenen, nie den des Salons."
+    },
+    "form": {
+      "confirmerEmail": "E-Mail bestätigen",
+      "confirmerEmailPlaceholder": "Ein zweites Mal eingeben",
+      "emailsDifferents": "Die beiden E-Mail-Adressen stimmen nicht überein",
+      "accesEnvoye": "{{debut}} — App-Zugang an {{email}} gesendet",
+      "accesPasParti": "{{debut}}, aber der App-Zugang wurde nicht gesendet: {{erreur}}"
+    },
+    "connexion": {
+      "lien": "Hast du eine Einladung deines Salons erhalten?",
+      "titre": "Deinem Team beitreten",
+      "texte": "Melde dich mit der Adresse an, an die die Einladung ging, und mit dem Passwort, das du über den Link gewählt hast. Noch kein Passwort? Öffne zuerst den Link aus der E-Mail."
+    },
+    "inscription": {
+      "titre": "Offene Einladung",
+      "texte": "Diese Adresse hat eine Einladung erhalten, einem Team auf Opatam beizutreten. Öffne dazu den Link aus der E-Mail, statt einen Salon zu erstellen — sonst kann diese Adresse dem Team nicht mehr beitreten.",
+      "utiliserLien": "Ich nutze den Link",
+      "creerSalon": "Meinen Salon erstellen"
     }
   }
 }
