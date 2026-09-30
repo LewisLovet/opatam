@@ -18,6 +18,7 @@ import type { WithId } from '@booking-app/firebase';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
 import { Card } from '../Card';
+import { Avatar } from '../Avatar';
 import { useProvider, useEspaceMembre } from '../../contexts';
 import { useProviderBookings } from '../../hooks/useProviderBookings';
 import { useProBookingBadges } from '../../hooks/useBookingBadges';
@@ -98,13 +99,32 @@ export function AccueilMembre() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
-          <Text variant="h1" style={{ color: '#FFFFFF' }}>
-            {prenom ? t('espaceMembre.accueil.bonjour', { prenom }) : t('espaceMembre.accueil.bonjourSeul')}
-          </Text>
-          <Text variant="body" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
-            {provider?.businessName ?? ''}
-          </Text>
+        <View
+          style={{
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.lg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+          }}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text variant="h1" style={{ color: '#FFFFFF' }} numberOfLines={1}>
+              {prenom ? t('espaceMembre.accueil.bonjour', { prenom }) : t('espaceMembre.accueil.bonjourSeul')}
+            </Text>
+            <Text variant="body" style={{ color: 'rgba(255,255,255,0.85)', marginTop: 2 }} numberOfLines={1}>
+              {provider?.businessName ?? ''}
+            </Text>
+          </View>
+          {/* Le salon auquel il appartient, comme l'avatar du tableau de bord du gérant. */}
+          <View
+            style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: radius.full }}
+            accessible
+            accessibilityLabel={provider?.businessName ?? undefined}
+          >
+            <Avatar imageUrl={provider?.photoURL || undefined} name={provider?.businessName || 'O'} size="lg" />
+          </View>
         </View>
       </View>
 
