@@ -18,6 +18,7 @@ import { StickyFooter } from './StickyFooter';
 import { WeeklyPreview } from './WeeklyPreview';
 import { BlockedSlotsSection, type BlockedSlotFormData } from './BlockedSlotsSection';
 import { CopierHorairesVers } from './organisation/CopierHorairesVers';
+import { PlanningJourParJour } from './PlanningJourParJour';
 import { useScheduleReducer, type DaySchedule } from '../hooks/useScheduleReducer';
 import { horairesEnVigueur, resumerHoraires, genererOccurrences, horlogeDuFuseau } from '@booking-app/shared';
 import type { BlockedSlot, Location, Member } from '@booking-app/shared';
@@ -527,6 +528,16 @@ export function DisponibilitesTab() {
             </div>
           )}
 
+          {selectedMember?.variableHours && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                Horaires variables activés pour {selectedMember.name} : cette semaine type ne s’applique pas.
+                Seuls les jours ouverts dans le planning jour par jour ci-dessous sont réservables.
+              </span>
+            </div>
+          )}
+
           {/* Quick templates */}
           <QuickTemplates onApply={applyTemplate} />
 
@@ -584,6 +595,18 @@ export function DisponibilitesTab() {
           </div>
         </div>
       </div>
+
+      {/* Horaires datés : sous la semaine type, date par date. */}
+      {provider && selectedMember && (
+        <PlanningJourParJour
+          key={selectedMember.id}
+          providerId={provider.id}
+          membre={selectedMember}
+          onHorairesVariables={(actif) =>
+            setMembers((ms) => ms.map((m) => (m.id === selectedMember.id ? { ...m, variableHours: actif } : m)))
+          }
+        />
+      )}
 
       {/* Sticky save footer */}
       <StickyFooter
