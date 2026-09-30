@@ -33,6 +33,7 @@ import {
   apparenceAcces,
   ReglageCAMembres,
 } from '../../components/business/AccesAppMembres';
+import { useEspaceMembreOuvert } from '../../hooks/useEspaceMembreOuvert';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
@@ -91,6 +92,8 @@ export default function MembersScreen() {
   const sub = useSubscriptionStatus();
   // Espace membre (Studio) : l'accès de chaque membre à l'app.
   const { etatDe: etatAcces, recharger: rechargerAcces } = useAccesMembres(providerId);
+  // Livré éteint, ouvert salon par salon (config/espaceMembre).
+  const espaceMembreOuvert = useEspaceMembreOuvert(providerId);
   const jetonGerant = useJetonGerant();
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
@@ -955,7 +958,7 @@ export default function MembersScreen() {
               </Text>
             </Pressable>
 
-            {!member.isDefault && (() => {
+            {!member.isDefault && espaceMembreOuvert && (() => {
               const etat = etatAcces(member.id);
               const { icone, couleur } = apparenceAcces(etat, colors);
               return (
@@ -1630,7 +1633,7 @@ export default function MembersScreen() {
         )}
 
         {/* Espace membre (Studio) : un accès à l'app par membre. */}
-        {providerId && members.some((m) => !m.isDefault) && sub.plan !== 'solo' && sub.plan !== 'trial' && (
+        {providerId && espaceMembreOuvert && members.some((m) => !m.isDefault) && sub.plan !== 'solo' && sub.plan !== 'trial' && (
           <ReglageCAMembres
             providerId={providerId}
             valeurInitiale={provider?.settings?.memberRevenueVisible === true}

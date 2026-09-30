@@ -14,7 +14,7 @@
  */
 import type { Firestore } from 'firebase-admin/firestore';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { computeEntitlements, isTeamTier } from '@booking-app/shared';
+import { computeEntitlements, espaceMembreOuvert, isTeamTier } from '@booking-app/shared';
 import { MEMBER_INVITE_TTL_DAYS } from './member-invite';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,6 +27,8 @@ export function salonOuvertAuxMembres(provider: FirebaseFirestore.DocumentData |
 }
 
 export type RefusInvitation =
+  /** Interrupteur `config/espaceMembre` fermé pour ce salon. */
+  | 'pas-ouvert'
   | 'salon-introuvable'
   | 'plan'
   | 'membre-introuvable'
@@ -53,11 +55,13 @@ export async function preparerInvitation(
   memberId: string,
   maintenant = new Date(),
 ): Promise<{ ok: true; invitation: InvitationPreparee } | { ok: false; raison: RefusInvitation }> {
-  const [provider, membre, enCours] = await Promise.all([
+  const [config, provider, membre, enCours] = await Promise.all([
+    db.collection('config').doc('espaceMembre').get(),
     db.collection('providers').doc(providerId).get(),
     db.collection('providers').doc(providerId).collection('members').doc(memberId).get(),
     db.collection('memberInvitations').where('providerId', '==', providerId).get(),
   ]);
+  if (!espaceMembreOuvert(config.data(), providerId)) return { ok: false, raison: 'pas-ouvert' };
   if (!provider.exists) return { ok: false, raison: 'salon-introuvable' };
   if (!salonOuvertAuxMembres(provider.data())) return { ok: false, raison: 'plan' };
   if (!membre.exists) return { ok: false, raison: 'membre-introuvable' };

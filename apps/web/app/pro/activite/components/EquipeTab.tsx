@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 import { ReglagesEspaceMembre } from './ReglagesEspaceMembre';
+import { useEspaceMembreOuvert } from '@/hooks/useEspaceMembreOuvert';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import { LieuSection } from './organisation/LieuSection';
 import {
@@ -55,6 +56,8 @@ export function EquipeTab() {
   const { provider } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  // Espace membre : livré éteint, ouvert salon par salon (config/espaceMembre).
+  const espaceMembreOuvert = useEspaceMembreOuvert(provider?.id);
 
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<WithId<Member>[]>([]);
@@ -1280,7 +1283,7 @@ export function EquipeTab() {
           </div>
 
           {/* Espace membre (Studio) : un accès à l'app par membre. */}
-          {!isSoloPlan && provider && <ReglagesEspaceMembre provider={provider} />}
+          {!isSoloPlan && provider && espaceMembreOuvert && <ReglagesEspaceMembre provider={provider} />}
         </>
       )}
 

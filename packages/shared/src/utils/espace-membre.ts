@@ -55,3 +55,17 @@ export function etatAccesMembre(
   }
   return { etat: 'invite', email: enAttente.email ?? '', envoyeeLe: enAttente.createdAt ?? null, expireLe };
 }
+
+/**
+ * L'espace membre est-il ouvert à ce salon ? Interrupteur `config/espaceMembre`
+ * `{ enabledForAll: boolean, allowedProviderIds: string[] }` — même principe
+ * que la messagerie Opatam : livrer éteint, ouvrir à quelques salons pour
+ * tester, puis à tous, sans nouvelle version. Document absent ou illisible
+ * = fermé (défaut sûr).
+ */
+export function espaceMembreOuvert(config: unknown, providerId: string | null | undefined): boolean {
+  if (!providerId || !config || typeof config !== 'object') return false;
+  const c = config as { enabledForAll?: unknown; allowedProviderIds?: unknown };
+  if (c.enabledForAll === true) return true;
+  return Array.isArray(c.allowedProviderIds) && c.allowedProviderIds.includes(providerId);
+}

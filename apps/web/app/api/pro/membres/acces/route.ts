@@ -35,6 +35,7 @@ async function memberIdDe(req: NextRequest): Promise<string | null> {
 }
 
 const REFUS: Record<RefusInvitation, { status: number; message: string }> = {
+  'pas-ouvert': { status: 403, message: "L'espace membre n'est pas encore ouvert à votre salon" },
   'salon-introuvable': { status: 404, message: 'Salon introuvable' },
   plan: { status: 403, message: "L'accès des membres à l'app fait partie du plan Studio" },
   'membre-introuvable': { status: 404, message: 'Membre introuvable' },

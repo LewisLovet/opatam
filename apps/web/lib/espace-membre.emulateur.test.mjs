@@ -51,6 +51,10 @@ const fiche = (extra = {}) => ({ name: 'Jean Dupont', email: 'Jean@Exemple.test'
 
 before(async () => {
   const pose = (chemin, data) => db.doc(chemin).set(data);
+  // Interrupteur : ouvert aux salons de test (em-ferme n'y est pas).
+  await pose('config/espaceMembre', { enabledForAll: false, allowedProviderIds: ['em-studio', 'em-solo', 'em-nulle-part'] });
+  await pose('providers/em-ferme', STUDIO);
+  await pose('providers/em-ferme/members/f1', fiche({ email: 'f@exemple.test' }));
   await pose('providers/em-studio', STUDIO);
   await pose('providers/em-studio/members/m1', fiche());
   await pose('providers/em-studio/members/m2', fiche({ name: 'Lina', email: 'lina@exemple.test' }));
@@ -89,6 +93,9 @@ describe('qui peut être invité', () => {
     assert.equal(r.ok, true);
     assert.equal(r.invitation.email, 'jean@exemple.test');
     assert.equal(r.invitation.businessName, 'Salon Studio');
+  });
+  it('interrupteur fermé pour ce salon : refusé, même Studio', async () => {
+    assert.equal((await preparerInvitation(db, 'em-ferme', 'f1')).raison, 'pas-ouvert');
   });
   it('refus : salon Solo, membre principal, membre inactif, sans adresse, inconnu', async () => {
     assert.equal((await preparerInvitation(db, 'em-solo', 's1')).raison, 'plan');

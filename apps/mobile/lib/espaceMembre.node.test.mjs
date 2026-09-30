@@ -91,3 +91,17 @@ describe('les textes du mode membre existent dans les cinq langues', () => {
     }
   });
 });
+
+describe('livré éteint : l’interrupteur config/espaceMembre', () => {
+  it('le serveur refuse d’inviter pour un salon non ouvert', () => {
+    const src = lire('apps/web/lib/espace-membre.ts');
+    assert.match(src, /if \(!espaceMembreOuvert\(config\.data\(\), providerId\)\) return \{ ok: false, raison: 'pas-ouvert' \};/);
+  });
+  it('l’interface du gérant n’apparaît que si l’interrupteur est ouvert — site et app', () => {
+    assert.match(lire('apps/web/app/pro/activite/components/MemberModal.tsx'), /\.\.\.\(espaceMembreOuvert \? \[\{ id: 'app'/);
+    assert.match(lire('apps/web/app/pro/activite/components/EquipeTab.tsx'), /espaceMembreOuvert && <ReglagesEspaceMembre/);
+    const app = lire('apps/mobile/app/(pro)/members.tsx');
+    assert.match(app, /!member\.isDefault && espaceMembreOuvert && \(\(\) => \{/);
+    assert.match(app, /providerId && espaceMembreOuvert && members\.some/);
+  });
+});

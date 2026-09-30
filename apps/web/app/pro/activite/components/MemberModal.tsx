@@ -14,6 +14,7 @@ import {
 } from '@/components/ui';
 import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check, Camera, X, Smartphone } from 'lucide-react';
 import { AccesAppMembre } from './AccesAppMembre';
+import { useEspaceMembreOuvert } from '@/hooks/useEspaceMembreOuvert';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadFile, storagePaths, memberService } from '@booking-app/firebase';
 import type { Member, Location, Service } from '@booking-app/shared';
@@ -70,6 +71,8 @@ export function MemberModal({
 }: MemberModalProps) {
   const toast = useToast();
   const { provider } = useAuth();
+  // Espace membre : onglet visible seulement quand l'interrupteur est ouvert.
+  const espaceMembreOuvert = useEspaceMembreOuvert(provider?.id);
   const isEditing = !!member;
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -411,7 +414,7 @@ export function MemberModal({
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'info', label: 'Informations', icon: <User className="w-4 h-4" /> },
     { id: 'assignments', label: 'Lieux & Prestations', icon: <MapPin className="w-4 h-4" /> },
-    { id: 'app', label: 'Accès à l’app', icon: <Smartphone className="w-4 h-4" /> },
+    ...(espaceMembreOuvert ? [{ id: 'app' as TabId, label: 'Accès à l’app', icon: <Smartphone className="w-4 h-4" /> }] : []),
     { id: 'code', label: 'Code', icon: <Key className="w-4 h-4" /> },
   ];
 

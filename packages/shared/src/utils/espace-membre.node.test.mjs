@@ -52,3 +52,19 @@ describe('état d’accès d’un membre', () => {
     assert.deepEqual(e, { etat: 'aucun' });
   });
 });
+
+import { espaceMembreOuvert } from './espace-membre.ts';
+
+describe('interrupteur de l’espace membre', () => {
+  it('fermé par défaut : document absent, illisible, ou salon non listé', () => {
+    for (const cfg of [undefined, null, 'x', 42, {}, { allowedProviderIds: 'salon-a' }, { enabledForAll: 'true' }]) {
+      assert.equal(espaceMembreOuvert(cfg, 'salon-a'), false, JSON.stringify(cfg));
+    }
+    assert.equal(espaceMembreOuvert({ allowedProviderIds: ['salon-b'] }, 'salon-a'), false);
+    assert.equal(espaceMembreOuvert({ enabledForAll: true }, null), false);
+  });
+  it('ouvert : salon listé (phase de test), ou tous', () => {
+    assert.equal(espaceMembreOuvert({ allowedProviderIds: ['salon-a'] }, 'salon-a'), true);
+    assert.equal(espaceMembreOuvert({ enabledForAll: true, allowedProviderIds: [] }, 'salon-z'), true);
+  });
+});
