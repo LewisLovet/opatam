@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { STORY_CONTENT_LABELS } from '@/lib/storyContentLabels';
 
 /**
  * GET /api/admin/stories?days=30 — qui partage des stories, et lesquelles.
@@ -14,15 +15,8 @@ import { getAdminFirestore } from '@/lib/firebase-admin';
  * aux récompenses / vérifications des prestataires qui publient souvent.
  */
 
-const CONTENT_LABELS: Record<string, string> = {
-  services: 'Prestations',
-  availabilities: 'Disponibilités',
-  review: 'Avis',
-  loyalty: 'Fidélité',
-  none: 'QR code',
-  realisation: 'Réalisation',
-  avantApres: 'Avant / après',
-};
+// Table partagée avec le tableau de bord admin.
+const CONTENT_LABELS = STORY_CONTENT_LABELS;
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);

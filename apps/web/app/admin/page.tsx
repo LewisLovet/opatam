@@ -3,18 +3,13 @@
 import { useEffect, useState } from 'react';
 import { formatPrice } from '@booking-app/shared';
 import {
-  Users,
   Briefcase,
   Calendar,
-  TrendingUp,
   Coins,
-  DollarSign,
-  UserPlus,
-  XCircle,
   RefreshCw,
-  Eye,
+  Repeat,
   CalendarCheck,
-  Share2,
+  Store,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -22,20 +17,22 @@ import { app } from '@booking-app/firebase';
 import { acquisitionChannelLabel } from '@booking-app/shared';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminStatsService } from '@/services/admin';
-import type { DashboardStats, TrendData, CategoryData, RecentSignups } from '@/services/admin/types';
-import { AdminStatCard } from './components/AdminStatCard';
-import { SignupsChart } from './components/SignupsChart';
-import { BookingsTrendChart } from './components/BookingsTrendChart';
+import type { DashboardStats, CategoryData, RecentSignups, AdminOverview } from '@/services/admin/types';
 import { BookingsByCategoryChart } from './components/BookingsByCategoryChart';
-import { PageViewsTrendChart } from './components/PageViewsTrendChart';
+import { HeroKpi } from './components/dashboard/HeroKpi';
+import { TodayBand } from './components/dashboard/TodayBand';
+import { MainChart } from './components/dashboard/MainChart';
+import { TodoPanel } from './components/dashboard/TodoPanel';
+import { TopProsCard } from './components/dashboard/TopProsCard';
+import { ActivationFunnel } from './components/dashboard/ActivationFunnel';
+import { LandingPagesCard } from './components/dashboard/LandingPagesCard';
+import { DeltaPill, nombre } from './components/dashboard/primitives';
 import { Loader } from '@/components/ui';
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [signupsTrend, setSignupsTrend] = useState<TrendData[]>([]);
-  const [bookingsTrend, setBookingsTrend] = useState<TrendData[]>([]);
-  const [pageViewsTrend, setPageViewsTrend] = useState<TrendData[]>([]);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [recentSignups, setRecentSignups] = useState<RecentSignups | null>(null);
   const [signupsTab, setSignupsTab] = useState<'providers' | 'clients'>('providers');
@@ -64,21 +61,20 @@ export default function AdminDashboardPage() {
 
     const loadData = async () => {
       try {
-        const [statsData, signups, bookings, pageViews, categories, recent] = await Promise.all([
+        const [statsData, categories, recent, vue] = await Promise.all([
           adminStatsService.getDashboardStats(user.id),
-          adminStatsService.getSignupsTrend(user.id, 30),
-          adminStatsService.getBookingsTrend(user.id, 30),
-          adminStatsService.getPageViewsTrend(user.id, 30),
           adminStatsService.getBookingsByCategory(user.id),
           adminStatsService.getRecentSignups(user.id),
+          // Un bloc en panne ne doit pas vider tout le tableau de bord.
+          adminStatsService.getOverview().catch((e) => {
+            console.error('Overview failed:', e);
+            return null;
+          }),
         ]);
-
         setStats(statsData);
-        setSignupsTrend(signups);
-        setBookingsTrend(bookings);
-        setPageViewsTrend(pageViews);
         setCategoryData(categories);
         setRecentSignups(recent);
+        setOverview(vue);
       } catch (err) {
         console.error('Error loading admin stats:', err);
         setError('Erreur lors du chargement des données');
@@ -110,128 +106,120 @@ export default function AdminDashboardPage() {
   const autresDevises = Object.keys(stats.serviceFeesByCurrency ?? {}).filter(
     (d) => d !== 'EUR',
   );
+  const euros = (cents: number) => formatPrice(cents, 'EUR');
+  const aujourdhui = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      {/* En-tête */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Vue d&apos;ensemble de la plateforme
-          </p>
+          <p className="text-sm font-medium capitalize text-red-500">{aujourdhui}</p>
+          <h1 className="mt-0.5 text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Tableau de bord
+          </h1>
         </div>
         <button
           type="button"
           onClick={handleRecompute}
           disabled={recomputing}
           title="Recompte les stats depuis la source (exclut les comptes de test) — corrige toute dérive"
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 shrink-0"
+          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 shrink-0"
         >
           <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} />
           {recomputing ? 'Recalcul…' : 'Recalculer'}
         </button>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AdminStatCard
-          label="Utilisateurs"
-          value={stats.totalUsers}
-          icon={<Users className="w-5 h-5 text-red-500" />}
-          trend={{ value: stats.newSignupsToday, label: "aujourd'hui" }}
+      {/* Les quatre chiffres qui comptent, comparés à la période d'avant */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <HeroKpi
+          label="MRR net"
+          accent="red"
+          icon={<Repeat className="h-5 w-5" />}
+          value={euros(stats.mrr)}
+          detail={
+            stats.mrrPreviousMonth !== null && stats.mrrPreviousMonth !== undefined ? (
+              <DeltaPill value={stats.mrr} previous={stats.mrrPreviousMonth} suffix="vs mois dernier" />
+            ) : (
+              <span className="text-xs text-gray-400">comparaison au mois dernier dès le mois prochain</span>
+            )
+          }
+          footer={
+            <>
+              Encaissé ce mois : <span className="font-semibold text-gray-700 dark:text-gray-200">{euros(stats.collectedThisMonth)}</span>
+              {stats.collectedLastMonth > 0 ? ` · ${euros(stats.collectedLastMonth)} le mois dernier` : ''}
+            </>
+          }
         />
-        <AdminStatCard
-          label="Actifs aujourd'hui"
-          value={stats.activeToday.total.clients + stats.activeToday.total.prestataires}
-          icon={<Users className="w-5 h-5 text-emerald-500" />}
-          trend={{
-            value: stats.activeToday.total.prestataires,
-            label: 'prestataires',
-          }}
+        <HeroKpi
+          label="Réservations · 30 j"
+          accent="violet"
+          icon={<CalendarCheck className="h-5 w-5" />}
+          value={overview ? nombre(overview.bookings30.value) : nombre(stats.bookingsMonth)}
+          detail={overview && <DeltaPill value={overview.bookings30.value} previous={overview.bookings30.previous} />}
+          spark={overview?.bookings30.spark}
         />
-        <AdminStatCard
-          label="Encaissé (ce mois)"
-          value={stats.collectedThisMonth}
-          icon={<DollarSign className="w-5 h-5 text-emerald-500" />}
-          format="currency"
+        <HeroKpi
+          label="Pros qui travaillent"
+          accent="sky"
+          icon={<Store className="h-5 w-5" />}
+          value={
+            overview ? (
+              <>
+                {overview.workingPros.value}
+                <span className="ml-1 text-base font-medium text-gray-400">/ {overview.workingPros.total}</span>
+              </>
+            ) : (
+              '—'
+            )
+          }
+          detail={overview && <DeltaPill value={overview.workingPros.value} previous={overview.workingPros.previous} />}
+          footer="au moins une réservation reçue en 30 j, sur les pros publiés"
+          gauge={overview && overview.workingPros.total > 0 ? overview.workingPros.value / overview.workingPros.total : undefined}
         />
-        <AdminStatCard
-          label="Acomptes activés"
-          value={stats.depositProviders}
-          icon={<Coins className="w-5 h-5 text-emerald-500" />}
-          trend={{
-            value: stats.serviceFeesThisMonth,
-            label: autresDevises.length > 0 ? 'de frais ce mois (EUR)' : 'de frais ce mois',
-            format: 'currency',
-          }}
-        />
-      </div>
-
-      {/* Second row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AdminStatCard
-          label="Stories (aujourd'hui)"
-          value={stats.storiesToday}
-          icon={<Share2 className="w-5 h-5 text-red-500" />}
-        />
-        <AdminStatCard
-          label="Réservations (mois)"
-          value={stats.bookingsMonth}
-          icon={<TrendingUp className="w-5 h-5 text-red-500" />}
-          trend={{ value: stats.bookingsToday, label: "aujourd'hui" }}
-        />
-        <AdminStatCard
-          label="Frais de service (mois)"
-          value={stats.serviceFeesThisMonth}
-          icon={<Coins className="w-5 h-5 text-red-500" />}
-          format="currency"
-          trend={{ value: stats.serviceFeesTotal, label: `total (${stats.serviceFeesCount} acomptes)`, format: 'currency' }}
-        />
-        <AdminStatCard
-          label="Taux d'annulation"
-          value={stats.cancellationRate}
-          icon={<XCircle className="w-5 h-5 text-red-500" />}
-          format="percentage"
-        />
-      </div>
-
-      {/* Third row — total bookings + page views */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AdminStatCard
-          label="Réservations (total)"
-          value={stats.totalBookings}
-          icon={<CalendarCheck className="w-5 h-5 text-red-500" />}
-        />
-        <AdminStatCard
-          label="Vues des pages (aujourd'hui)"
-          value={stats.pageViewsToday}
-          icon={<Eye className="w-5 h-5 text-violet-500" />}
-        />
-        <AdminStatCard
-          label="Vues (30 jours)"
-          value={stats.pageViews30Days}
-          icon={<Eye className="w-5 h-5 text-violet-500" />}
-        />
-        <AdminStatCard
-          label="Vues (total)"
-          value={stats.pageViewsTotal}
-          icon={<Eye className="w-5 h-5 text-violet-500" />}
+        <HeroKpi
+          label={autresDevises.length > 0 ? 'Frais perçus · 30 j (EUR)' : 'Frais perçus · 30 j'}
+          accent="emerald"
+          icon={<Coins className="h-5 w-5" />}
+          value={overview ? euros(overview.fees30.value) : euros(stats.serviceFeesThisMonth)}
+          detail={overview && <DeltaPill value={overview.fees30.value} previous={overview.fees30.previous} />}
+          footer={
+            overview && (
+              <>
+                {euros(overview.fees30.thisMonth)} ce mois · {euros(overview.fees30.allTime)} depuis le début
+              </>
+            )
+          }
+          spark={overview?.fees30.spark}
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SignupsChart data={signupsTrend} />
-        <BookingsTrendChart data={bookingsTrend} />
-        <PageViewsTrendChart data={pageViewsTrend} />
+      {/* La journée en cours */}
+      <TodayBand stats={stats} overview={overview} />
+
+      {/* Le grand graphique et ce qui demande une action */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
+          <MainChart />
+        </div>
+        {overview && <TodoPanel todo={overview.todo} />}
       </div>
+
+      {/* Qui fait vivre la plateforme, ce qui attire, et ce que deviennent les nouveaux */}
+      {overview && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <TopProsCard pros={overview.topPros} />
+          <LandingPagesCard pages={overview.landingPages} />
+          <ActivationFunnel activation={overview.activation} />
+        </div>
+      )}
 
       {/* Recent signups */}
       {recentSignups && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Derniers inscrits — onglets Prestataires / Clients */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Briefcase className="w-4 h-4" />
@@ -377,7 +365,7 @@ export default function AdminDashboardPage() {
               l'euro donnerait un montant qui n'existe pas : ce sont des
               unites differentes et aucun taux n'est stocke. */}
           {autresDevises.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 px-5 py-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 px-5 py-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                 Frais de service par devise
               </h3>
@@ -405,14 +393,14 @@ export default function AdminDashboardPage() {
           {/* Réservations AVEC acompte. Elles sont rares : sans bloc
               dédié elles n'apparaissent jamais dans la liste ci-dessous,
               alors que ce sont précisément celles qui rapportent. */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-900/40">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-900/40">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Coins className="w-4 h-4 text-emerald-500" />
-                Réservations avec acompte
+                Derniers frais perçus
               </h3>
               <span className="text-xs text-gray-400">
-                {stats.serviceFeesCount} au total
+                {euros(stats.serviceFeesTotal)} depuis le début
               </span>
             </div>
             {recentSignups.depositBookings.length === 0 ? (
@@ -443,12 +431,10 @@ export default function AdminDashboardPage() {
                     {b.deposit && (
                       <div className="flex-shrink-0 text-right">
                         <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                          {formatPrice(b.deposit.amount, b.currency)}
+                          {b.deposit.serviceFee > 0 ? `+${formatPrice(b.deposit.serviceFee, b.currency)}` : 'sans frais'}
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          {b.deposit.serviceFee > 0
-                            ? `${formatPrice(b.deposit.serviceFee, b.currency)} de frais`
-                            : 'sans frais'}
+                          acompte de {formatPrice(b.deposit.amount, b.currency)}
                           {b.deposit.status === 'refunded' ? ' · remboursé' : ''}
                         </p>
                       </div>
@@ -461,7 +447,7 @@ export default function AdminDashboardPage() {
 
           {/* Dernières réservations — qui réserve chez qui : signal direct
               des prestataires qui travaillent. */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
@@ -544,11 +530,17 @@ export default function AdminDashboardPage() {
         <BookingsByCategoryChart data={categoryData} />
 
         {/* Additional stats card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/60">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
             Indicateurs clés
           </h3>
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Utilisateurs</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {stats.totalUsers}
+              </span>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500 dark:text-gray-400">Clients</span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -562,15 +554,9 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Inscriptions (mois)</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Réservations (total)</span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {stats.newSignupsMonth}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Réservations (semaine)</span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {stats.bookingsWeek}
+                {stats.totalBookings}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -580,7 +566,7 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Conversion trial</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Conversion essai → payant</span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {stats.trialConversionRate}%
               </span>

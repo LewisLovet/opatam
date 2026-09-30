@@ -21,6 +21,11 @@ export interface DashboardStats {
   pageViewsTotal: number;
   /** Net recurring revenue (cents/month), all products, after discounts. */
   mrr: number;
+  /** MRR relevé le mois précédent (stats/mrrMonthly) — null tant qu'aucun
+   *  relevé n'existe pour ce mois-là. */
+  mrrPreviousMonth: number | null;
+  /** Encaissé le mois précédent (factures payées, cents). */
+  collectedLastMonth: number;
   /** Real cash collected this month (sum of paid Stripe invoices, cents). */
   collectedThisMonth: number;
   cancellationRate: number;
@@ -44,6 +49,8 @@ export interface DashboardStats {
   depositProviders: number;
   /** Stories partagees depuis minuit. */
   storiesToday: number;
+  /** Qui les a partagees, le plus actif en tete (comptes de test signales). */
+  storiesTodayBy: StoryAuthorToday[];
   /**
    * Comptes vus aujourd'hui, par deux mesures qui ne disent pas la meme
    * chose : `visites` = a ouvert l'application (mesure juste, mais elle ne
@@ -66,6 +73,82 @@ export interface DashboardStats {
 export interface TrendData {
   date: string;
   count: number;
+}
+
+/** Un prestataire qui a partage au moins une story aujourd'hui. */
+export interface StoryAuthorToday {
+  providerId: string;
+  businessName: string;
+  photoURL: string | null;
+  isTest: boolean;
+  count: number;
+  /** Libelles des contenus partages (Realisation, Avant / apres…). */
+  contents: string[];
+  /** Au moins un partage vers Instagram. */
+  instagram: boolean;
+}
+
+/** Un prestataire cité par le tableau de bord (à faire, top du mois…). */
+export interface OverviewProRef {
+  id: string;
+  name: string;
+  photoURL: string | null;
+  /** Date utile selon la liste : fin d'essai, dernière réservation,
+   *  inscription, dernier message. ISO ; null = jamais. */
+  date?: string | null;
+}
+
+/** Chiffre sur 30 jours comparé aux 30 jours d'avant. */
+export interface OverviewCompare {
+  value: number;
+  previous: number;
+}
+
+export interface AdminOverview {
+  generatedAt: string;
+  /** Réservations créées (hors abandons de paiement, hors comptes de test). */
+  bookings30: OverviewCompare & { spark: number[] };
+  /** Prestataires ayant reçu au moins une réservation, sur les publiés. */
+  workingPros: OverviewCompare & { total: number };
+  /** Frais de service perçus, en centimes d'EURO. */
+  fees30: OverviewCompare & {
+    spark: number[];
+    thisMonth: number;
+    allTime: number;
+    /** Autres devises sur 30 jours, jamais additionnées. */
+    otherCurrencies: Record<string, number>;
+  };
+  todo: {
+    trialsEnding: OverviewProRef[];
+    idlePaying: OverviewProRef[];
+    unpublished: OverviewProRef[];
+    pendingMessages: OverviewProRef[];
+  };
+  /** Top 5 du mois en réservations ; chiffre d'affaires par devise. */
+  topPros: (OverviewProRef & { bookings: number; revenue: Record<string, number> })[];
+  /** Pros inscrits en 30 jours, étape par étape. */
+  activation: { signedUp: number; published: number; firstBooking: number; paying: number };
+  /** Pages d'accueil : la principale (/) puis chaque page métier du registre. */
+  landingPages: {
+    key: string;
+    label: string;
+    path: string;
+    /** Page en brouillon (servie en noindex, hors sitemap). */
+    draft: boolean;
+    today: number;
+    views30: number;
+    previous: number;
+  }[];
+}
+
+export type SeriesMetric = 'bookings' | 'fees' | 'signups' | 'views' | 'home';
+
+export interface SeriesData {
+  metric: SeriesMetric;
+  days: number;
+  current: { date: string; value: number }[];
+  /** Même durée juste avant — la comparaison en pointillés. */
+  previous: { date: string; value: number }[];
 }
 
 export interface CategoryData {

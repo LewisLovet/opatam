@@ -1,4 +1,4 @@
-import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups, StripeEconomics } from './types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, RecentSignups, StripeEconomics, AdminOverview, SeriesData, SeriesMetric } from './types';
 import { adminHeaders } from './adminFetch';
 
 const BASE_URL = '/api/admin/stats';
@@ -27,6 +27,22 @@ export const adminStatsService = {
       headers: await adminHeaders(),
     });
     if (!res.ok) throw new Error('Erreur lors du chargement des tendances');
+    return res.json();
+  },
+
+  /** Tableau de bord : chiffres clés, à faire, top du mois, activation. */
+  async getOverview(): Promise<AdminOverview> {
+    const res = await fetch(`${BASE_URL}?type=overview`, { headers: await adminHeaders() });
+    if (!res.ok) throw new Error('Erreur lors du chargement du tableau de bord');
+    return res.json();
+  },
+
+  /** Série du grand graphique, avec la période précédente. */
+  async getSeries(metric: SeriesMetric, days: 7 | 30 | 90): Promise<SeriesData> {
+    const res = await fetch(`${BASE_URL}?type=series&metric=${metric}&days=${days}`, {
+      headers: await adminHeaders(),
+    });
+    if (!res.ok) throw new Error('Erreur lors du chargement de la courbe');
     return res.json();
   },
 

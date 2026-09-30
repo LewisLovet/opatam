@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { storyContentLabel } from '@/lib/storyContentLabels';
 import { getStripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
 import { ACQUISITION_CHANNELS } from '@booking-app/shared';
-import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent } from '@/services/admin/types';
+import type { DashboardStats, TrendData, CategoryData, RevenueStats, AnalyticsData, ActivityEvent, SeriesMetric } from '@/services/admin/types';
+import { getOverview, getSeries } from './overview';
 
 /** Return JSON with Cache-Control header to avoid redundant Firestore reads */
 function jsonWithCache(data: unknown, maxAgeSeconds: number) {
@@ -32,6 +34,26 @@ export async function GET(request: NextRequest) {
     if (type === 'bookings-trend') {
       const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
       const data = await getBookingsTrend(db, days);
+      return jsonWithCache(data, 120);
+    }
+
+    // Nouveau tableau de bord : vue d'ensemble (chiffres clés, à faire,
+    // top du mois, activation) et séries du grand graphique.
+    if (type === 'overview') {
+      const data = await getOverview(db);
+      return jsonWithCache(data, 120);
+    }
+
+    if (type === 'series') {
+      const metricParam = request.nextUrl.searchParams.get('metric');
+      const metric: SeriesMetric =
+        metricParam === 'fees' || metricParam === 'signups' || metricParam === 'views' || metricParam === 'home'
+          ? metricParam
+          : 'bookings';
+      const days = [7, 30, 90].includes(Number(request.nextUrl.searchParams.get('days')))
+        ? Number(request.nextUrl.searchParams.get('days'))
+        : 30;
+      const data = await getSeries(db, metric, days);
       return jsonWithCache(data, 120);
     }
 
@@ -229,11 +251,11 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     db.collection('bookings').where('createdAt', '>=', startOfToday).select('status', 'clientId', 'providerId').get(),
     db.collection('bookings').where('createdAt', '>=', startOfWeek).select('status').get(),
     db.collection('bookings').where('createdAt', '>=', startOfMonth).select('status').get(),
-    db.collection('providers').select('stats', 'isTest', 'depositsAddonActive').get(),
+    db.collection('providers').select('stats', 'isTest', 'depositsAddonActive', 'businessName', 'photoURL').get(),
     // Traces datees du jour : ce que quelqu'un a FAIT, disponible
     // retroactivement. Aveugle a ceux qui consultent sans rien faire.
     db.collection('reviews').where('createdAt', '>=', startOfToday).select('clientId').get(),
-    db.collection('storyEvents').where('createdAt', '>=', startOfToday).select('providerId').get(),
+    db.collection('storyEvents').where('createdAt', '>=', startOfToday).select('providerId', 'content', 'channel').get(),
     db.collection('supportChats').where('lastMessageAt', '>=', startOfToday)
       .select('providerId', 'lastMessageFrom').get(),
     // Presence reelle : le compte a ouvert l'application aujourd'hui.
@@ -303,14 +325,35 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
   // products) + the real cash collected this month (paid invoices).
   let mrr = 0;
   let collectedThisMonth = 0;
+  let collectedLastMonth = 0;
+  let mrrPreviousMonth: number | null = null;
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   try {
     const stripe = getStripe();
-    const [subRev, collected] = await Promise.all([
+    const [subRev, collected, collectedSinceLastMonth] = await Promise.all([
       computeSubscriptionRevenue(stripe),
       sumPaidInvoicesSince(stripe, Math.floor(startOfMonth.getTime() / 1000)),
+      sumPaidInvoicesSince(stripe, Math.floor(startOfLastMonth.getTime() / 1000)),
     ]);
     mrr = subRev.mrrTotal;
     collectedThisMonth = collected;
+    collectedLastMonth = collectedSinceLastMonth - collected;
+
+    // Stripe ne garde pas l'historique du MRR : on le relève à chaque
+    // consultation, un chiffre par mois (le dernier vu), pour pouvoir
+    // comparer au mois précédent. Best-effort, jamais bloquant.
+    const cle = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    try {
+      const releves = db.doc('stats/mrrMonthly');
+      const [snap] = await Promise.all([
+        releves.get(),
+        releves.set({ [cle(now)]: mrr, updatedAt: now }, { merge: true }),
+      ]);
+      const prec = snap.data()?.[cle(startOfLastMonth)];
+      mrrPreviousMonth = typeof prec === 'number' ? prec : null;
+    } catch (err) {
+      console.error('[admin/stats] relevé MRR:', err);
+    }
   } catch (err) {
     console.error('[admin/stats] Stripe revenue error:', err);
   }
@@ -432,6 +475,45 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
       },
     },
   };
+  // ── Stories du jour : QUI a publié ───────────────────────────────────
+  // Le nombre seul ne dit pas qui s'en sert. Regroupé par prestataire, le
+  // plus actif en tête ; les comptes de test sont signalés, pas masqués,
+  // pour que la liste corresponde au chiffre de la carte.
+  const infosPro = new Map<string, { businessName: string; photoURL: string | null; isTest: boolean }>();
+  providersPvSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    infosPro.set(doc.id, {
+      businessName: typeof d.businessName === 'string' && d.businessName ? d.businessName : doc.id,
+      photoURL: typeof d.photoURL === 'string' && d.photoURL ? d.photoURL : null,
+      isTest: d.isTest === true,
+    });
+  });
+  const storiesParPro = new Map<string, { count: number; contents: Set<string>; channels: Set<string> }>();
+  storiesJourSnap.docs.forEach((doc) => {
+    const d = doc.data();
+    const p = typeof d.providerId === 'string' ? d.providerId : '';
+    if (!p) return;
+    const e = storiesParPro.get(p) ?? { count: 0, contents: new Set<string>(), channels: new Set<string>() };
+    e.count += 1;
+    e.contents.add(typeof d.content === 'string' ? d.content : 'none');
+    if (typeof d.channel === 'string' && d.channel) e.channels.add(d.channel);
+    storiesParPro.set(p, e);
+  });
+  const storiesTodayBy = [...storiesParPro.entries()]
+    .map(([providerId, e]) => {
+      const info = infosPro.get(providerId);
+      return {
+        providerId,
+        businessName: info?.businessName ?? providerId,
+        photoURL: info?.photoURL ?? null,
+        isTest: info?.isTest ?? false,
+        count: e.count,
+        contents: [...e.contents].map(storyContentLabel),
+        instagram: e.channels.has('instagram'),
+      };
+    })
+    .sort((a, b) => b.count - a.count || a.businessName.localeCompare(b.businessName));
+
   return {
     totalUsers,
     totalClients,
@@ -449,7 +531,9 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     pageViews30Days,
     pageViewsTotal,
     mrr,
+    mrrPreviousMonth,
     collectedThisMonth,
+    collectedLastMonth,
     cancellationRate: Math.round(cancellationRate * 10) / 10,
     noshowRate: Math.round(noshowRate * 10) / 10,
     trialConversionRate: Math.round(trialConversionRate * 10) / 10,
@@ -460,6 +544,7 @@ async function getDashboardStats(db: FirebaseFirestore.Firestore): Promise<Dashb
     serviceFeesMonthByCurrency,
     depositProviders,
     storiesToday: storiesJourSnap.size,
+    storiesTodayBy,
     activeToday,
   };
 }
