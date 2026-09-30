@@ -9,6 +9,7 @@ import * as admin from 'firebase-admin';
 import { ajouterJours, jourLocal, jourSemaineCalendaire, minutesLocales, instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Timestamp } from 'firebase-admin/firestore';
 import { serverTracker } from './serverTracker';
+import { horaireEnVigueurLe } from '../lib/horairesEnVigueur';
 
 interface TimeSlot {
   start: string;
@@ -228,15 +229,18 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     .get();
   serverTracker.trackRead('providers/*/availability', availabilitiesSnapshot.size);
 
-  const availabilities = new Map<number, Availability>();
-  availabilitiesSnapshot.docs.forEach(doc => {
-    const data = doc.data() as Availability;
-    availabilities.set(data.dayOfWeek, data);
+  // TOUS les documents, changements programmés compris : le jour venu, on
+  // retient celui en vigueur (voir `horaireEnVigueurLe`). Une table « un
+  // document par jour de la semaine » gardait le dernier lu.
+  const availabilities = availabilitiesSnapshot.docs.map((doc) => {
+    const data = doc.data() as Availability & { effectiveFrom?: Timestamp | Date | null };
+    const effet = data.effectiveFrom;
+    return { ...data, effectiveFrom: effet && 'toDate' in effet ? effet.toDate() : (effet as Date | null) ?? null };
   });
 
-  console.log(`Found ${availabilities.size} availability rules`);
+  console.log(`Found ${availabilities.length} availability rules`);
 
-  if (availabilities.size === 0) {
+  if (availabilities.length === 0) {
     console.log('No availabilities configured');
     return null;
   }
@@ -304,7 +308,7 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
   for (let i = startOffset; i < 60; i++) {
     const jour = ajouterJours(jourAujourdhui, i);
     const dayOfWeek = jourSemaineCalendaire(jour);
-    const availability = availabilities.get(dayOfWeek);
+    const availability = horaireEnVigueurLe(availabilities, dayOfWeek, jour, (d) => jourLocal(d, fuseauDuSalon));
 
     // Jour fermé ?
     if (!availability || !availability.isOpen || !availability.slots?.length) {

@@ -8,7 +8,7 @@ import {
   providerRepository,
 } from '../repositories';
 import type { Availability, AvailabilityConflict, BlockedSlot, Booking, TimeSlot } from '@booking-app/shared';
-import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences, reglePourPeriode, horlogeDuFuseau } from '@booking-app/shared';
+import { isServiceOpenOnDay, blockedWindowForDay, genererOccurrences, reglePourPeriode, horlogeDuFuseau, horaireEnVigueurLe } from '@booking-app/shared';
 import type { BlockedWindow } from '@booking-app/shared';
 import {
   ajouterJours,
@@ -862,8 +862,10 @@ export class SchedulingService {
       blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
     ]);
 
-    const availabilityByDow = new Map<number, WithId<Availability>>();
-    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+    // Les horaires EN VIGUEUR chaque jour : un changement programmé ne vaut
+    // qu'à partir de sa date (il s'appliquait dès aujourd'hui — le dernier
+    // document lu l'emportait). Voir `horaireEnVigueurLe`.
+    const jourDEffet = (d: Date) => jourLocal(d, fuseau);
 
     const relevantBlockedSlots = allBlocked.filter((bs) => bs.memberId === memberId);
     // Fenêtres bloquées calculées une fois par jour (voir isTimeBlockedBySlots).
@@ -890,7 +892,7 @@ export class SchedulingService {
     // mauvais jour. Une date calendaire, elle, n'a pas de fuseau.
     for (let jour = jourDebut; jour <= jourFin; jour = ajouterJours(jour, 1)) {
       const jourSemaine = jourSemaineCalendaire(jour);
-      const availability = availabilityByDow.get(jourSemaine);
+      const availability = horaireEnVigueurLe(weekly, jourSemaine, jour, jourDEffet);
       // La prestation peut restreindre ses jours EN PLUS des horaires du
       // membre. Les deux conditions doivent être réunies : un mardi fermé
       // le reste, même si la prestation l'autorise.
@@ -1001,8 +1003,10 @@ export class SchedulingService {
       blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
     ]);
 
-    const availabilityByDow = new Map<number, WithId<Availability>>();
-    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+    // Les horaires EN VIGUEUR chaque jour : un changement programmé ne vaut
+    // qu'à partir de sa date (il s'appliquait dès aujourd'hui — le dernier
+    // document lu l'emportait). Voir `horaireEnVigueurLe`.
+    const jourDEffet = (d: Date) => jourLocal(d, fuseau);
 
     const relevantBlocked = allBlocked.filter((bs) => bs.memberId === memberId);
     // Fenêtres bloquées calculées une fois par jour (voir isTimeBlockedBySlots).
@@ -1023,7 +1027,7 @@ export class SchedulingService {
     for (let jour = jourDebut; jour <= dernierJour; jour = ajouterJours(jour, 1)) {
       const dateKey = jour;
       const jourSemaine = jourSemaineCalendaire(jour);
-      const availability = availabilityByDow.get(jourSemaine);
+      const availability = horaireEnVigueurLe(weekly, jourSemaine, jour, jourDEffet);
       // Un jour non couvert par la prestation se présente comme fermé : du
       // point de vue du client, il n'y a rien à y réserver.
       const serviceOpen =
@@ -1087,8 +1091,10 @@ export class SchedulingService {
       blockedSlotRepository.getInRange(providerId, rangeStart, rangeEnd),
     ]);
 
-    const availabilityByDow = new Map<number, WithId<Availability>>();
-    for (const a of weekly) availabilityByDow.set(a.dayOfWeek, a);
+    // Les horaires EN VIGUEUR chaque jour : un changement programmé ne vaut
+    // qu'à partir de sa date (il s'appliquait dès aujourd'hui — le dernier
+    // document lu l'emportait). Voir `horaireEnVigueurLe`.
+    const jourDEffet = (d: Date) => jourLocal(d, fuseau);
 
     const relevantBlocked = allBlocked.filter((bs) => bs.memberId === memberId);
     const relevantBookings = allBookings.filter(
@@ -1101,7 +1107,7 @@ export class SchedulingService {
 
     for (let jour = jourDebut; jour <= jourFin; jour = ajouterJours(jour, 1)) {
       const dateKey = jour;
-      const availability = availabilityByDow.get(jourSemaineCalendaire(jour));
+      const availability = horaireEnVigueurLe(weekly, jourSemaineCalendaire(jour), jour, jourDEffet);
 
       if (!availability || !availability.isOpen || !availability.slots.length) {
         result.push({ date: dateKey, status: 'closed', openMinutes: 0, freeMinutes: 0 });
@@ -1260,12 +1266,14 @@ export class SchedulingService {
     const endDatetime = new Date(datetime.getTime() + duration * 60 * 1000);
     const dayOfWeek = jourSemaineLocal(datetime, fuseau);
 
-    // Check availability for this member on this day
-    // Plus de fallback
-    const availability = await availabilityRepository.get(
-      providerId,
-      memberId,
-      dayOfWeek
+    // Les horaires EN VIGUEUR ce jour-là — y compris un changement programmé
+    // déjà entré en vigueur. Cette vérification ne lisait que les horaires
+    // de base : la liste proposait un créneau que la réservation refusait.
+    const availability = horaireEnVigueurLe(
+      await availabilityRepository.getByMember(providerId, memberId),
+      dayOfWeek,
+      jourLocal(datetime, fuseau),
+      (d) => jourLocal(d, fuseau),
     );
 
     if (!availability || !availability.isOpen) {

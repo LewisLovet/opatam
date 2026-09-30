@@ -131,3 +131,59 @@ describe('preparerCopieHoraires', () => {
     assert.equal(prets[1].slots[0].start, '11:00');
   });
 });
+
+import { horaireEnVigueurLe } from './horaires.ts';
+
+describe('horaires en vigueur un jour donné (changements programmés)', () => {
+  const effet = (d) => d.toISOString().slice(0, 10);
+  const base = { id: 'base', dayOfWeek: 1, effectiveFrom: null, slots: [{ start: '09:00', end: '18:00' }] };
+  const nov = { id: 'nov', dayOfWeek: 1, effectiveFrom: new Date('2026-11-02T00:00:00Z'), slots: [{ start: '14:00', end: '20:00' }] };
+  const dec = { id: 'dec', dayOfWeek: 1, effectiveFrom: new Date('2026-12-07T00:00:00Z'), slots: [] };
+  const mardi = { id: 'mardi', dayOfWeek: 2, effectiveFrom: null, slots: [] };
+  // L'ordre des documents ne doit JAMAIS décider (le moteur gardait le dernier lu).
+  const ordres = [[base, nov, dec, mardi], [dec, nov, mardi, base], [nov, base, dec, mardi]];
+
+  it('avant la date d’effet : les horaires de base, pas le changement programmé', () => {
+    for (const docs of ordres) assert.equal(horaireEnVigueurLe(docs, 1, '2026-10-26', effet)?.id, 'base');
+  });
+  it('dès la date d’effet, et après : le changement', () => {
+    for (const docs of ordres) {
+      assert.equal(horaireEnVigueurLe(docs, 1, '2026-11-02', effet)?.id, 'nov');
+      assert.equal(horaireEnVigueurLe(docs, 1, '2026-11-30', effet)?.id, 'nov');
+    }
+  });
+  it('deux changements successifs : le plus récent déjà en vigueur', () => {
+    for (const docs of ordres) assert.equal(horaireEnVigueurLe(docs, 1, '2026-12-07', effet)?.id, 'dec');
+  });
+  it('un autre jour de la semaine n’interfère pas ; aucun document → null', () => {
+    assert.equal(horaireEnVigueurLe([base, nov, mardi], 2, '2026-11-03', effet)?.id, 'mardi');
+    assert.equal(horaireEnVigueurLe([mardi], 1, '2026-11-02', effet), null);
+  });
+  it('seul un changement futur, sans base : rien avant sa date', () => {
+    assert.equal(horaireEnVigueurLe([nov], 1, '2026-10-26', effet), null);
+    assert.equal(horaireEnVigueurLe([nov], 1, '2026-11-09', effet)?.id, 'nov');
+  });
+  it('sans changement programmé : exactement comme avant (le seul document du jour)', () => {
+    assert.equal(horaireEnVigueurLe([base, mardi], 1, '2026-10-26', effet), base);
+  });
+});
+
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+describe('les lecteurs d’horaires passent tous par la règle « en vigueur »', () => {
+  const racine = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+  const lire = (c) => readFileSync(resolve(racine, c), 'utf8');
+  it('moteur de créneaux : les trois calculs et la vérification finale', () => {
+    const src = lire('packages/firebase/src/services/scheduling.service.ts');
+    assert.doesNotMatch(src, /availabilityByDow/, 'plus de table « dernier document lu »');
+    assert.equal((src.match(/horaireEnVigueurLe\(/g) ?? []).length, 4);
+    assert.doesNotMatch(src, /await availabilityRepository\.get\(\s*providerId,\s*memberId,\s*dayOfWeek/);
+  });
+  it('prochaine disponibilité (functions) : le miroir', () => {
+    const src = lire('functions/src/utils/calculateNextAvailableSlot.ts');
+    assert.match(src, /horaireEnVigueurLe\(availabilities, dayOfWeek, jour/);
+    assert.doesNotMatch(src, /availabilities\.set\(data\.dayOfWeek/);
+  });
+});

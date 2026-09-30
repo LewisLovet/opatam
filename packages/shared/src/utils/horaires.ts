@@ -136,3 +136,38 @@ export function preparerCopieHoraires(
     };
   });
 }
+
+/**
+ * Les horaires d'UN jour de la semaine en vigueur LE jour `jour`
+ * (« 2026-11-03 », date calendaire du lieu).
+ *
+ * Un changement programmé (`effectiveFrom`) est rangé À CÔTÉ des horaires
+ * actuels, sous un autre identifiant. Le moteur lisait tous les documents
+ * du membre et gardait le dernier lu : un changement prévu pour le mois
+ * prochain s'appliquait dès aujourd'hui — tandis que la vérification finale
+ * à la réservation, elle, ne lisait que les horaires de base.
+ *
+ * Règle : parmi les documents de ce jour de la semaine, celui dont la date
+ * d'effet est la plus récente SANS dépasser `jour` ; les horaires de base
+ * (`effectiveFrom` nul) valent depuis toujours. `jourDEffet` convertit la
+ * date d'effet en date calendaire du lieu (fuseau du salon).
+ */
+export function horaireEnVigueurLe<T extends { dayOfWeek: number; effectiveFrom?: Date | null }>(
+  docs: readonly T[],
+  jourSemaine: number,
+  jour: string,
+  jourDEffet: (d: Date) => string,
+): T | null {
+  let retenu: T | null = null;
+  let effetRetenu = '';
+  for (const d of docs) {
+    if (d.dayOfWeek !== jourSemaine) continue;
+    const effet = d.effectiveFrom ? jourDEffet(new Date(d.effectiveFrom)) : '';
+    if (effet && effet > jour) continue; // pas encore en vigueur
+    if (!retenu || effet >= effetRetenu) {
+      retenu = d;
+      effetRetenu = effet;
+    }
+  }
+  return retenu;
+}
