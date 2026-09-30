@@ -10,7 +10,7 @@ import { AppBootSplash } from '../components/AppBootSplash';
 import { hasSeenOnboarding } from '../utils';
 
 export default function Index() {
-  const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, userData, compteMembre } = useAuth();
 
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null);
 
@@ -26,7 +26,8 @@ export default function Index() {
   // après le splash natif plein écran, et un indicateur seul sur fond
   // clair y produisait une rupture brutale. On prolonge la même scène,
   // le démarrage se lit comme une séquence continue.
-  if (authLoading || onboardingSeen === null || (isAuthenticated && !userData)) {
+  // …et le compte membre : sans lui, un membre partirait côté client.
+  if (authLoading || onboardingSeen === null || (isAuthenticated && (!userData || compteMembre === undefined))) {
     return <AppBootSplash />;
   }
 
@@ -40,6 +41,11 @@ export default function Index() {
   if (isAuthenticated && userData) {
     if (userData.role === 'provider') {
       return <Redirect href={'/(pro)' as never} />;
+    }
+    // Espace membre (plan Studio) : les écrans pro, figés sur SON agenda.
+    // Le rôle reste 'client' — un membre peut aussi réserver ailleurs.
+    if (compteMembre) {
+      return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
     }
     return <Redirect href="/(client)/(tabs)" />;
   }

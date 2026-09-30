@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 import { useAuth, ProviderProvider, RevenueCatProvider } from '../../contexts';
+import { GardeEspaceMembre } from '../../components/business/GardeEspaceMembre';
 
 export default function ProLayout() {
   const { colors } = useTheme();
@@ -30,6 +31,8 @@ export default function ProLayout() {
     <ProviderProvider>
       <RevenueCatProvider>
         <StatusBar style="light" />
+        {/* Espace membre : un membre n'ouvre que SES écrans. */}
+        <GardeEspaceMembre>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -53,7 +56,11 @@ export default function ProLayout() {
           <Stack.Screen name="profile" options={{ headerShown: false }} />
           <Stack.Screen name="booking-settings" options={{ headerShown: false }} />
           <Stack.Screen name="reviews" options={{ headerShown: false }} />
+          <Stack.Screen name="membre-profil" options={{ headerShown: false }} />
+          <Stack.Screen name="mes-clientes" options={{ headerShown: false }} />
+          <Stack.Screen name="mon-activite" options={{ headerShown: false }} />
         </Stack>
+        </GardeEspaceMembre>
         {/* Brand-blue strip behind the status bar — applied globally to every
             pro screen so the top safe area is consistently coloured (the
             StatusBar is "light", so a white inset would hide its icons).

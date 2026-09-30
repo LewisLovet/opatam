@@ -36,7 +36,7 @@ import { devisePro } from '../../../lib/devise';
 import type { WithId } from '@booking-app/firebase';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { useTheme } from '../../../theme';
-import { useProvider } from '../../../contexts';
+import { useProvider, useEspaceMembre } from '../../../contexts';
 import { useProviderBookings, useServiceCategories, useServices, useWorkingRanges } from '../../../hooks';
 import { CalendarSyncSheet } from '../../../components/business/CalendarSyncSheet';
 import { closedBands, type RangesByDay, type WorkingRange } from '../../../lib/workingRanges';
@@ -1610,6 +1610,8 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { providerId, provider } = useProvider();
+  // Espace membre : l'agenda est figé sur le membre connecté.
+  const { estMembre, monMemberId } = useEspaceMembre();
   const { memberId: memberIdParam, action: actionParam } =
     useLocalSearchParams<{ memberId?: string; action?: string }>();
 
@@ -1631,7 +1633,7 @@ export default function CalendarScreen() {
   });
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [members, setMembers] = useState<WithId<Member>[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(monMemberId ?? memberIdParam ?? null);
   const [syncOpen, setSyncOpen] = useState(false);
 
   // Horaires de travail — pour voiler les heures fermées dans la grille.
@@ -1709,10 +1711,15 @@ export default function CalendarScreen() {
 
   // ---- Apply memberId from route params (e.g. navigating from Members screen) ----
   useEffect(() => {
+    // Un membre ne voit que SON agenda, quel que soit le lien suivi.
+    if (monMemberId) {
+      setSelectedMemberId(monMemberId);
+      return;
+    }
     if (memberIdParam) {
       setSelectedMemberId(memberIdParam);
     }
-  }, [memberIdParam]);
+  }, [memberIdParam, monMemberId]);
 
   // ---- Live blocked slots for the current range ----
   // Real-time Firestore subscription — any add / edit / delete (from
@@ -1732,7 +1739,7 @@ export default function CalendarScreen() {
   }, [providerId, fetchStart, fetchEnd]);
 
   // ---- Whether to show the member filter ----
-  const showMemberFilter = members.length > 1;
+  const showMemberFilter = !estMembre && members.length > 1;
 
   // ---- Member name map for blocked slots ----
   const memberNameMap = useMemo(() => {
@@ -2148,8 +2155,9 @@ export default function CalendarScreen() {
   }, []);
 
   const handleMemberSelect = useCallback((memberId: string | null) => {
+    if (monMemberId) return;
     setSelectedMemberId(memberId);
-  }, []);
+  }, [monMemberId]);
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -2322,6 +2330,8 @@ export default function CalendarScreen() {
                 s'agit d'envoyer son planning vers son agenda perso.
                 Posée dans l'app et non sur le web parce que l'abonnement
                 doit se prendre sur l'appareil qui porte l'agenda. */}
+            {/* Le flux d'agenda est celui du salon (lien du gérant). */}
+            {!estMembre && (
             <Pressable
               onPress={() => setSyncOpen(true)}
               accessibilityLabel={t('calendarSync.title')}
@@ -2345,6 +2355,7 @@ export default function CalendarScreen() {
                 {t('calendarSync.button')}
               </Text>
             </Pressable>
+            )}
           </View>
         </View>
       </View>

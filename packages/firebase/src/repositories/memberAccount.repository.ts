@@ -2,6 +2,7 @@ import {
   getFirestore,
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -31,6 +32,14 @@ export class MemberAccountRepository {
   async getMine(uid: string): Promise<MemberAccount | null> {
     const snap = await getDoc(doc(this.db, 'memberAccounts', uid));
     return snap.exists() ? convertTimestamps<MemberAccount>(snap.data()) : null;
+  }
+
+  /**
+   * Le membre quitte l'espace membre — à la suppression de son compte.
+   * Seul le titulaire (ou son gérant) peut supprimer ce lien.
+   */
+  async quitter(uid: string): Promise<void> {
+    await deleteDoc(doc(this.db, 'memberAccounts', uid));
   }
 
   /** Les comptes reliés aux membres d'un salon — lisibles par son gérant. */

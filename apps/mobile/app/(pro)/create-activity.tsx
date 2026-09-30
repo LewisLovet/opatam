@@ -38,7 +38,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
-import { useProvider, useSubscriptionStatus } from '../../contexts';
+import { useProvider, useSubscriptionStatus, useEspaceMembre } from '../../contexts';
 import { useFuseauxMembres } from '../../hooks/useFuseauxMembres';
 import {
   schedulingService,
@@ -426,6 +426,8 @@ export default function CreateActivityScreen() {
   const CATEGORIES = useActivityCategories();
   const router = useRouter();
   const { providerId } = useProvider();
+  // Espace membre : les activités de SON agenda seulement.
+  const { monMemberId } = useEspaceMembre();
   const sub = useSubscriptionStatus();
   const { date: dateParam, memberId: memberIdParam, id: editId } =
     useLocalSearchParams<{
@@ -518,7 +520,7 @@ export default function CreateActivityScreen() {
     (async () => {
       try {
         const memberResult = (await memberService.getByProvider(providerId)) as WithId<Member>[];
-        const activeMembers = memberResult.filter((m) => m.isActive);
+        const activeMembers = memberResult.filter((m) => m.isActive && (!monMemberId || m.id === monMemberId));
         if (cancelled) return;
         setMembers(activeMembers);
 

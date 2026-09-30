@@ -25,7 +25,7 @@ import { LaunchNoticeModal } from '../../../components/LaunchNoticeModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +86,7 @@ class NativeModuleBoundary extends React.Component<
     return this.state.hasError ? null : this.props.children;
   }
 }
-import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
+import { useAuth, useProvider, useSubscriptionStatus, useEspaceMembre } from '../../../contexts';
 import {
   useDepositsSummary,
   useProviderClients,
@@ -744,7 +744,19 @@ function joinList(items: string[]): string {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function ProDashboardScreen() {
+/**
+ * L'accueil pro est le tableau de bord du SALON (abonnement, statistiques,
+ * vitrine, activation) : un membre n'en a pas l'usage, il arrive sur son
+ * agenda. Composant d'entrée à part, pour ne jamais sauter les hooks du
+ * tableau de bord selon le cas.
+ */
+export default function ProHomeEntry() {
+  const { estMembre } = useEspaceMembre();
+  if (estMembre) return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
+  return <ProDashboardScreen />;
+}
+
+function ProDashboardScreen() {
   const { colors, spacing, radius } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

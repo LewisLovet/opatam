@@ -62,7 +62,7 @@ import {
   Loader,
   Text,
 } from '../../../components';
-import { useAuth, useProvider } from '../../../contexts';
+import { useAuth, useProvider, useEspaceMembre } from '../../../contexts';
 import { API_URL } from '../../../lib/config';
 import i18n, { getIntlLocale } from '../../../lib/i18n';
 import { recordNewBookingSeenAndMaybeAskReview } from '../../../lib/appReview';
@@ -348,7 +348,10 @@ export default function ProBookingsScreen() {
   // planning vide (« Rien de prévu ») alors que des rendez-vous existaient
   // plus loin. On montre tout, et on affine ensuite si besoin.
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
-  const [memberFilter, setMemberFilter] = useState<string | undefined>(undefined);
+  const [filtreChoisi, setMemberFilter] = useState<string | undefined>(undefined);
+  // Espace membre : la liste est figée sur le membre connecté.
+  const { monMemberId } = useEspaceMembre();
+  const memberFilter = monMemberId ?? filtreChoisi;
   const [members, setMembers] = useState<WithId<Member>[]>([]);
 
   // -- Date range (derived from period) --------------------------------------
@@ -1401,7 +1404,7 @@ export default function ProBookingsScreen() {
         </View>
 
         {/* ── Member filter (only if multiple members) ────────────── */}
-        {members.length > 1 && (
+        {members.length > 1 && !monMemberId && (
           <>
             <View
               style={[

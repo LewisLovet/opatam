@@ -3515,5 +3515,83 @@
     "dates_one": "{{count}} Termin",
     "dates_other": "{{count}} Termine",
     "range": "vom {{from}} bis {{to}}"
+  },
+  "espaceMembre": {
+    "suspendu": {
+      "titre": "Zugang gesperrt",
+      "texte": "Dein Salon hat derzeit keinen Zugang mehr zum Mitgliederbereich. Wende dich an deine Leitung."
+    },
+    "menu": {
+      "deconnexion": "Abmelden",
+      "chez": "Bei {{salon}}",
+      "monEspace": "Mein Bereich",
+      "monActivite": "Meine Aktivität",
+      "mesHoraires": "Meine Arbeitszeiten",
+      "mesIndisponibilites": "Meine Abwesenheiten",
+      "mesClientes": "Meine Kundschaft",
+      "monProfil": "Mein Profil"
+    },
+    "profil": {
+      "titre": "Mein Profil",
+      "nomRequis": "Bitte gib deinen Namen ein",
+      "enregistre": "Profil gespeichert",
+      "photoAide": "Tippe auf das Foto, um es zu ändern",
+      "nom": "Angezeigter Name",
+      "telephone": "Telefon",
+      "email": "E-Mail-Adresse",
+      "emailAide": "Das ist die Adresse deines Kontos: Sie lässt sich hier nicht ändern."
+    },
+    "clientes": {
+      "titre": "Meine Kundschaft",
+      "recherche": "Name, E-Mail oder Nummer suchen",
+      "vide": "Noch keine Kundschaft",
+      "videTexte": "Die Personen, die du empfängst, erscheinen hier.",
+      "visites_one": "{{count}} Besuch",
+      "visites_other": "{{count}} Besuche",
+      "derniere": "zuletzt am {{date}}",
+      "prochaine": "Nächster Termin am {{date}}",
+      "statut": {
+        "pending_payment": "Zahlung ausstehend",
+        "pending": "Zu bestätigen",
+        "confirmed": "Bestätigt",
+        "cancelled": "Storniert",
+        "noshow": "Nicht erschienen"
+      }
+    },
+    "activite": {
+      "titre": "Meine Aktivität",
+      "sousTitre": "Dein Umsatz",
+      "masque": "Dein Salon zeigt den Umsatz im Mitgliederbereich nicht an.",
+      "mois": "Dieser Monat",
+      "moisDernier": "Letzter Monat",
+      "annee": "Dieses Jahr",
+      "rdv_one": "{{count}} wahrgenommener Termin",
+      "rdv_other": "{{count}} wahrgenommene Termine",
+      "note": "Bestätigte, vergangene Termine zum Buchungspreis."
+    },
+    "gerant": {
+      "action": "App",
+      "envoyee": "Einladung an {{email}} gesendet",
+      "retire": "App-Zugang entzogen",
+      "retirerTitre": "Zugang entziehen?",
+      "retirerTexte": "{{name}} kann sich nicht mehr anmelden, bleibt aber in deinem Team.",
+      "retirer": "Zugang entziehen",
+      "actifTitre": "{{name}} hat Zugang zur App",
+      "actifTexte": "Angemeldet mit {{email}}.",
+      "inviteTitre": "Einladung gesendet",
+      "inviteTexte": "An {{email}} gesendet — Link gültig bis {{date}}.",
+      "expireTitre": "Link abgelaufen",
+      "expireTexte": "Die an {{email}} gesendete Einladung wurde nicht rechtzeitig genutzt.",
+      "annulerInvitation": "Einladung zurückziehen",
+      "renvoyer": "Erneut senden",
+      "aucunTitre": "{{name}} in die App einladen?",
+      "aucunTexte": "Mit einem eigenen Zugang sieht dieses Mitglied seinen Kalender, legt seine Arbeitszeiten fest und verwaltet seine Termine. Eine Einladung wird an {{email}} gesendet.",
+      "sansEmail": "Füge zuerst eine E-Mail-Adresse zum Profil hinzu.",
+      "inviter": "Einladung senden",
+      "carteTitre": "Mitgliederbereich in der App",
+      "carteTexte": "Jedes Mitglied kann einen eigenen Zugang haben: Tippe auf „App“ in seiner Karte.",
+      "voirCA": "Mitglieder sehen ihren Umsatz",
+      "voirCAAide": "Nur den eigenen, nie den des Salons."
+    }
   }
 }

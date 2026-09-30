@@ -48,7 +48,7 @@ import {
   SubscriptionRequiredModal,
   Switch,
 } from '../../components';
-import { useProvider, useAuth, useSubscriptionStatus } from '../../contexts';
+import { useProvider, useAuth, useSubscriptionStatus, useEspaceMembre } from '../../contexts';
 import { API_URL } from '../../lib/config';
 import {
   catalogService,
@@ -493,6 +493,8 @@ export default function CreateBookingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { providerId, provider } = useProvider();
+  // Espace membre : on ne réserve que dans SON agenda.
+  const { monMemberId } = useEspaceMembre();
   const { user } = useAuth();
   const sub = useSubscriptionStatus();
   // Pre-fill identity step when launched from /pro/client-detail
@@ -651,7 +653,7 @@ export default function CreateBookingScreen() {
     today.setHours(0, 0, 0, 0);
     return today;
   });
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(memberIdParam ?? null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(monMemberId ?? memberIdParam ?? null);
   const [slots, setSlots] = useState<SlotWithMember[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<SlotWithMember | null>(null);
@@ -704,8 +706,23 @@ export default function CreateBookingScreen() {
           memberService.getByProvider(providerId),
           locationService.getByProvider(providerId),
         ]);
-        setServices(servicesData);
-        setMembers(membersData);
+        if (monMemberId) {
+          // Espace membre : lui seul (l'étape « membre » disparaît), et les
+          // seules prestations qu'il réalise, à son lieu.
+          const moi = membersData.filter((m) => m.id === monMemberId);
+          const lieu = moi[0]?.locationId;
+          setServices(
+            servicesData.filter(
+              (s) =>
+                (!s.memberIds || s.memberIds.length === 0 || s.memberIds.includes(monMemberId)) &&
+                (!lieu || !s.locationIds || s.locationIds.length === 0 || s.locationIds.includes(lieu)),
+            ),
+          );
+          setMembers(moi);
+        } else {
+          setServices(servicesData);
+          setMembers(membersData);
+        }
         setLocations(locationsData);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -719,7 +736,7 @@ export default function CreateBookingScreen() {
     };
 
     loadData();
-  }, [providerId]);
+  }, [providerId, monMemberId]);
 
   // -- Member step logic -------------------------------------------------------
   const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members]);

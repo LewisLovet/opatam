@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, useToast } from '../../components';
-import { useProvider } from '../../contexts';
+import { useProvider, useEspaceMembre } from '../../contexts';
 import {
   schedulingService,
   memberService,
@@ -140,6 +140,8 @@ export default function AvailabilityScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const { providerId } = useProvider();
+  // Espace membre : SES horaires seulement (ni ceux des collègues, ni diffusion).
+  const { monMemberId } = useEspaceMembre();
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -172,15 +174,16 @@ export default function AvailabilityScreen() {
         // remplacerait chez chaque destinataire avant de diffuser.
         availabilityRepository.getByProvider(providerId),
       ]);
-      setMembers(list);
-      setHorairesEquipe(tousHoraires);
-      if (list.length > 0 && !selectedMemberId) {
-        setSelectedMemberId(list[0].id);
+      const visibles = monMemberId ? list.filter((m) => m.id === monMemberId) : list;
+      setMembers(visibles);
+      setHorairesEquipe(monMemberId ? tousHoraires.filter((h) => h.memberId === monMemberId) : tousHoraires);
+      if (visibles.length > 0 && !selectedMemberId) {
+        setSelectedMemberId(visibles[0].id);
       }
     } catch (err) {
       console.error('Error loading members:', err);
     }
-  }, [providerId, selectedMemberId]);
+  }, [providerId, selectedMemberId, monMemberId]);
 
   // Load schedule for selected member
   const loadSchedule = useCallback(async () => {

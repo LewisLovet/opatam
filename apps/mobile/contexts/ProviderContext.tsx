@@ -13,6 +13,7 @@ import type { Provider } from '@booking-app/shared';
 import { computeEntitlements,
   DEFAULT_CURRENCY,
   formatPrice,
+  isTeamTier,
 } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { useAuth } from './AuthContext';
@@ -22,12 +23,19 @@ interface ProviderContextValue {
   providerId: string | null;
   isLoading: boolean;
   refreshProvider: () => Promise<void>;
+  /**
+   * Espace membre : le compte connecté est un MEMBRE du salon, pas son
+   * gérant. Les écrans pro sont alors figés sur `monMemberId`.
+   */
+  estMembre: boolean;
+  /** L'identifiant de membre du compte connecté (membre seulement). */
+  monMemberId: string | null;
 }
 
 const ProviderContext = createContext<ProviderContextValue | undefined>(undefined);
 
 export function ProviderProvider({ children }: { children: ReactNode }) {
-  const { userData } = useAuth();
+  const { userData, compteMembre } = useAuth();
   const [provider, setProvider] = useState<WithId<Provider> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,7 +49,10 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
   // et ne declenche aucun abonnement, elle est sans danger ici.
   setDevisePro(provider?.currency);
 
-  const providerId = userData?.providerId || null;
+  // Le gérant ouvre SON salon ; un membre, le salon qui l'a invité.
+  const estMembre = !userData?.providerId && !!compteMembre;
+  const providerId = userData?.providerId || (compteMembre ? compteMembre.providerId : null);
+  const monMemberId = estMembre && compteMembre ? compteMembre.memberId : null;
 
   const refreshProvider = useCallback(async () => {
     if (!providerId) {
@@ -88,7 +99,7 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
   }, [providerId]);
 
   return (
-    <ProviderContext.Provider value={{ provider, providerId, isLoading, refreshProvider }}>
+    <ProviderContext.Provider value={{ provider, providerId, isLoading, refreshProvider, estMembre, monMemberId }}>
       {children}
     </ProviderContext.Provider>
   );
@@ -100,6 +111,22 @@ export function useProvider() {
     throw new Error('useProvider must be used within a ProviderProvider');
   }
   return context;
+}
+
+/**
+ * L'espace membre, vu d'un écran : faut-il figer le filtre sur un membre,
+ * le membre voit-il son chiffre d'affaires, son salon lui ouvre-t-il
+ * encore l'accès (Studio, abonnement valable) ?
+ */
+export function useEspaceMembre() {
+  const { provider, estMembre, monMemberId } = useProvider();
+  return {
+    estMembre,
+    monMemberId,
+    voitSonCA: estMembre && provider?.settings?.memberRevenueVisible === true,
+    /** `null` tant que le salon n'est pas chargé. */
+    accesOuvert: provider ? isTeamTier(provider) && computeEntitlements(provider).canAccessPro : null,
+  };
 }
 
 /**

@@ -3515,5 +3515,83 @@
     "dates_one": "{{count}} data",
     "dates_other": "{{count}} datas",
     "range": "de {{from}} a {{to}}"
+  },
+  "espaceMembre": {
+    "suspendu": {
+      "titre": "Acesso suspenso",
+      "texte": "O seu salão já não tem acesso ao espaço de membro por agora. Fale com o seu responsável."
+    },
+    "menu": {
+      "deconnexion": "Terminar sessão",
+      "chez": "Em {{salon}}",
+      "monEspace": "O meu espaço",
+      "monActivite": "A minha atividade",
+      "mesHoraires": "Os meus horários",
+      "mesIndisponibilites": "As minhas indisponibilidades",
+      "mesClientes": "Os meus clientes",
+      "monProfil": "O meu perfil"
+    },
+    "profil": {
+      "titre": "O meu perfil",
+      "nomRequis": "Indique o seu nome",
+      "enregistre": "Perfil guardado",
+      "photoAide": "Toque na foto para a mudar",
+      "nom": "Nome apresentado",
+      "telephone": "Telefone",
+      "email": "Endereço de e-mail",
+      "emailAide": "É o endereço da sua conta: não se altera aqui."
+    },
+    "clientes": {
+      "titre": "Os meus clientes",
+      "recherche": "Procurar um nome, um e-mail, um número",
+      "vide": "Ainda sem clientes",
+      "videTexte": "As pessoas que atende vão aparecer aqui.",
+      "visites_one": "{{count}} visita",
+      "visites_other": "{{count}} visitas",
+      "derniere": "última a {{date}}",
+      "prochaine": "Próxima marcação a {{date}}",
+      "statut": {
+        "pending_payment": "Pagamento pendente",
+        "pending": "A confirmar",
+        "confirmed": "Confirmado",
+        "cancelled": "Cancelado",
+        "noshow": "Não compareceu"
+      }
+    },
+    "activite": {
+      "titre": "A minha atividade",
+      "sousTitre": "A sua faturação",
+      "masque": "O seu salão não mostra a faturação no espaço de membro.",
+      "mois": "Este mês",
+      "moisDernier": "O mês passado",
+      "annee": "Este ano",
+      "rdv_one": "{{count}} marcação realizada",
+      "rdv_other": "{{count}} marcações realizadas",
+      "note": "Marcações confirmadas e passadas, ao preço da reserva."
+    },
+    "gerant": {
+      "action": "App",
+      "envoyee": "Convite enviado para {{email}}",
+      "retire": "Acesso à aplicação removido",
+      "retirerTitre": "Remover o acesso?",
+      "retirerTexte": "{{name}} deixará de poder entrar no seu espaço, mas continua na sua equipa.",
+      "retirer": "Remover o acesso",
+      "actifTitre": "{{name}} tem acesso à aplicação",
+      "actifTexte": "Ligado com {{email}}.",
+      "inviteTitre": "Convite enviado",
+      "inviteTexte": "Enviado para {{email}} — ligação válida até {{date}}.",
+      "expireTitre": "Ligação expirada",
+      "expireTexte": "O convite enviado para {{email}} não foi usado a tempo.",
+      "annulerInvitation": "Cancelar o convite",
+      "renvoyer": "Reenviar",
+      "aucunTitre": "Convidar {{name}} para a aplicação?",
+      "aucunTexte": "Com o seu próprio acesso, este membro consulta a sua agenda, define os seus horários e gere as suas marcações. Será enviado um convite para {{email}}.",
+      "sansEmail": "Adicione primeiro um endereço de e-mail à ficha.",
+      "inviter": "Enviar o convite",
+      "carteTitre": "Espaço de membro na aplicação",
+      "carteTexte": "Cada membro pode ter o seu próprio acesso: toque em «App» na ficha.",
+      "voirCA": "Os membros veem a sua faturação",
+      "voirCAAide": "Apenas a deles, nunca a do salão."
+    }
   }
 }

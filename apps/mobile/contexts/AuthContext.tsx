@@ -12,6 +12,7 @@ import {
   userRepository,
   userService,
   providerService,
+  memberAccountRepository,
   onAuthChange,
   reauthenticateUser,
   deleteCurrentUser,
@@ -20,7 +21,7 @@ import {
 } from '@booking-app/firebase';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
-import type { User } from '@booking-app/shared';
+import type { MemberAccount, User } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import { getFirebaseErrorMessage } from '../utils';
 import i18n from '../lib/i18n';
@@ -29,6 +30,13 @@ interface AuthContextValue {
   // State
   user: FirebaseUser | null;
   userData: WithId<User> | null;
+  /**
+   * Espace membre : le compte est relié à UN membre d'un salon Studio
+   * (`memberAccounts/{uid}`, écrit par le serveur). `undefined` = pas encore
+   * lu — l'aiguillage attend, sinon un membre partirait côté client.
+   * `null` = pas membre (ou accès retiré).
+   */
+  compteMembre: MemberAccount | null | undefined;
   isLoading: boolean;
   isAuthenticated: boolean;
 
@@ -40,6 +48,7 @@ interface AuthContextValue {
   deleteAccount: (password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
+  refreshCompteMembre: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -47,7 +56,17 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<WithId<User> | null>(null);
+  const [compteMembre, setCompteMembre] = useState<MemberAccount | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+
+  /** Le compte membre de `uid`, actif — ou `null`. Jamais d'exception. */
+  const lireCompteMembre = async (uid: string): Promise<MemberAccount | null> => {
+    const compte = await memberAccountRepository.getMine(uid).catch((err) => {
+      console.warn('[AUTH] compte membre illisible', err);
+      return null;
+    });
+    return compte?.active === true ? compte : null;
+  };
 
   // Listen to auth state changes
   useEffect(() => {
@@ -57,7 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         // Load user data from Firestore
         try {
-          const data = await userRepository.getById(firebaseUser.uid);
+          const [data, compte] = await Promise.all([
+            userRepository.getById(firebaseUser.uid),
+            lireCompteMembre(firebaseUser.uid),
+          ]);
+          setCompteMembre(compte);
           setUserData(data);
           // Présence : au plus une écriture par jour, sans relecture (le
           // document vient d'être chargé). Non attendu volontairement, une
@@ -68,9 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error('Error loading user data:', error);
           setUserData(null);
+          setCompteMembre(null);
         }
       } else {
         setUserData(null);
+        setCompteMembre(null);
       }
 
       setIsLoading(false);
@@ -83,6 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const { user: returnedUserData } = await authService.login({ email, password });
+      // Le compte membre AVANT les données : l'aiguillage part dès que
+      // `userData` arrive, et un membre ne doit pas atterrir côté client.
+      setCompteMembre(await lireCompteMembre(returnedUserData.id));
       setUserData(returnedUserData);
       // Also update the Firebase user state immediately (onAuthChange will also fire but this is faster)
       setUser(auth.currentUser);
@@ -168,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authService.logout();
       setUserData(null);
+      setCompteMembre(null);
     } catch (error: any) {
       throw new Error(i18n.t('errors.auth.signOutFailed'));
     }
@@ -184,6 +213,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Delete provider data if user is a provider
       if (userData?.providerId) {
         await providerService.deleteProvider(userData.providerId);
+      }
+
+      // Espace membre : le lien vers la fiche du salon disparaît avec le
+      // compte (le gérant voit « pas d'accès », le membre reste dans l'équipe).
+      if (compteMembre) {
+        await memberAccountRepository.quitter(user.uid).catch((err) => {
+          console.warn('[AUTH] lien membre non supprimé', err);
+        });
+        setCompteMembre(null);
       }
 
       // Clear userData before deleting so the push token cleanup hook
@@ -216,6 +254,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /** Relit le compte membre (accès retiré ou rendu pendant la session). */
+  const refreshCompteMembre = async () => {
+    if (!user?.uid) return;
+    setCompteMembre(await lireCompteMembre(user.uid));
+  };
+
   // Refresh user data from Firestore
   const refreshUserData = async () => {
     if (!user?.uid) return;
@@ -232,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         userData,
+        compteMembre,
         isLoading,
         isAuthenticated: !!user,
         signIn,
@@ -241,6 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deleteAccount,
         resetPassword,
         refreshUserData,
+        refreshCompteMembre,
       }}
     >
       {children}

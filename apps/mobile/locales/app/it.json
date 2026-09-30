@@ -3515,5 +3515,83 @@
     "dates_one": "{{count}} data",
     "dates_other": "{{count}} date",
     "range": "dal {{from}} al {{to}}"
+  },
+  "espaceMembre": {
+    "suspendu": {
+      "titre": "Accesso sospeso",
+      "texte": "Il tuo salone non ha più accesso allo spazio membro per il momento. Rivolgiti al tuo responsabile."
+    },
+    "menu": {
+      "deconnexion": "Esci",
+      "chez": "Presso {{salon}}",
+      "monEspace": "Il mio spazio",
+      "monActivite": "La mia attività",
+      "mesHoraires": "I miei orari",
+      "mesIndisponibilites": "Le mie indisponibilità",
+      "mesClientes": "I miei clienti",
+      "monProfil": "Il mio profilo"
+    },
+    "profil": {
+      "titre": "Il mio profilo",
+      "nomRequis": "Inserisci il tuo nome",
+      "enregistre": "Profilo salvato",
+      "photoAide": "Tocca la foto per cambiarla",
+      "nom": "Nome visualizzato",
+      "telephone": "Telefono",
+      "email": "Indirizzo e-mail",
+      "emailAide": "È l'indirizzo del tuo account: non si modifica qui."
+    },
+    "clientes": {
+      "titre": "I miei clienti",
+      "recherche": "Cerca un nome, un’e-mail, un numero",
+      "vide": "Nessun cliente per ora",
+      "videTexte": "Le persone che ricevi appariranno qui.",
+      "visites_one": "{{count}} visita",
+      "visites_other": "{{count}} visite",
+      "derniere": "ultima il {{date}}",
+      "prochaine": "Prossimo appuntamento il {{date}}",
+      "statut": {
+        "pending_payment": "Pagamento in attesa",
+        "pending": "Da confermare",
+        "confirmed": "Confermato",
+        "cancelled": "Annullato",
+        "noshow": "Assenza"
+      }
+    },
+    "activite": {
+      "titre": "La mia attività",
+      "sousTitre": "Il tuo fatturato",
+      "masque": "Il tuo salone non mostra il fatturato nello spazio membro.",
+      "mois": "Questo mese",
+      "moisDernier": "Il mese scorso",
+      "annee": "Quest'anno",
+      "rdv_one": "{{count}} appuntamento svolto",
+      "rdv_other": "{{count}} appuntamenti svolti",
+      "note": "Appuntamenti confermati e passati, al prezzo della prenotazione."
+    },
+    "gerant": {
+      "action": "App",
+      "envoyee": "Invito inviato a {{email}}",
+      "retire": "Accesso all'app rimosso",
+      "retirerTitre": "Rimuovere l'accesso?",
+      "retirerTexte": "{{name}} non potrà più accedere al proprio spazio, ma resta nel tuo team.",
+      "retirer": "Rimuovi l'accesso",
+      "actifTitre": "{{name}} ha accesso all'app",
+      "actifTexte": "Connesso con {{email}}.",
+      "inviteTitre": "Invito inviato",
+      "inviteTexte": "Inviato a {{email}} — link valido fino al {{date}}.",
+      "expireTitre": "Link scaduto",
+      "expireTexte": "L'invito inviato a {{email}} non è stato usato in tempo.",
+      "annulerInvitation": "Annulla l'invito",
+      "renvoyer": "Invia di nuovo",
+      "aucunTitre": "Invitare {{name}} nell'app?",
+      "aucunTexte": "Con il proprio accesso, questo membro consulta la sua agenda, imposta i suoi orari e gestisce i suoi appuntamenti. Un invito sarà inviato a {{email}}.",
+      "sansEmail": "Aggiungi prima un indirizzo e-mail alla sua scheda.",
+      "inviter": "Invia l'invito",
+      "carteTitre": "Spazio membro nell'app",
+      "carteTexte": "Ogni membro può avere il proprio accesso: tocca «App» sulla sua scheda.",
+      "voirCA": "I membri vedono il proprio fatturato",
+      "voirCAAide": "Solo il loro, mai quello del salone."
+    }
   }
 }

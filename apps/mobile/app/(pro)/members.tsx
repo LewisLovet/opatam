@@ -26,6 +26,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../theme';
 import { Text, Button, Input, Card, useToast, SubscriptionRequiredModal, UpgradeToStudioModal } from '../../components';
 import { KeyboardAvoidingSheet } from '../../components/KeyboardAvoidingSheet';
+import {
+  useAccesMembres,
+  useJetonGerant,
+  ouvrirAccesMembre,
+  apparenceAcces,
+  ReglageCAMembres,
+} from '../../components/business/AccesAppMembres';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
@@ -82,6 +89,9 @@ export default function MembersScreen() {
   const { showToast } = useToast();
   const { provider, providerId } = useProvider();
   const sub = useSubscriptionStatus();
+  // Espace membre (Studio) : l'accès de chaque membre à l'app.
+  const { etatDe: etatAcces, recharger: rechargerAcces } = useAccesMembres(providerId);
+  const jetonGerant = useJetonGerant();
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [locations, setLocations] = useState<WithId<Location>[]>([]);
@@ -155,7 +165,7 @@ export default function MembersScreen() {
   }, [providerId]);
 
   useEffect(() => { loadData(); }, [loadData]);
-  const onRefresh = () => { setRefreshing(true); loadData(); };
+  const onRefresh = () => { setRefreshing(true); loadData(); void rechargerAcces(); };
 
   // Un changement d'horaires programmé pour plus tard ne compte pas comme
   // un horaire d'aujourd'hui : sinon quelqu'un sans aucun créneau cette
@@ -945,6 +955,30 @@ export default function MembersScreen() {
               </Text>
             </Pressable>
 
+            {!member.isDefault && (() => {
+              const etat = etatAcces(member.id);
+              const { icone, couleur } = apparenceAcces(etat, colors);
+              return (
+                <>
+                  <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+                  <Pressable
+                    onPress={() =>
+                      ouvrirAccesMembre(member, etat, jetonGerant, (message, erreur) => {
+                        showToast({ variant: erreur ? 'error' : 'success', message });
+                        void rechargerAcces();
+                      })
+                    }
+                    style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.5 : 1 }]}
+                  >
+                    <Ionicons name={icone} size={16} color={couleur} />
+                    <Text variant="caption" style={{ marginLeft: 4, fontWeight: '500', color: couleur }}>
+                      {t('espaceMembre.gerant.action')}
+                    </Text>
+                  </Pressable>
+                </>
+              );
+            })()}
+
             {!member.isDefault && (
               <>
                 <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
@@ -1593,6 +1627,15 @@ export default function MembersScreen() {
               renderMatrice()
             )}
           </View>
+        )}
+
+        {/* Espace membre (Studio) : un accès à l'app par membre. */}
+        {providerId && members.some((m) => !m.isDefault) && sub.plan !== 'solo' && sub.plan !== 'trial' && (
+          <ReglageCAMembres
+            providerId={providerId}
+            valeurInitiale={provider?.settings?.memberRevenueVisible === true}
+            onErreur={() => showToast({ variant: 'error', message: t('common.error') })}
+          />
         )}
       </ScrollView>
 

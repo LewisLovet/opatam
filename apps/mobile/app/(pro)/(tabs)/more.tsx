@@ -7,7 +7,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -21,9 +21,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
+import { memberService, reauthenticateUser, updateUserPassword } from '@booking-app/firebase';
+import type { Member } from '@booking-app/shared';
 import { Card, Input, Text, useToast } from '../../../components';
-import { useAuth, useProvider, useSubscriptionStatus } from '../../../contexts';
+import { useAuth, useProvider, useSubscriptionStatus, useEspaceMembre } from '../../../contexts';
 import {
   useBlockedSlots,
   useNewArticles,
@@ -402,7 +403,172 @@ function MenuItem({
 // Main Screen
 // ---------------------------------------------------------------------------
 
-export default function MoreScreen() {
+/**
+ * Onglet « Plus » : le menu du GÉRANT, ou — espace membre — celui du
+ * membre, réduit à ce qui est à lui. Composant d'entrée à part, pour ne
+ * jamais sauter de hooks selon le cas.
+ */
+export default function MoreEntry() {
+  const { estMembre } = useEspaceMembre();
+  return estMembre ? <MenuMembre /> : <MoreScreen />;
+}
+
+/** Le menu d'un membre : son espace, ses préférences, son compte. */
+function MenuMembre() {
+  const { colors, spacing } = useTheme();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { showToast } = useToast();
+  const { signOut, deleteAccount, userData } = useAuth();
+  const { provider, providerId } = useProvider();
+  const { monMemberId, voitSonCA } = useEspaceMembre();
+  const [membre, setMembre] = useState<Member | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  useEffect(() => {
+    if (!providerId || !monMemberId) return;
+    memberService.getById(providerId, monMemberId).then(setMembre).catch(() => setMembre(null));
+  }, [providerId, monMemberId]);
+
+  const handleLogout = () => {
+    Alert.alert(t('proMore.logout.title'), t('proMore.logout.message'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('proMore.logout.confirm'),
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/(auth)');
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = async (password: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount(password);
+      setShowDeleteModal(false);
+      router.replace('/(auth)');
+    } catch (error: any) {
+      showToast({ variant: 'error', message: error.message || t('proMore.delete.error') });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const nom = membre?.name || userData?.displayName || '';
+  const section = (titre: string) => (
+    <Text
+      variant="label"
+      color="textSecondary"
+      style={{ marginBottom: spacing.sm, marginLeft: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 }}
+    >
+      {titre}
+    </Text>
+  );
+  const separateur = <View style={[s.menuDivider, { backgroundColor: colors.border }]} />;
+
+  return (
+    <View style={[s.container, { backgroundColor: colors.background }]}>
+      <View style={{ backgroundColor: colors.primary, paddingTop: insets.top }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.lg }}>
+          <Text variant="h1" style={{ color: '#FFFFFF' }}>{t('proMore.title')}</Text>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: spacing['3xl'] }}>
+        {/* Qui je suis, et pour quel salon */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          <Card padding="lg" shadow="sm">
+            <View style={s.providerInfoContainer}>
+              {membre?.photoURL ? (
+                <Image source={{ uri: membre.photoURL }} style={[s.avatar, { backgroundColor: colors.surfaceSecondary }]} />
+              ) : (
+                <View style={[s.avatar, { backgroundColor: membre?.color || colors.primary }]}>
+                  <Text variant="h2" style={{ color: '#FFFFFF' }}>
+                    {(nom || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                  </Text>
+                </View>
+              )}
+              <View style={s.providerDetails}>
+                <Text variant="h3">{nom}</Text>
+                <Text variant="body" color="textSecondary" style={{ marginTop: 2 }}>
+                  {t('espaceMembre.menu.chez', { salon: provider?.businessName ?? '' })}
+                </Text>
+                <Text variant="caption" color="textSecondary" style={{ marginTop: 2 }}>
+                  {userData?.email || ''}
+                </Text>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          {section(t('espaceMembre.menu.monEspace'))}
+          <Card padding="none" shadow="sm">
+            {voitSonCA && (
+              <>
+                <MenuItem icon="stats-chart-outline" label={t('espaceMembre.menu.monActivite')} onPress={() => router.push('/(pro)/mon-activite' as never)} colors={colors} />
+                {separateur}
+              </>
+            )}
+            <MenuItem icon="time-outline" label={t('espaceMembre.menu.mesHoraires')} onPress={() => router.push('/(pro)/availability')} colors={colors} />
+            {separateur}
+            <MenuItem icon="remove-circle-outline" label={t('espaceMembre.menu.mesIndisponibilites')} onPress={() => router.push('/(pro)/blocked-slots')} colors={colors} />
+            {separateur}
+            <MenuItem icon="people-outline" label={t('espaceMembre.menu.mesClientes')} onPress={() => router.push('/(pro)/mes-clientes' as never)} colors={colors} />
+            {separateur}
+            <MenuItem icon="person-circle-outline" label={t('espaceMembre.menu.monProfil')} onPress={() => router.push('/(pro)/membre-profil' as never)} colors={colors} />
+          </Card>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          {section(t('profile.sections.preferences'))}
+          <Card padding="none" shadow="sm">
+            <LanguageSettingRow />
+            {separateur}
+            <MenuItem icon="lock-closed-outline" label={t('proMore.menu.changePassword')} onPress={() => setShowPasswordModal(true)} colors={colors} />
+          </Card>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.lg }}>
+          {section(t('proMore.sections.support'))}
+          <Card padding="none" shadow="sm">
+            <MenuItem icon="help-circle-outline" label={t('proMore.menu.help')} onPress={() => Linking.openURL('https://opatam.com/contact')} colors={colors} />
+            {separateur}
+            <MenuItem icon="document-text-outline" label={t('proMore.menu.terms')} onPress={() => Linking.openURL('https://opatam.com/cgu')} colors={colors} />
+            {separateur}
+            <MenuItem icon="shield-checkmark-outline" label={t('proMore.menu.privacy')} onPress={() => Linking.openURL('https://opatam.com/confidentialite')} colors={colors} />
+          </Card>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+          <Card padding="none" shadow="sm">
+            <MenuItem icon="log-out-outline" label={t('proMore.menu.logout')} onPress={handleLogout} showArrow={false} danger colors={colors} />
+            {separateur}
+            <MenuItem icon="trash-outline" label={t('proMore.menu.deleteAccount')} onPress={() => setShowDeleteModal(true)} showArrow={false} danger colors={colors} />
+          </Card>
+        </View>
+      </ScrollView>
+
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeleting}
+        colors={colors}
+        spacing={spacing}
+      />
+      <ChangePasswordModal visible={showPasswordModal} onClose={() => setShowPasswordModal(false)} colors={colors} spacing={spacing} />
+    </View>
+  );
+}
+
+function MoreScreen() {
   const { colors, spacing } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

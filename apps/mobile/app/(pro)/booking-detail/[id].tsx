@@ -72,7 +72,7 @@ import {
   EmptyState,
 } from '../../../components';
 import { BookingStatusBadge } from '../../../components/business';
-import { useAuth, useProvider } from '../../../contexts';
+import { useAuth, useProvider, useEspaceMembre } from '../../../contexts';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -417,6 +417,8 @@ export default function ProBookingDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { providerId } = useProvider();
+  // Espace membre : déplacer un rendez-vous, c'est dans SON agenda.
+  const { monMemberId } = useEspaceMembre();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [booking, setBooking] = useState<WithId<Booking> | null>(null);
@@ -602,9 +604,13 @@ export default function ProBookingDetailScreen() {
     if (!showRescheduleModal || !providerId) return;
     memberService
       .getByProvider(providerId)
-      .then((result) => setRescheduleMembers((result as WithId<Member>[]).filter((m) => m.isActive)))
+      .then((result) =>
+        setRescheduleMembers(
+          (result as WithId<Member>[]).filter((m) => m.isActive && (!monMemberId || m.id === monMemberId)),
+        ),
+      )
       .catch(() => setRescheduleMembers([]));
-  }, [showRescheduleModal, providerId]);
+  }, [showRescheduleModal, providerId, monMemberId]);
 
   // ── Add a prestation to this booking (multi-prestation) ──────────────────
   const [showAddService, setShowAddService] = useState(false);

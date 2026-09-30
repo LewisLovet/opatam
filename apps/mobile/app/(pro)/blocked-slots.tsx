@@ -19,7 +19,7 @@ import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Card, Loader, EmptyState, decrireRecurrence } from '../../components';
 import { BrandedHeader } from '../../components/business/BrandedHeader';
-import { useProvider } from '../../contexts';
+import { useProvider, useEspaceMembre } from '../../contexts';
 import { useBlockedSlots } from '../../hooks';
 import { schedulingService, memberService } from '@booking-app/firebase';
 import type { BlockedSlot, Member } from '@booking-app/shared';
@@ -43,7 +43,13 @@ export default function BlockedSlotsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
-  const { blockedSlots, isLoading, refresh } = useBlockedSlots(providerId);
+  const { blockedSlots: tousLesBlocages, isLoading, refresh } = useBlockedSlots(providerId);
+  // Espace membre : SES indisponibilités seulement.
+  const { monMemberId } = useEspaceMembre();
+  const blockedSlots = useMemo(
+    () => (monMemberId ? tousLesBlocages.filter((s) => s.memberId === monMemberId) : tousLesBlocages),
+    [tousLesBlocages, monMemberId],
+  );
 
   // Fetch members to resolve memberId → name
   const [members, setMembers] = useState<WithId<Member>[]>([]);

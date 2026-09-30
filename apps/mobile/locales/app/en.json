@@ -3515,5 +3515,83 @@
     "dates_one": "{{count}} date",
     "dates_other": "{{count}} dates",
     "range": "from {{from}} to {{to}}"
+  },
+  "espaceMembre": {
+    "suspendu": {
+      "titre": "Access suspended",
+      "texte": "Your salon no longer has access to the member space for now. Please contact your manager."
+    },
+    "menu": {
+      "deconnexion": "Sign out",
+      "chez": "At {{salon}}",
+      "monEspace": "My space",
+      "monActivite": "My activity",
+      "mesHoraires": "My hours",
+      "mesIndisponibilites": "My unavailability",
+      "mesClientes": "My clients",
+      "monProfil": "My profile"
+    },
+    "profil": {
+      "titre": "My profile",
+      "nomRequis": "Please enter your name",
+      "enregistre": "Profile saved",
+      "photoAide": "Tap the photo to change it",
+      "nom": "Display name",
+      "telephone": "Phone",
+      "email": "Email address",
+      "emailAide": "This is your account's address: it can't be changed here."
+    },
+    "clientes": {
+      "titre": "My clients",
+      "recherche": "Search a name, an email, a number",
+      "vide": "No clients yet",
+      "videTexte": "The people you see will appear here.",
+      "visites_one": "{{count}} visit",
+      "visites_other": "{{count}} visits",
+      "derniere": "last on {{date}}",
+      "prochaine": "Next appointment on {{date}}",
+      "statut": {
+        "pending_payment": "Awaiting payment",
+        "pending": "To confirm",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "noshow": "No-show"
+      }
+    },
+    "activite": {
+      "titre": "My activity",
+      "sousTitre": "Your revenue",
+      "masque": "Your salon doesn't show revenue in the member space.",
+      "mois": "This month",
+      "moisDernier": "Last month",
+      "annee": "This year",
+      "rdv_one": "{{count}} completed appointment",
+      "rdv_other": "{{count}} completed appointments",
+      "note": "Confirmed past appointments, at the booking price."
+    },
+    "gerant": {
+      "action": "App",
+      "envoyee": "Invitation sent to {{email}}",
+      "retire": "App access removed",
+      "retirerTitre": "Remove access?",
+      "retirerTexte": "{{name}} will no longer be able to sign in, but stays in your team.",
+      "retirer": "Remove access",
+      "actifTitre": "{{name}} has access to the app",
+      "actifTexte": "Signed in as {{email}}.",
+      "inviteTitre": "Invitation sent",
+      "inviteTexte": "Sent to {{email}} — link valid until {{date}}.",
+      "expireTitre": "Link expired",
+      "expireTexte": "The invitation sent to {{email}} was not used in time.",
+      "annulerInvitation": "Cancel invitation",
+      "renvoyer": "Resend",
+      "aucunTitre": "Invite {{name}} to the app?",
+      "aucunTexte": "With their own access, this member sees their schedule, sets their hours and manages their appointments. An invitation will be sent to {{email}}.",
+      "sansEmail": "First add an email address to their profile.",
+      "inviter": "Send invitation",
+      "carteTitre": "Member space in the app",
+      "carteTexte": "Each member can have their own access: tap “App” on their card.",
+      "voirCA": "Members see their revenue",
+      "voirCAAide": "Only their own, never the salon's."
+    }
   }
 }

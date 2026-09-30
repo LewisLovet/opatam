@@ -219,12 +219,14 @@ service cloud.firestore {
     // `memberAccounts/{uid}` relie un compte Firebase à UN membre d'UN salon.
     // Écrit par le serveur seul, à l'acceptation d'une invitation : c'est la
     // preuve sur laquelle s'appuient toutes les règles « membre » ci-dessous.
-    // Le membre lit le sien (l'app sait ainsi qu'il est membre) ; le gérant
-    // lit ceux de son salon et peut en supprimer un (retirer l'accès).
+    // Le membre lit le sien (l'app sait ainsi qu'il est membre) et peut le
+    // supprimer (il supprime son compte) ; le gérant lit ceux de son salon
+    // et peut en supprimer un (retirer l'accès).
     match /memberAccounts/{uid} {
       allow read: if isOwner(uid)
         || (isAuthenticated() && resource.data.providerId == request.auth.uid);
-      allow delete: if isAuthenticated() && resource.data.providerId == request.auth.uid;
+      allow delete: if isOwner(uid)
+        || (isAuthenticated() && resource.data.providerId == request.auth.uid);
       allow create, update: if false;
     }
 

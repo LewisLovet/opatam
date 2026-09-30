@@ -3515,5 +3515,83 @@
     "dates_one": "{{count}} date",
     "dates_other": "{{count}} dates",
     "range": "du {{from}} au {{to}}"
+  },
+  "espaceMembre": {
+    "suspendu": {
+      "titre": "Accès suspendu",
+      "texte": "Votre salon n'a plus accès à l'espace membre pour le moment. Rapprochez-vous de votre responsable."
+    },
+    "menu": {
+      "deconnexion": "Se déconnecter",
+      "chez": "Chez {{salon}}",
+      "monEspace": "Mon espace",
+      "monActivite": "Mon activité",
+      "mesHoraires": "Mes horaires",
+      "mesIndisponibilites": "Mes indisponibilités",
+      "mesClientes": "Mes clientes",
+      "monProfil": "Mon profil"
+    },
+    "profil": {
+      "titre": "Mon profil",
+      "nomRequis": "Indiquez votre nom",
+      "enregistre": "Profil enregistré",
+      "photoAide": "Touchez la photo pour la changer",
+      "nom": "Nom affiché",
+      "telephone": "Téléphone",
+      "email": "Adresse e-mail",
+      "emailAide": "C'est l'adresse de votre compte : elle ne se change pas ici."
+    },
+    "clientes": {
+      "titre": "Mes clientes",
+      "recherche": "Rechercher un nom, un e-mail, un numéro",
+      "vide": "Aucune cliente pour le moment",
+      "videTexte": "Les personnes que vous recevez apparaîtront ici.",
+      "visites_one": "{{count}} visite",
+      "visites_other": "{{count}} visites",
+      "derniere": "dernière le {{date}}",
+      "prochaine": "Prochain rendez-vous le {{date}}",
+      "statut": {
+        "pending_payment": "Paiement en attente",
+        "pending": "À confirmer",
+        "confirmed": "Confirmé",
+        "cancelled": "Annulé",
+        "noshow": "Absente"
+      }
+    },
+    "activite": {
+      "titre": "Mon activité",
+      "sousTitre": "Votre chiffre d'affaires",
+      "masque": "Votre salon n'affiche pas le chiffre d'affaires dans l'espace membre.",
+      "mois": "Ce mois-ci",
+      "moisDernier": "Le mois dernier",
+      "annee": "Cette année",
+      "rdv_one": "{{count}} rendez-vous honoré",
+      "rdv_other": "{{count}} rendez-vous honorés",
+      "note": "Rendez-vous confirmés et passés, au prix de la réservation."
+    },
+    "gerant": {
+      "action": "App",
+      "envoyee": "Invitation envoyée à {{email}}",
+      "retire": "Accès à l'application retiré",
+      "retirerTitre": "Retirer l'accès ?",
+      "retirerTexte": "{{name}} ne pourra plus se connecter à son espace, mais reste dans votre équipe.",
+      "retirer": "Retirer l'accès",
+      "actifTitre": "{{name}} a accès à l'application",
+      "actifTexte": "Connecté avec {{email}}.",
+      "inviteTitre": "Invitation envoyée",
+      "inviteTexte": "Envoyée à {{email}} — lien valable jusqu'au {{date}}.",
+      "expireTitre": "Lien expiré",
+      "expireTexte": "L'invitation envoyée à {{email}} n'a pas été utilisée à temps.",
+      "annulerInvitation": "Annuler l'invitation",
+      "renvoyer": "Renvoyer",
+      "aucunTitre": "Inviter {{name}} dans l'application ?",
+      "aucunTexte": "Avec son propre accès, ce membre consulte son agenda, règle ses horaires et gère ses rendez-vous. Une invitation sera envoyée à {{email}}.",
+      "sansEmail": "Ajoutez d'abord une adresse e-mail à sa fiche.",
+      "inviter": "Envoyer l'invitation",
+      "carteTitre": "Espace membre dans l'application",
+      "carteTexte": "Chaque membre peut avoir son propre accès : touchez « App » sur sa fiche.",
+      "voirCA": "Les membres voient leur chiffre d'affaires",
+      "voirCAAide": "Seulement le leur, jamais celui du salon."
+    }
   }
 }

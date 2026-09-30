@@ -33,7 +33,11 @@ interface ClientBadges {
 /**
  * Real-time badge counts for pro tabs
  */
-export function useProBookingBadges(providerId: string | null | undefined): ProBadges {
+export function useProBookingBadges(
+  providerId: string | null | undefined,
+  /** Espace membre : ne compter que SES rendez-vous. */
+  memberId?: string | null,
+): ProBadges {
   const [todayCount, setTodayCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -53,6 +57,7 @@ export function useProBookingBadges(providerId: string | null | undefined): ProB
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       const count = snapshot.docs.filter((doc) => {
+        if (memberId && doc.data().memberId !== memberId) return false;
         const datetime = doc.data().datetime?.toDate?.();
         return datetime && datetime >= startOfDay && datetime <= endOfDay;
       }).length;
@@ -69,7 +74,7 @@ export function useProBookingBadges(providerId: string | null | undefined): ProB
     );
 
     const unsubPending = onSnapshot(pendingQuery, (snapshot) => {
-      setPendingCount(snapshot.size);
+      setPendingCount(memberId ? snapshot.docs.filter((d) => d.data().memberId === memberId).length : snapshot.size);
     }, (err) => {
       console.warn('[useProBookingBadges] pending listener error:', err);
     });
@@ -78,7 +83,7 @@ export function useProBookingBadges(providerId: string | null | undefined): ProB
       unsubToday();
       unsubPending();
     };
-  }, [providerId]);
+  }, [providerId, memberId]);
 
   // Update app icon badge with total (today + pending)
   useEffect(() => {

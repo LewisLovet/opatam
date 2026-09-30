@@ -93,6 +93,10 @@ describe('memberAccounts — le lien compte ↔ membre', () => {
     await assertFails(updateDoc(doc(en('u-lina'), 'memberAccounts/u-lina'), { active: true }));
     await assertFails(updateDoc(doc(en('u-jean'), 'memberAccounts/u-jean'), { memberId: 'm2' }));
   });
+  it('le membre quitte (suppression de son compte) : il supprime SON lien, pas celui d’un autre', async () => {
+    await assertFails(deleteDoc(doc(en('u-jean'), 'memberAccounts/u-lina')));
+    await assertSucceeds(deleteDoc(doc(en('u-jean'), 'memberAccounts/u-jean')));
+  });
   it('le gérant retire l’accès d’un membre de SON salon ; un autre gérant non', async () => {
     await assertFails(deleteDoc(doc(en('salon-b'), 'memberAccounts/u-jean')));
     await assertSucceeds(deleteDoc(doc(en('salon-a'), 'memberAccounts/u-jean')));

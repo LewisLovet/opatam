@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme';
-import { useProvider } from '../../../contexts';
+import { useProvider, useEspaceMembre } from '../../../contexts';
 import { useProBookingBadges, useSupportChatEnabled, useSupportUnread } from '../../../hooks';
 import {
   MORE_TAB_FEATURE_KEYS,
@@ -22,16 +22,20 @@ export default function ProTabsLayout() {
   const { t } = useTranslation();
   const router = useRouter();
   const { provider } = useProvider();
-  const { todayCount, pendingCount } = useProBookingBadges(provider?.id);
+  // Espace membre : pas de tableau de bord du salon, badges sur SES rendez-vous.
+  const { estMembre, monMemberId } = useEspaceMembre();
+  const { todayCount, pendingCount } = useProBookingBadges(provider?.id, monMemberId);
   const insets = useSafeAreaInsets();
   // Discovery dot on the "Plus" tab — true while any new-feature
   // entry behind that tab hasn't been opened yet.
   const { hasAnyUnseen } = useNewFeatures();
-  const moreHasNew = hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
+  // Les nouveautés annoncées sont des fonctions de gérant.
+  const moreHasNew = !estMembre && hasAnyUnseen(MORE_TAB_FEATURE_KEYS);
   // Réponses de l'équipe non lues (messagerie Opatam) — badge chiffré sur
   // l'onglet « Plus », visible depuis n'importe quel onglet, sans avoir à
   // ouvrir le menu. Même convention que Réservations en attente.
-  const supportChatActif = useSupportChatEnabled(provider?.id ?? null);
+  // La messagerie Opatam est celle du GÉRANT : jamais dans l'espace membre.
+  const supportChatActif = useSupportChatEnabled(estMembre ? null : provider?.id ?? null);
   const supportNonLus = useSupportUnread(provider?.id, supportChatActif);
 
   // Pulse the dot continuously while there's something new — the
@@ -89,6 +93,8 @@ export default function ProTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          // Le tableau de bord est celui du salon : masqué pour un membre.
+          href: estMembre ? null : undefined,
           title: t('proTabs.home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />

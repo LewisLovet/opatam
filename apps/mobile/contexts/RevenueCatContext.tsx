@@ -56,7 +56,10 @@ const RevenueCatContext = createContext<RevenueCatContextValue | undefined>(unde
 
 export function RevenueCatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { providerId } = useProvider();
+  const { providerId: idDuSalon, estMembre } = useProvider();
+  // Espace membre : JAMAIS d'identification RevenueCat avec l'identifiant du
+  // salon — le membre y verrait (et pourrait restaurer) les achats du gérant.
+  const providerId = estMembre ? null : idDuSalon;
   const [isReady, setIsReady] = useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [currentOffering, setCurrentOffering] = useState<PurchasesOffering | null>(null);

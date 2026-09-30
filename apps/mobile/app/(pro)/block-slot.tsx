@@ -23,7 +23,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, Switch, Input, Loader, SubscriptionRequiredModal, RecurrenceFields, regleAEnregistrer, type RecurrenceDraft } from '../../components';
-import { useProvider, useSubscriptionStatus } from '../../contexts';
+import { useProvider, useSubscriptionStatus, useEspaceMembre } from '../../contexts';
 import { useFuseauxMembres } from '../../hooks/useFuseauxMembres';
 import { schedulingService, memberService, blockedSlotRepository } from '@booking-app/firebase';
 import {
@@ -375,6 +375,8 @@ export default function BlockSlotScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { providerId } = useProvider();
+  // Espace membre : on ne bloque que SON agenda.
+  const { monMemberId } = useEspaceMembre();
   const sub = useSubscriptionStatus();
   const { date: dateParam, id: editId } = useLocalSearchParams<{
     date?: string;
@@ -429,7 +431,9 @@ export default function BlockSlotScreen() {
     (async () => {
       try {
         const result = await memberService.getByProvider(providerId);
-        const activeMembers = (result as WithId<Member>[]).filter((m) => m.isActive);
+        const activeMembers = (result as WithId<Member>[]).filter(
+          (m) => m.isActive && (!monMemberId || m.id === monMemberId),
+        );
         if (cancelled) return;
         setMembers(activeMembers);
 
