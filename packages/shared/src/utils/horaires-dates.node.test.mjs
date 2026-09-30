@@ -153,3 +153,39 @@ describe('réglage du jour — utilitaire', () => {
     assert.equal(reglageDateDuJour([], '2026-10-05', 1), null);
   });
 });
+
+describe('miroir des functions (prochaine disponibilité)', () => {
+  it('rend exactement la même chose que la règle partagée, sur 3 000 cas tirés au hasard', async () => {
+    const miroir = await import('../../../../functions/src/lib/horairesEnVigueur.ts');
+    let graine = 42;
+    const hasard = (n) => ((graine = (graine * 1103515245 + 12345) % 2 ** 31), graine % n);
+    const jourDe = (n) => `2026-11-${String(1 + n).padStart(2, '0')}`;
+    const plages = () => (hasard(3) === 0 ? [] : [{ start: `0${7 + hasard(3)}:00`, end: `1${2 + hasard(6)}:00` }]);
+    const jourDEffet = (d) => d.toISOString().slice(0, 10);
+    for (let cas = 0; cas < 3000; cas++) {
+      const semaine = Array.from({ length: 1 + hasard(10) }, () => ({
+        dayOfWeek: hasard(7),
+        isOpen: hasard(4) !== 0,
+        slots: plages(),
+        effectiveFrom: hasard(3) === 0 ? new Date(Date.UTC(2026, 10, 1 + hasard(28))) : null,
+      }));
+      const dates = Array.from({ length: hasard(5) }, () => {
+        const a = hasard(28), b = a + hasard(28 - a);
+        return {
+          from: jourDe(a), to: jourDe(b),
+          weekdays: hasard(2) ? [] : [hasard(7), hasard(7)],
+          mode: ['slots', 'closed', 'usual'][hasard(3)],
+          slots: plages(),
+          createdAt: hasard(4) === 0 ? null : new Date(1_700_000_000_000 + hasard(5) * 1000),
+        };
+      });
+      const n = hasard(28);
+      const p = {
+        jour: jourDe(n),
+        jourSemaine: new Date(Date.UTC(2026, 10, 1 + n)).getUTCDay(),
+        semaine, dates, horairesVariables: hasard(3) === 0, jourDEffet,
+      };
+      assert.deepEqual(miroir.horairesDuJour(p), horairesDuJour(p), `cas ${cas}`);
+    }
+  });
+});

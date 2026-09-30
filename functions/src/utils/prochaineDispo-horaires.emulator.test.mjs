@@ -25,7 +25,7 @@ const p = db.doc(`providers/${PID}`);
 const jours = [0, 1, 2, 3, 4, 5, 6];
 
 beforeEach(async () => {
-  for (const c of ['members', 'availability', 'locations']) {
+  for (const c of ['members', 'availability', 'locations', 'datedAvailability']) {
     const s = await p.collection(c).get();
     await Promise.all(s.docs.map((d) => d.ref.delete()));
   }
@@ -56,5 +56,69 @@ describe('prochaine disponibilité — changements d’horaires programmés', ()
 
   it('sans changement programmé : fermé partout → aucune disponibilité', async () => {
     assert.equal(await calculateNextAvailableSlot(PID), null);
+  });
+});
+
+/** Date calendaire à Paris, dans `n` jours. */
+const jourParis = (n) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(new Date(Date.now() + n * 86_400_000));
+const jourDe = (d) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+const ouvrirSemaine = async () => {
+  for (const d of jours) {
+    await p.collection('availability').doc(`m1_${d}`).set({
+      memberId: 'm1', locationId: 'lieu-1', dayOfWeek: d, isOpen: true, slots: [{ start: '09:00', end: '18:00' }],
+    });
+  }
+};
+const dater = (r) =>
+  p.collection('datedAvailability').add({
+    memberId: 'm1', locationId: 'lieu-1', weekdays: [], slots: [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(), ...r,
+  });
+
+describe('prochaine disponibilité — horaires datés et « horaires variables »', () => {
+  it('fermé toute la semaine, un jour ouvert par un horaire daté → ce jour-là', async () => {
+    const jour = jourParis(10);
+    await dater({ from: jour, to: jour, mode: 'slots', slots: [{ start: '10:00', end: '16:00' }] });
+    const dispo = await calculateNextAvailableSlot(PID);
+    assert.ok(dispo instanceof Date);
+    assert.equal(jourDe(dispo), jour);
+  });
+
+  it('« horaires variables » : la semaine type ne compte plus, rien d’ouvert → aucune disponibilité', async () => {
+    await ouvrirSemaine();
+    await p.collection('members').doc('m1').update({ variableHours: true });
+    assert.equal(await calculateNextAvailableSlot(PID), null);
+  });
+
+  it('« horaires variables » + un jour ouvert → ce jour-là, pas avant', async () => {
+    await ouvrirSemaine();
+    await p.collection('members').doc('m1').update({ variableHours: true });
+    const jour = jourParis(5);
+    await dater({ from: jour, to: jour, mode: 'slots', slots: [{ start: '09:00', end: '12:00' }] });
+    const dispo = await calculateNextAvailableSlot(PID);
+    assert.ok(dispo instanceof Date);
+    assert.equal(jourDe(dispo), jour);
+  });
+
+  it('semaine ouverte, période « fermé » : la première disponibilité tombe après la période', async () => {
+    await ouvrirSemaine();
+    const fin = jourParis(20);
+    await dater({ from: jourParis(0), to: fin, mode: 'closed' });
+    const dispo = await calculateNextAvailableSlot(PID);
+    assert.ok(dispo instanceof Date);
+    assert.equal(jourDe(dispo), jourParis(21));
+  });
+
+  it('le réglage le plus RÉCENT l’emporte : « horaires habituels » rouvre une période fermée', async () => {
+    await ouvrirSemaine();
+    await dater({ from: jourParis(0), to: jourParis(20), mode: 'closed' });
+    await new Promise((r) => setTimeout(r, 20));
+    await dater({ from: jourParis(3), to: jourParis(3), mode: 'usual' });
+    const dispo = await calculateNextAvailableSlot(PID);
+    assert.ok(dispo instanceof Date);
+    assert.equal(jourDe(dispo), jourParis(3));
   });
 });

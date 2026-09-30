@@ -9,7 +9,7 @@ import * as admin from 'firebase-admin';
 import { ajouterJours, jourLocal, jourSemaineCalendaire, minutesLocales, instantDepuisHeureLocale } from '../lib/fuseaux';
 import { Timestamp } from 'firebase-admin/firestore';
 import { serverTracker } from './serverTracker';
-import { horaireEnVigueurLe } from '../lib/horairesEnVigueur';
+import { horairesDuJour, type HoraireDateLu } from '../lib/horairesEnVigueur';
 
 interface TimeSlot {
   start: string;
@@ -240,13 +240,43 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
 
   console.log(`Found ${availabilities.length} availability rules`);
 
-  if (availabilities.length === 0) {
+  // 3 bis. Les horaires DATÉS encore à venir, et l'option « horaires
+  // variables » (la semaine type ne s'applique plus : un jour sans horaire
+  // daté est fermé). Une seule inégalité, sans index composite : le membre
+  // se filtre en mémoire.
+  const now = new Date();
+  const horairesVariables = memberDoc.data()?.variableHours === true;
+  let horairesDates: HoraireDateLu[] = [];
+  try {
+    const datesSnapshot = await db
+      .collection('providers')
+      .doc(providerId)
+      .collection('datedAvailability')
+      .where('to', '>=', jourLocal(now, fuseauDuSalon))
+      .get();
+    serverTracker.trackRead('providers/*/datedAvailability', datesSnapshot.size);
+    horairesDates = datesSnapshot.docs
+      .map((doc) => doc.data())
+      .filter((d) => d.memberId === memberId)
+      .map((d) => ({
+        from: d.from,
+        to: d.to,
+        weekdays: Array.isArray(d.weekdays) ? d.weekdays : [],
+        mode: d.mode,
+        slots: Array.isArray(d.slots) ? d.slots : [],
+        createdAt: d.createdAt && 'toDate' in d.createdAt ? d.createdAt.toDate() : null,
+      }));
+  } catch (err) {
+    // Illisibles : les horaires habituels, comme avant.
+    console.warn(`Could not fetch datedAvailability for ${providerId}, continuing without:`, (err as Error).message);
+  }
+
+  if (availabilities.length === 0 && horairesDates.length === 0) {
     console.log('No availabilities configured');
     return null;
   }
 
   // 4. Récupérer les blockedSlots futurs (graceful fallback si index manquant)
-  const now = new Date();
   let blockedSlots: BlockedSlot[] = [];
   try {
     const blockedSlotsSnapshot = await db
@@ -308,15 +338,22 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
   for (let i = startOffset; i < 60; i++) {
     const jour = ajouterJours(jourAujourdhui, i);
     const dayOfWeek = jourSemaineCalendaire(jour);
-    const availability = horaireEnVigueurLe(availabilities, dayOfWeek, jour, (d) => jourLocal(d, fuseauDuSalon));
+    const horaires = horairesDuJour({
+      jour,
+      jourSemaine: dayOfWeek,
+      semaine: availabilities,
+      dates: horairesDates,
+      horairesVariables,
+      jourDEffet: (d) => jourLocal(d, fuseauDuSalon),
+    });
 
     // Jour fermé ?
-    if (!availability || !availability.isOpen || !availability.slots?.length) {
+    if (!horaires.ouvert) {
       continue;
     }
 
     // Ouverture du jour, en tranches de minutes.
-    const ouverture: Tranche[] = availability.slots.map(slot => ({
+    const ouverture: Tranche[] = horaires.plages.map(slot => ({
       debut: hhmmEnMinutes(slot.start),
       fin: finEnMinutes(slot.end),
     }));

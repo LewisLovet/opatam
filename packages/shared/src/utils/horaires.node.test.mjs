@@ -187,7 +187,7 @@ describe('les lecteurs d’horaires passent tous par la règle « en vigueur »'
   });
   it('prochaine disponibilité (functions) : le miroir', () => {
     const src = lire('functions/src/utils/calculateNextAvailableSlot.ts');
-    assert.match(src, /horaireEnVigueurLe\(availabilities, dayOfWeek, jour/);
+    assert.match(src, /horairesDuJour\(\{[\s\S]*semaine: availabilities,[\s\S]*dates: horairesDates,/);
     assert.doesNotMatch(src, /availabilities\.set\(data\.dayOfWeek/);
   });
 });
