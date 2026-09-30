@@ -28,6 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import { MemberCard } from './MemberCard';
+import { ReglagesEspaceMembre } from './ReglagesEspaceMembre';
 import { MemberModal, type MemberFormData } from './MemberModal';
 import { LieuSection } from './organisation/LieuSection';
 import {
@@ -1277,6 +1278,9 @@ export function EquipeTab() {
               ) : null}
             </div>
           </div>
+
+          {/* Espace membre (Studio) : un accès à l'app par membre. */}
+          {!isSoloPlan && provider && <ReglagesEspaceMembre provider={provider} />}
         </>
       )}
 

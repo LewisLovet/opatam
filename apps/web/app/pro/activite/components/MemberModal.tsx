@@ -12,7 +12,8 @@ import {
   Avatar,
   useToast,
 } from '@/components/ui';
-import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check, Camera, X } from 'lucide-react';
+import { Loader2, Trash2, Copy, Mail, RefreshCw, AlertTriangle, Tag, ChevronRight, ChevronLeft, User, MapPin, Key, Check, Camera, X, Smartphone } from 'lucide-react';
+import { AccesAppMembre } from './AccesAppMembre';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadFile, storagePaths, memberService } from '@booking-app/firebase';
 import type { Member, Location, Service } from '@booking-app/shared';
@@ -50,7 +51,7 @@ export interface MemberFormData {
   photoFile?: File | null;
 }
 
-type TabId = 'info' | 'assignments' | 'code';
+type TabId = 'info' | 'assignments' | 'app' | 'code';
 
 export function MemberModal({
   isOpen,
@@ -410,6 +411,7 @@ export function MemberModal({
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'info', label: 'Informations', icon: <User className="w-4 h-4" /> },
     { id: 'assignments', label: 'Lieux & Prestations', icon: <MapPin className="w-4 h-4" /> },
+    { id: 'app', label: 'Accès à l’app', icon: <Smartphone className="w-4 h-4" /> },
     { id: 'code', label: 'Code', icon: <Key className="w-4 h-4" /> },
   ];
 
@@ -741,6 +743,7 @@ export function MemberModal({
           <div className="min-h-[280px]">
             {activeTab === 'info' && infoContent}
             {activeTab === 'assignments' && assignmentsContent}
+            {activeTab === 'app' && member && provider && <AccesAppMembre providerId={provider.id} member={member} />}
             {activeTab === 'code' && codeContent}
           </div>
         </>
