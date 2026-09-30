@@ -3603,13 +3603,32 @@
     "connexion": {
       "lien": "Recebeu um convite do seu salão?",
       "titre": "Juntar-se à sua equipa",
-      "texte": "Entre com o endereço onde recebeu o convite e a palavra-passe escolhida através da ligação. Ainda sem palavra-passe? Abra primeiro a ligação recebida por e-mail."
+      "texte": "Entre com o endereço onde recebeu o convite e a palavra-passe escolhida através da ligação. Ainda sem palavra-passe? Abra primeiro a ligação recebida por e-mail.",
+      "onglet": "Equipa",
+      "bouton": "Faço parte de uma equipa",
+      "pied": "Ainda sem palavra-passe? Abra a ligação do convite recebido por e-mail: é ela que permite criá-la."
     },
     "inscription": {
       "titre": "Convite pendente",
       "texte": "Este endereço recebeu um convite para se juntar a uma equipa na Opatam. Para se juntar, abra a ligação recebida por e-mail em vez de criar um salão — caso contrário, este endereço deixará de poder juntar-se à equipa.",
       "utiliserLien": "Vou usar a ligação",
       "creerSalon": "Criar o meu salão"
+    },
+    "accueil": {
+      "bonjour": "Olá {{prenom}}",
+      "bonjourSeul": "Olá",
+      "aConfirmer_one": "{{count}} marcação por confirmar",
+      "aConfirmer_other": "{{count}} marcações por confirmar",
+      "aujourdhui": "Hoje",
+      "voirAgenda": "Ver agenda",
+      "rienAujourdhui": "Nenhuma marcação hoje.",
+      "etAutres_one": "… e mais {{count}}",
+      "etAutres_other": "… e mais {{count}}",
+      "semaine_one": "{{count}} marcação esta semana",
+      "semaine_other": "{{count}} marcações esta semana",
+      "prochain": "Próxima: {{quand}} às {{heure}}",
+      "nouveauRdv": "Nova marcação",
+      "bloquer": "Bloquear um horário"
     }
   }
 }

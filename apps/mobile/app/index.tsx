@@ -42,10 +42,10 @@ export default function Index() {
     if (userData.role === 'provider') {
       return <Redirect href={'/(pro)' as never} />;
     }
-    // Espace membre (plan Studio) : les écrans pro, figés sur SON agenda.
+    // Espace membre (plan Studio) : son accueil, puis les écrans pro figés sur lui.
     // Le rôle reste 'client' — un membre peut aussi réserver ailleurs.
     if (compteMembre) {
-      return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
+      return <Redirect href={'/(pro)/(tabs)' as never} />;
     }
     return <Redirect href="/(client)/(tabs)" />;
   }

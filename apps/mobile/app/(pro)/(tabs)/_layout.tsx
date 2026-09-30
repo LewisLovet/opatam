@@ -93,8 +93,6 @@ export default function ProTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          // Le tableau de bord est celui du salon : masqué pour un membre.
-          href: estMembre ? null : undefined,
           title: t('proTabs.home'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />

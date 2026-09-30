@@ -7,6 +7,7 @@
  * membre à son agenda (voir `GardeEspaceMembre`).
  */
 export const ECRANS_MEMBRE: ReadonlySet<string> = new Set([
+  'index',
   'calendar',
   'bookings',
   'create',
@@ -22,10 +23,13 @@ export const ECRANS_MEMBRE: ReadonlySet<string> = new Set([
   'mon-activite',
 ]);
 
-/** L'écran visé : le segment après « (pro) » et, s'il y en a, « (tabs) ». */
+/**
+ * L'écran visé : le segment après « (pro) » et, s'il y en a, « (tabs) ».
+ * L'onglet d'accueil n'a pas de segment à lui : `(pro)/(tabs)` seul = 'index'.
+ */
 export function ecranDuChemin(segments: readonly string[]): string | null {
   const reste = segments.filter((s) => s !== '(pro)' && s !== '(tabs)');
-  return reste[0] ?? null;
+  return reste[0] ?? (segments.includes('(tabs)') ? 'index' : null);
 }
 
 export function estOuvertAuMembre(segments: readonly string[]): boolean {

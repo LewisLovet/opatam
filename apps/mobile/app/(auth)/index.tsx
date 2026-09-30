@@ -224,15 +224,17 @@ export default function WelcomeScreen() {
           </Pressable>
 
           {/* Espace membre : un membre invité se CONNECTE (son mot de passe est
-              choisi depuis le lien reçu), il ne crée pas de compte. */}
+              choisi depuis le lien reçu), il ne crée pas de compte. Troisième
+              voie visible, pour qu'il ne se trompe pas de bouton. */}
           <Pressable
-            onPress={() => router.push('/(auth)/login?invitation=1' as never)}
-            hitSlop={8}
-            style={({ pressed }) => ({ alignSelf: 'center', paddingVertical: 4, opacity: pressed ? 0.6 : 1 })}
+            onPress={() => router.push('/(auth)/login?tab=equipe' as never)}
+            style={({ pressed }) => [
+              styles.teamBtn,
+              { borderRadius: radius.xl || 20, opacity: pressed ? 0.7 : 1 },
+            ]}
           >
-            <Text variant="bodySmall" style={{ color: '#2563EB', fontWeight: '600' }}>
-              {t('espaceMembre.connexion.lien')}
-            </Text>
+            <Ionicons name="people-outline" size={20} color="#1E3A8A" style={{ marginRight: 10 }} />
+            <Text variant="body" style={styles.teamBtnText}>{t('espaceMembre.connexion.bouton')}</Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -301,6 +303,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#3B82F6',
     backgroundColor: 'rgba(59, 130, 246, 0.05)',
+  },
+  teamBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(30, 58, 138, 0.15)',
+  },
+  teamBtnText: {
+    color: '#1E3A8A',
+    fontWeight: '600',
+    fontSize: 16,
   },
   secondaryBtnText: {
     color: '#3B82F6',

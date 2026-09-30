@@ -3603,13 +3603,32 @@
     "connexion": {
       "lien": "Hai ricevuto un invito dal tuo salone?",
       "titre": "Unisciti al tuo team",
-      "texte": "Accedi con l'indirizzo su cui hai ricevuto l'invito e la password scelta dal suo link. Non hai ancora una password? Apri prima il link ricevuto via e-mail."
+      "texte": "Accedi con l'indirizzo su cui hai ricevuto l'invito e la password scelta dal suo link. Non hai ancora una password? Apri prima il link ricevuto via e-mail.",
+      "onglet": "Team",
+      "bouton": "Faccio parte di un team",
+      "pied": "Non hai ancora una password? Apri il link dell'invito ricevuto via e-mail: serve a crearla."
     },
     "inscription": {
       "titre": "Invito in attesa",
       "texte": "Questo indirizzo ha ricevuto un invito a unirsi a un team su Opatam. Per unirti, apri il link ricevuto via e-mail invece di creare un salone: altrimenti questo indirizzo non potrà più unirsi al team.",
       "utiliserLien": "Uso il link",
       "creerSalon": "Crea il mio salone"
+    },
+    "accueil": {
+      "bonjour": "Ciao {{prenom}}",
+      "bonjourSeul": "Ciao",
+      "aConfirmer_one": "{{count}} appuntamento da confermare",
+      "aConfirmer_other": "{{count}} appuntamenti da confermare",
+      "aujourdhui": "Oggi",
+      "voirAgenda": "Vedi l'agenda",
+      "rienAujourdhui": "Nessun appuntamento oggi.",
+      "etAutres_one": "… e {{count}} altro",
+      "etAutres_other": "… e altri {{count}}",
+      "semaine_one": "{{count}} appuntamento questa settimana",
+      "semaine_other": "{{count}} appuntamenti questa settimana",
+      "prochain": "Prossimo: {{quand}} alle {{heure}}",
+      "nouveauRdv": "Nuovo appuntamento",
+      "bloquer": "Blocca una fascia oraria"
     }
   }
 }

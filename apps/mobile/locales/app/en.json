@@ -3603,13 +3603,32 @@
     "connexion": {
       "lien": "Did your salon send you an invitation?",
       "titre": "Join your team",
-      "texte": "Sign in with the address where you received the invitation, and the password you chose from its link. No password yet? Open the link in the email first."
+      "texte": "Sign in with the address where you received the invitation, and the password you chose from its link. No password yet? Open the link in the email first.",
+      "onglet": "Team",
+      "bouton": "I'm part of a team",
+      "pied": "No password yet? Open the link in the invitation email: that's where you create it."
     },
     "inscription": {
       "titre": "Pending invitation",
       "texte": "This address has received an invitation to join a team on Opatam. To join it, open the link in the email instead of creating a salon — otherwise this address will no longer be able to join the team.",
       "utiliserLien": "I'll use the link",
       "creerSalon": "Create my salon"
+    },
+    "accueil": {
+      "bonjour": "Hello {{prenom}}",
+      "bonjourSeul": "Hello",
+      "aConfirmer_one": "{{count}} appointment to confirm",
+      "aConfirmer_other": "{{count}} appointments to confirm",
+      "aujourdhui": "Today",
+      "voirAgenda": "See schedule",
+      "rienAujourdhui": "No appointments today.",
+      "etAutres_one": "… and {{count}} more",
+      "etAutres_other": "… and {{count}} more",
+      "semaine_one": "{{count}} appointment this week",
+      "semaine_other": "{{count}} appointments this week",
+      "prochain": "Next: {{quand}} at {{heure}}",
+      "nouveauRdv": "New appointment",
+      "bloquer": "Block a time slot"
     }
   }
 }

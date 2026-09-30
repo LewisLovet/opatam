@@ -13,8 +13,9 @@ const racine = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const lire = (chemin) => readFileSync(resolve(racine, chemin), 'utf8');
 
 describe('les écrans ouverts à un membre', () => {
-  it('son agenda, ses rendez-vous, ses horaires, ses blocages, son profil', () => {
+  it('son accueil, son agenda, ses rendez-vous, ses horaires, ses blocages, son profil', () => {
     for (const ok of [
+      ['(pro)', '(tabs)'], ['(pro)', '(tabs)', 'index'],
       ['(pro)', '(tabs)', 'calendar'], ['(pro)', '(tabs)', 'bookings'], ['(pro)', '(tabs)', 'more'],
       ['(pro)', 'booking-detail', '[id]'], ['(pro)', 'create-booking'], ['(pro)', 'block-slot'],
       ['(pro)', 'availability'], ['(pro)', 'membre-profil'], ['(pro)', 'mes-clientes'],
@@ -22,7 +23,7 @@ describe('les écrans ouverts à un membre', () => {
   });
   it('JAMAIS : tableau de bord, abonnement, paiements, prestations, équipe, lieux, réglages, stats, messagerie', () => {
     for (const non of [
-      ['(pro)', '(tabs)', 'index'], ['(pro)', 'paywall'], ['(pro)', 'payments'], ['(pro)', 'services'],
+      ['(pro)', 'paywall'], ['(pro)', 'payments'], ['(pro)', 'services'],
       ['(pro)', 'members'], ['(pro)', 'locations'], ['(pro)', 'booking-settings'], ['(pro)', 'stats'],
       ['(pro)', 'profile'], ['(pro)', 'loyalty'], ['(pro)', 'reviews'], ['(pro)', 'support'],
       ['(pro)', 'clients'], ['(pro)', 'client-detail', '[id]'], ['(pro)', 'notification-settings'], ['(pro)'],
@@ -31,6 +32,7 @@ describe('les écrans ouverts à un membre', () => {
   it('le chemin se lit après (pro) et (tabs)', () => {
     assert.equal(ecranDuChemin(['(pro)', '(tabs)', 'calendar']), 'calendar');
     assert.equal(ecranDuChemin(['(pro)', 'booking-detail', '[id]']), 'booking-detail');
+    assert.equal(ecranDuChemin(['(pro)', '(tabs)']), 'index', 'onglet d’accueil');
     assert.equal(ecranDuChemin(['(pro)']), null);
   });
   it('chaque écran autorisé existe vraiment', () => {
@@ -62,14 +64,14 @@ describe('les écrans pro réutilisés sont figés sur le membre', () => {
   it('après la connexion aussi : la garde de l’écran de connexion et la page introuvable', () => {
     const auth = lire('apps/mobile/app/(auth)/_layout.tsx');
     assert.match(auth, /compteMembre !== undefined/);
-    assert.match(auth, /if \(!isProvider && compteMembre\) \{\s*return <Redirect href=\{'\/\(pro\)\/\(tabs\)\/calendar' as never\} \/>;/);
+    assert.match(auth, /if \(!isProvider && compteMembre\) \{\s*return <Redirect href=\{'\/\(pro\)\/\(tabs\)' as never\} \/>;/);
     const introuvable = lire('apps/mobile/app/+not-found.tsx');
     assert.match(introuvable, /\} else if \(compteMembre\) \{/);
   });
   it('l’aiguillage attend le compte membre avant de choisir un côté', () => {
     const src = lire('apps/mobile/app/index.tsx');
     assert.match(src, /compteMembre === undefined/);
-    assert.match(src, /if \(compteMembre\) \{\s*return <Redirect href=\{'\/\(pro\)\/\(tabs\)\/calendar' as never\} \/>;/);
+    assert.match(src, /if \(compteMembre\) \{\s*return <Redirect href=\{'\/\(pro\)\/\(tabs\)' as never\} \/>;/);
   });
 });
 
@@ -80,6 +82,7 @@ describe('les textes du mode membre existent dans les cinq langues', () => {
       'apps/mobile/app/(pro)/mon-activite.tsx', 'apps/mobile/app/(pro)/members.tsx',
       'apps/mobile/components/business/GardeEspaceMembre.tsx', 'apps/mobile/components/business/AccesAppMembres.tsx',
       'apps/mobile/app/(auth)/index.tsx', 'apps/mobile/app/(auth)/login.tsx', 'apps/mobile/app/(auth)/pro.tsx',
+      'apps/mobile/components/business/AccueilMembre.tsx',
     ];
     const cles = new Set();
     for (const f of fichiers) for (const m of lire(f).matchAll(/espaceMembre\.([A-Za-z]+\.[A-Za-z]+)(?=['`])/g)) cles.add(m[1]);

@@ -134,7 +134,7 @@ function FloatingBubble({ bubble }: { bubble: Bubble }) {
   );
 }
 
-type TabType = 'client' | 'pro';
+type TabType = 'client' | 'pro' | 'equipe';
 
 interface FormErrors {
   email?: string;
@@ -149,13 +149,14 @@ export default function LoginScreen() {
   const { signIn } = useAuth();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ tab?: string; invitation?: string }>();
-  // Arrivé par « Vous avez reçu une invitation de votre salon ? ».
-  const viaInvitation = params.invitation === '1';
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>(
-    params.tab === 'pro' ? 'pro' : 'client'
+    params.tab === 'pro' ? 'pro' : params.tab === 'equipe' || params.invitation === '1' ? 'equipe' : 'client'
   );
+  // Espace membre : un membre invité se CONNECTE — son mot de passe se
+  // choisit depuis le lien reçu par e-mail, il n'y a pas de compte à créer.
+  const viaInvitation = activeTab === 'equipe';
 
   // Form state
   const [email, setEmail] = useState('');
@@ -337,63 +338,39 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              <Pressable
-                onPress={() => handleTabChange('client')}
-                style={[
-                  styles.tab,
-                  {
-                    backgroundColor: activeTab === 'client' ? '#FFFFFF' : 'transparent',
-                    borderRadius: 10,
-                  },
-                  activeTab === 'client' && styles.tabActive,
-                ]}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={16}
-                  color={activeTab === 'client' ? colors.primary : colors.textSecondary}
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  variant="body"
-                  style={{
-                    fontWeight: activeTab === 'client' ? '600' : '400',
-                    color: activeTab === 'client' ? colors.primary : colors.textSecondary,
-                    fontSize: 14,
-                  }}
-                >
-                  {t('auth.login.clientTab')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => handleTabChange('pro')}
-                style={[
-                  styles.tab,
-                  {
-                    backgroundColor: activeTab === 'pro' ? '#FFFFFF' : 'transparent',
-                    borderRadius: 10,
-                  },
-                  activeTab === 'pro' && styles.tabActive,
-                ]}
-              >
-                <Ionicons
-                  name="briefcase-outline"
-                  size={16}
-                  color={activeTab === 'pro' ? colors.primary : colors.textSecondary}
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  variant="body"
-                  style={{
-                    fontWeight: activeTab === 'pro' ? '600' : '400',
-                    color: activeTab === 'pro' ? colors.primary : colors.textSecondary,
-                    fontSize: 14,
-                  }}
-                >
-                  {t('auth.login.proTab')}
-                </Text>
-              </Pressable>
+              {([
+                { id: 'client', icone: 'person-outline', libelle: t('auth.login.clientTab') },
+                { id: 'pro', icone: 'briefcase-outline', libelle: t('auth.login.proTab') },
+                { id: 'equipe', icone: 'people-outline', libelle: t('espaceMembre.connexion.onglet') },
+              ] as const).map((onglet) => {
+                const actif = activeTab === onglet.id;
+                return (
+                  <Pressable
+                    key={onglet.id}
+                    onPress={() => handleTabChange(onglet.id)}
+                    style={[
+                      styles.tab,
+                      { backgroundColor: actif ? '#FFFFFF' : 'transparent', borderRadius: 10 },
+                      actif && styles.tabActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name={onglet.icone}
+                      size={16}
+                      color={actif ? colors.primary : colors.textSecondary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      variant="body"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={{ fontWeight: actif ? '600' : '400', color: actif ? colors.primary : colors.textSecondary, fontSize: 14 }}
+                    >
+                      {onglet.libelle}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </Animated.View>
 
@@ -470,7 +447,13 @@ export default function LoginScreen() {
               { opacity: fadeAnim },
             ]}
           >
-            {activeTab === 'client' ? (
+            {activeTab === 'equipe' ? (
+              <View style={styles.footerColumn}>
+                <Text variant="bodySmall" color="textSecondary" align="center">
+                  {t('espaceMembre.connexion.pied')}
+                </Text>
+              </View>
+            ) : activeTab === 'client' ? (
               <View style={styles.footerRow}>
                 <Text variant="body" color="textSecondary">
                   {t('auth.login.noAccount')}{' '}

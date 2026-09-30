@@ -24,7 +24,7 @@ export default function NotFoundScreen() {
         router.replace('/(pro)' as never);
       } else if (compteMembre) {
         // Espace membre : son agenda.
-        router.replace('/(pro)/(tabs)/calendar' as never);
+        router.replace('/(pro)/(tabs)' as never);
       } else {
         router.replace('/(client)/(tabs)');
       }

@@ -61,7 +61,7 @@ export function GardeEspaceMembre({ children }: { children: ReactNode }) {
     );
   }
   if (segments.length > 1 && !estOuvertAuMembre(segments)) {
-    return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
+    return <Redirect href={'/(pro)/(tabs)' as never} />;
   }
   return <>{children}</>;
 }

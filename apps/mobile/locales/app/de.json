@@ -3603,13 +3603,32 @@
     "connexion": {
       "lien": "Hast du eine Einladung deines Salons erhalten?",
       "titre": "Deinem Team beitreten",
-      "texte": "Melde dich mit der Adresse an, an die die Einladung ging, und mit dem Passwort, das du über den Link gewählt hast. Noch kein Passwort? Öffne zuerst den Link aus der E-Mail."
+      "texte": "Melde dich mit der Adresse an, an die die Einladung ging, und mit dem Passwort, das du über den Link gewählt hast. Noch kein Passwort? Öffne zuerst den Link aus der E-Mail.",
+      "onglet": "Team",
+      "bouton": "Ich gehöre zu einem Team",
+      "pied": "Noch kein Passwort? Öffne den Link aus der Einladungs-E-Mail: Dort legst du es an."
     },
     "inscription": {
       "titre": "Offene Einladung",
       "texte": "Diese Adresse hat eine Einladung erhalten, einem Team auf Opatam beizutreten. Öffne dazu den Link aus der E-Mail, statt einen Salon zu erstellen — sonst kann diese Adresse dem Team nicht mehr beitreten.",
       "utiliserLien": "Ich nutze den Link",
       "creerSalon": "Meinen Salon erstellen"
+    },
+    "accueil": {
+      "bonjour": "Hallo {{prenom}}",
+      "bonjourSeul": "Hallo",
+      "aConfirmer_one": "{{count}} Termin zu bestätigen",
+      "aConfirmer_other": "{{count}} Termine zu bestätigen",
+      "aujourdhui": "Heute",
+      "voirAgenda": "Kalender ansehen",
+      "rienAujourdhui": "Heute keine Termine.",
+      "etAutres_one": "… und {{count}} weiterer",
+      "etAutres_other": "… und {{count}} weitere",
+      "semaine_one": "{{count}} Termin diese Woche",
+      "semaine_other": "{{count}} Termine diese Woche",
+      "prochain": "Nächster: {{quand}} um {{heure}}",
+      "nouveauRdv": "Neuer Termin",
+      "bloquer": "Zeitfenster blockieren"
     }
   }
 }

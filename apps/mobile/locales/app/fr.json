@@ -3603,13 +3603,32 @@
     "connexion": {
       "lien": "Vous avez reçu une invitation de votre salon ?",
       "titre": "Rejoindre votre équipe",
-      "texte": "Connectez-vous avec l'adresse où vous avez reçu l'invitation, et le mot de passe choisi en suivant son lien. Pas encore de mot de passe ? Ouvrez d'abord le lien reçu par e-mail."
+      "texte": "Connectez-vous avec l'adresse où vous avez reçu l'invitation, et le mot de passe choisi en suivant son lien. Pas encore de mot de passe ? Ouvrez d'abord le lien reçu par e-mail.",
+      "onglet": "Équipe",
+      "bouton": "Je fais partie d'une équipe",
+      "pied": "Pas encore de mot de passe ? Ouvrez le lien de l'invitation reçue par e-mail : c'est lui qui permet de le créer."
     },
     "inscription": {
       "titre": "Invitation en attente",
       "texte": "Cette adresse a reçu une invitation à rejoindre une équipe sur Opatam. Pour la rejoindre, ouvrez le lien reçu par e-mail plutôt que de créer un salon : sinon, cette adresse ne pourra plus rejoindre l'équipe.",
       "utiliserLien": "J'utilise le lien",
       "creerSalon": "Créer mon salon"
+    },
+    "accueil": {
+      "bonjour": "Bonjour {{prenom}}",
+      "bonjourSeul": "Bonjour",
+      "aConfirmer_one": "{{count}} rendez-vous à confirmer",
+      "aConfirmer_other": "{{count}} rendez-vous à confirmer",
+      "aujourdhui": "Aujourd'hui",
+      "voirAgenda": "Voir l'agenda",
+      "rienAujourdhui": "Aucun rendez-vous aujourd'hui.",
+      "etAutres_one": "… et {{count}} autre",
+      "etAutres_other": "… et {{count}} autres",
+      "semaine_one": "{{count}} rendez-vous cette semaine",
+      "semaine_other": "{{count}} rendez-vous cette semaine",
+      "prochain": "Prochain : {{quand}} à {{heure}}",
+      "nouveauRdv": "Nouveau rendez-vous",
+      "bloquer": "Bloquer un créneau"
     }
   }
 }

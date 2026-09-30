@@ -29,9 +29,9 @@ export default function AuthLayout() {
     // qui se connectait après une session client atterrissait dans
     // l'espace client.
     const isProvider = userData.role === 'provider';
-    // Espace membre (Studio) : son agenda, avant toute destination client.
+    // Espace membre (Studio) : son accueil, avant toute destination client.
     if (!isProvider && compteMembre) {
-      return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
+      return <Redirect href={'/(pro)/(tabs)' as never} />;
     }
     const pending = consumePendingRoute();
     if (pending && !isProvider && pending.startsWith('/(client)')) {

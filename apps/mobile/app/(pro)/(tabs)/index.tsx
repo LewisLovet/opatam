@@ -25,7 +25,8 @@ import { LaunchNoticeModal } from '../../../components/LaunchNoticeModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { AccueilMembre } from '../../../components/business/AccueilMembre';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -746,14 +747,13 @@ function joinList(items: string[]): string {
 
 /**
  * L'accueil pro est le tableau de bord du SALON (abonnement, statistiques,
- * vitrine, activation) : un membre n'en a pas l'usage, il arrive sur son
- * agenda. Composant d'entrée à part, pour ne jamais sauter les hooks du
- * tableau de bord selon le cas.
+ * vitrine, activation) : un membre a le sien — sa journée, ce qui l'attend,
+ * ses raccourcis. Composant d'entrée à part, pour ne jamais sauter les hooks
+ * du tableau de bord selon le cas.
  */
 export default function ProHomeEntry() {
   const { estMembre } = useEspaceMembre();
-  if (estMembre) return <Redirect href={'/(pro)/(tabs)/calendar' as never} />;
-  return <ProDashboardScreen />;
+  return estMembre ? <AccueilMembre /> : <ProDashboardScreen />;
 }
 
 function ProDashboardScreen() {
