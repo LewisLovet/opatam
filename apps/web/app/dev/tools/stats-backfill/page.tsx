@@ -43,7 +43,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { Calculator, CheckCircle2, Database, Loader2, RefreshCw, ShieldAlert, Trash2, Upload } from 'lucide-react';
+import { Calculator, CheckCircle2, Database, Loader2, RefreshCw, ShieldAlert, Upload } from 'lucide-react';
 
 /**
  * Dev-tool dark card. We don't reuse the global `<Card>` here
@@ -113,8 +113,13 @@ export default function StatsBackfillDryRunPage() {
   const [backfillResult, setBackfillResult] = useState<BackfillResponse | null>(null);
   const [backfillError, setBackfillError] = useState<string | null>(null);
 
-  // Global ops state — backfill ALL providers + purge.
-  const [globalRunning, setGlobalRunning] = useState<'backfill' | 'purge' | null>(null);
+  // Global ops state — backfill ALL providers.
+  //
+  // Les boutons de PURGE ont été retirés le 30/09/2026 : ils supprimaient les
+  // fiches clientes entières, avec ce que les pros y saisissent à la main
+  // (notes, points de fidélité, activations, inscriptions aux promotions),
+  // et rien ne permet de le reconstruire. Le recalcul, lui, les conserve.
+  const [globalRunning, setGlobalRunning] = useState<'backfill' | null>(null);
   const [globalResult, setGlobalResult] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -223,65 +228,11 @@ export default function StatsBackfillDryRunPage() {
     }
   };
 
-  /** Purge ALL stats — confirmation required. */
-  const runPurgeAll = async () => {
-    if (confirmText !== 'PURGE_ALL_STATS') return;
-    setGlobalRunning('purge');
-    setGlobalError(null);
-    setGlobalResult(null);
-    try {
-      const fn = httpsCallable<
-        { allProviders: boolean; confirm: string },
-        {
-          ranAt: string;
-          scope: string;
-          providersAffected: number;
-          totals: { daily: number; monthly: number; rolling: number; clients: number };
-        }
-      >(getFunctions(app, 'europe-west1'), 'purgeProviderStats');
-      const r = await fn({ allProviders: true, confirm: 'PURGE_ALL_STATS' });
-      setGlobalResult(
-        `🗑️ Purge OK sur ${r.data.providersAffected} providers : ${r.data.totals.daily} daily, ${r.data.totals.monthly} monthly, ${r.data.totals.rolling} rolling, ${r.data.totals.clients} clients.`,
-      );
-      setConfirmText('');
-    } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : 'Erreur inconnue');
-    } finally {
-      setGlobalRunning(null);
-    }
-  };
-
-  /** Purge a single provider. */
-  const runPurgeOne = async () => {
-    if (!result) return;
-    const id = result.provider.id;
-    if (!window.confirm(
-      `🗑️ Purger les stats du provider "${result.provider.businessName}" ?\nSupprime ses providerStats* + providerClients (les notes/preferences seront perdues). Réversible en relançant le backfill.`,
-    )) return;
-    setGlobalRunning('purge');
-    setGlobalError(null);
-    setGlobalResult(null);
-    try {
-      const fn = httpsCallable<
-        { providerId: string },
-        { providersAffected: number; totals: { daily: number; monthly: number; rolling: number; clients: number } }
-      >(getFunctions(app, 'europe-west1'), 'purgeProviderStats');
-      const r = await fn({ providerId: id });
-      setGlobalResult(
-        `🗑️ Purge OK pour ${result.provider.businessName} : ${r.data.totals.daily} daily, ${r.data.totals.monthly} monthly, ${r.data.totals.rolling} rolling, ${r.data.totals.clients} clients.`,
-      );
-    } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : 'Erreur inconnue');
-    } finally {
-      setGlobalRunning(null);
-    }
-  };
-
   const runBackfill = async () => {
     if (!result) return;
     const id = result.provider.id;
     const ok = window.confirm(
-      `⚠️ Backfill PROD\n\nÉcrire ${result.daily.length} daily + ${result.monthly.length} monthly + 1 rolling + ${result.clients.length} clients pour "${result.provider.businessName}" ?\n\nÉcrase les docs providerStats* + providerClients existants pour ce provider. Préserve les champs user-éditables (notes, preferences). Idempotent. Ne touche pas à bookings/users/providers.`,
+      `⚠️ Backfill PROD\n\nÉcrire ${result.daily.length} daily + ${result.monthly.length} monthly + 1 rolling + ${result.clients.length} clients pour "${result.provider.businessName}" ?\n\nÉcrase les docs providerStats* + providerClients existants pour ce provider. Préserve les champs hors agrégation (notes, préférences, points de fidélité manuels, activations, promotions). Idempotent. Ne touche pas à bookings/users/providers.`,
     );
     if (!ok) return;
     setBackfilling(true);
@@ -417,29 +368,6 @@ export default function StatsBackfillDryRunPage() {
                   </ul>
                 </div>
               )}
-              {/* Per-provider purge — undo a single backfill */}
-              <div className="mt-4 pt-4 border-t border-slate-800">
-                <Button
-                  onClick={runPurgeOne}
-                  disabled={globalRunning !== null}
-                  className="!bg-slate-800 hover:!bg-slate-700 !text-slate-200 !border !border-slate-700"
-                >
-                  {globalRunning === 'purge' ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Purge…
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Purger les stats de ce provider
-                    </>
-                  )}
-                </Button>
-                <p className="mt-2 text-xs text-slate-500">
-                  Supprime providerStats* + providerClients pour ce provider. Réversible en relançant le backfill.
-                </p>
-              </div>
             </DevSection>
           </>
         )}
@@ -447,15 +375,14 @@ export default function StatsBackfillDryRunPage() {
         {/* ── Section 4 - Global ops (always visible) ─────────── */}
         <DevSection
           title="4. Opérations globales"
-          subtitle="Pour le rollout initial Phase 1B et les rollbacks. Confirmation typée requise."
+          subtitle="Recalcul de tous les prestataires. Conserve ce qui est saisi à la main. Confirmation typée requise."
         >
           <div className="space-y-4">
-            {/* Confirmation input — gates both buttons below */}
+            {/* Confirmation input — gates the button below */}
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                Tape la phrase de confirmation pour activer les boutons (
-                <code className="text-amber-300">BACKFILL_ALL</code> ou{' '}
-                <code className="text-red-300">PURGE_ALL_STATS</code>)
+                Tape la phrase de confirmation pour activer le bouton (
+                <code className="text-amber-300">BACKFILL_ALL</code>)
               </label>
               <Input
                 value={confirmText}
@@ -502,42 +429,6 @@ export default function StatsBackfillDryRunPage() {
                       <>
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Lancer le backfill global
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Purge ALL */}
-            <div className="rounded-lg border border-red-700/40 bg-red-500/5 p-4">
-              <div className="flex items-start gap-3">
-                <Trash2 className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-red-200">
-                    Purge ALL stats
-                  </h3>
-                  <p className="text-xs text-red-200/70 mt-1">
-                    Supprime TOUS les providerStats* + providerClients (notes/preferences inclus).
-                    Réversible en relançant le backfill (sauf notes/preferences). Confirmation typée :{' '}
-                    <code className="text-red-100">PURGE_ALL_STATS</code>.
-                  </p>
-                  <Button
-                    onClick={runPurgeAll}
-                    disabled={
-                      globalRunning !== null || confirmText !== 'PURGE_ALL_STATS'
-                    }
-                    className="mt-3 !bg-red-600 hover:!bg-red-500 !text-white !border-transparent"
-                  >
-                    {globalRunning === 'purge' ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Purge en cours…
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Tout purger
                       </>
                     )}
                   </Button>
