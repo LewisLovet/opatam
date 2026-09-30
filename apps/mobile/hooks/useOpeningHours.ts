@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { availabilityRepository, memberService } from '@booking-app/firebase';
+import { availabilityRepository, memberService, schedulingService } from '@booking-app/firebase';
+import { ajouterJours, jourLocalDe } from '@booking-app/shared';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 
@@ -76,6 +77,20 @@ export function useOpeningHours(providerId: string | undefined): UseOpeningHours
 
       // Find the default member
       const defaultMember = members.find((m) => m.name === 'Principal') || members[0];
+
+      // Horaires variables : pas de semaine type — ses 7 PROCHAINS jours,
+      // tels qu'ils s'appliquent (la règle de la réservation).
+      if (defaultMember.variableHours) {
+        const du = jourLocalDe(new Date());
+        const { jours } = await schedulingService.getPlanningHoraires(providerId, defaultMember.id, du, ajouterJours(du, 6));
+        setWeekSchedule(
+          [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => {
+            const j = jours.find((x) => x.jourSemaine === dayOfWeek);
+            return { day: DAY_NAMES[dayOfWeek], isOpen: !!j?.ouvert, slots: j?.plages ?? [] };
+          }),
+        );
+        return;
+      }
 
       // Filter for default member and exclude future scheduled changes
       const now = new Date();
