@@ -57,6 +57,7 @@ export * from './phone';
 export * from './blockedPeriod';
 export * from './recurrence';
 export * from './espace-membre';
+export * from './horaires-dates';
 export * from './reviewAuthor';
 // Article freshness — the "Nouveau" pill recency check used by both
 // the web blog cards and the mobile in-app tutoriels list.

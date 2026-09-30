@@ -102,6 +102,9 @@ export {
   // Member (subcollection)
   MemberRepository,
   memberRepository,
+  // Horaires datés des membres
+  DatedAvailabilityRepository,
+  datedAvailabilityRepository,
   // Espace membre : comptes reliés et invitations
   MemberAccountRepository,
   memberAccountRepository,

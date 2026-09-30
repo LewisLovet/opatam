@@ -78,6 +78,9 @@ export const updateMemberSchema = z.object({
     .optional(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  // « Horaires variables » : sans ce champ déclaré, zod le retirerait en
+  // silence à chaque enregistrement de la fiche.
+  variableHours: z.boolean().optional(),
   // Pas d'`accessCode` : il n'a rien à faire dans la fiche publique du
   // membre (voir `Member.accessCode`). zod retire ce champ s'il arrive.
 });

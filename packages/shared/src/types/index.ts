@@ -861,6 +861,13 @@ export interface Member {
   locationId: string;        // UN seul lieu par membre
   isDefault: boolean;        // true = membre principal (créé auto à l'inscription)
   isActive: boolean;
+  /**
+   * « Horaires variables » : la semaine type ne s'applique PAS — le membre
+   * n'est réservable que les jours ouverts par des horaires datés
+   * (`datedAvailability`). Pour ceux dont l'agenda change d'une semaine à
+   * l'autre. Absent = semaine type (comportement de toujours).
+   */
+  variableHours?: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -1386,6 +1393,33 @@ export interface Availability {
   isOpen: boolean;
   effectiveFrom: Date | null; // Date d'effet pour changements planifiés (null = immédiat)
   updatedAt: Date;
+}
+
+/**
+ * Horaires DATÉS d'un membre — `providers/{pid}/datedAvailability/{id}`.
+ *
+ * « Du 6 au 31 octobre, les lundis et mercredis : 14h–22h. » Une période
+ * (dates calendaires du lieu, bornes incluses), éventuellement restreinte à
+ * certains jours de la semaine, et ce qui s'y applique : des plages, fermé,
+ * ou retour aux horaires habituels. Pour un jour donné, le réglage le plus
+ * RÉCENT qui le couvre l'emporte (on repeint par-dessus). Voir
+ * `horairesDuJour` (shared) — la seule règle qui dit les horaires d'un jour.
+ */
+export type DatedAvailabilityMode = 'slots' | 'closed' | 'usual';
+
+export interface DatedAvailability {
+  memberId: string;
+  locationId: string;
+  /** Premier jour, « 2026-10-06 » (date calendaire du lieu), inclus. */
+  from: string;
+  /** Dernier jour, inclus. */
+  to: string;
+  /** Jours de la semaine concernés (`getDay` : 0 = dimanche). Vide = tous. */
+  weekdays: number[];
+  mode: DatedAvailabilityMode;
+  /** Les plages, si `mode === 'slots'`. */
+  slots: TimeSlot[];
+  createdAt: Date;
 }
 
 // Conflict detection for scheduled availability changes

@@ -29,6 +29,9 @@ export { ServiceRepository, serviceRepository } from './service.repository';
 // Service Category repository (subcollection)
 export { ServiceCategoryRepository, serviceCategoryRepository } from './serviceCategory.repository';
 
+// Horaires datés des membres (subcollection)
+export { DatedAvailabilityRepository, datedAvailabilityRepository } from './datedAvailability.repository';
+
 // Availability repository (subcollection)
 export { AvailabilityRepository, availabilityRepository } from './availability.repository';
 

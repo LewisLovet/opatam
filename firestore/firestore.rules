@@ -410,7 +410,7 @@ service cloud.firestore {
         // principal — c'est le gérant qui organise l'équipe.
         allow update: if estLeMembre(providerId, memberId)
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['name', 'phone', 'photoURL', 'updatedAt']);
+               .hasOnly(['name', 'phone', 'photoURL', 'variableHours', 'updatedAt']);
       }
 
       // --- LOCATIONS ---
@@ -441,6 +441,22 @@ service cloud.firestore {
         allow write: if isProviderAdmin(providerId);
         // Le membre connecté règle SES horaires, pour SON lieu. Un document
         // ne change jamais de membre.
+        allow create: if estLeMembre(providerId, request.resource.data.memberId)
+          && request.resource.data.locationId == lieuDuMembre(providerId, request.resource.data.memberId);
+        allow update: if estLeMembre(providerId, resource.data.memberId)
+          && request.resource.data.memberId == resource.data.memberId
+          && request.resource.data.locationId == lieuDuMembre(providerId, resource.data.memberId);
+        allow delete: if estLeMembre(providerId, resource.data.memberId);
+      }
+
+      // --- HORAIRES DATÉS ---
+      // « Du 6 au 31 octobre, les lundis : 14h–22h. » Lecture publique, comme
+      // les horaires : le calcul des créneaux tourne aussi chez la cliente.
+      // Mêmes droits que `availability` : le gérant pour tous, un membre pour
+      // SES réglages et SON lieu ; un réglage ne change jamais de membre.
+      match /datedAvailability/{reglageId} {
+        allow read: if true;
+        allow write: if isProviderAdmin(providerId);
         allow create: if estLeMembre(providerId, request.resource.data.memberId)
           && request.resource.data.locationId == lieuDuMembre(providerId, request.resource.data.memberId);
         allow update: if estLeMembre(providerId, resource.data.memberId)

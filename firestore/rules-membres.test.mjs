@@ -64,6 +64,8 @@ beforeEach(async () => {
     await pose('providers/salon-a/blockedSlots/bs-m1', { memberId: 'm1', locationId: 'l1', reason: 'Formation' });
     await pose('providers/salon-a/blockedSlots/bs-m2', { memberId: 'm2', locationId: 'l2', reason: 'Congés' });
     await pose('memberInvitations/inv-1', { providerId: 'salon-a', memberId: 'm1', email: 'jean@x.test', status: 'pending' });
+    await pose('providers/salon-a/datedAvailability/hd-m1', { memberId: 'm1', locationId: 'l1', from: '2026-10-06', to: '2026-10-31', weekdays: [1], mode: 'slots', slots: [] });
+    await pose('providers/salon-a/datedAvailability/hd-m2', { memberId: 'm2', locationId: 'l2', from: '2026-10-06', to: '2026-10-31', weekdays: [], mode: 'closed', slots: [] });
   });
 });
 
@@ -191,5 +193,42 @@ describe('le gérant garde la main sur tout', () => {
     await assertSucceeds(setDoc(doc(db, 'providers/salon-a/availability/m2_1'), jour('m2', 'l2', 1)));
     await assertSucceeds(deleteDoc(doc(db, 'providers/salon-a/blockedSlots/bs-m1')));
     await assertSucceeds(updateDoc(doc(db, 'providers/salon-a/members/m1'), { locationId: 'l2', sortOrder: 5 }));
+  });
+});
+
+describe('horaires datés (« du 6 au 31 octobre, les lundis… »)', () => {
+  const reglage = (memberId, locationId) => ({ memberId, locationId, from: '2026-11-02', to: '2026-11-29', weekdays: [1, 3], mode: 'slots', slots: [{ start: '14:00', end: '22:00' }] });
+  it('lecture publique (le calcul des créneaux tourne aussi chez la cliente)', async () => {
+    await assertSucceeds(getDoc(doc(anonyme(), 'providers/salon-a/datedAvailability/hd-m1')));
+  });
+  it('le membre pose, modifie et retire les siens, pour son lieu', async () => {
+    const db = en('u-jean');
+    await assertSucceeds(setDoc(doc(db, 'providers/salon-a/datedAvailability/nouveau'), reglage('m1', 'l1')));
+    await assertSucceeds(updateDoc(doc(db, 'providers/salon-a/datedAvailability/hd-m1'), { mode: 'closed' }));
+    await assertSucceeds(deleteDoc(doc(db, 'providers/salon-a/datedAvailability/hd-m1')));
+  });
+  it('pas pour un collègue, pas pour un autre lieu, pas en changeant de membre', async () => {
+    const db = en('u-jean');
+    await assertFails(setDoc(doc(db, 'providers/salon-a/datedAvailability/x'), reglage('m2', 'l2')));
+    await assertFails(setDoc(doc(db, 'providers/salon-a/datedAvailability/y'), reglage('m1', 'l2')));
+    await assertFails(updateDoc(doc(db, 'providers/salon-a/datedAvailability/hd-m2'), { mode: 'slots' }));
+    await assertFails(deleteDoc(doc(db, 'providers/salon-a/datedAvailability/hd-m2')));
+    await assertFails(updateDoc(doc(db, 'providers/salon-a/datedAvailability/hd-m1'), { memberId: 'm2', locationId: 'l2' }));
+  });
+  it('accès désactivé, autre salon, anonyme : rien', async () => {
+    await assertFails(setDoc(doc(en('u-lina'), 'providers/salon-a/datedAvailability/z'), reglage('m2', 'l2')));
+    await assertFails(setDoc(doc(en('u-paul'), 'providers/salon-a/datedAvailability/z'), reglage('m1', 'l1')));
+    await assertFails(setDoc(doc(anonyme(), 'providers/salon-a/datedAvailability/z'), reglage('m1', 'l1')));
+  });
+  it('le gérant règle tous ses membres', async () => {
+    await assertSucceeds(setDoc(doc(en('salon-a'), 'providers/salon-a/datedAvailability/g'), reglage('m2', 'l2')));
+    await assertSucceeds(deleteDoc(doc(en('salon-a'), 'providers/salon-a/datedAvailability/hd-m2')));
+  });
+});
+
+describe('l’option « horaires variables » de la fiche', () => {
+  it('le membre peut l’activer sur SA fiche, pas sur celle d’un collègue', async () => {
+    await assertSucceeds(updateDoc(doc(en('u-jean'), 'providers/salon-a/members/m1'), { variableHours: true }));
+    await assertFails(updateDoc(doc(en('u-jean'), 'providers/salon-a/members/m2'), { variableHours: true }));
   });
 });
