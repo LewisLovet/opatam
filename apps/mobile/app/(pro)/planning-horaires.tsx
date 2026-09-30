@@ -105,6 +105,7 @@ export default function PlanningHorairesScreen() {
 
   const aujourdhui = jourLocalDe(new Date());
   const [membres, setMembres] = useState<WithId<Member>[]>([]);
+  const [membresCharges, setMembresCharges] = useState(false);
   const [membreId, setMembreId] = useState<string | null>(monMemberId ?? params.memberId ?? null);
   const [mois, setMois] = useState(aujourdhui.slice(0, 7));
   const [planning, setPlanning] = useState<PlanningHoraires | null>(null);
@@ -133,7 +134,8 @@ export default function PlanningHorairesScreen() {
         setMembres(visibles);
         setMembreId((actuel) => (actuel && visibles.some((m) => m.id === actuel) ? actuel : visibles[0]?.id ?? null));
       })
-      .catch(() => setMembres([]));
+      .catch(() => setMembres([]))
+      .finally(() => setMembresCharges(true));
   }, [providerId, monMemberId]);
 
   const charger = useCallback(async () => {
@@ -174,6 +176,7 @@ export default function PlanningHorairesScreen() {
           { text: t('common.cancel'), style: 'cancel', onPress: () => ok(false) },
           { text: t('planningHoraires.conflits.continuer'), style: 'destructive', onPress: () => ok(true) },
         ],
+        { cancelable: true, onDismiss: () => ok(false) },
       );
     });
 
@@ -190,6 +193,7 @@ export default function PlanningHorairesScreen() {
             { text: t('common.cancel'), style: 'cancel', onPress: () => ok(false) },
             { text: t('common.confirm'), onPress: () => ok(true) },
           ],
+          { cancelable: true, onDismiss: () => ok(false) },
         ),
       );
       if (!suite || !(await confirmerConflits(conflicts))) return;
@@ -212,7 +216,7 @@ export default function PlanningHorairesScreen() {
         Alert.alert(t('planningHoraires.reglages.supprimerTitre'), t('planningHoraires.reglages.supprimerMessage'), [
           { text: t('common.cancel'), style: 'cancel', onPress: () => ok(false) },
           { text: t('planningHoraires.reglages.supprimer'), style: 'destructive', onPress: () => ok(true) },
-        ]),
+        ], { cancelable: true, onDismiss: () => ok(false) }),
       );
       if (!suite || !(await confirmerConflits(conflits))) return;
       await schedulingService.supprimerHorairesDates(providerId, reglage.id);
@@ -294,7 +298,7 @@ export default function PlanningHorairesScreen() {
         </View>
       )}
 
-      {chargement && !planning ? (
+      {!membresCharges || (chargement && !planning && membre) ? (
         <View style={s.centre}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
