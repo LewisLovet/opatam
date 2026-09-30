@@ -131,6 +131,8 @@
     "dayFull": "Tutto pieno in questo giorno per questo servizio.",
     "seeNextAvailability": "Vedi la prossima disponibilità",
     "notOffered": "Non proposto",
+    "notYetOpen": "Presto",
+    "notYetOpenLegend": "Presto: non ancora prenotabile",
     "onlyDays": "Questa prestazione si prenota {days}.",
     "exceptDays": "Questa prestazione si prenota tutti i giorni tranne {days}."
   },

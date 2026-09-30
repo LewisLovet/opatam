@@ -131,6 +131,8 @@
     "dayFull": "An diesem Tag ist für diese Leistung alles ausgebucht.",
     "seeNextAvailability": "Nächsten freien Termin anzeigen",
     "notOffered": "Nicht angeboten",
+    "notYetOpen": "Bald",
+    "notYetOpenLegend": "Bald: noch nicht buchbar",
     "onlyDays": "Diese Leistung ist {days} buchbar.",
     "exceptDays": "Diese Leistung ist an allen Tagen außer {days} buchbar."
   },

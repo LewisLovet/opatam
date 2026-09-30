@@ -109,6 +109,11 @@ export function StepSlot({
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(today);
+  // Le mois affiché dépasse-t-il le délai de réservation ? (légende « À venir »)
+  const horizonVisible = useMemo(() => {
+    const finDuMois = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    return finDuMois > dateRange.max;
+  }, [currentMonth, dateRange.max]);
   const autoSelectedRef = useRef(false);
 
   // ── Fetch the whole range in ONE batched call ───────────────────────────
@@ -347,9 +352,18 @@ export function StepSlot({
                 const key = dateKey(date);
                 const info = summary[key];
                 const isPast = date < dateRange.min;
+                // Au-delà du délai de réservation du professionnel : le jour
+                // n'est pas fermé, il n'est simplement pas encore réservable.
+                // L'afficher « Fermé » faisait croire à une absence, même les
+                // jours où le professionnel travaille.
+                const isBeyond = date > dateRange.max;
                 const isToday = key === dateKey(today);
                 const selected = !!selectedDate && key === dateKey(selectedDate);
-                const status: DayStatus | 'past' = isPast ? 'past' : info?.status ?? 'closed';
+                const status: DayStatus | 'past' | 'not_yet' = isPast
+                  ? 'past'
+                  : isBeyond
+                    ? 'not_yet'
+                    : info?.status ?? 'closed';
                 const clickable = status === 'available' || status === 'almost_full';
 
                 let cls = '';
@@ -373,6 +387,7 @@ export function StepSlot({
                   // au programme. Le dire évite que le client conclue à une
                   // absence — ou pire, à un agenda plein.
                   if (status === 'service_closed' && !isPast) label = t('notOffered');
+                  else if (status === 'not_yet') label = t('notYetOpen');
                   else if (status === 'closed' && !isPast) label = t('closed');
                 }
 
@@ -399,6 +414,9 @@ export function StepSlot({
               <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{t('almostFull')}</span>
               <span className="inline-flex items-center gap-1.5"><span className="line-through">{t('full')}</span></span>
               <span className="inline-flex items-center gap-1.5"><span className="opacity-60">{t('closed')}</span></span>
+              {horizonVisible && (
+                <span className="inline-flex items-center gap-1.5"><span className="opacity-60">{t('notYetOpenLegend')}</span></span>
+              )}
             </div>
           </div>
 

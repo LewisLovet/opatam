@@ -131,6 +131,8 @@
     "dayFull": "Fully booked that day for this service.",
     "seeNextAvailability": "See the next availability",
     "notOffered": "Not offered",
+    "notYetOpen": "Soon",
+    "notYetOpenLegend": "Soon: not bookable yet",
     "onlyDays": "This service is available {days}.",
     "exceptDays": "This service is available every day except {days}."
   },

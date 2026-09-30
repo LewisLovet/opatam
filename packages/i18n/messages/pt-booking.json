@@ -131,6 +131,8 @@
     "dayFull": "Completo nesse dia para este serviço.",
     "seeNextAvailability": "Ver a próxima disponibilidade",
     "notOffered": "Não proposto",
+    "notYetOpen": "Em breve",
+    "notYetOpenLegend": "Em breve: ainda não reservável",
     "onlyDays": "Esta prestação marca-se {days}.",
     "exceptDays": "Esta prestação marca-se todos os dias exceto {days}."
   },
