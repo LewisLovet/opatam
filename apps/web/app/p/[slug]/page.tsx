@@ -11,10 +11,20 @@ import {
   memberRepository,
   reviewRepository,
   availabilityRepository,
+  datedAvailabilityRepository,
 } from '@booking-app/firebase';
 import type { WithId } from '@booking-app/firebase';
 import type { Availability, Member } from '@booking-app/shared';
 import { getProviderText, getServiceMinPrice, isTeamTier, isPubliclyVisible } from '@booking-app/shared';
+import {
+  ajouterJours,
+  horairesEnVigueur,
+  instantDepuisHeureLocale,
+  jourLocal,
+  jourSemaineCalendaire,
+  lecteurHorairesEquipe,
+  type HorairesDuJour,
+} from '@booking-app/shared';
 import { ProviderPageClient } from './components/ProviderPageClient';
 import { loadDemo, demoIdFromSlug, compterVueDemo } from '@/lib/sales-demo-load';
 import { getAdminFirestore } from '@/lib/firebase-admin';
@@ -47,6 +57,28 @@ interface MemberNextAvailability {
   memberName: string;
   memberPhoto: string | null;
   nextDate: string | null;
+}
+
+const FUSEAU_PAR_DEFAUT = 'Europe/Paris';
+
+/**
+ * Le premier JOUR OUVERT d'un membre dans les 60 jours, date par date
+ * (semaine type en vigueur, horaires datés, horaires variables) — dans le
+ * fuseau de son lieu. Indicatif : ni réservations ni blocages.
+ */
+function prochainJourOuvert(
+  memberId: string,
+  horairesDe: (memberId: string, jour: string) => HorairesDuJour,
+  fuseau: string,
+): string | null {
+  const aujourdhui = jourLocal(new Date(), fuseau);
+  for (let i = 0; i < 60; i++) {
+    const jour = ajouterJours(aujourdhui, i);
+    if (horairesDe(memberId, jour).ouvert) {
+      return (instantDepuisHeureLocale(jour, 0, fuseau) ?? new Date(`${jour}T00:00:00Z`)).toISOString();
+    }
+  }
+  return null;
 }
 
 /**
@@ -384,12 +416,29 @@ export default async function ProviderPage({ params }: PageProps) {
     ? provider.nextAvailableSlot.toISOString()
     : null;
 
+  // Horaires date par date sur 60 jours : semaine type en vigueur, horaires
+  // datés (lecture non bloquante), horaires variables — la règle de la
+  // réservation.
+  const aujourdhuiParis = jourLocal(new Date(), FUSEAU_PAR_DEFAUT);
+  const horairesDates = await datedAvailabilityRepository
+    .getInRange(provider.id, ajouterJours(aujourdhuiParis, -1), ajouterJours(aujourdhuiParis, 61))
+    .catch(() => []);
+  const membresVariables = new Set(members.filter((m) => m.variableHours === true).map((m) => m.id));
+  const horairesDe = lecteurHorairesEquipe({
+    semaine: availabilities,
+    dates: horairesDates,
+    membresVariables,
+    jourDEffet: (d) => jourLocal(d, FUSEAU_PAR_DEFAUT),
+  });
+  const fuseauDuMembre = (m: WithId<Member>) =>
+    locations.find((l) => l.id === m.locationId)?.timezone || FUSEAU_PAR_DEFAUT;
+
   // Per-member availability for Team plans (lightweight: just checks open days, not bookings)
   const memberAvailabilities: MemberNextAvailability[] = members.map((m) => ({
     memberId: m.id,
     memberName: m.name,
     memberPhoto: m.photoURL,
-    nextDate: getNextDateForMember(m.id, availabilities),
+    nextDate: prochainJourOuvert(m.id, horairesDe, fuseauDuMembre(m)),
   }));
 
   // Serialize dates for client component
@@ -457,7 +506,33 @@ export default async function ProviderPage({ params }: PageProps) {
     createdAt: r.createdAt.toISOString(),
   }));
 
-  const serializedAvailabilities = availabilities.map((a) => ({
+  // Onglet « Horaires » : la semaine type EN VIGUEUR (un changement programmé
+  // pour plus tard n'est pas encore l'horaire du salon) ; pour un membre en
+  // horaires variables, qui n'a pas de semaine type, ses 7 prochains jours.
+  const semainePublique: WithId<Availability>[] = [
+    ...horairesEnVigueur(availabilities).filter((a) => !membresVariables.has(a.memberId)),
+    ...members
+      .filter((m) => membresVariables.has(m.id))
+      .flatMap((m) => {
+        const debut = jourLocal(new Date(), fuseauDuMembre(m));
+        return Array.from({ length: 7 }, (_, i) => {
+          const jour = ajouterJours(debut, i);
+          const h = horairesDe(m.id, jour);
+          return {
+            id: `${m.id}_${jour}`,
+            memberId: m.id,
+            locationId: m.locationId,
+            dayOfWeek: jourSemaineCalendaire(jour),
+            isOpen: h.ouvert,
+            slots: h.plages,
+            effectiveFrom: null,
+            updatedAt: new Date(0),
+          };
+        });
+      }),
+  ];
+
+  const serializedAvailabilities = semainePublique.map((a) => ({
     ...a,
     updatedAt: a.updatedAt.toISOString(),
     effectiveFrom: a.effectiveFrom ? a.effectiveFrom.toISOString() : null,
