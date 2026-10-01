@@ -102,7 +102,8 @@ export default function PlanningHorairesScreen() {
   const { showToast } = useToast();
   const { providerId } = useProvider();
   const { monMemberId } = useEspaceMembre();
-  const params = useLocalSearchParams<{ memberId?: string }>();
+  // `lundi` : la semaine à ouvrir (rappel « semaine prochaine vide »).
+  const params = useLocalSearchParams<{ memberId?: string; lundi?: string }>();
 
   const aujourdhui = jourLocalDe(new Date());
   const [membres, setMembres] = useState<WithId<Member>[]>([]);
@@ -112,7 +113,9 @@ export default function PlanningHorairesScreen() {
   // Vue SEMAINE par défaut : une ligne par jour, ses plages en barres — la
   // plus simple pour remplir et relire. Le mois sert à voir loin.
   const [vue, setVue] = useState<'semaine' | 'mois'>('semaine');
-  const [lundi, setLundi] = useState(() => lundiDe(aujourdhui, ajouterJours));
+  const [lundi, setLundi] = useState(() =>
+    lundiDe(params.lundi && /^\d{4}-\d{2}-\d{2}$/.test(params.lundi) ? params.lundi : aujourdhui, ajouterJours),
+  );
   const [planning, setPlanning] = useState<PlanningHoraires | null>(null);
   const [chargement, setChargement] = useState(true);
   const [rafraichit, setRafraichit] = useState(false);

@@ -118,13 +118,13 @@ function fuseauDeLaResa(
 
 // Notification event types for preference checks
 type ClientNotifType = 'confirmation' | 'cancellation' | 'reschedule' | 'reminder';
-type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder' | 'dailyAgenda';
+type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder' | 'dailyAgenda' | 'planning';
 
 /**
  * Get user's push tokens from Firestore
  * Returns empty array if user doesn't exist or has no tokens
  */
-async function getUserPushTokens(userId: string): Promise<string[]> {
+export async function getUserPushTokens(userId: string): Promise<string[]> {
   try {
     const userDoc = await admin.firestore().collection('users').doc(userId).get();
     if (!userDoc.exists) {
@@ -219,6 +219,9 @@ export async function loadProviderPushContext(
           // Résumé du matin : la clé n'existe pas sur les préférences déjà
           // enregistrées → `!== false` la laisse ACTIVE par défaut.
           dailyAgenda: 'dailyAgendaPush',
+          // Rappel « semaine prochaine vide » de l'équipe : même logique,
+          // clé absente = activé.
+          planning: 'planningReminderPush',
         };
         return prefs[map[type]] !== false;
       },
@@ -233,7 +236,7 @@ export async function loadProviderPushContext(
 /**
  * Remove invalid tokens from user's pushTokens array
  */
-async function removeInvalidTokens(userId: string, invalidTokens: string[]): Promise<void> {
+export async function removeInvalidTokens(userId: string, invalidTokens: string[]): Promise<void> {
   if (invalidTokens.length === 0) return;
 
   try {

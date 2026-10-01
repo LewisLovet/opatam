@@ -82,6 +82,16 @@ export function useNotifications() {
       return;
     }
 
+    // Semaine prochaine vide (horaires variables) → le planning, sur la
+    // personne concernée (le membre n'y voit de toute façon que le sien).
+    if (data?.type === 'planning_semaine_vide') {
+      const params: Record<string, string> = {};
+      if (typeof data.memberId === 'string') params.memberId = data.memberId;
+      if (typeof data.lundi === 'string') params.lundi = data.lundi;
+      router.push({ pathname: '/(pro)/planning-horaires', params } as never);
+      return;
+    }
+
     if (!data?.bookingId) return;
 
     const bookingId = data.bookingId as string;
