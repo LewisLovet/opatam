@@ -3646,7 +3646,8 @@
       "semaine_other": "{{count}} marcações esta semana",
       "prochain": "Próxima: {{quand}} às {{heure}}",
       "nouveauRdv": "Nova marcação",
-      "bloquer": "Bloquear um horário"
+      "bloquer": "Bloquear um horário",
+      "story": "Criar uma story"
     },
     "notifications": {
       "titre": "Notificações",

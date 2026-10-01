@@ -66,7 +66,7 @@ import { devisePro } from '../../lib/devise';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text } from '../Text';
-import { useProvider } from '../../contexts';
+import { useProvider, useEspaceMembre } from '../../contexts';
 import { useUpcomingAvailabilities } from '../../hooks/useUpcomingAvailabilities';
 import { useServiceCategories } from '../../hooks/useServiceCategories';
 import { useStoryImpact } from '../../hooks/useStoryImpact';
@@ -472,6 +472,9 @@ export function StoryShareModal({
   };
   const ratioMoitie = realSplit === 'stacked' ? RATIO_MOITIE_EMPILEE : RATIO_MOITIE;
   const [realAddToPortfolio, setRealAddToPortfolio] = useState(false);
+  // Un membre de l'équipe ne touche pas à la vitrine du salon (règles) :
+  // l'option « ajouter au portfolio » ne lui est pas proposée.
+  const { estMembre } = useEspaceMembre();
   /** Feuille « choisir dans le portfolio », et pour quelle photo. */
   const [portfolioPickerFor, setPortfolioPickerFor] = useState<'photo' | 'before' | null>(null);
   const [consentOpen, setConsentOpen] = useState(false);
@@ -2020,6 +2023,7 @@ export function StoryShareModal({
 
               {/* Ajout au portfolio — après le partage, jamais avant ; la story
                   enrichit la page au passage. */}
+              {!estMembre && (
               <View style={[styles.customizeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.switchRow}>
                   <View style={{ flex: 1, gap: 2 }}>
@@ -2040,6 +2044,7 @@ export function StoryShareModal({
                   />
                 </View>
               </View>
+              )}
             </>
           )}
 

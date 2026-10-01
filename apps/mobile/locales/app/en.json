@@ -3646,7 +3646,8 @@
       "semaine_other": "{{count}} appointments this week",
       "prochain": "Next: {{quand}} at {{heure}}",
       "nouveauRdv": "New appointment",
-      "bloquer": "Block a time slot"
+      "bloquer": "Block a time slot",
+      "story": "Create a story"
     },
     "notifications": {
       "titre": "Notifications",

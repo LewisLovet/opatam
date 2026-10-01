@@ -37,9 +37,17 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
     nonce?: string;
   };
   if (!providerId) throw new HttpsError('invalid-argument', 'providerId requis');
-  // Provider.id === User.id — pas de lecture supplémentaire nécessaire.
+  const db = admin.firestore();
+  // Provider.id === User.id : le gérant, sans lecture. Sinon, un MEMBRE de
+  // l'équipe (espace membre, accès actif à CE salon) : ses partages comptent
+  // pour le salon, et l'événement garde qui l'a publié.
+  let memberId: string | null = null;
   if (providerId !== uid) {
-    throw new HttpsError('permission-denied', 'Un prestataire ne compte que ses propres partages');
+    const compte = (await db.collection('memberAccounts').doc(uid).get()).data();
+    if (!compte || compte.active !== true || compte.providerId !== providerId) {
+      throw new HttpsError('permission-denied', 'Un prestataire ne compte que ses propres partages');
+    }
+    memberId = String(compte.memberId);
   }
   const CONTENTS = ['services', 'availabilities', 'review', 'loyalty', 'none', 'realisation', 'avantApres'];
   const CHANNELS = ['instagram', 'system'];
@@ -47,7 +55,6 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
     throw new HttpsError('invalid-argument', 'content/channel invalide');
   }
 
-  const db = admin.firestore();
   const providerRef = db.collection('providers').doc(providerId);
 
   // Anti-doublon léger : même contenu + même canal à moins de 10 s du
@@ -84,6 +91,7 @@ export const recordStoryShare = onCall({ region: 'europe-west1' }, async (reques
       }
       tx.create(eventRef, {
         providerId,
+        ...(memberId ? { memberId } : {}),
         content,
         channel,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -3646,7 +3646,8 @@
       "semaine_other": "{{count}} appuntamenti questa settimana",
       "prochain": "Prossimo: {{quand}} alle {{heure}}",
       "nouveauRdv": "Nuovo appuntamento",
-      "bloquer": "Blocca una fascia oraria"
+      "bloquer": "Blocca una fascia oraria",
+      "story": "Crea una storia"
     },
     "notifications": {
       "titre": "Notifiche",

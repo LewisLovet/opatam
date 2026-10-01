@@ -3646,7 +3646,8 @@
       "semaine_other": "{{count}} Termine diese Woche",
       "prochain": "Nächster: {{quand}} um {{heure}}",
       "nouveauRdv": "Neuer Termin",
-      "bloquer": "Zeitfenster blockieren"
+      "bloquer": "Zeitfenster blockieren",
+      "story": "Story erstellen"
     },
     "notifications": {
       "titre": "Benachrichtigungen",

@@ -3646,7 +3646,8 @@
       "semaine_other": "{{count}} rendez-vous cette semaine",
       "prochain": "Prochain : {{quand}} à {{heure}}",
       "nouveauRdv": "Nouveau rendez-vous",
-      "bloquer": "Bloquer un créneau"
+      "bloquer": "Bloquer un créneau",
+      "story": "Créer une story"
     },
     "notifications": {
       "titre": "Notifications",

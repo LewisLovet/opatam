@@ -6,7 +6,7 @@
  * jour, le prochain en tête), ce qui l'attend (à confirmer, la semaine), et
  * des raccourcis vers ses écrans.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,12 @@ import { useProvider, useEspaceMembre } from '../../contexts';
 import { useProviderBookings } from '../../hooks/useProviderBookings';
 import { useProBookingBadges } from '../../hooks/useBookingBadges';
 import { useSemaineProchaineVide } from '../../hooks/useSemaineProchaineVide';
+import { NativeModuleBoundary } from '../StoryShare/NativeModuleBoundary';
+
+// Chargée à la demande : la fenêtre de story tire des modules natifs lourds.
+const LazyStoryShareModal = lazy(() =>
+  import('../StoryShare/StoryShareModal').then((m) => ({ default: m.StoryShareModal })),
+);
 import i18n from '../../lib/i18n';
 
 const ACTIFS: Booking['status'][] = ['confirmed', 'pending'];
@@ -50,6 +56,8 @@ export function AccueilMembre() {
   const { monMemberId, voitSonCA } = useEspaceMembre();
   const [membre, setMembre] = useState<Member | null>(null);
   const [rafraichit, setRafraichit] = useState(false);
+  // Story : réalisation, avant/après, avis… comme le gérant (comptée pour le salon).
+  const [storyOuverte, setStoryOuverte] = useState(false);
 
   useEffect(() => {
     if (!providerId || !monMemberId) return;
@@ -101,6 +109,7 @@ export function AccueilMembre() {
     { icone: 'time-outline', libelle: t('espaceMembre.menu.mesHoraires'), route: '/(pro)/availability' },
     { icone: 'people-outline', libelle: t('espaceMembre.menu.mesClientes'), route: '/(pro)/mes-clientes' },
     { icone: 'qr-code-outline', libelle: t('espaceMembre.menu.monLien'), route: '/(pro)/mon-lien' },
+    { icone: 'camera-outline', libelle: t('espaceMembre.accueil.story'), route: '#story' },
     { icone: 'star-outline', libelle: t('espaceMembre.menu.mesAvis'), route: '/(pro)/mes-avis' },
     ...(voitSonCA ? [{ icone: 'stats-chart-outline' as const, libelle: t('espaceMembre.menu.monActivite'), route: '/(pro)/mon-activite' }] : []),
     { icone: 'person-circle-outline', libelle: t('espaceMembre.menu.monProfil'), route: '/(pro)/membre-profil' },
@@ -250,7 +259,13 @@ export function AccueilMembre() {
           {raccourcis.map((r) => (
             <Pressable
               key={r.route}
-              onPress={() => (r.route === '/(pro)/planning-horaires' ? versPlanning() : router.push(r.route as never))}
+              onPress={() =>
+                r.route === '#story'
+                  ? setStoryOuverte(true)
+                  : r.route === '/(pro)/planning-horaires'
+                    ? versPlanning()
+                    : router.push(r.route as never)
+              }
               style={({ pressed }) => [s.tuile, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, opacity: pressed ? 0.8 : 1 }]}
             >
               <View style={[s.icone, { backgroundColor: colors.primaryLight, borderRadius: radius.md }]}>
@@ -262,6 +277,12 @@ export function AccueilMembre() {
           ))}
         </View>
       </ScrollView>
+
+      <NativeModuleBoundary resetKey={storyOuverte}>
+        <Suspense fallback={null}>
+          {storyOuverte && <LazyStoryShareModal visible onClose={() => setStoryOuverte(false)} />}
+        </Suspense>
+      </NativeModuleBoundary>
     </View>
   );
 }
