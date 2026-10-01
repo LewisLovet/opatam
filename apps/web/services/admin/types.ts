@@ -126,6 +126,8 @@ export interface AdminOverview {
   };
   /** Top 5 du mois en réservations ; chiffre d'affaires par devise. */
   topPros: (OverviewProRef & { bookings: number; revenue: Record<string, number> })[];
+  /** Même classement pour le mois calendaire précédent. */
+  topProsPreviousMonth: (OverviewProRef & { bookings: number; revenue: Record<string, number> })[];
   /** Pros inscrits en 30 jours, étape par étape. */
   activation: { signedUp: number; published: number; firstBooking: number; paying: number };
   /** Pages d'accueil : la principale (/) puis chaque page métier du registre. */

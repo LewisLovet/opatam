@@ -90,6 +90,10 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
   const debut30 = minuitIlYa(29); // 30 journées, aujourd'hui compris
   const debut60 = minuitIlYa(59);
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  const debutMoisPrec = new Date(maintenant.getFullYear(), maintenant.getMonth() - 1, 1);
+  // Les réservations se lisent depuis le plus ancien des deux : 60 jours, ou
+  // le début du mois précédent (qui peut remonter à 61 jours).
+  const debutLecture = debutMoisPrec < debut60 ? debutMoisPrec : debut60;
   const dans7j = new Date(maintenant.getTime() + 7 * JOUR);
   const ilYa14j = new Date(maintenant.getTime() - 14 * JOUR);
 
@@ -98,7 +102,7 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
       .select('businessName', 'photoURL', 'isTest', 'isPublished', 'subscription', 'createdAt', 'currency')
       .get(),
     db.collection('bookings')
-      .where('createdAt', '>=', debut60)
+      .where('createdAt', '>=', debutLecture)
       .select('providerId', 'status', 'price', 'currency', 'createdAt')
       .get(),
     db.collection('bookings')
@@ -130,7 +134,9 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
   const actifsPrec = new Set<string>();
   const derniereResa = new Map<string, Date>();
   const avecResa = new Set<string>();
-  const duMois = new Map<string, { count: number; revenue: Record<string, number> }>();
+  type ChiffreDuMois = { count: number; revenue: Record<string, number> };
+  const duMois = new Map<string, ChiffreDuMois>();
+  const duMoisPrec = new Map<string, ChiffreDuMois>();
   for (const doc of resasSnap.docs) {
     const b = doc.data();
     const p = typeof b.providerId === 'string' ? b.providerId : '';
@@ -145,17 +151,21 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
       actifs30.add(p);
       const k = cleJourLocal(cree);
       courbeResas.set(k, (courbeResas.get(k) ?? 0) + 1);
-    } else {
+    } else if (cree >= debut60) {
+      // La lecture peut remonter plus loin (mois précédent) : la période de
+      // comparaison, elle, reste exactement les 30 jours d'avant.
       resasPrec += 1;
       actifsPrec.add(p);
     }
-    // Top du mois : les annulations ne font pas le chiffre du prestataire.
-    if (cree >= debutMois && b.status !== 'cancelled') {
-      const e = duMois.get(p) ?? { count: 0, revenue: {} };
+    // Top du mois et du mois précédent : les annulations ne font pas le
+    // chiffre du prestataire.
+    const mois = cree >= debutMois ? duMois : cree >= debutMoisPrec ? duMoisPrec : null;
+    if (mois && b.status !== 'cancelled') {
+      const e = mois.get(p) ?? { count: 0, revenue: {} };
       e.count += 1;
       const devise = typeof b.currency === 'string' && b.currency ? b.currency.toUpperCase() : 'EUR';
       e.revenue[devise] = (e.revenue[devise] ?? 0) + (Number(b.price) || 0);
-      duMois.set(p, e);
+      mois.set(p, e);
     }
   }
 
@@ -229,11 +239,14 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
     })
     .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
 
-  // ── Top du mois ───────────────────────────────────────────────────────
-  const topPros = [...duMois.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 5)
-    .map(([id, e]) => ({ ...refPro(id, pros.get(id)), bookings: e.count, revenue: e.revenue }));
+  // ── Top du mois, et du mois précédent ─────────────────────────────────
+  const top5 = (m: Map<string, ChiffreDuMois>) =>
+    [...m.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([id, e]) => ({ ...refPro(id, pros.get(id)), bookings: e.count, revenue: e.revenue }));
+  const topPros = top5(duMois);
+  const topProsPreviousMonth = top5(duMoisPrec);
 
   // ── Pages d'accueil : la principale, puis chaque page métier ──────────
   // Une page métier apparaît dès sa première visite mesurée.
@@ -299,6 +312,7 @@ export async function getOverview(db: Db): Promise<AdminOverview> {
       pendingMessages: messagesEnAttente,
     },
     topPros,
+    topProsPreviousMonth,
     activation,
     landingPages,
   };

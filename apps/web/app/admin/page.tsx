@@ -209,7 +209,7 @@ export default function AdminDashboardPage() {
       {/* Qui fait vivre la plateforme, ce qui attire, et ce que deviennent les nouveaux */}
       {overview && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          <TopProsCard pros={overview.topPros} />
+          <TopProsCard current={overview.topPros} previous={overview.topProsPreviousMonth ?? []} />
           <LandingPagesCard pages={overview.landingPages} />
           <ActivationFunnel activation={overview.activation} />
         </div>
