@@ -1843,6 +1843,21 @@
     "locale": {
       "title": "Langue de vos notifications",
       "description": "La langue des messages qui vous sont adressés. Indépendante de la langue de l'app."
+    },
+    "equipe": {
+      "titre": "Équipe",
+      "rdv": {
+        "label": "Rendez-vous de l'équipe",
+        "description": "Nouveaux, annulés et rappels des rendez-vous de vos membres. Coupé : seulement les vôtres (chaque membre reçoit les siens)."
+      },
+      "planning": {
+        "label": "Changements de planning",
+        "description": "Quand un membre modifie ses horaires ou ses indisponibilités (un seul message regroupé)."
+      },
+      "semaineVide": {
+        "label": "Semaines vides",
+        "description": "Le jeudi et le dimanche, si un membre en horaires variables n'a rien ouvert la semaine suivante."
+      }
     }
   },
   "proTabs": {
@@ -3529,7 +3544,8 @@
       "mesHoraires": "Mes horaires",
       "mesIndisponibilites": "Mes indisponibilités",
       "mesClientes": "Mes clients",
-      "monProfil": "Mon profil"
+      "monProfil": "Mon profil",
+      "notifications": "Notifications"
     },
     "profil": {
       "titre": "Mon profil",
@@ -3629,6 +3645,26 @@
       "prochain": "Prochain : {{quand}} à {{heure}}",
       "nouveauRdv": "Nouveau rendez-vous",
       "bloquer": "Bloquer un créneau"
+    },
+    "notifications": {
+      "titre": "Notifications",
+      "intro": "Ce que vous recevez pour VOS rendez-vous. Le gérant règle les siennes de son côté.",
+      "rendezVous": {
+        "label": "Rendez-vous",
+        "description": "Nouveaux, annulés ou déplacés par une cliente ou par le salon"
+      },
+      "rappels": {
+        "label": "Rappel avant un rendez-vous",
+        "description": "Une heure avant chaque rendez-vous"
+      },
+      "resumeDuMatin": {
+        "label": "Résumé du matin",
+        "description": "Votre journée à 8 h, les jours où vous avez des rendez-vous"
+      },
+      "avis": {
+        "label": "Avis reçus",
+        "description": "Quand une cliente laisse un avis sur un rendez-vous avec vous"
+      }
     }
   },
   "planningHoraires": {

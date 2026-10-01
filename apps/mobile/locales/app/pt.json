@@ -1843,6 +1843,21 @@
     "locale": {
       "title": "Idioma das suas notificações",
       "description": "O idioma das mensagens que lhe são dirigidas. Independente do idioma da aplicação."
+    },
+    "equipe": {
+      "titre": "Equipa",
+      "rdv": {
+        "label": "Marcações da equipa",
+        "description": "Novas, canceladas e lembretes das marcações dos seus membros. Desligado: só as suas (cada membro recebe as dele)."
+      },
+      "planning": {
+        "label": "Alterações de horário",
+        "description": "Quando um membro altera horários ou indisponibilidades (uma única mensagem agrupada)."
+      },
+      "semaineVide": {
+        "label": "Semanas vazias",
+        "description": "À quinta e ao domingo, se um membro com horários variáveis não abriu nada para a semana seguinte."
+      }
     }
   },
   "proTabs": {
@@ -3529,7 +3544,8 @@
       "mesHoraires": "Os meus horários",
       "mesIndisponibilites": "As minhas indisponibilidades",
       "mesClientes": "Os meus clientes",
-      "monProfil": "O meu perfil"
+      "monProfil": "O meu perfil",
+      "notifications": "Notificações"
     },
     "profil": {
       "titre": "O meu perfil",
@@ -3629,6 +3645,26 @@
       "prochain": "Próxima: {{quand}} às {{heure}}",
       "nouveauRdv": "Nova marcação",
       "bloquer": "Bloquear um horário"
+    },
+    "notifications": {
+      "titre": "Notificações",
+      "intro": "O que recebe para as SUAS marcações. O gerente define as dele à parte.",
+      "rendezVous": {
+        "label": "Marcações",
+        "description": "Novas, canceladas ou alteradas por uma cliente ou pelo salão"
+      },
+      "rappels": {
+        "label": "Lembrete antes de uma marcação",
+        "description": "Uma hora antes de cada marcação"
+      },
+      "resumeDuMatin": {
+        "label": "Resumo da manhã",
+        "description": "O seu dia às 8 h, nos dias com marcações"
+      },
+      "avis": {
+        "label": "Avaliações",
+        "description": "Quando uma cliente avalia uma marcação consigo"
+      }
     }
   },
   "planningHoraires": {

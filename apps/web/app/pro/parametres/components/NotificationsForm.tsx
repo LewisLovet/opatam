@@ -6,7 +6,7 @@ import { Switch, Button, Checkbox } from '@/components/ui';
 import { providerService } from '@booking-app/firebase';
 import { Loader2, Bell, Languages, Clock, Info, Mail, Smartphone } from 'lucide-react';
 import type { ProviderNotificationPreferences } from '@booking-app/shared';
-import { notificationLocale, type NotificationLocale } from '@booking-app/shared';
+import { isTeamTier, notificationLocale, type NotificationLocale } from '@booking-app/shared';
 
 interface NotificationsFormProps {
   onSuccess?: () => void;
@@ -174,6 +174,46 @@ export function NotificationsForm({ onSuccess }: NotificationsFormProps) {
           </p>
         )}
       </div>
+
+      {/* Équipe (plan Studio) : rendez-vous et planning des membres */}
+      {isTeamTier(provider) && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">Équipe</h3>
+          <div className="space-y-3">
+            {(
+              [
+                {
+                  key: 'teamBookingNotifications',
+                  label: 'Rendez-vous de l’équipe',
+                  desc: 'Nouveaux, annulés et rappels des rendez-vous de vos membres. Coupé : seulement les vôtres (chaque membre reçoit les siens dans l’app).',
+                },
+                {
+                  key: 'planningChangesPush',
+                  label: 'Changements de planning',
+                  desc: 'Quand un membre modifie ses horaires ou ses indisponibilités (un seul message regroupé).',
+                },
+                {
+                  key: 'planningReminderPush',
+                  label: 'Semaines vides',
+                  desc: 'Le jeudi et le dimanche, si un membre en horaires variables n’a rien ouvert pour la semaine suivante.',
+                },
+              ] as const
+            ).map(({ key, label, desc }) => (
+              <div key={key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
+                </div>
+                <Switch
+                  checked={prefs[key] !== false}
+                  onChange={(e) => updatePref(key, e.target.checked)}
+                  disabled={!prefs.pushEnabled}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Langue des notifications */}
       <div className="space-y-3">

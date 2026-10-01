@@ -20,7 +20,7 @@ import { BrandedHeader } from '../../components/business/BrandedHeader';
 import { useProvider } from '../../contexts';
 import { providerService } from '@booking-app/firebase';
 import type { ProviderNotificationPreferences } from '@booking-app/shared';
-import { notificationLocale, type NotificationLocale } from '@booking-app/shared';
+import { isTeamTier, notificationLocale, type NotificationLocale } from '@booking-app/shared';
 
 const LOCALE_LABELS: Record<NotificationLocale, string> = {
   fr: 'Français', en: 'English', it: 'Italiano', pt: 'Português', de: 'Deutsch',
@@ -238,6 +238,46 @@ export default function ProNotificationSettingsScreen() {
             </Text>
           )}
         </View>
+
+        {/* Équipe (plan Studio) : les rendez-vous et le planning des membres */}
+        {isTeamTier(provider) && (
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+            <Text variant="caption" color="textSecondary" style={styles.sectionTitle}>
+              {t('proNotifSettings.equipe.titre')}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
+              <SettingRow
+                icon="people-outline"
+                label={t('proNotifSettings.equipe.rdv.label')}
+                description={t('proNotifSettings.equipe.rdv.description')}
+                value={prefs.teamBookingNotifications !== false}
+                onValueChange={(val) => updatePref('teamBookingNotifications', val)}
+                disabled={channelsDisabled}
+                colors={colors}
+              />
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <SettingRow
+                icon="calendar-number-outline"
+                label={t('proNotifSettings.equipe.planning.label')}
+                description={t('proNotifSettings.equipe.planning.description')}
+                value={prefs.planningChangesPush !== false}
+                onValueChange={(val) => updatePref('planningChangesPush', val)}
+                disabled={channelsDisabled}
+                colors={colors}
+              />
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <SettingRow
+                icon="calendar-clear-outline"
+                label={t('proNotifSettings.equipe.semaineVide.label')}
+                description={t('proNotifSettings.equipe.semaineVide.description')}
+                value={prefs.planningReminderPush !== false}
+                onValueChange={(val) => updatePref('planningReminderPush', val)}
+                disabled={channelsDisabled}
+                colors={colors}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Langue des notifications */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>

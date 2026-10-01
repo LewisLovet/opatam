@@ -1843,6 +1843,21 @@
     "locale": {
       "title": "Lingua delle tue notifiche",
       "description": "La lingua dei messaggi a te destinati. Indipendente dalla lingua dell'app."
+    },
+    "equipe": {
+      "titre": "Team",
+      "rdv": {
+        "label": "Appuntamenti del team",
+        "description": "Nuovi, annullati e promemoria degli appuntamenti dei tuoi membri. Disattivato: solo i tuoi (ogni membro riceve i suoi)."
+      },
+      "planning": {
+        "label": "Modifiche al planning",
+        "description": "Quando un membro modifica orari o indisponibilità (un solo messaggio raggruppato)."
+      },
+      "semaineVide": {
+        "label": "Settimane vuote",
+        "description": "Giovedì e domenica, se un membro con orari variabili non ha aperto nulla per la settimana successiva."
+      }
     }
   },
   "proTabs": {
@@ -3529,7 +3544,8 @@
       "mesHoraires": "I miei orari",
       "mesIndisponibilites": "Le mie indisponibilità",
       "mesClientes": "I miei clienti",
-      "monProfil": "Il mio profilo"
+      "monProfil": "Il mio profilo",
+      "notifications": "Notifiche"
     },
     "profil": {
       "titre": "Il mio profilo",
@@ -3629,6 +3645,26 @@
       "prochain": "Prossimo: {{quand}} alle {{heure}}",
       "nouveauRdv": "Nuovo appuntamento",
       "bloquer": "Blocca una fascia oraria"
+    },
+    "notifications": {
+      "titre": "Notifiche",
+      "intro": "Cosa ricevi per i TUOI appuntamenti. Il gestore imposta le sue a parte.",
+      "rendezVous": {
+        "label": "Appuntamenti",
+        "description": "Nuovi, annullati o spostati da una cliente o dal salone"
+      },
+      "rappels": {
+        "label": "Promemoria prima di un appuntamento",
+        "description": "Un'ora prima di ogni appuntamento"
+      },
+      "resumeDuMatin": {
+        "label": "Riepilogo del mattino",
+        "description": "La tua giornata alle 8, nei giorni con appuntamenti"
+      },
+      "avis": {
+        "label": "Recensioni",
+        "description": "Quando una cliente recensisce un appuntamento con te"
+      }
     }
   },
   "planningHoraires": {

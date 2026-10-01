@@ -1843,6 +1843,21 @@
     "locale": {
       "title": "Sprache Ihrer Benachrichtigungen",
       "description": "Die Sprache der an Sie gerichteten Nachrichten. Unabhängig von der App-Sprache."
+    },
+    "equipe": {
+      "titre": "Team",
+      "rdv": {
+        "label": "Termine des Teams",
+        "description": "Neue, stornierte Termine und Erinnerungen Ihrer Mitglieder. Aus: nur Ihre eigenen (jedes Mitglied erhält seine)."
+      },
+      "planning": {
+        "label": "Dienstplanänderungen",
+        "description": "Wenn ein Mitglied Zeiten oder Abwesenheiten ändert (eine gebündelte Nachricht)."
+      },
+      "semaineVide": {
+        "label": "Leere Wochen",
+        "description": "Donnerstag und Sonntag, wenn ein Mitglied mit variablen Zeiten für die nächste Woche nichts geöffnet hat."
+      }
     }
   },
   "proTabs": {
@@ -3529,7 +3544,8 @@
       "mesHoraires": "Meine Arbeitszeiten",
       "mesIndisponibilites": "Meine Abwesenheiten",
       "mesClientes": "Meine Kundschaft",
-      "monProfil": "Mein Profil"
+      "monProfil": "Mein Profil",
+      "notifications": "Benachrichtigungen"
     },
     "profil": {
       "titre": "Mein Profil",
@@ -3629,6 +3645,26 @@
       "prochain": "Nächster: {{quand}} um {{heure}}",
       "nouveauRdv": "Neuer Termin",
       "bloquer": "Zeitfenster blockieren"
+    },
+    "notifications": {
+      "titre": "Benachrichtigungen",
+      "intro": "Was Sie für IHRE Termine erhalten. Die Leitung stellt ihre eigenen ein.",
+      "rendezVous": {
+        "label": "Termine",
+        "description": "Neu, storniert oder verschoben durch eine Kundin oder den Salon"
+      },
+      "rappels": {
+        "label": "Erinnerung vor einem Termin",
+        "description": "Eine Stunde vor jedem Termin"
+      },
+      "resumeDuMatin": {
+        "label": "Morgenübersicht",
+        "description": "Ihr Tag um 8 Uhr, an Tagen mit Terminen"
+      },
+      "avis": {
+        "label": "Bewertungen",
+        "description": "Wenn eine Kundin einen Termin mit Ihnen bewertet"
+      }
     }
   },
   "planningHoraires": {

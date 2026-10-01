@@ -8,6 +8,16 @@ export interface NotificationSettings {
   confirmationNotifications: boolean;
   cancellationNotifications: boolean;
   rescheduleNotifications: boolean;
+  /**
+   * Espace membre : ce que le MEMBRE reçoit pour SES rendez-vous. Chaque
+   * interrupteur absent = activé.
+   */
+  espaceMembre?: {
+    rendezVous?: boolean;
+    rappels?: boolean;
+    resumeDuMatin?: boolean;
+    avis?: boolean;
+  };
 }
 
 // Notification preferences (for providers via ProviderSettings)
@@ -30,6 +40,16 @@ export interface ProviderNotificationPreferences {
    * voulu, et les préférences déjà enregistrées n'ont pas cette clé.
    */
   dailyAgendaPush?: boolean;
+  /**
+   * Les rendez-vous des MEMBRES de l'équipe (nouveau, annulé, rappel).
+   * Absent = activé ; coupé, le gérant ne reçoit plus que les siens — chaque
+   * membre reçoit les siens dans son espace.
+   */
+  teamBookingNotifications?: boolean;
+  /** Récapitulatif quand un membre modifie son planning. Absent = activé. */
+  planningChangesPush?: boolean;
+  /** Rappel « semaine prochaine vide » de l'équipe. Absent = activé. */
+  planningReminderPush?: boolean;
 }
 
 // User types

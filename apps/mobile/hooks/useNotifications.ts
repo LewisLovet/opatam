@@ -92,6 +92,19 @@ export function useNotifications() {
       return;
     }
 
+    // Un membre a modifié son planning → le planning de ce membre (gérant).
+    if (data?.type === 'planning_modifie') {
+      const memberId = typeof data.memberId === 'string' ? data.memberId : undefined;
+      router.push({ pathname: '/(pro)/planning-horaires', params: memberId ? { memberId } : {} } as never);
+      return;
+    }
+
+    // Avis reçu par un membre → ses avis.
+    if (data?.type === 'member_review') {
+      router.push('/(pro)/mes-avis' as never);
+      return;
+    }
+
     if (!data?.bookingId) return;
 
     const bookingId = data.bookingId as string;

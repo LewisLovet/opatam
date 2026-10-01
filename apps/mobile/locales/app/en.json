@@ -1843,6 +1843,21 @@
     "locale": {
       "title": "Language of your notifications",
       "description": "The language of messages addressed to you. Independent from the app language."
+    },
+    "equipe": {
+      "titre": "Team",
+      "rdv": {
+        "label": "Team bookings",
+        "description": "New, cancelled and reminders for your members' bookings. Off: only yours (each member gets their own)."
+      },
+      "planning": {
+        "label": "Schedule changes",
+        "description": "When a member changes their hours or time off (one grouped message)."
+      },
+      "semaineVide": {
+        "label": "Empty weeks",
+        "description": "On Thursday and Sunday, if a member with variable hours hasn't opened anything for the next week."
+      }
     }
   },
   "proTabs": {
@@ -3529,7 +3544,8 @@
       "mesHoraires": "My hours",
       "mesIndisponibilites": "My unavailability",
       "mesClientes": "My clients",
-      "monProfil": "My profile"
+      "monProfil": "My profile",
+      "notifications": "Notifications"
     },
     "profil": {
       "titre": "My profile",
@@ -3629,6 +3645,26 @@
       "prochain": "Next: {{quand}} at {{heure}}",
       "nouveauRdv": "New appointment",
       "bloquer": "Block a time slot"
+    },
+    "notifications": {
+      "titre": "Notifications",
+      "intro": "What you receive for YOUR bookings. The manager sets theirs separately.",
+      "rendezVous": {
+        "label": "Bookings",
+        "description": "New, cancelled or moved by a client or by the salon"
+      },
+      "rappels": {
+        "label": "Reminder before a booking",
+        "description": "One hour before each booking"
+      },
+      "resumeDuMatin": {
+        "label": "Morning summary",
+        "description": "Your day at 8 am, on days with bookings"
+      },
+      "avis": {
+        "label": "Reviews",
+        "description": "When a client reviews a booking with you"
+      }
     }
   },
   "planningHoraires": {

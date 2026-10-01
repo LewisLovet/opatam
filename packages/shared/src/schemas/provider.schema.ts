@@ -105,6 +105,14 @@ export const providerSettingsSchema = z.object({
       cancellationNotifications: z.boolean(),
       reminderNotifications: z.boolean(),
       centerPushEnabled: z.boolean().optional(),
+      // Toutes les clés « absent = activé » DOIVENT être déclarées : sinon zod
+      // les retire à la prochaine écriture complète de `settings`, et
+      // l'interrupteur coupé se rallume tout seul (c'était le cas du résumé
+      // du matin).
+      dailyAgendaPush: z.boolean().optional(),
+      teamBookingNotifications: z.boolean().optional(),
+      planningChangesPush: z.boolean().optional(),
+      planningReminderPush: z.boolean().optional(),
     })
     .partial()
     .optional(),

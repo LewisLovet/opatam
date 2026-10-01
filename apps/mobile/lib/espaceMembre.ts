@@ -19,6 +19,7 @@ export const ECRANS_MEMBRE: ReadonlySet<string> = new Set([
   'create-activity',
   'availability',
   'planning-horaires',
+  'membre-notifications',
   'membre-profil',
   'mes-clientes',
   'mon-activite',
