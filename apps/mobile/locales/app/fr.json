@@ -3528,7 +3528,7 @@
       "monActivite": "Mon activité",
       "mesHoraires": "Mes horaires",
       "mesIndisponibilites": "Mes indisponibilités",
-      "mesClientes": "Mes clientes",
+      "mesClientes": "Mes clients",
       "monProfil": "Mon profil"
     },
     "profil": {
@@ -3542,9 +3542,9 @@
       "emailAide": "C'est l'adresse de votre compte : elle ne se change pas ici."
     },
     "clientes": {
-      "titre": "Mes clientes",
+      "titre": "Mes clients",
       "recherche": "Rechercher un nom, un e-mail, un numéro",
-      "vide": "Aucune cliente pour le moment",
+      "vide": "Aucun client pour le moment",
       "videTexte": "Les personnes que vous recevez apparaîtront ici.",
       "visites_one": "{{count}} visite",
       "visites_other": "{{count}} visites",
