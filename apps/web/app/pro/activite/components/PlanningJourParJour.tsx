@@ -95,6 +95,9 @@ export function PlanningJourParJour({
   const toast = useToast();
   const aujourdhui = jourLocalDe(new Date());
   const [mois, setMois] = useState(aujourdhui.slice(0, 7));
+  // Vue SEMAINE par défaut : une ligne par jour, ses plages en barres.
+  const [vue, setVue] = useState<'semaine' | 'mois'>('semaine');
+  const [lundi, setLundi] = useState(() => lundiDe(aujourdhui, ajouterJours));
   const [planning, setPlanning] = useState<PlanningHoraires | null>(null);
   const [chargement, setChargement] = useState(true);
   const [jourEdite, setJourEdite] = useState<JourDuPlanning | null>(null);
@@ -103,9 +106,10 @@ export function PlanningJourParJour({
   const [enCours, setEnCours] = useState(false);
 
   const { debut, fin } = useMemo(() => {
+    if (vue === 'semaine') return { debut: lundi, fin: ajouterJours(lundi, 6) };
     const dernier = ajouterJours(`${moisSuivant(mois, 1)}-01`, -1);
     return { debut: lundiDe(`${mois}-01`, ajouterJours), fin: ajouterJours(lundiDe(dernier, ajouterJours), 6) };
-  }, [mois]);
+  }, [mois, vue, lundi]);
 
   const charger = useCallback(async () => {
     try {
@@ -244,6 +248,43 @@ export function PlanningJourParJour({
         </p>
       </div>
 
+      <div className="mt-4 inline-flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+        {(['semaine', 'mois'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setVue(v)}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
+              vue === v ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            {v === 'semaine' ? 'Semaine' : 'Mois'}
+          </button>
+        ))}
+      </div>
+
+      {vue === 'semaine' && (
+        chargement && !planning ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+          </div>
+        ) : (
+          <VueSemaine
+            lundi={lundi}
+            jours={(planning?.jours ?? []).filter((j) => j.jour >= lundi && j.jour <= ajouterJours(lundi, 6))}
+            aujourdhui={aujourdhui}
+            variables={variables}
+            peutReculer={lundi > ajouterJours(lundiCourant, -7)}
+            onPrecedente={() => setLundi((l) => ajouterJours(l, -7))}
+            onSuivante={() => setLundi((l) => ajouterJours(l, 7))}
+            onJour={setJourEdite}
+            onCopier={() => setLundiCopie(lundi)}
+          />
+        )
+      )}
+
+      {vue === 'mois' && (
+      <>
       <div className="mt-4 flex items-center justify-between">
         <button
           type="button"
@@ -337,6 +378,8 @@ export function PlanningJourParJour({
           </div>
         </div>
       )}
+      </>
+      )}
 
       {planning && planning.reglages.length > 0 && (
         <div className="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
@@ -420,6 +463,160 @@ export function PlanningJourParJour({
         variant="warning"
       />
     </section>
+  );
+}
+
+const enMinutes = (hhmm: string, fin = false) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const v = h * 60 + m;
+  return fin && v === 0 ? 24 * 60 : v;
+};
+
+/** Vue semaine : une ligne par jour, les plages en barres sur une frise horaire. */
+function VueSemaine({
+  lundi,
+  jours,
+  aujourdhui,
+  variables,
+  peutReculer,
+  onPrecedente,
+  onSuivante,
+  onJour,
+  onCopier,
+}: {
+  lundi: string;
+  jours: JourDuPlanning[];
+  aujourdhui: string;
+  variables: boolean;
+  peutReculer: boolean;
+  onPrecedente: () => void;
+  onSuivante: () => void;
+  onJour: (j: JourDuPlanning) => void;
+  onCopier: () => void;
+}) {
+  // 8 h – 20 h au moins, élargie aux plages de la semaine, à l'heure ronde.
+  const { debut, fin, graduations } = useMemo(() => {
+    let a = 8 * 60;
+    let b = 20 * 60;
+    for (const j of jours) {
+      for (const p of j.plages) {
+        a = Math.min(a, enMinutes(p.start));
+        b = Math.max(b, enMinutes(p.end, true));
+      }
+    }
+    a = Math.floor(a / 60) * 60;
+    b = Math.min(24 * 60, Math.ceil(b / 60) * 60);
+    const pas = b - a <= 12 * 60 ? 120 : 240;
+    const g: number[] = [];
+    for (let m = Math.ceil(a / pas) * pas; m <= b; m += pas) g.push(m);
+    return { debut: a, fin: b, graduations: g };
+  }, [jours]);
+  const pct = (m: number) => `${((m - debut) / (fin - debut)) * 100}%`;
+  const court = (j: string) => format(j, { day: 'numeric', month: 'short' });
+  const vide = jours.length > 0 && jours.every((j) => !j.ouvert);
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          disabled={!peutReculer}
+          onClick={onPrecedente}
+          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-30 dark:text-gray-300 dark:hover:bg-gray-800"
+          aria-label="Semaine précédente"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="font-semibold text-gray-900 dark:text-white">
+          <span className="hidden sm:inline">Semaine du {court(lundi)} au {court(ajouterJours(lundi, 6))}</span>
+          <span className="sm:hidden">
+            {court(lundi)} – {court(ajouterJours(lundi, 6))}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={onSuivante}
+          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          aria-label="Semaine suivante"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-[64px_1fr] gap-x-3">
+        <span />
+        <div className="relative h-4 text-[10px] text-gray-400">
+          {graduations.map((m) => (
+            <span key={m} className="absolute -translate-x-1/2" style={{ left: pct(m) }}>
+              {Math.floor(m / 60)}h
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+        {jours.map((j) => {
+          const passe = j.jour < aujourdhui;
+          const estAujourdhui = j.jour === aujourdhui;
+          return (
+            <button
+              key={j.jour}
+              type="button"
+              disabled={passe}
+              onClick={() => onJour(j)}
+              className={`grid w-full grid-cols-[64px_1fr] items-center gap-x-3 py-2 text-left transition ${
+                passe ? 'cursor-default opacity-45' : 'rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50'
+              }`}
+            >
+              <span className="text-sm">
+                <span className={`block font-semibold ${estAujourdhui ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>
+                  {majuscule(NOMS_COURTS[dateDe(j.jour).getDay()])}
+                </span>
+                <span className="text-xs text-gray-500">{format(j.jour, { day: 'numeric', month: 'short' })}</span>
+              </span>
+              <span className="block min-w-0">
+                <span className="relative block h-5 overflow-hidden rounded bg-gray-100 dark:bg-gray-800">
+                  {graduations.map((m) => (
+                    <span key={m} className="absolute inset-y-0 w-px bg-gray-200 dark:bg-gray-700" style={{ left: pct(m) }} />
+                  ))}
+                  {j.plages.map((p, k) => {
+                    const a = Math.max(debut, enMinutes(p.start));
+                    const b = Math.min(fin, enMinutes(p.end, true));
+                    return (
+                      <span
+                        key={k}
+                        className="absolute inset-y-0.5 rounded bg-primary-500 dark:bg-primary-400"
+                        style={{ left: pct(a), width: `${((b - a) / (fin - debut)) * 100}%` }}
+                        title={plageLisible(p)}
+                      />
+                    );
+                  })}
+                </span>
+                <span className="mt-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  {j.source === 'date' && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-500" />}
+                  {j.ouvert ? j.plages.map(plageLisible).join(', ') : 'Fermé'}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {vide && variables && (
+        <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+          Aucune disponibilité cette semaine : cliquez un jour pour l’ouvrir.
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-500" /> Réglé pour ce jour. Cliquez un jour pour le modifier.
+        </span>
+        <Button variant="outline" size="sm" leftIcon={<Copy className="h-4 w-4" />} onClick={onCopier}>
+          Copier sur les semaines suivantes
+        </Button>
+      </div>
+    </div>
   );
 }
 
