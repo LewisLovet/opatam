@@ -158,6 +158,11 @@ export default function AdminDashboardPage() {
           icon={<CalendarCheck className="h-5 w-5" />}
           value={overview ? nombre(overview.bookings30.value) : nombre(stats.bookingsMonth)}
           detail={overview && <DeltaPill value={overview.bookings30.value} previous={overview.bookings30.previous} />}
+          footer={
+            <span className={stats.bookingsToday > 0 ? 'font-semibold text-emerald-600 dark:text-emerald-400' : ''}>
+              {stats.bookingsToday > 0 ? `+${nombre(stats.bookingsToday)}` : 'Aucune'} aujourd&apos;hui
+            </span>
+          }
           spark={overview?.bookings30.spark}
         />
         <HeroKpi
@@ -196,7 +201,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* La journée en cours */}
-      <TodayBand stats={stats} overview={overview} />
+      <TodayBand stats={stats} overview={overview} recentSignups={recentSignups} />
 
       {/* Le grand graphique et ce qui demande une action */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
