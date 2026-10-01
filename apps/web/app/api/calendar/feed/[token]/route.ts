@@ -39,14 +39,27 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .limit(1)
       .get();
 
-    // 404 volontaire (et non 403) sur un jeton inconnu ou révoqué : on ne
-    // confirme jamais l'existence d'un flux à qui n'a pas la bonne clé.
-    if (providers.empty) {
-      return new NextResponse('Not found', { status: 404 });
+    // Sinon, le flux d'un MEMBRE de l'équipe (espace membre) : ses seuls
+    // rendez-vous, et seulement tant que son accès est actif.
+    let providerDoc: FirebaseFirestore.DocumentSnapshot;
+    let membre: { memberId: string; ref: FirebaseFirestore.DocumentReference; nom: string } | null = null;
+    if (!providers.empty) {
+      providerDoc = providers.docs[0];
+    } else {
+      const comptes = await db.collection('memberAccounts').where('calendarFeedToken', '==', token).limit(1).get();
+      const compte = comptes.docs[0];
+      // 404 volontaire (et non 403) sur un jeton inconnu ou révoqué : on ne
+      // confirme jamais l'existence d'un flux à qui n'a pas la bonne clé.
+      if (!compte || compte.data().active !== true) {
+        return new NextResponse('Not found', { status: 404 });
+      }
+      const { providerId, memberId } = compte.data() as { providerId: string; memberId: string };
+      providerDoc = await db.collection('providers').doc(providerId).get();
+      if (!providerDoc.exists) return new NextResponse('Not found', { status: 404 });
+      const fiche = await db.collection('providers').doc(providerId).collection('members').doc(memberId).get();
+      membre = { memberId, ref: compte.ref, nom: String(fiche.data()?.name ?? '') };
     }
-
-    const providerDoc = providers.docs[0];
-    const provider = providerDoc.data();
+    const provider = providerDoc.data() ?? {};
 
     const now = new Date();
     const from = new Date(now.getTime() - FEED_PAST_DAYS * 86400_000);
@@ -66,6 +79,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       // attente de paiement ou en no-show n'a rien à faire dans l'agenda —
       // et son absence du flux la retire côté abonné.
       if (b.status !== 'confirmed') continue;
+      if (membre && b.memberId !== membre.memberId) continue;
 
       const start = b.datetime?.toDate?.();
       const end = b.endDatetime?.toDate?.();
@@ -105,13 +119,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    const calendarName = `Opatam — ${(provider.businessName as string) ?? 'Planning'}`;
+    const salon = (provider.businessName as string) ?? 'Planning';
+    const calendarName = membre ? `Opatam — ${salon} (${membre.nom})` : `Opatam — ${salon}`;
     const ics = buildIcsFeed(calendarName, events);
 
     // Trace de consultation : c'est ce qui permet d'afficher au pro
     // « dernière synchronisation il y a X minutes », et de détecter qu'un
     // abonnement a cessé de fonctionner. Best-effort, jamais bloquant.
-    providerDoc.ref
+    (membre ? membre.ref : providerDoc.ref)
       .update({ calendarFeedLastAccessAt: new Date() })
       .catch(() => undefined);
 

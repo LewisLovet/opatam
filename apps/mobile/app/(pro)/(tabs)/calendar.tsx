@@ -2332,8 +2332,8 @@ export default function CalendarScreen() {
                 s'agit d'envoyer son planning vers son agenda perso.
                 Posée dans l'app et non sur le web parce que l'abonnement
                 doit se prendre sur l'appareil qui porte l'agenda. */}
-            {/* Le flux d'agenda est celui du salon (lien du gérant). */}
-            {!estMembre && (
+            {/* Gérant : le flux du salon. Membre : SON flux, ses seuls
+                rendez-vous (jeton sur son memberAccounts, côté serveur). */}
             <Pressable
               onPress={() => setSyncOpen(true)}
               accessibilityLabel={t('calendarSync.title')}
@@ -2357,7 +2357,6 @@ export default function CalendarScreen() {
                 {t('calendarSync.button')}
               </Text>
             </Pressable>
-            )}
           </View>
         </View>
       </View>

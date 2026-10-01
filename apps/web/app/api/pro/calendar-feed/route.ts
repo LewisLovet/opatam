@@ -52,6 +52,22 @@ function feedOrigin(req: NextRequest): string {
   return lanIp ? `http://${lanIp}:${port}` : appConfig.url;
 }
 
+/**
+ * Où vit le jeton du flux : la fiche du salon pour le gérant, son
+ * `memberAccounts/{uid}` pour un membre de l'équipe (espace membre) — dont
+ * le flux ne contient que SES rendez-vous. `null` : ni l'un ni l'autre.
+ */
+async function documentDuFlux(uid: string) {
+  const db = getAdminFirestore();
+  const provider = db.collection('providers').doc(uid);
+  const snapProvider = await provider.get();
+  if (snapProvider.exists) return { ref: provider, data: snapProvider.data() ?? {} };
+  const compte = db.collection('memberAccounts').doc(uid);
+  const snapCompte = await compte.get();
+  if (snapCompte.exists && snapCompte.data()?.active === true) return { ref: compte, data: snapCompte.data() ?? {} };
+  return null;
+}
+
 function feedUrls(token: string, origin: string) {
   const https = `${origin}/api/calendar/feed/${token}`;
   return {
@@ -66,11 +82,11 @@ export async function GET(req: NextRequest) {
   const uid = await requireProvider(req);
   if (!uid) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
-  const snap = await getAdminFirestore().collection('providers').doc(uid).get();
-  if (!snap.exists) return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
+  const doc = await documentDuFlux(uid);
+  if (!doc) return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
 
-  const token = snap.data()?.calendarFeedToken as string | undefined;
-  const lastAccess = snap.data()?.calendarFeedLastAccessAt as
+  const token = doc.data.calendarFeedToken as string | undefined;
+  const lastAccess = doc.data.calendarFeedLastAccessAt as
     | { toDate?: () => Date }
     | undefined;
 
@@ -85,10 +101,11 @@ export async function POST(req: NextRequest) {
   const uid = await requireProvider(req);
   if (!uid) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
-  const ref = getAdminFirestore().collection('providers').doc(uid);
-  if (!(await ref.get()).exists) {
+  const doc = await documentDuFlux(uid);
+  if (!doc) {
     return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
   }
+  const ref = doc.ref;
 
   // Régénérer, c'est simplement écrire un nouveau jeton : l'ancien lien ne
   // correspond plus à aucun prestataire et renvoie 404.
@@ -110,10 +127,9 @@ export async function DELETE(req: NextRequest) {
   const uid = await requireProvider(req);
   if (!uid) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
 
-  await getAdminFirestore()
-    .collection('providers')
-    .doc(uid)
-    .update({ calendarFeedToken: null, calendarFeedLastAccessAt: null });
+  const doc = await documentDuFlux(uid);
+  if (!doc) return NextResponse.json({ error: 'Prestataire introuvable' }, { status: 404 });
+  await doc.ref.update({ calendarFeedToken: null, calendarFeedLastAccessAt: null });
 
   return NextResponse.json({ enabled: false, url: null, webcalUrl: null, lastAccessAt: null });
 }

@@ -48,7 +48,14 @@ describe('les écrans pro réutilisés sont figés sur le membre', () => {
     const src = lire('apps/mobile/app/(pro)/(tabs)/calendar.tsx');
     assert.match(src, /useState<string \| null>\(monMemberId \?\? memberIdParam \?\? null\)/);
     assert.match(src, /const showMemberFilter = !estMembre && members\.length > 1;/);
-    assert.match(src, /\{!estMembre && \(\s*<Pressable\s*onPress=\{\(\) => setSyncOpen\(true\)\}/);
+    // Synchro d'agenda : ouverte au membre, mais avec SON flux — le serveur
+    // range son jeton sur memberAccounts et ne sert que ses rendez-vous.
+    assert.match(src, /onPress=\{\(\) => setSyncOpen\(true\)\}/);
+    const gestion = lire('apps/web/app/api/pro/calendar-feed/route.ts');
+    assert.match(gestion, /collection\('memberAccounts'\)\.doc\(uid\)/);
+    const flux = lire('apps/web/app/api/calendar/feed/[token]/route.ts');
+    assert.match(flux, /if \(membre && b\.memberId !== membre\.memberId\) continue;/);
+    assert.match(flux, /compte\.data\(\)\.active !== true/);
   });
   it('réservations, création, blocages, activités, horaires : restreints à LUI', () => {
     assert.match(lire('apps/mobile/app/(pro)/(tabs)/bookings.tsx'), /const memberFilter = monMemberId \?\? filtreChoisi;/);
