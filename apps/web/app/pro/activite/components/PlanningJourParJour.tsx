@@ -517,6 +517,11 @@ function VueSemaine({
   }, [jours]);
   const pct = (m: number) => `${((m - debut) / (fin - debut)) * 100}%`;
   const court = (j: string) => format(j, { day: 'numeric', month: 'short' });
+  // Grille verticale (écran large) : 28 px par heure, 300 px au moins.
+  const hauteur = Math.max(300, ((fin - debut) / 60) * 28);
+  const pctV = (m: number) => `${((m - debut) / (fin - debut)) * 100}%`;
+  const heures: number[] = [];
+  for (let m = debut; m <= fin; m += fin - debut > 14 * 60 ? 120 : 60) heures.push(m);
   const vide = jours.length > 0 && jours.every((j) => !j.ouvert);
 
   return (
@@ -547,6 +552,77 @@ function VueSemaine({
         </button>
       </div>
 
+      {/* Écran large : les 7 jours côte à côte, les heures à la verticale. */}
+      <div className="mt-3 hidden md:block">
+        <div className="grid grid-cols-[40px_repeat(7,minmax(0,1fr))] gap-1.5">
+          <span />
+          {jours.map((j) => {
+            const estAujourdhui = j.jour === aujourdhui;
+            return (
+              <div key={j.jour} className={`text-center text-sm ${j.jour < aujourdhui ? 'opacity-45' : ''}`}>
+                <span className={`block font-semibold ${estAujourdhui ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>
+                  {majuscule(NOMS_COURTS[dateDe(j.jour).getDay()])}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                  {j.source === 'date' && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary-500" />}
+                  {format(j.jour, { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Heures */}
+          <div className="relative text-[10px] text-gray-400" style={{ height: hauteur }}>
+            {heures.map((m) => (
+              <span key={m} className="absolute right-1 -translate-y-1/2" style={{ top: pctV(m) }}>
+                {Math.floor(m / 60)}h
+              </span>
+            ))}
+          </div>
+
+          {jours.map((j) => {
+            const passe = j.jour < aujourdhui;
+            return (
+              <button
+                key={j.jour}
+                type="button"
+                disabled={passe}
+                onClick={() => onJour(j)}
+                title={j.ouvert ? j.plages.map(plageLisible).join(', ') : 'Fermé'}
+                className={`relative overflow-hidden rounded-lg bg-gray-50 transition dark:bg-gray-800/60 ${
+                  passe ? 'cursor-default opacity-45' : 'hover:ring-2 hover:ring-primary-300 dark:hover:ring-primary-700'
+                }`}
+                style={{ height: hauteur }}
+              >
+                {heures.map((m) => (
+                  <span key={m} className="absolute inset-x-0 h-px bg-gray-200/80 dark:bg-gray-700/70" style={{ top: pctV(m) }} />
+                ))}
+                {j.plages.map((p, k) => {
+                  const a = Math.max(debut, enMinutes(p.start));
+                  const b = Math.min(fin, enMinutes(p.end, true));
+                  const haut = ((b - a) / (fin - debut)) * hauteur;
+                  return (
+                    <span
+                      key={k}
+                      className="absolute inset-x-1 flex flex-col justify-between rounded-md bg-primary-500 px-1.5 py-1 text-left text-[11px] font-medium leading-tight text-white dark:bg-primary-400 dark:text-gray-900"
+                      style={{ top: pctV(a), height: `${((b - a) / (fin - debut)) * 100}%` }}
+                    >
+                      <span>{p.start}</span>
+                      {haut >= 40 && <span>{p.end === '24:00' ? '00:00' : p.end}</span>}
+                    </span>
+                  );
+                })}
+                {!j.ouvert && (
+                  <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">Fermé</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Téléphone : une ligne par jour. */}
+      <div className="md:hidden">
       <div className="mt-2 grid grid-cols-[64px_1fr] gap-x-3">
         <span />
         <div className="relative h-4 text-[10px] text-gray-400">
@@ -604,6 +680,7 @@ function VueSemaine({
             </button>
           );
         })}
+      </div>
       </div>
 
       {vide && variables && (
