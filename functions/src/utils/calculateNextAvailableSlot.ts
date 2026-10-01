@@ -160,44 +160,115 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     return null;
   }
 
-  // 2. Récupérer le premier membre actif
+  // 2. TOUS les membres actifs — la prochaine disponibilité du salon est la
+  //    plus proche d'entre elles.
+  //
+  //    Ce calcul ne regardait qu'UN membre : celui marqué par défaut, sinon
+  //    le premier renvoyé par Firestore, c'est-à-dire le premier par ordre
+  //    d'identifiant — un tirage au sort. Chez Braidztouch, il tombait sur
+  //    une professionnelle fermée toute la semaine : le salon s'affichait
+  //    sans aucune disponibilité dans la recherche, alors que sa collègue
+  //    avait des créneaux. (Reprise du correctif d8ef9e52 de main, déployé
+  //    le 2026-09-30.)
   const membersSnapshot = await db
     .collection('providers')
     .doc(providerId)
     .collection('members')
     .where('isActive', '==', true)
-    .where('isDefault', '==', true)
-    .limit(1)
     .get();
   serverTracker.trackRead('providers/*/members', membersSnapshot.size);
 
-  // Si pas de membre par défaut, prendre le premier actif
-  let memberDoc = membersSnapshot.docs[0];
-  if (!memberDoc) {
-    const anyMemberSnapshot = await db
-      .collection('providers')
-      .doc(providerId)
-      .collection('members')
-      .where('isActive', '==', true)
-      .limit(1)
-      .get();
-    serverTracker.trackRead('providers/*/members', anyMemberSnapshot.size);
-    memberDoc = anyMemberSnapshot.docs[0];
-  }
-
-  if (!memberDoc) {
+  if (membersSnapshot.empty) {
     console.log('No active member found');
     return null;
   }
 
+  const now = new Date();
+  const lieux = new Map<string, Promise<admin.firestore.DocumentData | undefined>>();
+  const lireLieu = (locationId: string) => {
+    let lieu = lieux.get(locationId);
+    if (!lieu) {
+      lieu = db
+        .collection('providers')
+        .doc(providerId)
+        .collection('locations')
+        .doc(locationId)
+        .get()
+        .then((snap) => {
+          serverTracker.trackRead('providers/*/locations', 1);
+          return snap.data();
+        })
+        // Une lecture ratée ne doit pas priver la fiche de son indicateur.
+        .catch(() => undefined);
+      lieux.set(locationId, lieu);
+    }
+    return lieu;
+  };
+
+  // Les horaires DATÉS encore à venir, lus UNE fois pour tout le salon
+  // (une seule inégalité, pas d'index composite ; le membre se filtre en
+  // mémoire). Illisibles : les horaires habituels, comme avant.
+  let tousLesHorairesDates: (HoraireDateLu & { memberId: string })[] = [];
+  try {
+    const datesSnapshot = await db
+      .collection('providers')
+      .doc(providerId)
+      .collection('datedAvailability')
+      .where('to', '>=', jourLocal(new Date(now.getTime() - 86_400_000), 'UTC'))
+      .get();
+    serverTracker.trackRead('providers/*/datedAvailability', datesSnapshot.size);
+    tousLesHorairesDates = datesSnapshot.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        memberId: d.memberId,
+        from: d.from,
+        to: d.to,
+        weekdays: Array.isArray(d.weekdays) ? d.weekdays : [],
+        mode: d.mode,
+        slots: Array.isArray(d.slots) ? d.slots : [],
+        createdAt: d.createdAt && 'toDate' in d.createdAt ? d.createdAt.toDate() : null,
+      };
+    });
+  } catch (err) {
+    console.warn(`Could not fetch datedAvailability for ${providerId}, continuing without:`, (err as Error).message);
+  }
+
+  const dates = await Promise.all(
+    membersSnapshot.docs.map((memberDoc) =>
+      prochaineJourneeDuMembre(
+        db,
+        providerId,
+        memberDoc,
+        now,
+        lireLieu,
+        tousLesHorairesDates.filter((d) => d.memberId === memberDoc.id),
+      ),
+    ),
+  );
+  const trouvees = dates.filter((d): d is Date => d !== null);
+  if (trouvees.length === 0) {
+    console.log('No available slot found in the next 60 days');
+    return null;
+  }
+  return new Date(Math.min(...trouvees.map((d) => d.getTime())));
+}
+
+/**
+ * La première journée des 60 prochaines où CE membre a au moins 30 minutes
+ * libres, rendue comme le début de cette journée dans le fuseau de son lieu.
+ */
+async function prochaineJourneeDuMembre(
+  db: admin.firestore.Firestore,
+  providerId: string,
+  memberDoc: admin.firestore.QueryDocumentSnapshot,
+  now: Date,
+  lireLieu: (locationId: string) => Promise<admin.firestore.DocumentData | undefined>,
+  horairesDates: HoraireDateLu[],
+): Promise<Date | null> {
   const memberId = memberDoc.id;
   console.log(`Using member: ${memberId}`);
 
-  // 2 bis. Le fuseau du lieu où CE MEMBRE travaille.
-  //
-  // Il se résout APRÈS le choix du membre, et pas avant : sur un compte à
-  // plusieurs lieux, prendre « le lieu par défaut » pouvait rendre le
-  // fuseau d'un tout autre salon que celui qu'on est en train d'analyser.
+  // Le fuseau du lieu où CE MEMBRE travaille.
   //
   // Absent (lieu pas encore résolu) → Europe/Paris, c'est-à-dire le
   // comportement d'avant : le serveur web force ce fuseau, et c'est ce
@@ -205,21 +276,16 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
   let fuseauDuSalon = 'Europe/Paris';
   const locationIdDuMembre = memberDoc.data()?.locationId;
   if (locationIdDuMembre) {
-    try {
-      const lieu = await db
-        .collection('providers')
-        .doc(providerId)
-        .collection('locations')
-        .doc(locationIdDuMembre)
-        .get();
-      serverTracker.trackRead('providers/*/locations', 1);
-      fuseauDuSalon = lieu.data()?.timezone || 'Europe/Paris';
-    } catch {
-      // Une lecture ratée ne doit pas priver la fiche de son indicateur.
+    const lieu = await lireLieu(locationIdDuMembre);
+    // Un lieu désactivé ne prend aucune réservation : ce membre n'offre rien.
+    if (lieu?.isActive === false) {
+      console.log(`Member ${memberId}: location inactive`);
+      return null;
     }
+    fuseauDuSalon = lieu?.timezone || 'Europe/Paris';
   }
 
-  // 3. Récupérer les availabilities du membre
+  // Les availabilities du membre
   // Note: la collection s'appelle 'availability' (singulier)
   const availabilitiesSnapshot = await db
     .collection('providers')
@@ -238,41 +304,14 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
     return { ...data, effectiveFrom: effet && 'toDate' in effet ? effet.toDate() : (effet as Date | null) ?? null };
   });
 
-  console.log(`Found ${availabilities.length} availability rules`);
+  console.log(`Member ${memberId}: ${availabilities.length} availability rules`);
 
-  // 3 bis. Les horaires DATÉS encore à venir, et l'option « horaires
-  // variables » (la semaine type ne s'applique plus : un jour sans horaire
-  // daté est fermé). Une seule inégalité, sans index composite : le membre
-  // se filtre en mémoire.
-  const now = new Date();
+  // L'option « horaires variables » : la semaine type ne s'applique plus,
+  // un jour sans horaire daté est fermé.
   const horairesVariables = memberDoc.data()?.variableHours === true;
-  let horairesDates: HoraireDateLu[] = [];
-  try {
-    const datesSnapshot = await db
-      .collection('providers')
-      .doc(providerId)
-      .collection('datedAvailability')
-      .where('to', '>=', jourLocal(now, fuseauDuSalon))
-      .get();
-    serverTracker.trackRead('providers/*/datedAvailability', datesSnapshot.size);
-    horairesDates = datesSnapshot.docs
-      .map((doc) => doc.data())
-      .filter((d) => d.memberId === memberId)
-      .map((d) => ({
-        from: d.from,
-        to: d.to,
-        weekdays: Array.isArray(d.weekdays) ? d.weekdays : [],
-        mode: d.mode,
-        slots: Array.isArray(d.slots) ? d.slots : [],
-        createdAt: d.createdAt && 'toDate' in d.createdAt ? d.createdAt.toDate() : null,
-      }));
-  } catch (err) {
-    // Illisibles : les horaires habituels, comme avant.
-    console.warn(`Could not fetch datedAvailability for ${providerId}, continuing without:`, (err as Error).message);
-  }
 
   if (availabilities.length === 0 && horairesDates.length === 0) {
-    console.log('No availabilities configured');
+    console.log(`Member ${memberId}: no availabilities configured`);
     return null;
   }
 
@@ -391,12 +430,11 @@ export async function calculateNextAvailableSlot(providerId: string): Promise<Da
       // Function : c'est la date que la fiche affichera.
       const debutDeLaJournee = instantDepuisHeureLocale(jour, 0, fuseauDuSalon);
       console.log(
-        `Found available date: ${jour} (${availableMinutes} minutes available, ${fuseauDuSalon})`,
+        `Member ${memberId}: available date ${jour} (${availableMinutes} minutes available, ${fuseauDuSalon})`,
       );
       return debutDeLaJournee ?? new Date(`${jour}T00:00:00Z`);
     }
   }
 
-  console.log('No available slot found in the next 60 days');
   return null;
 }
