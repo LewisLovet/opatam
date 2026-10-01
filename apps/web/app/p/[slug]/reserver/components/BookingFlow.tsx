@@ -149,6 +149,8 @@ interface BookingFlowProps {
   availabilities: Availability[];
   isTeam: boolean;
   preselectedServiceId?: string;
+  /** Lien personnel d'un membre (`?membre=`) : le tunnel le choisit tout seul. */
+  preselectedMemberId?: string;
   isDemo?: boolean;
 }
 
@@ -259,6 +261,7 @@ export function BookingFlow({
   availabilities,
   isTeam,
   preselectedServiceId,
+  preselectedMemberId,
   isDemo = false,
 }: BookingFlowProps) {
   const router = useRouter();
@@ -755,6 +758,12 @@ export function BookingFlow({
   // any) is shown ONCE here, before proceeding — not on every add.
   const advanceFromService = () => {
     if (state.cart.length === 0) return;
+    // Lien personnel d'un membre qui réalise tout le panier : on passe
+    // directement à SES créneaux.
+    if (isTeam && preselectedMemberId && availableMembers.some((m) => m.id === preselectedMemberId)) {
+      handleMemberSelect(preselectedMemberId);
+      return;
+    }
     if (isTeam) {
       setCurrentStep('member');
     } else {

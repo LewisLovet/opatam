@@ -3545,7 +3545,9 @@
       "mesIndisponibilites": "As minhas indisponibilidades",
       "mesClientes": "Os meus clientes",
       "monProfil": "O meu perfil",
-      "notifications": "Notificações"
+      "notifications": "Notificações",
+      "monLien": "O meu link de reserva",
+      "mesAvis": "As minhas avaliações"
     },
     "profil": {
       "titre": "O meu perfil",
@@ -3665,6 +3667,22 @@
         "label": "Avaliações",
         "description": "Quando uma cliente avalia uma marcação consigo"
       }
+    },
+    "lien": {
+      "titre": "O meu link de reserva",
+      "intro": "O seu link pessoal: abre a página do salão já consigo escolhido, só os seus serviços, e depois diretamente os seus horários. Ponha-o na bio, envie-o ou deixe ler o código QR.",
+      "scanner": "Para ler com a câmara",
+      "partager": "Partilhar o meu link",
+      "copie": "Link copiado",
+      "messagePartage": "Reserve comigo em {{salon}}: {{lien}}",
+      "indisponible": "O link ainda não está disponível: a página do salão tem de estar publicada."
+    },
+    "avis": {
+      "titre": "As minhas avaliações",
+      "nombre_one": "{{count}} avaliação",
+      "nombre_other": "{{count}} avaliações",
+      "vide": "Ainda sem avaliações. Vão aparecer aqui assim que uma cliente avaliar uma marcação consigo.",
+      "anonyme": "Cliente"
     }
   },
   "planningHoraires": {

@@ -3545,7 +3545,9 @@
       "mesIndisponibilites": "Meine Abwesenheiten",
       "mesClientes": "Meine Kundschaft",
       "monProfil": "Mein Profil",
-      "notifications": "Benachrichtigungen"
+      "notifications": "Benachrichtigungen",
+      "monLien": "Mein Buchungslink",
+      "mesAvis": "Meine Bewertungen"
     },
     "profil": {
       "titre": "Mein Profil",
@@ -3665,6 +3667,22 @@
         "label": "Bewertungen",
         "description": "Wenn eine Kundin einen Termin mit Ihnen bewertet"
       }
+    },
+    "lien": {
+      "titre": "Mein Buchungslink",
+      "intro": "Ihr persönlicher Link: Er öffnet die Salonseite mit Ihnen bereits ausgewählt, nur Ihre Leistungen, dann direkt Ihre Zeiten. In die Bio setzen, verschicken oder den QR-Code scannen lassen.",
+      "scanner": "Mit der Kamera scannen",
+      "partager": "Meinen Link teilen",
+      "copie": "Link kopiert",
+      "messagePartage": "Buchen Sie bei mir in {{salon}}: {{lien}}",
+      "indisponible": "Der Link ist noch nicht verfügbar: Die Salonseite muss veröffentlicht sein."
+    },
+    "avis": {
+      "titre": "Meine Bewertungen",
+      "nombre_one": "{{count}} Bewertung",
+      "nombre_other": "{{count}} Bewertungen",
+      "vide": "Noch keine Bewertungen. Sie erscheinen hier, sobald eine Kundin einen Termin mit Ihnen bewertet.",
+      "anonyme": "Kundin"
     }
   },
   "planningHoraires": {

@@ -540,6 +540,10 @@ function MenuMembre() {
             {separateur}
             <MenuItem icon="people-outline" label={t('espaceMembre.menu.mesClientes')} onPress={() => router.push('/(pro)/mes-clientes' as never)} colors={colors} />
             {separateur}
+            <MenuItem icon="star-outline" label={t('espaceMembre.menu.mesAvis')} onPress={() => router.push('/(pro)/mes-avis' as never)} colors={colors} />
+            {separateur}
+            <MenuItem icon="qr-code-outline" label={t('espaceMembre.menu.monLien')} onPress={() => router.push('/(pro)/mon-lien' as never)} colors={colors} />
+            {separateur}
             <MenuItem icon="person-circle-outline" label={t('espaceMembre.menu.monProfil')} onPress={() => router.push('/(pro)/membre-profil' as never)} colors={colors} />
             {separateur}
             <MenuItem icon="notifications-outline" label={t('espaceMembre.menu.notifications')} onPress={() => router.push('/(pro)/membre-notifications' as never)} colors={colors} />

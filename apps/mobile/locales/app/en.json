@@ -3545,7 +3545,9 @@
       "mesIndisponibilites": "My unavailability",
       "mesClientes": "My clients",
       "monProfil": "My profile",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "monLien": "My booking link",
+      "mesAvis": "My reviews"
     },
     "profil": {
       "titre": "My profile",
@@ -3665,6 +3667,22 @@
         "label": "Reviews",
         "description": "When a client reviews a booking with you"
       }
+    },
+    "lien": {
+      "titre": "My booking link",
+      "intro": "Your personal link: it opens the salon's page with you already selected, only your services, then straight to your time slots. Put it in your bio, send it, or let people scan the QR code.",
+      "scanner": "Scan with the camera",
+      "partager": "Share my link",
+      "copie": "Link copied",
+      "messagePartage": "Book with me at {{salon}}: {{lien}}",
+      "indisponible": "The link isn't available yet: the salon's page must be published."
+    },
+    "avis": {
+      "titre": "My reviews",
+      "nombre_one": "{{count}} review",
+      "nombre_other": "{{count}} reviews",
+      "vide": "No reviews yet. They'll show up here as soon as a client rates a booking with you.",
+      "anonyme": "Client"
     }
   },
   "planningHoraires": {

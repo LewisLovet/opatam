@@ -55,6 +55,8 @@ export default function ProLayout() {
           <Stack.Screen name="availability" options={{ headerShown: false }} />
           <Stack.Screen name="planning-horaires" options={{ headerShown: false }} />
           <Stack.Screen name="membre-notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="mon-lien" options={{ headerShown: false }} />
+          <Stack.Screen name="mes-avis" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />
           <Stack.Screen name="booking-settings" options={{ headerShown: false }} />
           <Stack.Screen name="reviews" options={{ headerShown: false }} />

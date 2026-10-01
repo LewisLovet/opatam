@@ -32,7 +32,7 @@ export const revalidate = 30;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ service?: string }>;
+  searchParams: Promise<{ service?: string; membre?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -99,7 +99,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function BookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const locale = await getLocale();
-  const { service: preselectedServiceId } = await searchParams;
+  const { service: preselectedServiceId, membre: membreDemande } = await searchParams;
 
   // Tunnel de la démo PERSONNALISÉE : les prestations du prospect, le mode
   // isDemo de BookingFlow — le prospect déroule une réservation complète sur
@@ -287,6 +287,20 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
   // Check if provider has team plan with multiple members
   const isTeam = isTeamTier(provider) && members.length > 1;
 
+  // Lien PERSONNEL d'un membre (`?membre=<id>`, partagé depuis son espace) :
+  // seules ses prestations, et le tunnel le choisit tout seul. Un identifiant
+  // inconnu ou inactif est ignoré — le lien ouvre alors la page normale.
+  const membreDuLien = isTeam ? members.find((m) => m.id === membreDemande) ?? null : null;
+  const servicesAffiches = membreDuLien
+    ? serializedServices.filter((s) =>
+        s.memberIds && s.memberIds.length > 0
+          ? s.memberIds.includes(membreDuLien.id)
+          : s.locationIds.length > 0
+            ? s.locationIds.includes(membreDuLien.locationId)
+            : true,
+      )
+    : serializedServices;
+
   return (
     <>
       {/* Le tunnel hérite de la couleur de la vitrine : la continuité compte
@@ -295,13 +309,14 @@ export default async function BookingPage({ params, searchParams }: PageProps) {
       <div data-provider-theme>
     <BookingFlow
       provider={serializedProvider}
-      services={serializedServices}
+      services={servicesAffiches}
       serviceCategories={serializedCategories}
       locations={serializedLocations}
       members={serializedMembers}
       availabilities={serializedAvailabilities}
       isTeam={isTeam}
       preselectedServiceId={preselectedServiceId}
+      preselectedMemberId={membreDuLien?.id}
     />
       </div>
     </>

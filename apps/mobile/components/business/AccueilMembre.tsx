@@ -100,6 +100,8 @@ export function AccueilMembre() {
     { icone: 'calendar-number-outline', libelle: t('planningHoraires.raccourci'), route: '/(pro)/planning-horaires', alerte: aOuvrir },
     { icone: 'time-outline', libelle: t('espaceMembre.menu.mesHoraires'), route: '/(pro)/availability' },
     { icone: 'people-outline', libelle: t('espaceMembre.menu.mesClientes'), route: '/(pro)/mes-clientes' },
+    { icone: 'qr-code-outline', libelle: t('espaceMembre.menu.monLien'), route: '/(pro)/mon-lien' },
+    { icone: 'star-outline', libelle: t('espaceMembre.menu.mesAvis'), route: '/(pro)/mes-avis' },
     ...(voitSonCA ? [{ icone: 'stats-chart-outline' as const, libelle: t('espaceMembre.menu.monActivite'), route: '/(pro)/mon-activite' }] : []),
     { icone: 'person-circle-outline', libelle: t('espaceMembre.menu.monProfil'), route: '/(pro)/membre-profil' },
   ];

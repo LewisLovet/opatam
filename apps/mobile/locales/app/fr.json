@@ -3545,7 +3545,9 @@
       "mesIndisponibilites": "Mes indisponibilités",
       "mesClientes": "Mes clients",
       "monProfil": "Mon profil",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "monLien": "Mon lien de réservation",
+      "mesAvis": "Mes avis"
     },
     "profil": {
       "titre": "Mon profil",
@@ -3665,6 +3667,22 @@
         "label": "Avis reçus",
         "description": "Quand une cliente laisse un avis sur un rendez-vous avec vous"
       }
+    },
+    "lien": {
+      "titre": "Mon lien de réservation",
+      "intro": "Votre lien personnel : il ouvre la page du salon avec vous déjà choisi, seulement vos prestations, puis directement vos créneaux. Mettez-le dans votre bio, envoyez-le, ou faites scanner le QR code.",
+      "scanner": "À scanner avec l'appareil photo",
+      "partager": "Partager mon lien",
+      "copie": "Lien copié",
+      "messagePartage": "Réservez avec moi chez {{salon}} : {{lien}}",
+      "indisponible": "Le lien n'est pas encore disponible : la page du salon doit être publiée."
+    },
+    "avis": {
+      "titre": "Mes avis",
+      "nombre_one": "{{count}} avis",
+      "nombre_other": "{{count}} avis",
+      "vide": "Aucun avis pour le moment. Ils apparaîtront ici dès qu'une cliente notera un rendez-vous avec vous.",
+      "anonyme": "Cliente"
     }
   },
   "planningHoraires": {
