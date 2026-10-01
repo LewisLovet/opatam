@@ -3713,6 +3713,16 @@
       "titre": "Dienstplan Tag für Tag",
       "description": "Einen Tag schließen, ein Datum öffnen, eine Woche kopieren…"
     },
-    "banniereVariables": "Variable Zeiten sind aktiv: Diese Standardwoche gilt nicht. Lege deine Tage im Dienstplan fest."
+    "banniereVariables": "Variable Zeiten sind aktiv: Diese Standardwoche gilt nicht. Lege deine Tage im Dienstplan fest.",
+    "vue": {
+      "semaine": "Woche",
+      "mois": "Monat"
+    },
+    "semaine": {
+      "titre": "Woche vom {{du}} bis {{au}}",
+      "copier": "Diese Woche auf die folgenden kopieren",
+      "vide": "Keine Verfügbarkeit in dieser Woche: Tippe auf einen Tag, um ihn zu öffnen.",
+      "aide": "Für diesen Tag festgelegt. Tippe auf einen Tag, um ihn zu ändern."
+    }
   }
 }

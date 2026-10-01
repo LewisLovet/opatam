@@ -3713,6 +3713,16 @@
       "titre": "Day-by-day schedule",
       "description": "Close a day, open a date, copy a week…"
     },
-    "banniereVariables": "Variable hours are on: this standard week doesn't apply. Set your days in the schedule."
+    "banniereVariables": "Variable hours are on: this standard week doesn't apply. Set your days in the schedule.",
+    "vue": {
+      "semaine": "Week",
+      "mois": "Month"
+    },
+    "semaine": {
+      "titre": "Week of {{du}} to {{au}}",
+      "copier": "Copy this week to the following weeks",
+      "vide": "No availability this week: tap a day to open it.",
+      "aide": "Set for this day. Tap a day to change it."
+    }
   }
 }

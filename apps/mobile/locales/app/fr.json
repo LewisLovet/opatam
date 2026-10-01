@@ -3713,6 +3713,16 @@
       "titre": "Planning jour par jour",
       "description": "Fermer un jour, ouvrir une date, copier une semaine…"
     },
-    "banniereVariables": "Horaires variables activés : cette semaine type ne s'applique pas. Réglez vos jours dans le planning."
+    "banniereVariables": "Horaires variables activés : cette semaine type ne s'applique pas. Réglez vos jours dans le planning.",
+    "vue": {
+      "semaine": "Semaine",
+      "mois": "Mois"
+    },
+    "semaine": {
+      "titre": "Semaine du {{du}} au {{au}}",
+      "copier": "Copier cette semaine sur les suivantes",
+      "vide": "Aucune disponibilité cette semaine : touchez un jour pour l'ouvrir.",
+      "aide": "Réglé pour ce jour. Touchez un jour pour le modifier."
+    }
   }
 }

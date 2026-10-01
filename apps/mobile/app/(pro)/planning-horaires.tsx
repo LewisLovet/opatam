@@ -66,6 +66,7 @@ const majuscule = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const nomJour = (dow: number, f: 'short' | 'narrow' | 'long') =>
   majuscule(new Intl.DateTimeFormat(i18n.language, { weekday: f, timeZone: 'UTC' }).format(new Date(Date.UTC(2023, 0, 1 + dow))));
 const LUNDI_A_DIMANCHE = [1, 2, 3, 4, 5, 6, 0];
+const jourSemaineDuJour = (jour: string) => dateDe(jour).getDay();
 
 /** « 09:00 » → « 9 », « 09:30 » → « 9:30 », « 24:00 » → « 24 » — pour une case de 7 colonnes. */
 const heureCourte = (hhmm: string) => {
@@ -108,6 +109,10 @@ export default function PlanningHorairesScreen() {
   const [membresCharges, setMembresCharges] = useState(false);
   const [membreId, setMembreId] = useState<string | null>(monMemberId ?? params.memberId ?? null);
   const [mois, setMois] = useState(aujourdhui.slice(0, 7));
+  // Vue SEMAINE par défaut : une ligne par jour, ses plages en barres — la
+  // plus simple pour remplir et relire. Le mois sert à voir loin.
+  const [vue, setVue] = useState<'semaine' | 'mois'>('semaine');
+  const [lundi, setLundi] = useState(() => lundiDe(aujourdhui, ajouterJours));
   const [planning, setPlanning] = useState<PlanningHoraires | null>(null);
   const [chargement, setChargement] = useState(true);
   const [rafraichit, setRafraichit] = useState(false);
@@ -119,10 +124,11 @@ export default function PlanningHorairesScreen() {
 
   // La grille : du lundi de la semaine du 1er au dimanche de la semaine du dernier jour.
   const { debut, fin } = useMemo(() => {
+    if (vue === 'semaine') return { debut: lundi, fin: ajouterJours(lundi, 6) };
     const premier = `${mois}-01`;
     const dernier = ajouterJours(`${moisSuivant(mois, 1)}-01`, -1);
     return { debut: lundiDe(premier, ajouterJours), fin: ajouterJours(lundiDe(dernier, ajouterJours), 6) };
-  }, [mois]);
+  }, [mois, vue, lundi]);
 
   useEffect(() => {
     if (!providerId) return;
@@ -335,7 +341,37 @@ export default function PlanningHorairesScreen() {
             </Text>
           </Card>
 
+          {/* Semaine | Mois */}
+          <View style={[s.segments, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}>
+            {(['semaine', 'mois'] as const).map((v) => (
+              <Pressable
+                key={v}
+                onPress={() => setVue(v)}
+                style={[s.segment, { borderRadius: radius.sm, backgroundColor: vue === v ? colors.surface : 'transparent' }]}
+              >
+                <Text variant="bodySmall" style={{ fontWeight: vue === v ? '700' : '500', color: vue === v ? colors.text : colors.textSecondary }}>
+                  {t(`planningHoraires.vue.${v}`)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {vue === 'semaine' && planning && (
+            <VueSemaine
+              lundi={lundi}
+              jours={planning.jours.filter((j) => j.jour >= lundi && j.jour <= ajouterJours(lundi, 6))}
+              aujourdhui={aujourdhui}
+              horairesVariables={horairesVariables}
+              peutReculer={lundi > ajouterJours(lundiCourant, -7)}
+              onPrecedente={() => setLundi((l) => ajouterJours(l, -7))}
+              onSuivante={() => setLundi((l) => ajouterJours(l, 7))}
+              onJour={setJourEdite}
+              onCopier={() => setLundiCopie(lundi)}
+            />
+          )}
+
           {/* Mois */}
+          {vue === 'mois' && (
           <Card padding="md" shadow="sm">
             <View style={[s.ligne, { marginBottom: spacing.md }]}>
               <Pressable
@@ -424,6 +460,7 @@ export default function PlanningHorairesScreen() {
               {t('planningHoraires.aide')}
             </Text>
           </Card>
+          )}
 
           {/* Réglages en cours */}
           {planning && planning.reglages.length > 0 && (
@@ -495,6 +532,165 @@ export default function PlanningHorairesScreen() {
         />
       )}
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vue semaine : une ligne par jour, les plages en barres sur une frise
+// ---------------------------------------------------------------------------
+
+const enMinutes = (hhmm: string, fin = false) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const v = h * 60 + m;
+  return fin && v === 0 ? 24 * 60 : v;
+};
+
+function VueSemaine({
+  lundi,
+  jours,
+  aujourdhui,
+  horairesVariables,
+  peutReculer,
+  onPrecedente,
+  onSuivante,
+  onJour,
+  onCopier,
+}: {
+  lundi: string;
+  jours: JourDuPlanning[];
+  aujourdhui: string;
+  horairesVariables: boolean;
+  peutReculer: boolean;
+  onPrecedente: () => void;
+  onSuivante: () => void;
+  onJour: (j: JourDuPlanning) => void;
+  onCopier: () => void;
+}) {
+  const { colors, spacing, radius } = useTheme();
+  const { t } = useTranslation();
+
+  // La frise couvre 8 h – 20 h au moins, élargie aux plages de la semaine,
+  // à l'heure ronde.
+  const { debut, fin, graduations } = useMemo(() => {
+    let a = 8 * 60;
+    let b = 20 * 60;
+    for (const j of jours) {
+      for (const p of j.plages) {
+        a = Math.min(a, enMinutes(p.start));
+        b = Math.max(b, enMinutes(p.end, true));
+      }
+    }
+    a = Math.floor(a / 60) * 60;
+    b = Math.min(24 * 60, Math.ceil(b / 60) * 60);
+    const pas = b - a <= 12 * 60 ? 120 : 240;
+    const g: number[] = [];
+    for (let m = Math.ceil(a / pas) * pas; m <= b; m += pas) g.push(m);
+    return { debut: a, fin: b, graduations: g };
+  }, [jours]);
+  const pct = (m: number) => `${((m - debut) / (fin - debut)) * 100}%` as const;
+  const aucunJourOuvert = jours.length > 0 && jours.every((j) => !j.ouvert);
+  const court = (j: string) => format(j, { day: 'numeric', month: 'short' });
+
+  return (
+    <Card padding="md" shadow="sm">
+      <View style={[s.ligne, { marginBottom: spacing.md }]}>
+        <Pressable hitSlop={10} disabled={!peutReculer} onPress={onPrecedente} style={{ opacity: peutReculer ? 1 : 0.3 }}>
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
+        </Pressable>
+        <Text variant="body" align="center" style={{ flex: 1, fontWeight: '700' }}>
+          {t('planningHoraires.semaine.titre', { du: court(lundi), au: court(ajouterJours(lundi, 6)) })}
+        </Text>
+        <Pressable hitSlop={10} onPress={onSuivante}>
+          <Ionicons name="chevron-forward" size={22} color={colors.text} />
+        </Pressable>
+      </View>
+
+      {/* Graduations */}
+      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+        <View style={s.colonneJour} />
+        <View style={{ flex: 1, height: 14 }}>
+          {graduations.map((m) => (
+            <Text
+              key={m}
+              style={{ position: 'absolute', left: pct(m), fontSize: 10, color: colors.textMuted, transform: [{ translateX: -8 }] }}
+            >
+              {`${Math.floor(m / 60)}h`}
+            </Text>
+          ))}
+        </View>
+      </View>
+
+      {jours.map((j) => {
+        const passe = j.jour < aujourdhui;
+        const estAujourdhui = j.jour === aujourdhui;
+        return (
+          <Pressable
+            key={j.jour}
+            disabled={passe}
+            onPress={() => onJour(j)}
+            style={({ pressed }) => [
+              s.ligneJour,
+              { borderTopColor: colors.divider, opacity: pressed ? 0.6 : passe ? 0.45 : 1 },
+            ]}
+          >
+            <View style={s.colonneJour}>
+              <Text variant="caption" style={{ fontWeight: '700', color: estAujourdhui ? colors.primary : colors.text }}>
+                {nomJour(jourSemaineDuJour(j.jour), 'short')}
+              </Text>
+              <Text variant="caption" color="textSecondary">{Number(j.jour.slice(8))}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={[s.frise, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm }]}>
+                {graduations.map((m) => (
+                  <View key={m} style={[s.repere, { left: pct(m), backgroundColor: colors.border }]} />
+                ))}
+                {j.plages.map((p, k) => {
+                  const a = Math.max(debut, enMinutes(p.start));
+                  const b = Math.min(fin, enMinutes(p.end, true));
+                  return (
+                    <View
+                      key={k}
+                      style={[
+                        s.barre,
+                        {
+                          left: pct(a),
+                          width: `${((b - a) / (fin - debut)) * 100}%`,
+                          backgroundColor: colors.primary,
+                          borderRadius: radius.sm,
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+              <View style={[s.ligne, { gap: 6, marginTop: 3 }]}>
+                {j.source === 'date' && <View style={[s.point, { backgroundColor: colors.primary }]} />}
+                <Text variant="caption" color={j.ouvert ? 'textSecondary' : 'textMuted'} numberOfLines={1} style={{ flex: 1 }}>
+                  {j.ouvert ? j.plages.map(plageLisible).join(', ') : t('planningHoraires.ferme')}
+                </Text>
+              </View>
+            </View>
+            {!passe && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: 6 }} />}
+          </Pressable>
+        );
+      })}
+
+      {aucunJourOuvert && horairesVariables && (
+        <View style={[s.ligne, { marginTop: spacing.md, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.warningLight }]}>
+          <Ionicons name="alert-circle-outline" size={18} color={colors.warningDark} />
+          <Text variant="caption" style={{ flex: 1, color: colors.warningDark }}>{t('planningHoraires.semaine.vide')}</Text>
+        </View>
+      )}
+
+      <View style={[s.ligne, { marginTop: spacing.sm, gap: 6 }]}>
+        <View style={[s.point, { backgroundColor: colors.primary }]} />
+        <Text variant="caption" color="textMuted" style={{ flex: 1 }}>{t('planningHoraires.semaine.aide')}</Text>
+      </View>
+
+      <View style={{ marginTop: spacing.md }}>
+        <Button variant="outline" title={t('planningHoraires.semaine.copier')} onPress={onCopier} />
+      </View>
+    </Card>
   );
 }
 
@@ -871,4 +1067,9 @@ const s = StyleSheet.create({
   voile: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   feuille: { padding: 20 },
   pas: { width: 44, height: 44, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  colonneJour: { width: 44 },
+  ligneJour: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  frise: { height: 18, overflow: 'hidden' },
+  repere: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth },
+  barre: { position: 'absolute', top: 2, bottom: 2 },
 });

@@ -3713,6 +3713,16 @@
       "titre": "Planning giorno per giorno",
       "description": "Chiudere un giorno, aprire una data, copiare una settimana…"
     },
-    "banniereVariables": "Orari variabili attivi: questa settimana tipo non si applica. Imposta i tuoi giorni nel planning."
+    "banniereVariables": "Orari variabili attivi: questa settimana tipo non si applica. Imposta i tuoi giorni nel planning.",
+    "vue": {
+      "semaine": "Settimana",
+      "mois": "Mese"
+    },
+    "semaine": {
+      "titre": "Settimana dal {{du}} al {{au}}",
+      "copier": "Copia questa settimana sulle successive",
+      "vide": "Nessuna disponibilità questa settimana: tocca un giorno per aprirlo.",
+      "aide": "Impostato per questo giorno. Tocca un giorno per modificarlo."
+    }
   }
 }

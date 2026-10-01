@@ -3713,6 +3713,16 @@
       "titre": "Horário dia a dia",
       "description": "Fechar um dia, abrir uma data, copiar uma semana…"
     },
-    "banniereVariables": "Horários variáveis ativos: esta semana tipo não se aplica. Defina os seus dias na agenda de horários."
+    "banniereVariables": "Horários variáveis ativos: esta semana tipo não se aplica. Defina os seus dias na agenda de horários.",
+    "vue": {
+      "semaine": "Semana",
+      "mois": "Mês"
+    },
+    "semaine": {
+      "titre": "Semana de {{du}} a {{au}}",
+      "copier": "Copiar esta semana para as seguintes",
+      "vide": "Sem disponibilidade esta semana: toque num dia para o abrir.",
+      "aide": "Definido para este dia. Toque num dia para o alterar."
+    }
   }
 }
