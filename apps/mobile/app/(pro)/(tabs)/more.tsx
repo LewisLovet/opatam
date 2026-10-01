@@ -31,6 +31,7 @@ import {
   useProviderClientsCount,
   useSupportChatEnabled,
   useSupportUnread,
+  useSemaineProchaineVide,
 } from '../../../hooks';
 import i18n from '../../../lib/i18n';
 import { LanguageSettingRow } from '../../../components/LanguageSettingRow';
@@ -284,11 +285,14 @@ function GridItem({
   label,
   onPress,
   colors,
+  badge,
 }: {
   icon: string;
   label: string;
   onPress: () => void;
   colors: any;
+  /** Pastille d'alerte (ex. semaines vides de l'équipe). */
+  badge?: number | null;
 }) {
   return (
     <Pressable
@@ -300,6 +304,11 @@ function GridItem({
     >
       <View style={[s.gridIconContainer, { backgroundColor: colors.primaryLight || '#e4effa' }]}>
         <Ionicons name={icon as any} size={24} color={colors.primary} />
+        {!!badge && (
+          <View style={s.gridBadge}>
+            <Text style={s.gridBadgeText}>{badge}</Text>
+          </View>
+        )}
       </View>
       <Text variant="caption" color="textSecondary" style={s.gridLabel} numberOfLines={2}>
         {label}
@@ -423,6 +432,7 @@ function MenuMembre() {
   const { signOut, deleteAccount, userData } = useAuth();
   const { provider, providerId } = useProvider();
   const { monMemberId, voitSonCA } = useEspaceMembre();
+  const semaineVide = useSemaineProchaineVide(providerId, monMemberId);
   const [membre, setMembre] = useState<Member | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -516,6 +526,14 @@ function MenuMembre() {
                 {separateur}
               </>
             )}
+            <MenuItem
+              icon="calendar-number-outline"
+              label={t('planningHoraires.raccourci')}
+              badge={semaineVide.memberIds.length > 0 ? '!' : null}
+              onPress={() => router.push({ pathname: '/(pro)/planning-horaires', params: semaineVide.lundi && semaineVide.memberIds.length > 0 ? { lundi: semaineVide.lundi } : {} } as never)}
+              colors={colors}
+            />
+            {separateur}
             <MenuItem icon="time-outline" label={t('espaceMembre.menu.mesHoraires')} onPress={() => router.push('/(pro)/availability')} colors={colors} />
             {separateur}
             <MenuItem icon="remove-circle-outline" label={t('espaceMembre.menu.mesIndisponibilites')} onPress={() => router.push('/(pro)/blocked-slots')} colors={colors} />
@@ -577,6 +595,8 @@ function MoreScreen() {
   const { signOut, deleteAccount, userData } = useAuth();
   const { provider, providerId } = useProvider();
   const { blockedSlots } = useBlockedSlots(providerId ?? null);
+  // Membres en horaires variables sans rien d'ouvert la semaine prochaine.
+  const semaineVide = useSemaineProchaineVide(providerId);
   // Count of distinct clients who've ever booked here — drives the
   // small badge next to the "Clients" menu item, same convention as
   // "Avis clients" and "Créneaux bloqués".
@@ -810,6 +830,7 @@ function MoreScreen() {
                 label={t('proMore.grid.availability')}
                 onPress={() => router.push('/(pro)/availability')}
                 colors={colors}
+                badge={semaineVide.memberIds.length || null}
               />
             </View>
           </Card>
@@ -1110,6 +1131,19 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  gridBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
   gridItem: {
     alignItems: 'center',
     flex: 1,

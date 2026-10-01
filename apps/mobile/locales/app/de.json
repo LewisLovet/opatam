@@ -3723,6 +3723,12 @@
       "copier": "Diese Woche auf die folgenden kopieren",
       "vide": "Keine Verfügbarkeit in dieser Woche: Tippe auf einen Tag, um ihn zu öffnen.",
       "aide": "Für diesen Tag festgelegt. Tippe auf einen Tag, um ihn zu ändern."
+    },
+    "semaineVide": {
+      "titre": "Ihre Woche ab {{date}} ist leer",
+      "message": "Niemand kann Sie buchen: Öffnen Sie Ihre Tage im Dienstplan.",
+      "equipe": "Woche ab {{date}} leer: {{noms}}",
+      "chip": "Nächste Woche leer"
     }
   }
 }

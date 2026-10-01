@@ -17,6 +17,7 @@ import {
   raisonHorairesDatesInvalides,
   MESSAGES_HORAIRES_DATES,
   lecteurHorairesEquipe,
+  lundiDe,
   type HoraireDateLu,
   type HorairesDuJour,
 } from '@booking-app/shared';
@@ -564,7 +565,7 @@ export class SchedulingService {
         console.warn('[scheduling] horaires datés illisibles, horaires habituels appliqués', providerId, err);
         return [];
       }),
-      memberRepository.getByProvider(providerId).catch(() => []),
+      memberRepository.getAllByProviderSansTri(providerId).catch(() => []),
     ]);
     const horairesDe = lecteurHorairesEquipe({
       semaine,
@@ -574,6 +575,27 @@ export class SchedulingService {
     });
     const memberIds = [...new Set([...membres.map((m) => m.id), ...semaine.map((a) => a.memberId).filter(Boolean)])];
     return { horairesDe, memberIds };
+  }
+
+  /**
+   * Les membres en HORAIRES VARIABLES dont la semaine PROCHAINE (celle qui
+   * commence au lundi suivant) n'a aucun jour ouvert — ce que relancent le
+   * rappel du jeudi et du dimanche, et ce que signalent les badges.
+   */
+  async getSemaineProchaineVide(
+    providerId: string,
+    timeZone?: string,
+  ): Promise<{ lundi: string; memberIds: string[] }> {
+    const lundi = ajouterJours(lundiDe(jourLocal(new Date(), fuseauDuMoteur(timeZone)), ajouterJours), 7);
+    const [membres, { horairesDe }] = await Promise.all([
+      memberRepository.getAllByProviderSansTri(providerId),
+      this.getLecteurHorairesEquipe(providerId, lundi, ajouterJours(lundi, 6), timeZone),
+    ]);
+    const memberIds = membres
+      .filter((m) => m.isActive !== false && m.variableHours === true)
+      .filter((m) => [0, 1, 2, 3, 4, 5, 6].every((i) => !horairesDe(m.id, ajouterJours(lundi, i)).ouvert))
+      .map((m) => m.id);
+    return { lundi, memberIds };
   }
 
   /**

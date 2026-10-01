@@ -3723,6 +3723,12 @@
       "copier": "Copiar esta semana para as seguintes",
       "vide": "Sem disponibilidade esta semana: toque num dia para o abrir.",
       "aide": "Definido para este dia. Toque num dia para o alterar."
+    },
+    "semaineVide": {
+      "titre": "A sua semana de {{date}} está vazia",
+      "message": "Ninguém o pode reservar: abra os seus dias nos horários.",
+      "equipe": "Semana de {{date}} vazia: {{noms}}",
+      "chip": "Próxima semana vazia"
     }
   }
 }

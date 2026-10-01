@@ -72,6 +72,10 @@ export function EquipeTab() {
   const [joursOuverts, setJoursOuverts] = useState<
     { memberId: string; dayOfWeek: number; isOpen: boolean; slots: { start: string; end: string }[] }[] | null
   >(null);
+  // Horaires variables sans rien d'ouvert la semaine prochaine.
+  const [semaineVide, setSemaineVide] = useState<{ lundi: string; memberIds: string[] } | null>(null);
+  const resumeVariables = (id: string) =>
+    semaineVide?.memberIds.includes(id) ? 'Horaires variables · semaine prochaine vide' : 'Horaires variables';
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<WithId<Member> | null>(null);
   const [selectedMemberServiceIds, setSelectedMemberServiceIds] = useState<string[]>([]);
@@ -131,6 +135,7 @@ export function EquipeTab() {
       setServices(servicesData);
       setAvailabilities(availabilitiesData);
       setJoursOuverts(await schedulingService.getJoursOuvertsAVenir(provider.id).catch(() => null));
+      setSemaineVide(await schedulingService.getSemaineProchaineVide(provider.id).catch(() => null));
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Erreur lors du chargement des membres');
@@ -1259,7 +1264,7 @@ export function EquipeTab() {
                         services={services}
                         etat={etats.get(member.id)}
                         creneaux={creneaux[member.id] ?? null}
-                        resumeHoraires={member.variableHours ? 'Horaires variables' : resumerHoraires(horairesActuels, member.id)}
+                        resumeHoraires={member.variableHours ? resumeVariables(member.id) : resumerHoraires(horairesActuels, member.id)}
                         masquerLieu
                         memberServiceIds={getMemberServiceIds(member.id)}
                         selectionne={member.id === selectionId}
@@ -1302,7 +1307,7 @@ export function EquipeTab() {
                   etat={etats.get(membreSelectionne.id)}
                   creneaux={creneaux[membreSelectionne.id] ?? null}
                   resumeHoraires={
-                    membreSelectionne.variableHours ? 'Horaires variables' : resumerHoraires(horairesActuels, membreSelectionne.id)
+                    membreSelectionne.variableHours ? resumeVariables(membreSelectionne.id) : resumerHoraires(horairesActuels, membreSelectionne.id)
                   }
                   sources={sourcesHoraires(membreSelectionne.id)}
                   cibles={ciblesHoraires(membreSelectionne.id)}

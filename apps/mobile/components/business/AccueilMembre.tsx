@@ -22,6 +22,7 @@ import { Avatar } from '../Avatar';
 import { useProvider, useEspaceMembre } from '../../contexts';
 import { useProviderBookings } from '../../hooks/useProviderBookings';
 import { useProBookingBadges } from '../../hooks/useBookingBadges';
+import { useSemaineProchaineVide } from '../../hooks/useSemaineProchaineVide';
 import i18n from '../../lib/i18n';
 
 const ACTIFS: Booking['status'][] = ['confirmed', 'pending'];
@@ -66,6 +67,12 @@ export function AccueilMembre() {
     status: ACTIFS,
   });
   const { pendingCount } = useProBookingBadges(providerId, monMemberId);
+  // Horaires variables : rien d'ouvert la semaine prochaine → personne ne
+  // peut le réserver. Alerte en tête et pastille sur « Mon planning ».
+  const semaineVide = useSemaineProchaineVide(providerId, monMemberId);
+  const aOuvrir = semaineVide.memberIds.length > 0 && !!semaineVide.lundi;
+  const versPlanning = () =>
+    router.push({ pathname: '/(pro)/planning-horaires', params: aOuvrir ? { lundi: semaineVide.lundi! } : {} } as never);
 
   const { aujourdhui, prochain, semaine } = useMemo(() => {
     const maintenant = new Date();
@@ -87,10 +94,10 @@ export function AccueilMembre() {
   };
 
   const prenom = (membre?.name ?? '').trim().split(/\s+/)[0] ?? '';
-  const raccourcis: Array<{ icone: keyof typeof Ionicons.glyphMap; libelle: string; route: string }> = [
+  const raccourcis: Array<{ icone: keyof typeof Ionicons.glyphMap; libelle: string; route: string; alerte?: boolean }> = [
     { icone: 'add-circle-outline', libelle: t('espaceMembre.accueil.nouveauRdv'), route: '/(pro)/create-booking' },
     { icone: 'remove-circle-outline', libelle: t('espaceMembre.accueil.bloquer'), route: '/(pro)/block-slot' },
-    { icone: 'calendar-number-outline', libelle: t('planningHoraires.raccourci'), route: '/(pro)/planning-horaires' },
+    { icone: 'calendar-number-outline', libelle: t('planningHoraires.raccourci'), route: '/(pro)/planning-horaires', alerte: aOuvrir },
     { icone: 'time-outline', libelle: t('espaceMembre.menu.mesHoraires'), route: '/(pro)/availability' },
     { icone: 'people-outline', libelle: t('espaceMembre.menu.mesClientes'), route: '/(pro)/mes-clientes' },
     ...(voitSonCA ? [{ icone: 'stats-chart-outline' as const, libelle: t('espaceMembre.menu.monActivite'), route: '/(pro)/mon-activite' }] : []),
@@ -133,6 +140,28 @@ export function AccueilMembre() {
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing['3xl'] }}
         refreshControl={<RefreshControl refreshing={rafraichit} onRefresh={rafraichir} tintColor={colors.primary} />}
       >
+        {/* Semaine prochaine vide (horaires variables) */}
+        {aOuvrir && (
+          <Pressable onPress={versPlanning}>
+            <Card padding="md" shadow="sm" style={{ backgroundColor: colors.errorLight }}>
+              <View style={s.ligne}>
+                <Ionicons name="calendar-clear-outline" size={20} color={colors.errorDark} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="body" style={{ fontWeight: '700', color: colors.errorDark }}>
+                    {t('planningHoraires.semaineVide.titre', {
+                      date: new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'long' }).format(
+                        new Date(`${semaineVide.lundi}T12:00:00`),
+                      ),
+                    })}
+                  </Text>
+                  <Text variant="caption" style={{ color: colors.errorDark }}>{t('planningHoraires.semaineVide.message')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.errorDark} />
+              </View>
+            </Card>
+          </Pressable>
+        )}
+
         {/* À confirmer */}
         {pendingCount > 0 && (
           <Pressable onPress={() => router.push('/(pro)/(tabs)/bookings' as never)}>
@@ -219,11 +248,12 @@ export function AccueilMembre() {
           {raccourcis.map((r) => (
             <Pressable
               key={r.route}
-              onPress={() => router.push(r.route as never)}
+              onPress={() => (r.route === '/(pro)/planning-horaires' ? versPlanning() : router.push(r.route as never))}
               style={({ pressed }) => [s.tuile, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, opacity: pressed ? 0.8 : 1 }]}
             >
               <View style={[s.icone, { backgroundColor: colors.primaryLight, borderRadius: radius.md }]}>
                 <Ionicons name={r.icone} size={22} color={colors.primary} />
+                {r.alerte && <View style={[s.pastille, { borderColor: colors.surface }]} />}
               </View>
               <Text variant="bodySmall" style={{ fontWeight: '600', marginTop: spacing.sm }} numberOfLines={2}>{r.libelle}</Text>
             </Pressable>
@@ -240,4 +270,5 @@ const s = StyleSheet.create({
   grille: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tuile: { width: '47%', flexGrow: 1, padding: 14, borderWidth: 1 },
   icone: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  pastille: { position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: 6, backgroundColor: '#DC2626', borderWidth: 2 },
 });

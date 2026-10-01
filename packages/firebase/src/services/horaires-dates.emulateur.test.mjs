@@ -232,6 +232,28 @@ describe('le moteur de créneaux suit les horaires datés', () => {
   });
 });
 
+describe('semaine prochaine vide (badges)', () => {
+  // Le lundi qui suit la semaine en cours, comme le service.
+  const lundiProchain = ajouterJours(aujourdhui, ((8 - new Date(`${aujourdhui}T12:00:00Z`).getUTCDay()) % 7) || 7);
+
+  before(async () => {
+    await base({ variables: true });
+    await p.collection('members').doc('m2').set({ name: 'Remplit', isActive: true, locationId: 'lieu-1', variableHours: true });
+    await p.collection('members').doc('m3').set({ name: 'Semaine type', isActive: true, locationId: 'lieu-1', variableHours: false });
+    await p.collection('members').doc('m4').set({ name: 'Inactif', isActive: false, locationId: 'lieu-1', variableHours: true });
+    await p.collection('datedAvailability').add({
+      memberId: 'm2', locationId: 'lieu-1', from: ajouterJours(lundiProchain, 2), to: ajouterJours(lundiProchain, 2),
+      weekdays: [], mode: 'slots', slots: [{ start: '14:00', end: '18:00' }], createdAt: Timestamp.now(),
+    });
+  });
+
+  it('seuls les membres actifs en horaires variables sans aucun jour ouvert', async () => {
+    const r = await schedulingService.getSemaineProchaineVide(PID, FUSEAU);
+    assert.equal(r.lundi, lundiProchain);
+    assert.deepEqual(r.memberIds, ['m1']);
+  });
+});
+
 // Le client Firestore garde le processus ouvert : on le relâche.
 after(async () => {
   await vider();

@@ -86,11 +86,14 @@ export function PlanningJourParJour({
   providerId,
   membre,
   onHorairesVariables,
+  onModifie,
 }: {
   providerId: string;
   membre: WithId<Member>;
   /** Après la bascule de l'option : l'écran parent ajuste son avertissement. */
   onHorairesVariables?: (actif: boolean) => void;
+  /** Après tout enregistrement : l'écran parent relit ce qui en dépend (badges). */
+  onModifie?: () => void;
 }) {
   const toast = useToast();
   const aujourdhui = jourLocalDe(new Date());
@@ -148,6 +151,7 @@ export function PlanningJourParJour({
       await action();
       await charger();
       toast.success(succes);
+      onModifie?.();
     } catch (err) {
       console.error('[planning] écriture', err);
       toast.error(err instanceof Error && err.message ? err.message : "L'enregistrement a échoué");

@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import i18n from '../../lib/i18n';
 import { useTheme } from '../../theme';
 import { Text, Button, Card, useToast } from '../../components';
+import { useSemaineProchaineVide } from '../../hooks/useSemaineProchaineVide';
 import { useProvider, useEspaceMembre } from '../../contexts';
 import {
   schedulingService,
@@ -142,6 +143,8 @@ export default function AvailabilityScreen() {
   const { providerId } = useProvider();
   // Espace membre : SES horaires seulement (ni ceux des collègues, ni diffusion).
   const { monMemberId } = useEspaceMembre();
+  // Horaires variables sans rien d'ouvert la semaine prochaine.
+  const semaineVide = useSemaineProchaineVide(providerId, monMemberId);
 
   const [members, setMembers] = useState<WithId<Member>[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -626,6 +629,17 @@ export default function AvailabilityScreen() {
               <View style={{ flex: 1 }}>
                 <Text variant="body" style={{ fontWeight: '600' }}>{t('planningHoraires.entree.titre')}</Text>
                 <Text variant="caption" color="textSecondary">{t('planningHoraires.entree.description')}</Text>
+                {semaineVide.memberIds.length > 0 && semaineVide.lundi && (
+                  <Text variant="caption" style={{ color: colors.error, fontWeight: '600', marginTop: 2 }}>
+                    {t('planningHoraires.semaineVide.equipe', {
+                      date: new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'long' }).format(new Date(`${semaineVide.lundi}T12:00:00`)),
+                      noms: semaineVide.memberIds
+                        .map((id) => members.find((m) => m.id === id)?.name)
+                        .filter(Boolean)
+                        .join(', '),
+                    })}
+                  </Text>
+                )}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>

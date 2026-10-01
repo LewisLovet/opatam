@@ -3723,6 +3723,12 @@
       "copier": "Copier cette semaine sur les suivantes",
       "vide": "Aucune disponibilité cette semaine : touchez un jour pour l'ouvrir.",
       "aide": "Réglé pour ce jour. Touchez un jour pour le modifier."
+    },
+    "semaineVide": {
+      "titre": "Votre semaine du {{date}} est vide",
+      "message": "Personne ne peut vous réserver : ouvrez vos jours dans le planning.",
+      "equipe": "Semaine du {{date}} vide : {{noms}}",
+      "chip": "Semaine prochaine vide"
     }
   }
 }

@@ -127,6 +127,15 @@ export function DisponibilitesTab() {
   }, [provider, selectedMemberId, toast]);
 
   const [sansHoraires, setSansHoraires] = useState(false);
+  // Horaires variables sans rien d'ouvert la semaine prochaine.
+  const [semaineVide, setSemaineVide] = useState<{ lundi: string; memberIds: string[] } | null>(null);
+  const chargerSemaineVide = useCallback(() => {
+    if (!provider) return;
+    schedulingService.getSemaineProchaineVide(provider.id).then(setSemaineVide).catch(() => setSemaineVide(null));
+  }, [provider]);
+  useEffect(() => {
+    chargerSemaineVide();
+  }, [chargerSemaineVide]);
   // Horaires de TOUTE l'équipe : ils servent à dire ce qu'on remplacerait
   // chez chaque destinataire avant de diffuser une semaine.
   const [horairesEquipe, setHorairesEquipe] = useState<
@@ -514,6 +523,32 @@ export function DisponibilitesTab() {
         )}
       </div>
 
+      {/* Semaine prochaine vide (horaires variables) : qui, et un clic pour l'ouvrir. */}
+      {semaineVide && semaineVide.memberIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>
+            Semaine du{' '}
+            {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(new Date(`${semaineVide.lundi}T12:00:00`))}{' '}
+            sans aucune disponibilité :
+          </span>
+          {semaineVide.memberIds.map((id) => {
+            const m = members.find((x) => x.id === id);
+            if (!m) return null;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handleMemberSelect(id)}
+                className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-200 dark:ring-red-800"
+              >
+                {m.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Split-panel layout: editor left, preview right on desktop */}
       <div className="xl:grid xl:grid-cols-[minmax(0,420px)_1fr] xl:gap-8">
         {/* Left column — editor (compact) */}
@@ -605,6 +640,7 @@ export function DisponibilitesTab() {
           onHorairesVariables={(actif) =>
             setMembers((ms) => ms.map((m) => (m.id === selectedMember.id ? { ...m, variableHours: actif } : m)))
           }
+          onModifie={chargerSemaineVide}
         />
       )}
 

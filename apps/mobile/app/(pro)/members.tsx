@@ -36,6 +36,7 @@ import {
   ReglageCAMembres,
 } from '../../components/business/AccesAppMembres';
 import { useEspaceMembreOuvert } from '../../hooks/useEspaceMembreOuvert';
+import { useSemaineProchaineVide } from '../../hooks/useSemaineProchaineVide';
 import { useProvider, useSubscriptionStatus } from '../../contexts';
 import {
   memberService,
@@ -142,6 +143,8 @@ export default function MembersScreen() {
   // liste de noms sans dire lesquels étaient réservables.
   const [services, setServices] = useState<WithId<Service>[]>([]);
   const [horaires, setHoraires] = useState<WithId<Availability>[]>([]);
+  // Membres en horaires variables sans rien d'ouvert la semaine prochaine.
+  const semaineVide = useSemaineProchaineVide(providerId);
   // Journées OUVERTES à venir (60 j), date par date : horaires datés et
   // horaires variables compris. `null` = pas lues → repli sur la semaine type.
   const [joursOuverts, setJoursOuverts] = useState<
@@ -913,6 +916,11 @@ export default function MembersScreen() {
                     {member.variableHours
                       ? t('planningHoraires.variables.titre')
                       : resumerHoraires(horairesActuels, member.id) ?? t('proMembers.readiness.scheduleTodo')}
+                  </Text>
+                )}
+                {member.isActive && semaineVide.memberIds.includes(member.id) && (
+                  <Text variant="caption" style={{ marginTop: 2, color: colors.error, fontWeight: '600' }}>
+                    {t('planningHoraires.semaineVide.chip')}
                   </Text>
                 )}
                 {/* LE chiffre : combien de rendez-vous cette personne

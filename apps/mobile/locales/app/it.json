@@ -3723,6 +3723,12 @@
       "copier": "Copia questa settimana sulle successive",
       "vide": "Nessuna disponibilità questa settimana: tocca un giorno per aprirlo.",
       "aide": "Impostato per questo giorno. Tocca un giorno per modificarlo."
+    },
+    "semaineVide": {
+      "titre": "La tua settimana del {{date}} è vuota",
+      "message": "Nessuno può prenotarti: apri i tuoi giorni nel planning.",
+      "equipe": "Settimana del {{date}} vuota: {{noms}}",
+      "chip": "Prossima settimana vuota"
     }
   }
 }

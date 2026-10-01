@@ -117,3 +117,5 @@ export type {
 
 export { useSupportChatEnabled } from './useSupportChatEnabled';
 export { useSupportUnread } from './useSupportUnread';
+
+export { useSemaineProchaineVide } from './useSemaineProchaineVide';

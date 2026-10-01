@@ -3723,6 +3723,12 @@
       "copier": "Copy this week to the following weeks",
       "vide": "No availability this week: tap a day to open it.",
       "aide": "Set for this day. Tap a day to change it."
+    },
+    "semaineVide": {
+      "titre": "Your week of {{date}} is empty",
+      "message": "Nobody can book you: open your days in the schedule.",
+      "equipe": "Week of {{date}} empty: {{noms}}",
+      "chip": "Next week empty"
     }
   }
 }

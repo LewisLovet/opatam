@@ -93,6 +93,19 @@ export class MemberRepository {
   }
 
   /**
+   * TOUS les membres, sans tri. `orderBy('sortOrder')` écarte en silence les
+   * fiches qui n'ont pas ce champ : pour décider des horaires (option
+   * « horaires variables »), on ne doit oublier personne.
+   */
+  async getAllByProviderSansTri(providerId: string): Promise<WithId<Member>[]> {
+    const querySnapshot = await getDocs(this.getCollectionRef(providerId));
+    return querySnapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...convertTimestamps<Member>(docSnap.data()),
+    }));
+  }
+
+  /**
    * Get active members for a provider
    */
   async getActiveByProvider(providerId: string): Promise<WithId<Member>[]> {
