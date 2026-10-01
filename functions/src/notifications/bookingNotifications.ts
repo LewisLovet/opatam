@@ -8,11 +8,19 @@ import { providerLocale, PUSH_TEXTS, INTL_LOCALE, type ProviderLocale } from '..
 import { providerTimeZone } from '../lib/morningAgenda';
 import { sendPushNotifications, type SendNotificationResult } from '../utils/expoPushService';
 import { formatMontantCompact } from '../lib/devise';
+import { acteurDeLEcriture, membrePrevenu, gerantPrevenu } from '../lib/notificationsMembre';
+import {
+  notifierMembreNouveauRdv,
+  notifierMembreRdvAnnule,
+  notifierMembreRdvDeplace,
+} from './memberNotifications';
 
 // Types for booking data from Firestore
 interface BookingData {
   providerId: string;
   clientId: string | null;
+  /** Le membre de l'équipe qui assure le rendez-vous. */
+  memberId?: string | null;
   serviceName: string;
   datetime: admin.firestore.Timestamp;
   /** Fuseau du SALON, figé à la réservation. Absent avant le chantier fuseaux. */
@@ -118,7 +126,7 @@ function fuseauDeLaResa(
 
 // Notification event types for preference checks
 type ClientNotifType = 'confirmation' | 'cancellation' | 'reschedule' | 'reminder';
-type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder' | 'dailyAgenda' | 'planning';
+type ProviderNotifType = 'newBooking' | 'confirmation' | 'cancellation' | 'reminder' | 'dailyAgenda' | 'planning' | 'planningChanges';
 
 /**
  * Get user's push tokens from Firestore
@@ -184,6 +192,27 @@ export interface ProviderPushContext {
   /** Fuseau du prestataire — une notification annonce SON heure. */
   timeZone: string;
   allowed: (type: ProviderNotifType) => boolean;
+  /** Préférences brutes (interrupteurs absents = activés). */
+  prefs: Record<string, unknown> | undefined;
+}
+
+/**
+ * Le gérant est-il concerné par ce rendez-vous ? Toujours pour les siens
+ * (son propre membre, ou aucun membre) ; pour ceux de l'équipe, sauf s'il a
+ * coupé « Rendez-vous de l'équipe ».
+ */
+async function gerantConcerne(
+  ctx: ProviderPushContext,
+  booking: { providerId: string; memberId?: string | null },
+): Promise<boolean> {
+  if (!booking.memberId) return true;
+  if ((ctx.prefs as { teamBookingNotifications?: unknown } | undefined)?.teamBookingNotifications !== false) return true;
+  try {
+    const membre = await admin.firestore().collection('providers').doc(booking.providerId).collection('members').doc(booking.memberId).get();
+    return gerantPrevenu({ rdvDuGerant: !membre.exists || membre.data()?.isDefault === true, preferences: ctx.prefs });
+  } catch {
+    return true;
+  }
 }
 
 export async function loadProviderPushContext(
@@ -204,6 +233,7 @@ export async function loadProviderPushContext(
 
     return {
       userId,
+      prefs,
       locale,
       t: PUSH_TEXTS[locale],
       intl: INTL_LOCALE[locale],
@@ -222,6 +252,8 @@ export async function loadProviderPushContext(
           // Rappel « semaine prochaine vide » de l'équipe : même logique,
           // clé absente = activé.
           planning: 'planningReminderPush',
+          // Un membre a modifié son planning (récapitulatif regroupé).
+          planningChanges: 'planningChangesPush',
         };
         return prefs[map[type]] !== false;
       },
@@ -270,6 +302,7 @@ export async function notifyProviderNewBooking(booking: BookingData, bookingId: 
     console.log('Provider has disabled newBooking push notifications, skipping');
     return;
   }
+  if (!(await gerantConcerne(ctx, booking))) return;
   const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
@@ -385,6 +418,7 @@ export async function notifyProviderBookingSoon(
     console.log('Provider has disabled reminder push notifications, skipping');
     return;
   }
+  if (!(await gerantConcerne(ctx, booking))) return;
   const providerUserId = ctx.userId;
   const pushTokens = await getUserPushTokens(providerUserId);
   if (pushTokens.length === 0) return;
@@ -453,6 +487,7 @@ export async function notifyProviderBookingCancelled(booking: BookingData): Prom
     console.log('Provider has disabled cancellation push notifications, skipping');
     return;
   }
+  if (!(await gerantConcerne(ctx, booking))) return;
   const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
@@ -580,6 +615,7 @@ export async function notifyProviderServiceChange(
     console.log('Provider has disabled newBooking push notifications, skipping');
     return;
   }
+  if (!(await gerantConcerne(ctx, booking))) return;
   const providerUserId = ctx.userId;
 
   const pushTokens = await getUserPushTokens(providerUserId);
@@ -710,6 +746,10 @@ export async function handleBookingNotifications(
     }
     console.log('Booking created, notifying provider');
     await notifyProviderNewBooking(booking, bookingId);
+    // Le membre qui l'assure — sauf s'il vient de le créer lui-même.
+    if (membrePrevenu(acteurDeLEcriture(beforeData, afterData))) {
+      await notifierMembreNouveauRdv(booking as never, bookingId);
+    }
     return;
   }
 
@@ -735,6 +775,7 @@ export async function handleBookingNotifications(
       if (oldStatus === 'pending_payment') {
         console.log('Deposit paid, firing deferred provider notification');
         await notifyProviderNewBooking(booking, bookingId);
+        await notifierMembreNouveauRdv(booking as never, bookingId);
       }
       return;
     }
@@ -746,10 +787,15 @@ export async function handleBookingNotifications(
       if (cancelledBy === 'client') {
         console.log('Booking cancelled by client, notifying provider');
         await notifyProviderBookingCancelled(booking);
+        await notifierMembreRdvAnnule(booking as never, bookingId, false);
       } else if (cancelledBy === 'provider') {
         // Provider cancelled - notify client
         console.log('Booking cancelled by provider, notifying client');
         await notifyClientBookingCancelled(booking);
+        // Annulé par le gérant : le membre est prévenu ; par lui-même, non.
+        if (membrePrevenu(acteurDeLEcriture(beforeData, afterData))) {
+          await notifierMembreRdvAnnule(booking as never, bookingId, true);
+        }
       }
       return;
     }
@@ -762,6 +808,9 @@ export async function handleBookingNotifications(
       if (newStatus === 'pending' || newStatus === 'confirmed') {
         console.log('Booking rescheduled, notifying client');
         await notifyClientBookingRescheduled(booking, beforeData.datetime.toDate());
+        if (membrePrevenu(acteurDeLEcriture(beforeData, afterData))) {
+          await notifierMembreRdvDeplace(booking as never, bookingId);
+        }
       }
       return;
     }

@@ -387,6 +387,9 @@ export async function POST(request: NextRequest) {
         // jamais être conservée : sans elle, impossible de savoir dans quel
         // fuseau un rendez-vous ancien a été calculé.
         createdVia: isProSource ? 'pro' : isMobileClient ? 'mobile' : 'client',
+        // Côté pro, qui crée : le gérant ou un membre (jamais notifié de sa
+        // propre réservation).
+        proActor: isProVerified ? (verifiedUid === validated.providerId ? 'owner' : 'member') : null,
       });
     } catch (e) {
       // Création refusée après l'écriture de l'adresse privée → nettoyage

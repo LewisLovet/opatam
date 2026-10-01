@@ -4,6 +4,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { serverTracker } from '../utils/serverTracker';
 import { notifyProviderDailyAgenda } from '../notifications/bookingNotifications';
 import { decideMorningAgenda, providerTimeZone, MORNING_HOUR } from '../lib/morningAgenda';
+import { chargerContexteMembre, notifierMembreJournee } from '../notifications/memberNotifications';
 
 /**
  * Résumé du matin, en PUSH, au prestataire : « Aujourd'hui vous avez N
@@ -58,12 +59,20 @@ export const sendProviderMorningAgenda = onSchedule(
       serverTracker.trackRead('bookings', snapshot.size);
 
       const byProvider = new Map<string, Date[]>();
+      // Et par membre de l'équipe (espace membre) : SA journée.
+      const byMember = new Map<string, { providerId: string; memberId: string; times: Date[] }>();
       for (const doc of snapshot.docs) {
         const data = doc.data();
         if (data.demoSeed) continue; // résas de démo : clients fictifs
         const list = byProvider.get(data.providerId);
         if (list) list.push(data.datetime.toDate());
         else byProvider.set(data.providerId, [data.datetime.toDate()]);
+        if (data.memberId) {
+          const cle = `${data.providerId}|${data.memberId}`;
+          const m = byMember.get(cle) ?? { providerId: String(data.providerId), memberId: String(data.memberId), times: [] as Date[] };
+          m.times.push(data.datetime.toDate());
+          byMember.set(cle, m);
+        }
       }
 
       if (byProvider.size === 0) {
@@ -140,7 +149,10 @@ export const sendProviderMorningAgenda = onSchedule(
         }
       }
 
+      const membresServis = await envoyerJourneesMembres(db, now, byMember);
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`${membresServis} membre(s) de l'équipe servi(s)`);
       console.log(
         `=== sendProviderMorningAgenda completed: ${sent} notifié(s), ${skipped} hors ${MORNING_HOUR} h locales ou déjà servis, en ${duration}s ===`,
       );
@@ -151,3 +163,49 @@ export const sendProviderMorningAgenda = onSchedule(
     }
   },
 );
+
+/**
+ * Le résumé du matin de chaque MEMBRE qui a un accès à l'app : à 8 h dans le
+ * fuseau de SON lieu, une fois par jour (marqueur sur `memberAccounts`),
+ * jamais les jours sans rendez-vous, et seulement s'il ne l'a pas coupé.
+ */
+async function envoyerJourneesMembres(
+  db: admin.firestore.Firestore,
+  now: Date,
+  byMember: Map<string, { providerId: string; memberId: string; times: Date[] }>,
+): Promise<number> {
+  let servis = 0;
+  const fuseaux = new Map<string, string | null>();
+  for (const { providerId, memberId, times } of byMember.values()) {
+    try {
+      const ctx = await chargerContexteMembre(providerId, memberId);
+      if (!ctx) continue;
+      const membre = (await db.collection('providers').doc(providerId).collection('members').doc(memberId).get()).data();
+      const locationId: string | undefined = membre?.locationId;
+      const cleLieu = `${providerId}/${locationId ?? ''}`;
+      if (!fuseaux.has(cleLieu)) {
+        const lieu = locationId
+          ? (await db.collection('providers').doc(providerId).collection('locations').doc(locationId).get()).data()
+          : undefined;
+        fuseaux.set(cleLieu, (lieu?.timezone as string | undefined) ?? null);
+      }
+      const timeZone = fuseaux.get(cleLieu) || ctx.timeZone;
+      const compteRef = db.collection('memberAccounts').doc(ctx.uid);
+      const decision = decideMorningAgenda({
+        now,
+        timeZone,
+        enabled: ctx.active('resumeDuMatin'),
+        lastSentOn: (await compteRef.get()).data()?.morningAgendaSentOn,
+        bookingTimes: times,
+      });
+      if (!decision.send) continue;
+      if (await notifierMembreJournee(ctx, decision.count, decision.firstTime)) {
+        await compteRef.update({ morningAgendaSentOn: decision.today });
+        servis++;
+      }
+    } catch (error) {
+      console.error(`Résumé du matin du membre ${providerId}/${memberId} :`, error);
+    }
+  }
+  return servis;
+}

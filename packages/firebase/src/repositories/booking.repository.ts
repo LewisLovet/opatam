@@ -276,6 +276,8 @@ export class BookingRepository extends BaseRepository<Booking> {
     cancelData?: {
       cancelledBy: 'client' | 'provider';
       cancelReason?: string;
+      /** Côté pro, qui annule : le gérant ou un membre. */
+      proActor?: 'owner' | 'member';
     }
   ): Promise<void> {
     const updateData: Partial<Booking> = { status };
@@ -284,6 +286,10 @@ export class BookingRepository extends BaseRepository<Booking> {
       updateData.cancelledAt = new Date();
       updateData.cancelledBy = cancelData.cancelledBy;
       updateData.cancelReason = cancelData.cancelReason || null;
+      if (cancelData.proActor) {
+        updateData.proActor = cancelData.proActor;
+        updateData.proActorAt = new Date();
+      }
     }
 
     await this.update(id, updateData);

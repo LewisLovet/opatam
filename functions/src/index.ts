@@ -48,6 +48,12 @@ export { sendReviewRequests } from './scheduled/sendReviewRequests';
 export { sendDailyAgendaSummary } from './scheduled/sendDailyAgendaSummary';
 export { sendProviderMorningAgenda } from './scheduled/sendProviderMorningAgenda';
 export { sendPlanningReminders } from './scheduled/sendPlanningReminders';
+export {
+  onAvailabilityWriteByMember,
+  onDatedAvailabilityWriteByMember,
+  onBlockedSlotWriteByMember,
+  sendPlanningChangeDigests,
+} from './triggers/onPlanningChangeByMember';
 export { aggregatePageViews } from './scheduled/aggregatePageViews';
 export { checkExpiredTrials } from './scheduled/checkExpiredTrials';
 export { sendSerenityTrialWarnings } from './scheduled/sendSerenityTrialWarnings';

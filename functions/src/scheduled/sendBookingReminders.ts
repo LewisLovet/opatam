@@ -13,6 +13,7 @@ import { ajouterJours } from '../lib/fuseaux';
 import * as admin from 'firebase-admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { notifyClientBookingReminder, notifyProviderBookingSoon } from '../notifications/bookingNotifications';
+import { notifierMembreRdvBientot } from '../notifications/memberNotifications';
 import { emailClientBookingReminder } from '../notifications/bookingEmails';
 import { serverTracker } from '../utils/serverTracker';
 
@@ -294,6 +295,7 @@ export const sendBookingReminders = onSchedule(
               await notifyProviderBookingSoon(
                 {
                   providerId: data.providerId,
+                  memberId: data.memberId ?? null,
                   clientId: data.clientId,
                   serviceName: data.serviceName,
                   datetime: data.datetime,
@@ -306,6 +308,11 @@ export const sendBookingReminders = onSchedule(
                 },
                 minutesUntil,
                 id
+              );
+              // Le membre qui assure le rendez-vous (espace membre), même
+              // moment, même marqueur.
+              await notifierMembreRdvBientot(data as never, minutesUntil, id).catch((err) =>
+                console.error(`[MEMBER-REMINDER] Error for booking ${id}:`, err),
               );
               await db.collection('bookings').doc(id).update({
                 providerReminderSentAt: Timestamp.fromDate(now),

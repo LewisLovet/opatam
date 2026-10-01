@@ -110,6 +110,8 @@ export class BookingService {
        * dans quel fuseau un ancien rendez-vous a été calculé.
        */
       createdVia?: 'client' | 'pro' | 'mobile';
+      /** Côté pro, qui crée le rendez-vous : le gérant ou un membre. */
+      proActor?: 'owner' | 'member' | null;
     } = {},
   ): Promise<WithId<Booking>> {
     // Validate input
@@ -483,6 +485,7 @@ export class BookingService {
           }
         : {}),
       ...(opts.createdVia ? { createdVia: opts.createdVia } : {}),
+      ...(opts.proActor ? { proActor: opts.proActor, proActorAt: new Date() } : {}),
       status,
       cancelledAt: null,
       cancelledBy: null,
@@ -550,6 +553,8 @@ export class BookingService {
     await bookingRepository.updateStatus(bookingId, 'cancelled', {
       cancelledBy,
       cancelReason: reason,
+      // Gérant ou membre : le membre n'est pas prévenu de sa propre annulation.
+      ...(cancelledBy === 'provider' ? { proActor: userId === booking.providerId ? ('owner' as const) : ('member' as const) } : {}),
     });
 
     // Increment cancellation count for client if client cancelled
@@ -869,6 +874,9 @@ export class BookingService {
     await bookingRepository.update(bookingId, {
       datetime: newDatetime,
       endDatetime: newEndDatetime,
+      // Gérant ou membre : le membre n'est pas prévenu de son propre déplacement.
+      proActor: adminUserId === booking.providerId ? 'owner' : 'member',
+      proActorAt: new Date(),
       // L'heure locale convenue est refigée : déplacer un rendez-vous
       // change l'heure dont la cliente et le pro parleront ensuite. Une
       // ancienne réservation reçoit ici son fuseau pour la première fois.

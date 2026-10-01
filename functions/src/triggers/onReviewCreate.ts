@@ -8,6 +8,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import { sendPushNotifications } from '../utils/expoPushService';
+import { notifierMembreNouvelAvis } from '../notifications/memberNotifications';
 
 export const onReviewCreate = onDocumentCreated(
   {
@@ -27,6 +28,25 @@ export const onReviewCreate = onDocumentCreated(
     if (!providerId) return;
 
     const db = admin.firestore();
+
+    // Le membre qui a assuré le rendez-vous (espace membre) — indépendant des
+    // réglages du gérant. Le membre vient de l'avis, sinon du rendez-vous.
+    try {
+      let memberId: string | null = review.memberId ?? null;
+      if (!memberId && review.bookingId) {
+        memberId = (await db.collection('bookings').doc(review.bookingId).get()).data()?.memberId ?? null;
+      }
+      await notifierMembreNouvelAvis({
+        providerId,
+        memberId,
+        note: rating,
+        nomCliente: clientName,
+        commentaire: comment,
+        reviewId: event.params.reviewId,
+      });
+    } catch (error) {
+      console.error('[onReviewCreate] membre :', error);
+    }
 
     try {
       // Get provider to check notification preferences

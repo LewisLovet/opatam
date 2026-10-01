@@ -1749,6 +1749,15 @@ export interface Booking {
    * migration automatique des réservations existantes.
    */
   createdVia?: 'client' | 'pro' | 'mobile' | null;
+  /**
+   * Côté pro, QUI a fait la dernière action (création, déplacement,
+   * annulation) : le gérant (`owner`) ou un membre de l'équipe (`member`).
+   * Sert à ne pas notifier quelqu'un de ce qu'il vient de faire lui-même.
+   * Absent = inconnu (réservations d'avant, ou action de la cliente).
+   */
+  proActor?: 'owner' | 'member' | null;
+  /** Quand `proActor` a été posé : permet de savoir si CETTE écriture vient du pro. */
+  proActorAt?: Date | null;
   status: BookingStatus;
   cancelledAt: Date | null;
   cancelledBy: 'client' | 'provider' | null;
